@@ -1,0 +1,3933 @@
+/* =====================================================================
+   ARISE — application stylesheet, on the SDCA Brand Style Guide.
+
+   Colour, type, radius and elevation all come from design tokens in
+   src/styles/tokens.css (semantic aliases: --surface, --accent, --text,
+   …). Do not hard-code hex values here — add or adjust a token instead.
+
+   SDCA Maroon (--accent) leads every page; Dominican Gold (--gold) is a
+   sparing premium accent; white/neutral surfaces carry the rest, roughly
+   a 60 / 30 / 10 white–maroon–gold split.
+
+   Organised by feature/section with comment headers, followed by the
+   responsive @media pass.
+   ===================================================================== */
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  font-family: var(--font-sans-body);
+  background: var(--app-bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans-display);
+}
+#root {
+  height: 100%;
+}
+
+/* Primary call-to-action treatment — guide: Montserrat 700, uppercase,
+   wide tracking. Colour comes from the scoped rules further down. */
+.primary,
+button.primary {
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+}
+.home-placeholder a {
+  color: var(--accent);
+}
+.admin-editor-flat {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+.admin-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.admin-header-side {
+  display: flex;
+  align-items: center;
+}
+.admin-header-account {
+  justify-content: flex-end;
+  gap: 8px;
+}
+.admin-back-link {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.admin-back-link:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+/* ---------- New multi-section admin layout (redesign) ---------- */
+/* Same sizing as .admin-editor-flat, kept as its own class rather than
+   reused directly — .admin-editor-flat belongs to the old, single-page
+   AdminEditor being phased out, and keeping them separate makes that
+   eventual cleanup simpler once the migration finishes. */
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+.admin-header-nav {
+  gap: 8px;
+}
+/* "Back to Virtual Map" was a plain text link (.admin-back-link) before
+   — now a proper button per the redesign, matching "Back to Virtual
+   Tour" beside it. */
+.admin-header-nav-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  text-decoration: none;
+  font-size: 13px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-header-nav-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.admin-layout-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+/* ---------- Collapsible sidebar ---------- */
+.admin-sidebar-rail {
+  position: relative;
+  width: 64px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  /* Lower than both the backdrop (40) and flyout (41) that need to sit
+     ON TOP of this when expanded — the rail's own z-index was
+     previously higher (42) than the flyout meant to cover it, which
+     was backwards, and combined with never setting `position` here at
+     all (so z-index wasn't reliably taking effect either way), produced
+     exactly the kind of unpredictable stacking that let the backdrop
+     and dimmed content underneath show through where the flyout should
+     have been fully opaque on top. */
+  z-index: 10;
+}
+.admin-sidebar-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* This class now styles both a <button> (the two group icons) and a
+     <Link>-rendered <a> (the standalone User Panel icon) — explicit
+     here so the link variant doesn't pick up a default underline,
+     matching how .admin-header-nav-btn already handles the same
+     button-styled-as-a-link situation elsewhere in this file. */
+  text-decoration: none;
+}
+.admin-sidebar-icon-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+.admin-sidebar-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  z-index: 40;
+}
+.admin-sidebar-flyout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  z-index: 41;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-sidebar-close {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+}
+.admin-sidebar-close:hover {
+  color: var(--text);
+}
+/* New with the group restructuring — shows which group's flyout is
+   currently open ("Virtual Map" / "Campus Tour"), sitting above that
+   group's own labeled sub-items. Uses the same display-font/uppercase/
+   tracked treatment as .admin-header-title and .admin-page-heading, per
+   the brand doc's "nav, section titles" usage rule — this genuinely is
+   both at once (it's part of the sidebar nav, and it's this flyout's own
+   section title). */
+.admin-sidebar-flyout-group-label {
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 14px;
+  margin-bottom: 8px;
+}
+.admin-sidebar-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text);
+}
+.admin-sidebar-flyout-item:hover {
+  background: var(--surface-hover);
+}
+/* A thin gold hairline on the active item — genuinely applying the brand's
+   own gold accent (currently unused anywhere in this new layout), used
+   exactly as the brand doc specifies: sparing, hairline-only, paired with
+   the maroon selected state rather than replacing it. */
+.admin-sidebar-flyout-item-active {
+  background: var(--selected-bg);
+  color: var(--accent);
+  font-weight: 700;
+  border-left: 3px solid var(--gold);
+  padding-left: 11px;
+}
+.admin-sidebar-flyout-icon {
+  font-size: 20px;
+}
+.admin-sidebar-flyout-label {
+  font-size: 14px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-layout-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+/* ---------- Phase 1 placeholder pages — removed once real content
+   migrates into each section ---------- */
+.admin-page-placeholder {
+  padding: 32px;
+}
+.admin-page-placeholder h2 {
+  margin: 0 0 8px 0;
+  font-family: var(--font-sans-display);
+}
+/* ---------- Node Editor page (Phase 2) ---------- */
+.node-editor-page {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.admin-page-heading {
+  margin: 0;
+  font-family: var(--font-sans-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.node-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* All four toolbar actions read as one uniform group in the wireframe —
+   not one primary/highlighted action among plain neutral ones, which is
+   how these same buttons were styled in the old single-page layout. */
+.node-editor-toolbar > button {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.node-editor-toolbar > button:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.node-editor-search {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.node-editor-search input {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 13px;
+  min-width: 200px;
+}
+.node-editor-body {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+}
+.node-editor-body .node-list-panel {
+  flex: 1;
+  min-width: 0;
+}
+/* Shared by Node Editor AND Tour Stops (same layout, reused for visual
+   consistency) — fixed-width by default. Node Editor alone overrides
+   this to an even split; see .node-editor-page-split below. */
+.node-editor-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Node Editor specifically wants Nodes and Filter/Edit Node at equal
+   width, rather than the list growing to fill whatever's left of a
+   fixed-width sidebar — Tour Stops keeps the shared default above. */
+.node-editor-page-split .node-editor-sidebar {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+/* ---------- Navigation Editor page (Phase 3) ---------- */
+/* Promoted from the old nav-tester-modal — reuses its inner component
+   styling (.link-list, .link-row, .add-link-btn, .placing-banner, etc.)
+   unchanged; only the outer page-level wrapper structure is new here. */
+.navigation-editor-page {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+}
+.navigation-editor-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.navigation-editor-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.navigation-editor-title-row h3 {
+  margin: 0 0 2px 0;
+  font-family: var(--font-sans-display);
+  font-size: 16px;
+}
+/* Two independently-scrolling lists side by side — Links added and
+   Markers added each get their own scroll region, not one shared scroll
+   spanning both, confirmed against the redesign discussion. */
+.navigation-editor-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.navigation-editor-list-col h5 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.navigation-editor-scroll-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+.navigation-editor-add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.navigation-editor-add-col h5 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+/* ---------- Room Editor page (Phase 4) ---------- */
+/* Promoted from the old room-edit-modal — reuses its inner form styling
+   (.room-edit-tabs, .room-edit-tab, .room-edit-link-input, .form-actions,
+   etc.) unchanged; only the outer page-level wrapper structure is new. */
+.room-editor-page {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+}
+/* flex:1, no width cap — grows to fill all available space right up to
+   the sidebar, rather than stopping at a fixed width and leaving unused
+   space between the form and the sidebar, which is what was explicitly
+   asked to be fixed here. The sidebar itself is a fixed 340px,
+   flex-shrink:0, so with this growing to fill everything else, the
+   sidebar naturally lands at the true right edge either way — this
+   single change fixes both the "content should fill the space" request
+   AND the earlier "sidebar looks centered" issue, which was actually
+   caused by capping this element's width while the sidebar had nothing
+   claiming the leftover space after it. */
+.room-editor-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Wraps the actual form (only rendered once a room is selected) — no
+   width cap of its own either now; grows with .room-editor-main above. */
+.room-editor-form-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* .room-edit-modal's own fixed width:420px (meant for its old modal
+   context) would otherwise become this element's actual width, ignoring
+   the max-width above entirely — explicitly cancelling it out so
+   max-width:900px cleanly governs width instead. */
+.room-editor-form-wrap.room-edit-modal {
+  width: auto;
+}
+/* Top row: title/description (left) and department/use/link (right) side
+   by side — replaced the earlier "all text left, both photos right"
+   split per a later revision. */
+.room-editor-top-row {
+  display: flex;
+  gap: 28px;
+  margin-top: 6px;
+}
+.room-editor-top-col {
+  flex: 1;
+  min-width: 0;
+}
+/* Bottom row: both photo choosers side by side, spanning the full width
+   — text occupies the top of the page, photos occupy the bottom. */
+.room-editor-photos-row {
+  display: flex;
+  gap: 28px;
+  margin-top: 20px;
+}
+.room-editor-photo-item {
+  flex: 1;
+  min-width: 0;
+}
+/* Always-visible preview area, even with no photo set yet — matching the
+   wireframe's consistent box even in its own placeholder/empty state. */
+.room-editor-photo-preview-box {
+  width: 100%;
+  min-height: 220px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  margin-bottom: 14px;
+}
+.room-editor-photo-preview-box .photo-preview {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  border: none;
+  margin: 0;
+  object-fit: cover;
+}
+/* margin-left:auto pins this to the right edge of .room-editor-page
+   regardless of how much space .room-editor-main's own content actually
+   uses — the whole point of the fix above. */
+/* margin-left:auto no longer needed — .room-editor-main's own flex:1
+   (restored above, no cap) already naturally claims all remaining space,
+   which achieves the same "pinned to the right edge" result on its own. */
+.room-editor-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* ---------- User Panel page (Phase 5) ---------- */
+/* Promoted from the old users-panel-modal — reuses its inner list/row
+   styling (.users-filter-row, .users-list, .users-row, .role-select,
+   etc.) unchanged; only the outer page-level wrapper is new. No
+   full-width Filter+Node List sidebar here, unlike the other three pages
+   — this page isn't node-centric at all, so that sidebar wouldn't be
+   relevant here. */
+.user-panel-page {
+  padding: 16px;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.user-panel-page .admin-page-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* ---------- Custom file picker (polish pass) ---------- */
+/* Replaces the browser's own native "Choose File" button chrome, which
+   can't be styled consistently across browsers, with a real, styled
+   button that triggers a visually-hidden native input via a ref. The
+   hidden input stays functionally/accessibly intact (clip + 1px sizing,
+   not display:none) — clicking a surrounding <label>'s text still
+   correctly opens the file picker too, same as a normal file input would. */
+.file-picker {
+  display: block;
+  margin-top: 4px;
+}
+.file-picker-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.file-picker-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.file-picker-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.file-picker-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.admin-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.admin-header-title-line {
+  width: 64px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.admin-header-title {
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.admin-create-row {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.admin-bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.main-column {
+  flex: 1;
+  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbar button {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.toolbar button.primary {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;  cursor: pointer;
+}
+.toolbar button.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.node-list-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.node-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.photo-progress {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.node-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.node-row:hover {
+  background: var(--surface-hover);
+}
+.node-row.selected {
+  background: var(--selected-bg);
+  border-color: var(--accent);
+}
+.photo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.photo-dot.has-photo {
+  background: var(--success);
+}
+.photo-dot.no-photo {
+  background: var(--gray-300);
+}
+.node-row-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.node-row-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-top: 3px;
+}
+.field-hint code {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.photo-preview {
+  width: 100%;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.panel h3 {
+  margin: 0 0 10px 0;
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.building-block {
+  margin-bottom: 10px;
+}
+.building-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.floor-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 0 24px;
+}
+.floor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.node-form label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.node-form input,
+.node-form select,
+.node-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+}
+/* textarea needs its own additions beyond the shared rule above — plain
+   browser default textareas render in a monospace font and don't allow
+   resizing by default, neither of which matches this app's other
+   fields. Genuinely missing before this fix — added when a Virtual
+   Tour description-editing form was the first thing to put a textarea
+   inside .node-form; kept here as general, reusable support even after
+   that specific form was later converted into a popup using a
+   different modal class instead. */
+.node-form textarea {
+  font-family: inherit;
+  resize: vertical;
+}
+/* ---------- Filter panel: simple, modern grid ---------- */
+.filter-panel label {
+  display: block;
+  font-family: var(--font-sans-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+.filter-panel select,
+.filter-panel input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 7px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+.filter-panel select:focus,
+.filter-panel input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.filter-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.filter-search-field {
+  display: block;
+}
+.position-readout {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.neighbor-picker {
+  margin-bottom: 10px;
+}
+.neighbor-picker > label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.neighbor-list {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  margin-top: 4px;
+}
+.neighbor-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.neighbor-id {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.portal-tag {
+  background: var(--gold);
+  color: var(--sdca-maroon-deeper);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+.empty-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.error-box {
+  background: var(--danger-surface);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.error-box p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--danger-text);
+}
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+.form-actions button {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+.form-actions .primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+.form-actions .primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.form-actions .danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--accent-contrast);
+}
+.export-import-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+}
+.export-import-bar button {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+.node-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+.export-status {
+  font-size: 11px;
+  color: var(--success);
+}
+.sync-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.sync-badge.sync-ok {
+  background: var(--success-surface);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+.sync-badge.sync-warn {
+  background: var(--warning-surface);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+.export-import-bar button.subtle {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.export-import-bar button.primary {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 12px;
+}
+.main-page-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 8px;
+  color: var(--text);
+  text-align: center;
+}
+.main-page-layout {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+}
+.main-page-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text);
+  transition: width 0.15s ease;
+}
+.main-page-sidebar.sidebar-collapsed {
+  width: 64px;
+  padding: 16px 10px;
+  overflow: visible;
+}
+/* ---------- Collapsed rail ---------- */
+.sidebar-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+}
+.sidebar-rail-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-rail-btn:hover {
+  border-color: var(--accent);
+}
+.sidebar-rail-spacer {
+  flex: 1;
+}
+.sidebar-rail-account {
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 13px;
+  border-color: var(--accent);
+}
+/* ---------- Expanded sidebar ---------- */
+.sidebar-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-top-row .room-search-box {
+  flex: 1;
+}
+.sidebar-toggle-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.sidebar-toggle-btn:hover {
+  border-color: var(--accent);
+}
+.sidebar-card {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sidebar-spacer-grow {
+  flex: 1;
+}
+.sidebar-admin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sidebar-admin-btn:hover {
+  background: var(--selected-bg);
+}
+.sidebar-account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.account-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.account-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.account-name {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sidebar-field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+.sidebar-field-label input,
+.sidebar-field-label select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 13px;
+}
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+.sidebar-subheading {
+  margin: 0 0 8px 0;
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.sidebar-entrances .entrance-list {
+  width: 100%;
+}
+.entrance-btn.active {
+  border-color: var(--accent);
+  background: var(--selected-bg);
+}
+.directions-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.directions-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.directions-panel {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.directions-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.directions-panel-header h3 {
+  margin: 0;
+  font-family: var(--font-sans-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.directions-suggestions {
+  margin-top: -4px;
+}
+.directions-error {
+  font-size: 12px;
+  color: var(--danger-text);
+  margin: 0;
+}
+.directions-go-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 6px;
+}
+.directions-autowalk-btn {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.directions-autowalk-btn:hover {
+  border-color: var(--accent);
+}
+.directions-go-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.directions-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.directions-progress-text {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+.main-page-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 16px;
+  padding: 20px;
+  color: var(--text);
+}
+.main-page-picker h1 {
+  margin: 0;
+  font-family: var(--font-serif-display);
+  font-weight: 600;
+  font-size: 30px;
+}
+.main-page-picker h3 {
+  margin: 10px 0 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: normal;
+}
+.building-filter-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.building-filter-label select {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  min-width: 200px;
+}
+.entrance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+  max-width: 90vw;
+}
+.entrance-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+}
+.entrance-btn:hover {
+  border-color: var(--accent);
+}
+.entrance-btn-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.main-page-viewer {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.main-page-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.main-page-header-side {
+  display: flex;
+  align-items: center;
+}
+.main-page-header button {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+.main-page-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.main-page-title-line {
+  width: 64px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.main-page-title {
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.main-page-screen {
+  flex: 1;
+  position: relative;
+}
+.photo-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  background: var(--surface-sunken);
+  z-index: 5;
+  pointer-events: none;
+}
+.room-search-box {
+  width: 340px;
+  max-width: 90vw;
+  position: relative;
+}
+.main-page-sidebar .room-search-box {
+  width: 100%;
+  max-width: none;
+}
+.room-search-box input,
+.mid-tour-search input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+}
+.room-search-box input:focus,
+.mid-tour-search input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.room-search-results {
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-1);
+}
+.room-search-suggestions-label {
+  margin: 0;
+  padding: 8px 14px 4px;
+  font-family: var(--font-sans-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.room-search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.room-search-result-actionable {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: default;
+  border-bottom: 1px solid var(--border);
+}
+.room-search-result-actionable .room-search-result-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.room-search-result:last-child {
+  border-bottom: none;
+}
+.room-search-result:hover {
+  background: var(--surface-hover);
+}
+.room-search-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.room-search-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.room-search-results .empty-hint {
+  padding: 10px 14px;
+}
+.picker-divider {
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.mid-tour-search {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px;
+  max-width: 90vw;
+  z-index: 10;
+}
+.hint-panel p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow-2);
+}
+.preview-modal {
+  width: 820px;
+  max-width: 92vw;
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.preview-header h3 {
+  margin: 0;
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+.preview-screen {
+  width: 100%;
+  height: 460px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  cursor: grab;
+}
+.preview-screen:active {
+  cursor: grabbing;
+}
+.preview-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0 0 12px 0;
+}
+.preview-screen-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.preview-meta {
+  margin-bottom: 14px;
+}
+.preview-name {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.preview-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.preview-controls {
+  display: flex;
+  gap: 8px;
+}
+.preview-controls button {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.preview-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.warning-overlay {
+  z-index: 200;
+  background: var(--scrim);
+}
+.warning-modal {
+  width: 340px;
+  border-color: var(--danger-border);
+}
+.warning-modal h4 {
+  margin: 0 0 8px 0;
+  color: var(--danger-text);
+}
+.warning-modal p {
+  font-size: 13px;
+  color: var(--text-body);
+  margin: 0 0 14px 0;
+  line-height: 1.5;
+}
+.warning-modal code {
+  color: var(--warning);
+  font-family: var(--font-mono);
+}
+.warning-modal button.primary {
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  cursor: pointer;
+}
+.add-building-modal {
+  width: 720px;
+  max-width: 92vw;
+}
+/* Two columns side by side, matching the wireframe — was previously a
+   single vertical stack (existing buildings list above the form) before
+   this pass. */
+.add-building-columns {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+.add-building-form-col {
+  flex: 1.2;
+  min-width: 0;
+}
+.add-building-existing-col {
+  flex: 1;
+  min-width: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.custom-building-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.custom-building-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.custom-building-row span:first-child {
+  flex: 1;
+}
+.custom-building-row button.danger {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger-border);
+  background: var(--danger-surface);
+  color: var(--danger-text);
+  cursor: pointer;
+}
+.add-building-subheading {
+  margin: 0 0 10px 0;
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.add-building-modal label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.add-building-modal input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+}
+.building-location-picker {
+  margin-bottom: 14px;
+}
+.building-location-picker .maplibregl-map {
+  border: 1px solid var(--border);
+}
+.building-location-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.building-location-readout button {
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.room-edit-modal {
+  width: 420px;
+}
+.room-edit-modal label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.room-edit-modal input,
+.room-edit-modal textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.room-edit-modal input:disabled {
+  opacity: 0.6;
+}
+.room-edit-modal .room-edit-link-input {
+  border-color: var(--border);
+  color: var(--accent);
+}
+.room-edit-modal .room-edit-link-input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.room-edit-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.room-edit-tab {
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.room-edit-tab-active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.nav-tester-modal {
+  display: flex;
+  gap: 16px;
+  width: 1080px;
+  max-width: 95vw;
+}
+.nav-tester-viewport {
+  flex: 1;
+  min-width: 0;
+}
+.nav-tester-screen {
+  height: 480px;
+}
+.nav-tester-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.nav-tester-sidebar h4 {
+  margin: 0 0 2px 0;
+  font-size: 14px;
+}
+.nav-tester-sidebar h5 {
+  margin: 16px 0 8px 0;
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.back-btn {
+  margin-left: 10px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.placing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--selected-bg);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.placing-banner button {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.photo-missing-note {
+  font-size: 11px;
+  color: var(--warning);
+  margin: 6px 0 0 0;
+}
+.link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+.link-name {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.link-actions button {
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.link-actions button.danger {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+.add-link-btn {
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.add-link-box {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+.add-link-box input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.add-link-results {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+.add-link-result {
+  padding: 5px 6px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.add-link-result:hover {
+  background: var(--surface-hover);
+}
+.add-link-box > button {
+  width: 100%;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+}
+.rooms-field {
+  margin-bottom: 10px;
+}
+.rooms-field > label {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 4px;
+}
+.room-chip-input {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.room-chip-input input {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+}
+.room-chip-input button {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+.room-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.room-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--selected-bg);
+  border: 1px solid var(--accent);
+  color: var(--sdca-maroon-deeper);
+  border-radius: 12px;
+  padding: 3px 6px 3px 10px;
+  font-size: 12px;
+}
+.room-chip button {
+  background: none;
+  border: none;
+  color: var(--sdca-maroon-deeper);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.node-row-rooms {
+  font-size: 11px;
+  color: var(--warning);
+  margin-top: 2px;
+}
+/* ---------- Auth (login/register/pending/account chip) ---------- */
+.toolbar-spacer {
+  flex: 1;
+}
+.account-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-admin-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+.account-admin-link:hover {
+  border-color: var(--accent);
+}
+.main-page-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.account-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-chip .account-email {
+  max-width: 120px;
+}
+.account-signout {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.auth-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 10px;
+  color: var(--text);
+  text-align: center;
+  padding: 24px;
+}
+.auth-status h2 {
+  margin: 0;
+}
+.auth-status button {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--app-bg);
+}
+.auth-card {
+  width: 380px;
+  max-width: 90vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+.auth-card h1 {
+  margin: 0 0 4px 0;
+  font-size: 22px;
+}
+.auth-icon-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin: 0 auto 16px auto;
+}
+.auth-card-centered h1 {
+  text-align: center;
+}
+.auth-card h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  color: var(--text);
+}
+/* ---------- Split layout (left welcome panel + right form card) ---------- */
+.auth-page-split {
+  justify-content: stretch;
+  align-items: stretch;
+  padding: 0;
+}
+.auth-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: var(--brand-gradient);
+  border-right: 1px solid var(--border);
+}
+.auth-left-panel h1 {
+  font-family: var(--font-serif-display);
+  font-weight: 600;
+  font-size: 38px;
+  line-height: 1.25;
+  color: var(--white);
+  margin: 0 0 14px 0;
+  text-align: center;
+  max-width: 440px;
+}
+.auth-accent {
+  color: var(--gold);
+}
+.auth-left-panel p {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: center;
+  max-width: 380px;
+  margin: 0;
+}
+.auth-right-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.auth-page-split .auth-card {
+  width: 400px;
+}
+@media (max-width: 820px) {
+  .auth-page-split {
+    flex-direction: column;
+  }
+  .auth-left-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 32px 24px;
+  }
+  .auth-left-panel h1 {
+    font-size: 28px;
+  }
+}
+/* =====================================================================
+   Responsive pass — every page, small screens up to tablet-width.
+   Breakpoints used throughout: 1024px (narrow desktop/tablet landscape),
+   768px (tablet portrait), 480px (phone).
+   ===================================================================== */
+/* ---------- Auth pages: Login, Register, Forgot Password/Email ---------- */
+@media (max-width: 480px) {
+  .auth-page-split .auth-left-panel {
+    display: none;
+  }
+  .auth-page-split {
+    flex-direction: column;
+  }
+  .auth-right-panel {
+    padding: 16px;
+    flex: 1;
+  }
+  .auth-page-split .auth-card {
+    width: 100%;
+  }
+  .auth-card {
+    width: 100%;
+    padding: 20px;
+  }
+  .auth-card input {
+    font-size: 16px;
+  }
+}
+/* ---------- Main page (public tour) ---------- */
+.sidebar-backdrop {
+  display: none;
+}
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--scrim);
+    z-index: 40;
+  }
+  .main-page-sidebar:not(.sidebar-collapsed) {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: min(85vw, 340px);
+    box-shadow: 8px 0 32px rgba(32, 27, 27, 0.28);
+  }
+  .main-page-sidebar.sidebar-collapsed {
+    width: 52px;
+    padding: 12px 8px;
+  }
+  .main-page-header {
+    padding: 10px 12px;
+  }
+  .main-page-title-line {
+    width: 44px;
+  }
+  .main-page-title {
+    font-size: 13px;
+  }
+}
+@media (max-width: 480px) {
+  .auth-status h2 {
+    font-size: 20px;
+  }
+  .main-page-header {
+    grid-template-columns: auto 1fr auto;
+  }
+  .main-page-header button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}
+/* ---------- Admin editor ---------- */
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 280px;
+  }
+}
+@media (max-width: 900px) {
+  .admin-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
+  .main-column {
+    overflow-y: visible;
+  }
+}
+@media (max-width: 700px) {
+  .admin-header {
+    grid-template-columns: auto 1fr auto;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .admin-header-title-line {
+    width: 40px;
+  }
+  .admin-header-title {
+    font-size: 12px;
+  }
+  .admin-back-link {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+  .account-name {
+    max-width: 90px;
+  }
+  .filter-panel-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-create-row,
+  .admin-bottom-bar {
+    flex-wrap: wrap;
+  }
+}
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+.auth-card label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.auth-card input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 13px;
+}
+.auth-card input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.auth-card button[type="submit"] {
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.auth-card button[type="submit"]:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.auth-card button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.auth-switch {
+  margin: 16px 0 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.auth-switch a {
+  color: var(--accent);
+}
+/* ---------- Users panel ---------- */
+.badge-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 700;
+}
+.users-panel-modal {
+  width: 480px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.users-panel-modal .preview-header h3 {
+  display: flex;
+  align-items: center;
+}
+.users-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.users-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.users-row-pending {
+  border-color: var(--warning);
+}
+.users-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.users-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.users-row-email {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.users-row-name {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.users-filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.users-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 13px;
+}
+.users-search-input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.users-role-filter {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--surface-sunken);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%235B5252' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.users-role-filter:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.role-select {
+  position: relative;
+  flex-shrink: 0;
+}
+.role-select-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+}
+.role-select-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.role-select-caret {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.role-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  z-index: 20;
+}
+.role-select-option {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.role-select-option:hover {
+  background: var(--surface-hover);
+}
+.role-select-option-active {
+  color: var(--accent);
+  font-weight: 700;
+}
+.users-row-delete {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-surface);
+  color: var(--danger-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.users-row-delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.auth-info {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 14px 0;
+}
+.auth-info-list {
+  margin: 0 0 14px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+.auth-info-list code {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+/* ---------- Room card (Google Maps-style place card) ---------- */
+.room-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.room-card-photo-wrap {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: var(--surface-sunken);
+}
+.room-card-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.room-card-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.room-card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(32, 27, 27, 0.55);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.room-card-body {
+  padding: 14px;
+}
+.room-card-title {
+  margin: 0 0 6px 0;
+  font-size: 17px;
+  color: var(--text);
+}
+.room-card-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.room-card-location {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+.room-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.room-card-actions button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+.room-card-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+.room-card-actions button.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.room-card-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.room-card-description {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+}
+.room-card-link {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+  margin: 0 0 10px 0;
+}
+.room-card-link:hover {
+  color: var(--accent-hover);
+}
+.room-card-department {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+/* ---------- Floating overlay UI (Maps-style) ---------- */
+.floating-rail {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  bottom: 16px;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 30;
+  pointer-events: none;
+}
+.floating-rail-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-1);
+}
+.floating-rail-btn:hover {
+  border-color: var(--accent);
+}
+.floating-rail-spacer {
+  flex: 1;
+}
+.floating-account-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+/* The button moved from the bottom of the left rail up to the top-right
+   corner — its popover needs to open DOWNWARD now instead of upward
+   (opening upward made sense at the bottom of the screen; it would go
+   off-screen at the top), and right-aligned instead of left-aligned,
+   since the button now sits near the right edge rather than the left. */
+.floating-account-wrap-top {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 30;
+}
+.floating-account-wrap-top .account-popover {
+  bottom: auto;
+  top: calc(100% + 8px);
+  left: auto;
+  right: 0;
+}
+.floating-account-btn {
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 13px;
+  border-color: var(--accent);
+}
+.floating-exit-btn {
+  background: var(--danger-surface);
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+.floating-exit-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--accent-contrast);
+}
+/* Now positioned OUTSIDE the rail's own flex layout, so it needs its own
+   absolute position — stacked directly above where the desktop minimap
+   sits (same left offset), not beside it. 130px (the minimap's own
+   height) + 16px (the minimap's own bottom offset) + 12px gap = 158px,
+   placing this button's bottom edge just above the minimap's top edge.
+   Flush with the rail's own left edge (16px) — no longer needs to clear
+   the rail's width, since this button moved out of the rail entirely. */
+.floating-exit-btn-stacked {
+  position: absolute;
+  bottom: 158px;
+  left: 16px;
+  z-index: 30;
+}
+.account-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.account-popover-name {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.floating-search-wrap {
+  position: absolute;
+  top: 16px;
+  left: 76px;
+  right: 16px;
+  max-width: 360px;
+  z-index: 30;
+  pointer-events: none;
+}
+.floating-search-bar {
+  pointer-events: auto;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-1);
+}
+.floating-search-bar input {
+  width: 100%;
+  padding: 12px 42px 12px 18px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+}
+.floating-search-bar input:focus {
+  outline: none;
+}
+.floating-search-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.floating-panel-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(32, 27, 27, 0.08);
+  z-index: 25;
+  pointer-events: none;
+}
+.floating-panel {
+  position: absolute;
+  top: 72px;
+  left: 76px;
+  width: 340px;
+  max-width: calc(100vw - 92px);
+  max-height: calc(100% - 88px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-2);
+  padding: 14px;
+  z-index: 30;
+}
+.floating-panel .room-search-results {
+  margin-top: 0;
+  border: none;
+  background: transparent;
+  max-height: none;
+  overflow-y: visible;
+  box-shadow: none;
+}
+.floating-panel .room-card {
+  border: none;
+  border-radius: var(--radius-md);
+  margin: -14px;
+  width: calc(100% + 28px);
+}
+.floating-title-wrap {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 28;
+  pointer-events: none;
+}
+/* ---------- Cross-campus minimap widget ---------- */
+/* Same fixed position works for both the desktop and mobile render paths
+   — they're mutually exclusive (never both mounted at once, per this
+   app's existing JS-viewport-detection pattern), so no media query
+   differentiation needed. 70px clears the mobile top bar's own buttons
+   comfortably; on desktop there's no in-screen top bar to clear at all,
+   so this just reads as a reasonable top offset either way. */
+/* Bottom-left, sitting just to the right of the vertical rail (which is
+   only 48px wide, too narrow to hold the minimap's own 130px directly) —
+   bottom-aligned with the rail so it reads as part of the same
+   bottom-left cluster as the emergency exit button, which is now the
+   rail's own last/lowest item. 76px matches the same "clear of the rail"
+   left offset already used elsewhere in this file (.floating-search-wrap,
+   .floating-panel). Same fixed position still works for both desktop and
+   mobile — they're mutually exclusive render paths. */
+/* Base styling only — size, border, look. Position is intentionally
+   split into two separate modifier classes below, NOT a single shared
+   position — mobile and desktop genuinely need different placement here,
+   unlike other floating UI in this file. Mobile's bottom area is already
+   occupied by the persistent building selector bar (full width,
+   left:12px to right:12px), and mobile has no equivalent to desktop's
+   left-side vertical rail at all — "below the emergency button" is a
+   desktop-specific concept, since mobile's emergency button lives in the
+   top bar instead. */
+.minimap-widget {
+  width: 130px;
+  height: 130px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  z-index: 27;
+  background: var(--surface);
+}
+/* Desktop — bottom-left, flush with the rail's own left edge (16px). The
+   exit button that used to be the rail's own last item has since moved
+   out entirely, stacked directly above this instead (see
+   .floating-exit-btn-stacked) — so both now share this same left offset,
+   reading as one clean, aligned column at the bottom-left corner. */
+.minimap-widget-desktop {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+}
+/* Mobile — kept at its original top-right spot, clear of the top bar and
+   the bottom building selector both. */
+.minimap-widget-mobile {
+  position: absolute;
+  top: 70px;
+  right: 16px;
+}
+/* Deliberately kept dark/hardcoded rather than tokenized — this label
+   sits directly on top of OpenStreetMap tile imagery, not app chrome, so
+   it needs to stay legible against uncontrolled, varied map colors
+   regardless of whether the app itself is in a light or dark theme.
+   Matches how most map UIs (Google Maps included) treat overlay labels
+   as a fixed exception to their own surrounding theme. */
+.minimap-widget-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: #e6e6e6;
+  background: rgba(15, 17, 21, 0.8);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* ---------- Cross-campus flyover panel ---------- */
+.flyover-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.flyover-panel {
+  width: 480px;
+  max-width: 92vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-2);
+}
+.flyover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.flyover-cancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.flyover-cancel:hover {
+  color: var(--text);
+}
+.flyover-map {
+  height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.flyover-note {
+  font-size: 12px;
+  color: var(--warning);
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+.flyover-skip {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+.floating-title-pill {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font-size: 13px;
+  max-width: 55vw;
+}
+.floating-title-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.floating-title-back {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  padding: 0;
+}
+.floating-title-back:hover {
+  color: var(--text);
+}
+/* ---------- Panorama overlays (R3F <Html> — hotspot preview & marker) ---------- */
+.pano-hotspot-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 120px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  user-select: none;
+}
+.pano-hotspot-preview-thumb {
+  width: 100%;
+  height: 68px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pano-hotspot-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pano-hotspot-preview-thumb span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.pano-hotspot-preview-label {
+  color: var(--text);
+  font-size: 11px;
+  margin-top: 4px;
+  text-align: center;
+}
+.pano-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+}
+.pano-marker-dot {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.12s ease, height 0.12s ease, font-size 0.12s ease;
+}
+.pano-marker-label {
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(32, 27, 27, 0.82);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* ---------- Face review panel ---------- */
+.face-review-modal {
+  width: 940px;
+  max-width: 92vw;
+}
+.face-review-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+  background: var(--surface-sunken);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+/* Puts the hint/count row from the wireframe side by side — was
+   previously two separate, stacked paragraphs. */
+.face-review-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.face-review-manual-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.face-review-count {
+  margin: 0;
+  white-space: nowrap;
+}
+.face-review-manual-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+}
+.face-review-manual-chip button {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.face-review-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.face-review-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.rescan-faces-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  margin: -6px 0 4px 0;
+}
+.rescan-faces-btn:hover {
+  border-color: var(--accent);
+}
+.rescan-faces-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* =====================================================================
+   Mobile main-page layout
+   ===================================================================== */
+.mobile-screen {
+  overflow: hidden;
+}
+/* ---------- Top bar ---------- */
+.mobile-topbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+}
+.mobile-back-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+.mobile-ar-btn {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+.mobile-exit-btn {
+  color: var(--danger-text);
+  border-color: var(--danger);
+  background: var(--danger-surface);
+  padding: 0 10px;
+}
+.mobile-search-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.mobile-search-wrap input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: var(--shadow-1);
+}
+.mobile-search-wrap input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.mobile-account-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+/* ---------- Top-anchored panel (search results / account) ---------- */
+.mobile-top-panel-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(32, 27, 27, 0.35);
+  z-index: 25;
+}
+.mobile-top-panel {
+  position: absolute;
+  top: 60px;
+  left: 12px;
+  right: 12px;
+  max-height: calc(100% - 76px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-2);
+  padding: 12px;
+  z-index: 30;
+}
+.mobile-account-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px;
+}
+.mobile-account-panel .account-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+}
+.mobile-account-panel .account-name {
+  font-size: 15px;
+  max-width: 100%;
+}
+.mobile-signout-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  margin-top: 6px;
+}
+/* ---------- Bottom sheets (room card + directions) ---------- */
+.mobile-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mobile-sheet-handle-area {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  cursor: grab;
+  touch-action: none;
+}
+.mobile-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.mobile-sheet-content {
+  flex: 1;
+  overflow-y: auto;
+}
+.mobile-room-photo-wrap {
+  height: 140px;
+}
+.mobile-sheet-body {
+  padding: 4px 16px 16px;
+}
+.mobile-sheet-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mobile-sheet-title-row .room-card-title {
+  flex: 1;
+  min-width: 0;
+}
+.mobile-directions-sheet {
+  height: 62vh;
+}
+.mobile-directions-sheet .mobile-sheet-body {
+  padding: 16px;
+}
+/* ---------- Persistent bottom Building selector ---------- */
+.mobile-bottom-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 16px;
+  z-index: 20;
+}
+.mobile-building-trigger {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.mobile-building-caret {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.mobile-building-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
+  padding: 6px;
+}
+.mobile-building-option {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.mobile-building-option:hover {
+  background: var(--surface-hover);
+}
+.mobile-building-option-active {
+  color: var(--accent);
+  font-weight: 700;
+}
+/* ---------- Flowchart feature (admin) ---------- */
+.flowchart-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.flowchart-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.flowchart-controls select {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.flowchart-reset-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  align-self: flex-end;
+}
+.flowchart-reset-btn:hover {
+  border-color: var(--accent);
+}
+.flowchart-canvas {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+.flowchart-canvas .react-flow__attribution {
+  background: rgba(255, 255, 255, 0.7);
+}
+.flowchart-canvas .react-flow__attribution a {
+  color: var(--text-muted);
+}
+.flowchart-canvas .react-flow__edge-path {
+  stroke: var(--border-strong);
+}
+.flowchart-canvas .react-flow__edge.selected .react-flow__edge-path,
+.flowchart-canvas .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--accent);
+}
+.flowchart-canvas .react-flow__handle {
+  background: var(--accent);
+  border-color: var(--surface);
+}
+.flowchart-canvas .react-flow__controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+}
+.flowchart-canvas .react-flow__controls-button {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  fill: var(--text);
+}
+.flowchart-canvas .react-flow__controls-button:hover {
+  background: var(--surface-hover);
+}
+.flowchart-node {
+  width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  position: relative;
+}
+/* overflow:hidden moved from .flowchart-node onto specifically the
+   thumbnail below — keeping it on the outer node would clip the hover
+   tooltip, which needs to extend above the node's own bounds. */
+.flowchart-node-thumb {
+  width: 100%;
+  height: 90px;
+  background: var(--surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+.flowchart-node-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.flowchart-node-loading,
+.flowchart-node-missing {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.flowchart-node-label {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flowchart-node-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-2);
+  z-index: 10;
+  pointer-events: none;
+}
+.flowchart-node-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--surface);
+}
+.flowchart-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+}
+.flowchart-tooltip-row + .flowchart-tooltip-row {
+  border-top: 1px solid var(--border);
+}
+.flowchart-tooltip-key {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.flowchart-tooltip-val {
+  color: var(--text);
+  font-size: 11px;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* =====================================================================
+   Public Virtual Tour page — deliberately visually distinct from the
+   rest of the app (dark, semi-transparent overlays on top of panorama
+   imagery), not the usual white/maroon app chrome. Colors here are
+   mostly hardcoded rather than tokenized, matching this file's own
+   existing precedent for anything that sits on top of photo/map content
+   rather than app chrome (.minimap-widget-label, .pano-marker-label) —
+   a fixed dark treatment stays legible against uncontrolled, varied
+   panorama imagery regardless of the app's own light theme.
+   ===================================================================== */
+.tour-page {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+.tour-page-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #fff;
+  background: #1a1a1a;
+}
+.tour-page-empty a {
+  color: #fff;
+}
+.tour-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+/* Genuinely transparent — no background bar at all, per the confirmed
+   design ("transparent, no title text yet"). Text-shadow on the link
+   itself carries readability against whatever panorama content sits
+   behind it, rather than a background gradient doing that job. */
+.tour-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 20px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+/* ---------- Sidebar: transparent, section rows with cover-photo
+   thumbnails, expanding to that section's own stop list ---------- */
+.tour-sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 80vw;
+  overflow-y: auto;
+  z-index: 20;
+  background: linear-gradient(to right, rgba(10, 8, 8, 0.72), rgba(10, 8, 8, 0.42) 70%, transparent);
+  padding: 72px 0 24px 0;
+}
+.tour-sidebar-section {
+  display: flex;
+  flex-direction: column;
+}
+.tour-sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.tour-sidebar-section-header:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.tour-sidebar-section-thumb {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+.tour-sidebar-section-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tour-sidebar-section-thumb-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tour-sidebar-section-label {
+  flex: 1;
+  min-width: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tour-sidebar-section-caret {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+.tour-sidebar-stop-list {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 8px 0;
+}
+.tour-sidebar-stop-empty {
+  padding: 6px 20px 6px 66px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+.tour-sidebar-stop-item {
+  padding: 7px 20px 7px 66px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.tour-sidebar-stop-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.tour-sidebar-stop-item-active {
+  color: #fff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.14);
+}
+/* A sectionless stop, sitting directly in the sidebar rather than nested
+   inside a section row — same 20px left padding as a section row's own
+   header (.tour-sidebar-section-header), not the 66px indent a nested
+   stop item uses to align under its section's thumbnail+label, since
+   there's no thumbnail here for it to align with. Reuses
+   .tour-sidebar-stop-item-active as-is for the active state; only the
+   base/hover rules need their own, differently-indented version. */
+/* Now a thumbnail+label flex row, matching .tour-sidebar-section-header's
+   own layout — same as a section row visually, minus the expand caret,
+   since a standalone stop has no children to expand into. Deliberately
+   reuses .tour-sidebar-section-thumb/-empty/-label directly rather than
+   duplicating identical thumbnail/label CSS under new stop-specific
+   names — the visual treatment (small square thumbnail + label text) is
+   genuinely generic, not actually section-specific despite the class
+   names' origin. */
+.tour-sidebar-loose-stop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.tour-sidebar-loose-stop-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ---------- Description panel: persistent, top-right ---------- */
+.tour-description-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  z-index: 20;
+  background: rgba(10, 8, 8, 0.72);
+  border-radius: 10px;
+  padding: 18px 20px;
+  color: #fff;
+}
+.tour-description-panel h3 {
+  margin: 0 0 10px 0;
+  font-size: 17px;
+}
+.tour-description-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: pre-wrap;
+}
+.tour-description-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tour-description-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+.tour-description-readmore {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ---------- Equipment marker photo carousel ---------- */
+.tour-carousel-overlay {
+  z-index: 200;
+}
+.tour-carousel {
+  position: relative;
+  width: 860px;
+  max-width: 94vw;
+  background: #0f0f0f;
+  border-radius: 10px;
+  padding: 16px;
+}
+.tour-carousel-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #fff;
+  z-index: 2;
+}
+.tour-carousel-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 480px;
+  max-height: 60vh;
+}
+.tour-carousel-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.tour-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 2;
+}
+.tour-carousel-arrow:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.tour-carousel-arrow-prev {
+  left: 10px;
+}
+.tour-carousel-arrow-next {
+  right: 10px;
+}
+.tour-carousel-thumbs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.tour-carousel-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0;
+  cursor: pointer;
+}
+.tour-carousel-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tour-carousel-thumb-active {
+  border-color: #fff;
+}
+.tour-carousel-label {
+  margin: 12px 0 0 0;
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+}
+
+/* =====================================================================
+   Loading screen — shared between MainPage.jsx (indoor tour) and
+   PublicTourPage.jsx (Virtual Tour). Uses the app's own brand tokens
+   (--accent maroon, --app-bg) rather than a dark/transparent treatment —
+   unlike the Virtual Tour page's own overlay UI, which deliberately
+   sits on top of panorama imagery, this is a genuine, standalone app
+   state with nothing showing through behind it.
+   ===================================================================== */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--app-bg);
+  transition: opacity 0.4s ease;
+}
+.loading-screen-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.loading-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  animation: loading-spinner-spin 0.8s linear infinite;
+}
+@keyframes loading-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loading-screen-label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
