@@ -23,9 +23,9 @@ export default function ExportImportBar({ nodes, onImport }) {
     <div className="export-import-bar">
       <span className="node-count">{nodes.length} nodes</span>
 
-      {/* Firestore syncs on every mutation individually — there's no "connect
-          a file" step and nothing to debounce, just a status badge. */}
-      <span className="sync-badge sync-ok">☁️ Synced to Firebase</span>
+      {/* Every mutation is persisted to the backend as it happens — there's
+          no "connect a file" step and nothing to debounce, just a status badge. */}
+      <span className="sync-badge sync-ok">☁️ Auto-saved</span>
 
       <button onClick={() => downloadBackup(nodes)} className="subtle">Download backup</button>
       <button onClick={handleImportClick} className="subtle">Import JSON</button>

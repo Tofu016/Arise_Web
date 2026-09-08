@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { ref, getBytes } from "firebase/storage";
-import { storage } from "../firebase";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 // Same three prefixes TourUploads_API saves under and
@@ -18,22 +16,19 @@ function getToken() {
   return localStorage.getItem("authToken");
 }
 
-// Hybrid version — recognizes the public tour path prefixes and
-// resolves those as a direct URL against the new backend; recognizes
-// the protected indoor prefixes (room photos, room 360s, and now node
-// panoramas) and resolves those via an authenticated fetch; falls back
-// to the original Firebase getBytes() logic only for anything genuinely
-// not migrated yet (there's currently nothing left in that category,
-// but the fallback stays in place rather than being removed
-// prematurely, in case something surfaces later that still needs it).
+// Recognizes the public tour path prefixes and resolves those as a
+// direct URL against the PHP backend; recognizes the protected indoor
+// prefixes (room photos, room 360s, node panoramas) and resolves those
+// via an authenticated fetch through IndoorUploads_API. Any path
+// matching neither set is unsupported legacy data — it used to fall
+// through to Firebase Storage, which was removed once the migration to
+// the PHP backend was complete.
 //
-// `photo` is expected to be a Storage path (e.g.
-// "panoramas/gd1/gd1_f2_hallway01.jpg") for anything not yet migrated,
-// which is what the still-Firebase-based upload utilities store. Nodes
-// uploaded before an even earlier change might have a full https://
-// download URL instead — the Storage path is extracted straight out of
-// that legacy URL (it's embedded in it) rather than left on the old,
-// unsecured link.
+// `photo` is a backend storage path, e.g.
+// "panoramas/gd1/gd1_f2_hallway01.jpg". Nodes saved before an early
+// change may carry a full https:// download URL instead — the storage
+// path is extracted straight out of that legacy URL (it's embedded in
+// it) rather than used as-is.
 function extractStoragePath(photo) {
   if (!photo) return null;
   const match = photo.match(/\/o\/([^?]+)/);
@@ -119,27 +114,15 @@ export function useSecurePhotoUrl(photo) {
       };
     }
 
-    // Everything else — original Firebase getBytes() logic, unchanged.
-    const path = extractStoragePath(photo);
-    if (!path) return;
-
-    let cancelled = false;
-    let objectUrl = null;
-
-    getBytes(ref(storage, path))
-      .then((bytes) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(new Blob([bytes]));
-        setUrl(objectUrl);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    // Neither prefix set matched — legacy data that used to resolve
+    // through Firebase Storage. The migration moved every known path
+    // under the prefixes handled above, so nothing in the current
+    // dataset reaches here; surface it plainly instead of failing
+    // silently or pulling the Firebase SDK back in for a case that no
+    // longer occurs.
+    setError(
+      "This image uses an old storage path that's no longer supported — re-upload it from the editor."
+    );
   }, [photo]);
 
   return { url, error };
