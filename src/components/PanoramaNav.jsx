@@ -329,6 +329,42 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
   );
 }
 
+// 75° vertical FOV was tuned for landscape screens. Since Three.js's fov
+// is vertical, not horizontal, and @react-three/fiber already keeps
+// aspect ratio correctly synced to the real viewport shape, a fixed
+// vertical FOV on a narrow portrait screen mathematically produces a
+// much narrower HORIZONTAL view than the same value gives on a wide
+// screen — visibly more "zoomed in" than intended, not a display bug,
+// just the geometry of a fixed vertical angle applied to a much
+// narrower width. Portrait gets a deliberately wider FOV to compensate.
+// This exact number is a reasonable starting point, not a precisely
+// derived "correct" value — worth tuning by eye on the actual deployed
+// touchscreen monitor this was built for.
+const LANDSCAPE_FOV = 75;
+const PORTRAIT_FOV = 110;
+
+function usePanoramaFov() {
+  const [fov, setFov] = useState(() =>
+    typeof window !== "undefined" && window.innerHeight > window.innerWidth
+      ? PORTRAIT_FOV
+      : LANDSCAPE_FOV
+  );
+  useEffect(() => {
+    const updateFov = () => {
+      setFov(window.innerHeight > window.innerWidth ? PORTRAIT_FOV : LANDSCAPE_FOV);
+    };
+    window.addEventListener("resize", updateFov);
+    // orientationchange fires on real device rotation more reliably than
+    // resize alone on some touchscreen/tablet setups.
+    window.addEventListener("orientationchange", updateFov);
+    return () => {
+      window.removeEventListener("resize", updateFov);
+      window.removeEventListener("orientationchange", updateFov);
+    };
+  }, []);
+  return fov;
+}
+
 /**
  * Props:
  *  - url: panorama image URL for the current node
@@ -363,8 +399,14 @@ export default function PanoramaNav({
   selectedMarkerId = null,
 }) {
   const cursor = placing ? "crosshair" : "grab";
+  // @react-three/fiber reactively applies changes to the camera prop's
+  // own properties to the live camera instance on every re-render
+  // (including calling updateProjectionMatrix() itself) — so this
+  // correctly updates live on an actual orientation change while the
+  // viewer is already open, not just on initial mount.
+  const fov = usePanoramaFov();
   return (
-    <Canvas camera={{ position: initialCameraPosition(initialYaw, initialPitch), fov: 75 }} style={{ cursor }}>
+    <Canvas camera={{ position: initialCameraPosition(initialYaw, initialPitch), fov }} style={{ cursor }}>
       <PanoramaSphere
         url={url}
         onError={onError}

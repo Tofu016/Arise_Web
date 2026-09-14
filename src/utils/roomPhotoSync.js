@@ -1,4 +1,4 @@
-import { resizeImageIfNeeded } from "./imageResize";
+import { convertImage } from "./imageConverter";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 
@@ -44,6 +44,6 @@ export async function uploadRoomPhoto(file, building, filename) {
 }
 
 export async function uploadRoom360Photo(file, building, filename) {
-  const resized = await resizeImageIfNeeded(file);
-  return uploadFile("room360Photo", resized, building, filename);
+  const converted = await convertImage(file);
+  return uploadFile("room360Photo", converted, building, filename);
 }

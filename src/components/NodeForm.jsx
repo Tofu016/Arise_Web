@@ -7,7 +7,7 @@ import { useAutoId } from "../hooks/useAutoId";
 import FaceReviewPanel from "./FaceReviewPanel";
 import * as panoramaSync from "../utils/panoramaSync";
 import { uploadForReview, deleteReviewFile } from "../utils/panoramaReviewSync";
-import { resizeImageIfNeeded } from "../utils/imageResize";
+import { convertImage } from "../utils/imageConverter";
 
 const emptyDraft = () => ({
   id: "",
@@ -141,21 +141,19 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
 
     setCopyState("copying");
     try {
-      // Panorama photos straight from a 360° camera are typically much
-      // larger than any client needs to display — resizing here, before
-      // anything gets uploaded, benefits every client, and specifically
-      // matters a lot on mobile (which decodes photos in pure JS with no
-      // native fast-path — a full-resolution photo there was freezing the
-      // whole app for the entire decode).
-      const resized = await resizeImageIfNeeded(file);
-      setPreviewUrl(URL.createObjectURL(resized));
+      // Converts to a standard, backend-accepted format before upload —
+      // no resizing anymore (see imageConverter.js's own comment for the
+      // trade-off: the mobile-decode performance benefit resizing used
+      // to provide is genuinely gone with this change).
+      const converted = await convertImage(file);
+      setPreviewUrl(URL.createObjectURL(converted));
 
       // Uploads to a temporary, admin-only holding area first — the
       // photo isn't reachable through the normal viewing path until an
       // admin actually confirms it in the review panel below.
-      const { path: tempPath } = await uploadForReview(resized, draft.building, targetFilename);
+      const { path: tempPath } = await uploadForReview(converted, draft.building, targetFilename);
       setCopyState("idle");
-      setReview({ imageBlob: resized, storagePath: tempPath, targetFilename, tempPath });
+      setReview({ imageBlob: converted, storagePath: tempPath, targetFilename, tempPath });
     } catch {
       setCopyState("error");
     }
@@ -190,18 +188,16 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         setDraft((d) => ({ ...d, photo: path }));
         deleteReviewFile(tempPath);
       } else {
-        // Reopening an already-published photo: resize AFTER blurring
-        // (not before — see handleRescanExisting for why order matters
-        // here), then overwrite in place at the same real path. This is
-        // also how old, pre-resize photos shrink down over time, the next
-        // time an admin reopens them. draft.photo (the path string)
-        // doesn't change here, so an already-open preview elsewhere may
-        // need a reload to pick up the new bytes — a known, minor
-        // limitation of overwriting in place rather than publishing under
-        // a fresh filename.
-        const resizedBlurred = await resizeImageIfNeeded(blurredBlob);
+        // Reopening an already-published photo: convert format AFTER
+        // blurring (not before — see handleRescanExisting for why order
+        // matters here), then overwrite in place at the same real path.
+        // draft.photo (the path string) doesn't change here, so an
+        // already-open preview elsewhere may need a reload to pick up
+        // the new bytes — a known, minor limitation of overwriting in
+        // place rather than publishing under a fresh filename.
+        const convertedBlurred = await convertImage(blurredBlob);
         const filename = storagePath.split("/").pop();
-        await panoramaSync.copyPanoramaFile(resizedBlurred, draft.building, filename);
+        await panoramaSync.copyPanoramaFile(convertedBlurred, draft.building, filename);
       }
       setCopyState("copied");
       setTimeout(() => setCopyState((s) => (s === "copied" ? "idle" : s)), 2500);

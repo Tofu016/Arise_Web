@@ -7,6 +7,11 @@ import Room360Modal from "../components/Room360Modal";
 import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import MobileRoomSheet from "../components/MobileRoomSheet";
+import OnScreenKeyboard from "../components/OnScreenKeyboard";
+import FeedbackPanel from "../components/FeedbackPanel";
+import IdlePrompt from "../components/IdlePrompt";
+import ArchiveBar from "../components/ArchiveBar";
+import { useIdleDetector } from "../hooks/useIdleDetector";
 import { allBuildings, buildingLabel, defaultHotspotAngle, floorLabel } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { searchNodes, searchRooms } from "../utils/search";
@@ -67,6 +72,23 @@ export default function MainPage() {
   const [buildingFilter, setBuildingFilter] = useState("all");
   const [currentId, setCurrentId] = useState(null);
   const [history, setHistory] = useState([]);
+
+  // Session-only visit history for the archive bar — deliberately
+  // separate from `history` above, which is a back-button stack that
+  // shrinks as you go back and gets explicitly cleared on a fresh
+  // search jump. This one only ever grows, never clears, and only
+  // needs currentId itself (not the full node object), so it's safe to
+  // declare this early, right after currentId — nodes/byId aren't
+  // needed until the actual thumbnail render later in this component.
+  // A useEffect watching currentId (rather than hooking into every
+  // individual goTo/goBack/jumpToSearchResult call site) catches every
+  // way currentId could change, without needing to touch any of those
+  // functions individually.
+  const [visitedNodeIds, setVisitedNodeIds] = useState([]);
+  useEffect(() => {
+    if (!currentId) return;
+    setVisitedNodeIds((ids) => (ids.includes(currentId) ? ids : [...ids, currentId]));
+  }, [currentId]);
   const [searchQuery, setSearchQuery] = useState("");
   const [entryYaw, setEntryYaw] = useState(0);
   const searchInputRef = useRef(null);
@@ -77,6 +99,19 @@ export default function MainPage() {
   const [panelMode, setPanelMode] = useState(null);
   const closePanel = () => setPanelMode(null);
   const toggleMenu = () => setPanelMode((m) => (m === "menu" ? null : "menu"));
+
+  // Explicit, manual toggle rather than automatic on every search focus —
+  // a phone's own native keyboard already works fine and would otherwise
+  // end up stacked underneath this one, doubled up and wasting screen
+  // space on exactly the devices that were never actually broken. Someone
+  // on a touchscreen monitor taps this when they need it; someone on a
+  // phone simply never does.
+  const [showOnScreenKeyboard, setShowOnScreenKeyboard] = useState(false);
+
+  // Its own independent state, not tied to panelMode — this is a
+  // separate, standalone overlay (its own button, its own dismissible
+  // panel), not part of the search/account panel system at all.
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const [arModalOpen, setArModalOpen] = useState(false);
 
@@ -228,6 +263,19 @@ export default function MainPage() {
   // jumpToSearchResult when it detects a genuine cross-campus jump — see
   // that function for the actual detection logic.
   const [flyover, setFlyover] = useState(null);
+
+  // 15s is the midpoint of the requested 10-20s range — a single named
+  // constant, easy to retune. Suppressed entirely (enabled: false, no
+  // timer even running) whenever any other overlay is already open, so
+  // this can never appear stacked on top of the search panel, the
+  // feedback panel itself, the AR modal, a room's 360 view, or a
+  // flyover — each of those already means the visitor is actively doing
+  // something, not idle in the sense this prompt cares about. Declared
+  // here, after all of those, since it reads their current values —
+  // JS's temporal dead zone would break this if placed any earlier.
+  const IDLE_TIMEOUT_MS = 15000;
+  const idleDetectorEnabled = !panelMode && !showFeedback && !arModalOpen && !room360Open && !flyover;
+  const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   // Called unconditionally here (before any early returns below) since it's
   // a hook — the value is only actually used once we reach the main render.
@@ -989,10 +1037,18 @@ export default function MainPage() {
               >
                 🚨
               </button>
+              <button
+                className="mobile-ar-btn mobile-feedback-btn"
+                onClick={() => setShowFeedback(true)}
+                title="Give feedback"
+              >
+                💬
+              </button>
               <div className="mobile-search-wrap">
                 <input
                   ref={searchInputRef}
                   type="text"
+                  inputMode="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setPanelMode("search")}
@@ -1000,14 +1056,33 @@ export default function MainPage() {
                   placeholder={current?.name || "Search a room..."}
                   aria-label="Search"
                 />
+                {/* Manual toggle, not automatic — see showOnScreenKeyboard's
+                    own comment above for why. onMouseDown + preventDefault,
+                    same reasoning as every key inside the keyboard itself:
+                    stops this button from blurring the search input when
+                    tapped, which would otherwise close the whole panel. */}
+                <button
+                  type="button"
+                  className="onscreen-keyboard-toggle"
+                  onMouseDown={(e) => { e.preventDefault(); setShowOnScreenKeyboard((v) => !v); }}
+                  title="Toggle on-screen keyboard"
+                  aria-label="Toggle on-screen keyboard"
+                >
+                  ⌨️
+                </button>
               </div>
-              <button
-                className="mobile-account-btn"
-                onClick={() => setPanelMode((m) => (m === "account" ? null : "account"))}
-                title={displayName}
-              >
-                {initials}
-              </button>
+              {/* Hidden entirely for a logged-out visitor now that this
+                  page no longer requires an account — nothing to show
+                  in this spot for someone without a profile to display. */}
+              {user && (
+                <button
+                  className="mobile-account-btn"
+                  onClick={() => setPanelMode((m) => (m === "account" ? null : "account"))}
+                  title={displayName}
+                >
+                  {initials}
+                </button>
+              )}
             </div>
 
             {showMinimap && panelMode !== "search" && panelMode !== "account" && (
@@ -1024,8 +1099,15 @@ export default function MainPage() {
               <>
                 <div className="mobile-top-panel-backdrop" onClick={closePanel} />
                 <div className="mobile-top-panel">
-                  {panelMode === "search" && searchResultsContent}
-                  {panelMode === "account" && (
+                  {panelMode === "search" && (
+                    <>
+                      {searchResultsContent}
+                      {showOnScreenKeyboard && (
+                        <OnScreenKeyboard value={searchQuery} onChange={setSearchQuery} onClose={closePanel} />
+                      )}
+                    </>
+                  )}
+                  {panelMode === "account" && user && (
                     <div className="mobile-account-panel">
                       <div className="account-avatar">{initials}</div>
                       <span className="account-name" title={displayName}>{displayName}</span>
@@ -1155,35 +1237,52 @@ export default function MainPage() {
                 🚨
               </button>
 
+              {/* Client-requested: bottom-left, alongside the exit
+                  button — same stacking convention (same left offset,
+                  positioned just above the element below it), one more
+                  step up from the exit button. */}
+              <button
+                className="floating-rail-btn floating-feedback-btn"
+                onClick={() => setShowFeedback(true)}
+                title="Give feedback"
+              >
+                💬
+              </button>
+
               {/* Moved out of the rail and up to the top-right — its own
                   popover now needs to open DOWNWARD instead of upward
                   (see .floating-account-wrap-top override), since it's no
                   longer sitting at the bottom of the screen where opening
                   upward made sense. */}
-              <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
-                {accountMenuOpen && (
-                  <div className="account-popover">
-                    <span className="account-popover-name" title={displayName}>{displayName}</span>
-                    {role === "admin" && (
-                      <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
-                    )}
-                    <button onClick={signOut} className="subtle account-signout">Sign out</button>
-                  </div>
-                )}
-                <button
-                  className="floating-rail-btn floating-account-btn"
-                  onClick={() => setAccountMenuOpen((o) => !o)}
-                  title={displayName}
-                >
-                  {initials}
-                </button>
-              </div>
+              {/* Hidden entirely for a logged-out visitor — same
+                  reasoning as the mobile account button above. */}
+              {user && (
+                <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
+                  {accountMenuOpen && (
+                    <div className="account-popover">
+                      <span className="account-popover-name" title={displayName}>{displayName}</span>
+                      {role === "admin" && (
+                        <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
+                      )}
+                      <button onClick={signOut} className="subtle account-signout">Sign out</button>
+                    </div>
+                  )}
+                  <button
+                    className="floating-rail-btn floating-account-btn"
+                    onClick={() => setAccountMenuOpen((o) => !o)}
+                    title={displayName}
+                  >
+                    {initials}
+                  </button>
+                </div>
+              )}
 
               <div className="floating-search-wrap">
                 <div className="floating-search-bar">
                   <input
                     ref={searchInputRef}
                     type="text"
+                    inputMode="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setPanelMode("search")}
@@ -1191,6 +1290,18 @@ export default function MainPage() {
                     placeholder="Search a room..."
                     aria-label="Search"
                   />
+                  {/* Same manual toggle as the mobile search bar — see
+                      showOnScreenKeyboard's own comment for why this
+                      isn't automatic. */}
+                  <button
+                    type="button"
+                    className="onscreen-keyboard-toggle"
+                    onMouseDown={(e) => { e.preventDefault(); setShowOnScreenKeyboard((v) => !v); }}
+                    title="Toggle on-screen keyboard"
+                    aria-label="Toggle on-screen keyboard"
+                  >
+                    ⌨️
+                  </button>
                   <span className="floating-search-icon">🔍</span>
                 </div>
               </div>
@@ -1199,7 +1310,14 @@ export default function MainPage() {
                 <>
                   <div className="floating-panel-backdrop" />
                   <div className="floating-panel">
-                    {panelMode === "search" && searchResultsContent}
+                    {panelMode === "search" && (
+                      <>
+                        {searchResultsContent}
+                        {showOnScreenKeyboard && (
+                          <OnScreenKeyboard value={searchQuery} onChange={setSearchQuery} onClose={closePanel} />
+                        )}
+                      </>
+                    )}
 
                     {panelMode === "menu" && (
                       <div className="sidebar-card">
@@ -1266,6 +1384,27 @@ export default function MainPage() {
       {flyover && (
         <FlyoverPanel flyover={flyover} onComplete={completeFlyover} onCancel={cancelFlyover} />
       )}
+
+      {showFeedback && (
+        <FeedbackPanel onClose={() => setShowFeedback(false)} />
+      )}
+
+      {isIdle && (
+        <IdlePrompt
+          onContinue={resetIdle}
+          onGiveFeedback={() => {
+            resetIdle();
+            setShowFeedback(true);
+          }}
+        />
+      )}
+
+      <ArchiveBar
+        visitedNodeIds={visitedNodeIds}
+        currentNodeId={currentId}
+        byId={byId}
+        onPick={jumpToSearchResult}
+      />
     </div>
   );
 }

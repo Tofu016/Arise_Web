@@ -2756,6 +2756,16 @@ button.primary {
   left: 16px;
   z-index: 30;
 }
+/* One step further up the same stack — 158px (exit button's own
+   offset) + 44px (its own height) + 12px (the same gap convention used
+   throughout this stack) = 214px. Same left offset, genuinely part of
+   the same bottom-left cluster the client asked for. */
+.floating-feedback-btn {
+  position: absolute;
+  bottom: 214px;
+  left: 16px;
+  z-index: 30;
+}
 .account-popover {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -2798,7 +2808,7 @@ button.primary {
 }
 .floating-search-bar input {
   width: 100%;
-  padding: 12px 42px 12px 18px;
+  padding: 12px 68px 12px 18px;
   border-radius: var(--radius-pill);
   border: none;
   background: transparent;
@@ -2816,6 +2826,26 @@ button.primary {
   font-size: 14px;
   color: var(--text-muted);
   pointer-events: none;
+}
+/* Sits just left of the (purely decorative, pointer-events: none)
+   search icon above — genuinely interactive and clickable, unlike that
+   icon, so this needs its own right offset rather than overlapping it. */
+.onscreen-keyboard-toggle {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  opacity: 0.7;
+  touch-action: manipulation;
+}
+.onscreen-keyboard-toggle:hover,
+.onscreen-keyboard-toggle:active {
+  opacity: 1;
 }
 .floating-panel-backdrop {
   position: absolute;
@@ -3234,11 +3264,12 @@ button.primary {
 .mobile-search-wrap {
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 .mobile-search-wrap input {
   width: 100%;
   height: 40px;
-  padding: 0 14px;
+  padding: 0 40px 0 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -3249,6 +3280,14 @@ button.primary {
 .mobile-search-wrap input:focus {
   outline: none;
   border-color: var(--focus-ring);
+}
+/* Same treatment as .onscreen-keyboard-toggle above (desktop's floating
+   search bar) — this mobile version needs its own copy of the rule
+   rather than sharing it directly, since .mobile-search-wrap has no
+   separate decorative icon sharing the space here, just this one
+   button positioned against the input's own right edge. */
+.mobile-search-wrap .onscreen-keyboard-toggle {
+  right: 4px;
 }
 .mobile-account-btn {
   flex-shrink: 0;
@@ -3887,6 +3926,392 @@ button.primary {
   text-align: center;
   color: #fff;
   font-size: 13px;
+}
+
+/* =====================================================================
+   On-screen keyboard — a custom, in-app virtual keyboard for the indoor
+   MainPage search bar. Built specifically for touchscreen monitors
+   (portrait-mounted kiosk displays in particular), since there's no way
+   for a website to directly force the OS's own virtual keyboard to
+   appear, and Windows specifically is known to sometimes skip
+   auto-showing its touch keyboard on a device that still has a
+   physical keyboard technically available. Manual toggle rather than
+   automatic — a phone's own native keyboard already works fine and
+   would otherwise end up stacked underneath this one.
+   ===================================================================== */
+.onscreen-keyboard {
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.onscreen-keyboard-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.onscreen-keyboard-row:last-child {
+  margin-bottom: 0;
+}
+.onscreen-keyboard-key {
+  flex: 1;
+  min-width: 0;
+  max-width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.onscreen-keyboard-key:active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+.onscreen-keyboard-bottom-row {
+  gap: 8px;
+}
+.onscreen-keyboard-space {
+  flex: 4;
+  max-width: none;
+}
+.onscreen-keyboard-backspace,
+.onscreen-keyboard-done {
+  flex: 2;
+  max-width: none;
+}
+.onscreen-keyboard-done {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.onscreen-keyboard-done:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* =====================================================================
+   Feedback panel — general app/experience feedback from MainPage,
+   triggered by its own bottom-left (desktop) / top-bar (mobile) button.
+   Reuses .modal-overlay/.modal/.preview-header/.close-btn/.error-box/
+   .form-actions directly (see FeedbackPanel.jsx) — only the genuinely
+   new pieces (star rating, form field layout) need their own rules here.
+   ===================================================================== */
+.feedback-modal {
+  width: 380px;
+  max-width: 92vw;
+}
+.feedback-modal label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.feedback-modal input,
+.feedback-modal textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+.feedback-modal textarea {
+  resize: vertical;
+}
+.feedback-modal input:focus,
+.feedback-modal textarea:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.feedback-star-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.feedback-star {
+  border: none;
+  background: none;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 2px;
+}
+.feedback-panel-thanks {
+  margin: 12px 0 4px 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* Read-only star display for the admin list (FeedbackAdminPage.jsx) —
+   deliberately uses the same ★ character throughout rather than ★/☆
+   like the interactive picker above, with color alone (not glyph)
+   distinguishing filled from empty — a cleaner look for a plain,
+   non-interactive display. */
+.feedback-admin-stars {
+  color: var(--gold);
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.feedback-admin-stars-empty {
+  color: var(--border);
+}
+.feedback-admin-comment {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* =====================================================================
+   Photo coverage dashboard — read-only summary of nodes/tour stops
+   missing a photo (PhotoCoverageAdminPage.jsx). Reuses .users-list/
+   .users-row/.users-row-main/.users-row-name/.field-hint/.empty-hint
+   directly for the missing-item lists — only the summary cards
+   themselves need new rules here.
+   ===================================================================== */
+.photo-coverage-summary-row {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0 28px 0;
+}
+.photo-coverage-summary-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.photo-coverage-summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.photo-coverage-summary-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--font-sans-display);
+}
+.photo-coverage-summary-pct {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.photo-coverage-summary-pct-warn {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+.photo-coverage-section-heading {
+  margin: 24px 0 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* =====================================================================
+   Photo gallery — every uploaded photo in the system, in-use vs
+   orphaned (PhotosAdminPage.jsx). Reuses .admin-page-heading/
+   .badge-count/.field-hint/.empty-hint/.error-box/.primary directly —
+   only the grid/card layout and the in-use/orphaned badges themselves
+   need new rules here.
+   ===================================================================== */
+.photo-gallery-filter-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 20px 0;
+}
+.photo-gallery-filter-row button {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+.photo-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.photo-gallery-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.photo-gallery-thumb {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+.photo-gallery-thumb-placeholder {
+  width: 100%;
+  height: 110px;
+  background: var(--surface-hover);
+}
+.photo-gallery-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+}
+.photo-gallery-badge {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+.photo-gallery-badge-inuse {
+  background: var(--success-surface);
+  color: var(--success);
+}
+.photo-gallery-badge-orphaned {
+  background: var(--danger-surface);
+  color: var(--danger-text);
+}
+.photo-gallery-path {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.photo-gallery-delete {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger);
+  background: var(--danger-surface);
+  color: var(--danger-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.photo-gallery-delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* =====================================================================
+   Idle prompt — "Done exploring?" after a period of inactivity (see
+   IdlePrompt.jsx, useIdleDetector.js). Reuses .modal-overlay/.modal/
+   .form-actions directly — genuinely locked and centered, same pattern
+   as MainPage's own arModal — only the width and message text need
+   their own rules here.
+   ===================================================================== */
+.idle-prompt-modal {
+  width: 320px;
+  max-width: 90vw;
+  text-align: center;
+}
+.idle-prompt-text {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* =====================================================================
+   Archive bar — a collapsible strip of nodes visited this session (see
+   MainPage.jsx's own visitedNodeIds tracking and ArchiveBar.jsx).
+   Bottom-right, deliberately: bottom-left is already the minimap/exit/
+   feedback button cluster, and this needed its own, uncontested corner.
+   Session-only by design — nothing here persists past a page reload.
+   ===================================================================== */
+.archive-bar {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.archive-bar-toggle {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  white-space: nowrap;
+}
+.archive-bar-strip {
+  display: flex;
+  gap: 8px;
+  max-width: min(600px, 90vw);
+  overflow-x: auto;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-2);
+}
+.archive-thumb {
+  flex-shrink: 0;
+  width: 88px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+}
+.archive-thumb-img {
+  width: 88px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+}
+.archive-thumb-placeholder {
+  width: 88px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  display: block;
+}
+.archive-thumb-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* =====================================================================

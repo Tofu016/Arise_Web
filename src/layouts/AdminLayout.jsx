@@ -38,6 +38,9 @@ const GROUPS = [
 ];
 
 const USER_PANEL = { path: "users", icon: "👤", label: "User Panel" };
+const FEEDBACK = { path: "feedback", icon: "💬", label: "Feedback" };
+const PHOTO_COVERAGE = { path: "photo-coverage", icon: "📊", label: "Photo Coverage" };
+const PHOTOS = { path: "photos", icon: "🖼️", label: "Photos" };
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,
@@ -115,6 +118,35 @@ export default function AdminLayout() {
             title={USER_PANEL.label}
           >
             {USER_PANEL.icon}
+          </Link>
+          {/* Standalone, no sub-items — same reasoning as User Panel
+              above: general app feedback genuinely doesn't belong to
+              either the Virtual Map or Campus Tour group. */}
+          <Link
+            to={`/admin/${FEEDBACK.path}`}
+            className="admin-sidebar-icon-btn"
+            title={FEEDBACK.label}
+          >
+            {FEEDBACK.icon}
+          </Link>
+          {/* Also standalone — covers both nodes (Virtual Map) and tour
+              stops (Campus Tour) together, so it genuinely doesn't
+              belong to either single group either. */}
+          <Link
+            to={`/admin/${PHOTO_COVERAGE.path}`}
+            className="admin-sidebar-icon-btn"
+            title={PHOTO_COVERAGE.label}
+          >
+            {PHOTO_COVERAGE.icon}
+          </Link>
+          {/* Standalone too, same reasoning as Photo Coverage above —
+              covers every photo type, not tied to one group. */}
+          <Link
+            to={`/admin/${PHOTOS.path}`}
+            className="admin-sidebar-icon-btn"
+            title={PHOTOS.label}
+          >
+            {PHOTOS.icon}
           </Link>
         </div>
 

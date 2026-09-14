@@ -8,6 +8,9 @@ import RoomEditorPage from "./pages/admin/RoomEditorPage";
 import UserPanelPage from "./pages/admin/UserPanelPage";
 import TourStopsPage from "./pages/admin/TourStopsPage";
 import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
+import FeedbackAdminPage from "./pages/admin/FeedbackAdminPage";
+import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
+import PhotosAdminPage from "./pages/admin/PhotosAdminPage";
 import PublicTourPage from "./pages/PublicTourPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -44,14 +47,13 @@ export default function App() {
             Tour: showcasing the campus to visitors who aren't registered
             users, not just approved account holders. */}
         <Route path="/tour" element={<PublicTourPage />} />
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <MainPage />
-            </RequireAuth>
-          }
-        />
+        {/* Genuinely public — no RequireAuth wrapper at all, same as
+            /login and /tour above. Indoor navigation no longer requires
+            an account either; see IndoorUploads_API's serve() for the
+            matching backend change — removing the gate here alone,
+            without that one, would have left the page reachable but
+            every photo failing to load for a logged-out visitor. */}
+        <Route path="/" element={<MainPage />} />
         {/* Nested under one shared layout — useNodes() is called once in
             AdminLayout and passed down to whichever section is active via
             Outlet context, rather than each section independently
@@ -73,6 +75,9 @@ export default function App() {
           <Route path="users" element={<UserPanelPage />} />
           <Route path="tour-stops" element={<TourStopsPage />} />
           <Route path="campus-tour-navigation-editor" element={<TourNavigationEditorPage />} />
+          <Route path="feedback" element={<FeedbackAdminPage />} />
+          <Route path="photo-coverage" element={<PhotoCoverageAdminPage />} />
+          <Route path="photos" element={<PhotosAdminPage />} />
         </Route>
       </Routes>
     </AuthProvider>

@@ -1,4 +1,4 @@
-import { resizeImageIfNeeded } from "./imageResize";
+import { convertImage } from "./imageConverter";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 
@@ -42,11 +42,11 @@ async function uploadFile(endpoint, file, filename) {
   return { path: data.path };
 }
 
-// Same resize-before-upload behavior as before, same reasoning
-// (mobile decodes images in pure JS with no native fast path).
+// Converts to a standard, backend-accepted format — no resizing anymore
+// (see imageConverter.js's own comment for the trade-off this makes).
 export async function uploadTourPanorama(file, filename) {
-  const resized = await resizeImageIfNeeded(file);
-  return uploadFile("panorama", resized, filename);
+  const converted = await convertImage(file);
+  return uploadFile("panorama", converted, filename);
 }
 
 export async function uploadTourSectionCover(file, filename) {
