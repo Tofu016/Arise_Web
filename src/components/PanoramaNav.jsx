@@ -95,12 +95,68 @@ function PanoramaSphere({ url, onLoaded, onError, onSurfaceClick, placing }) {
   );
 }
 
+// Touch/stylus input has no hover state, so the "sneak-peek" preview
+// (built around onPointerOver/onPointerOut below) has no touch
+// equivalent — matchMedia("pointer: coarse") is the standard way to
+// detect that up front rather than guessing from screen size, since a
+// touchscreen kiosk monitor can be any width. Re-checked on change so a
+// device with both a touchscreen and a mouse attached still tracks
+// whichever was used most recently.
+function useIsCoarsePointer() {
+  const [coarse, setCoarse] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const onChange = () => setCoarse(mq.matches);
+    mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener("change", onChange) : mq.removeListener(onChange);
+    };
+  }, []);
+  return coarse;
+}
+
 function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency }) {
   const pos = toPosition(yaw, pitch);
   const [hovered, setHovered] = useState(false);
+  const isTouch = useIsCoarsePointer();
   // Only fetches once genuinely hovered — a hotspot never hovered never
   // triggers a photo fetch at all.
   const { url: previewUrl } = useSecurePhotoUrl(hovered ? photo : null);
+
+  // Touch: first tap reveals the preview (reusing the same `hovered`
+  // state hover already drives) instead of navigating; a second tap
+  // while it's showing actually walks there — see handleClick below.
+  // Auto-dismisses after a few seconds so a preview opened then
+  // abandoned doesn't sit there forever waiting for a tap that never
+  // comes back.
+  useEffect(() => {
+    if (!isTouch || !hovered) return;
+    const timer = setTimeout(() => setHovered(false), 4000);
+    return () => clearTimeout(timer);
+  }, [isTouch, hovered]);
+
+  const handlePointerOver = (e) => {
+    if (isTouch) return; // touch drives `hovered` from the tap handler below instead
+    e.stopPropagation();
+    setHovered(true);
+  };
+  const handlePointerOut = (e) => {
+    if (isTouch) return;
+    e.stopPropagation();
+    setHovered(false);
+  };
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (isTouch && !hovered) {
+      setHovered(true); // tap-to-preview: show the sneak-peek, don't walk yet
+      return;
+    }
+    setHovered(false);
+    onClick(); // tap-again-to-go (touch), or the only tap needed at all (mouse)
+  };
 
   // Only the highlighted hotspot pulses red during emergency routing — an
   // un-highlighted hotspot the visitor isn't meant to follow stays its
@@ -168,13 +224,15 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
           fully-transparent mesh can't occlude geometry behind it — a real
           bug hit once already with a similar invisible mask elsewhere in
           this project (the AR portal's mask). Handles all pointer/click
-          interaction; the meshes below are purely decorative. */}
+          interaction; the meshes below are purely decorative. Radius
+          bumped from the original 32 for touch — a fingertip is far less
+          precise than a mouse cursor, especially at kiosk arm's length. */}
       <mesh
-        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-        onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+        onClick={handleClick}
       >
-        <sphereGeometry args={[32, 12, 12]} />
+        <sphereGeometry args={[42, 12, 12]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
@@ -329,30 +387,45 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
   );
 }
 
-// 75° vertical FOV was tuned for landscape screens. Since Three.js's fov
-// is vertical, not horizontal, and @react-three/fiber already keeps
-// aspect ratio correctly synced to the real viewport shape, a fixed
-// vertical FOV on a narrow portrait screen mathematically produces a
-// much narrower HORIZONTAL view than the same value gives on a wide
-// screen — visibly more "zoomed in" than intended, not a display bug,
-// just the geometry of a fixed vertical angle applied to a much
-// narrower width. Portrait gets a deliberately wider FOV to compensate.
-// This exact number is a reasonable starting point, not a precisely
-// derived "correct" value — worth tuning by eye on the actual deployed
-// touchscreen monitor this was built for.
-const LANDSCAPE_FOV = 75;
-const PORTRAIT_FOV = 110;
+// Three.js's fov is vertical, not horizontal, and @react-three/fiber
+// already keeps aspect ratio correctly synced to the real viewport
+// shape — so a FIXED vertical FOV mathematically produces a narrower
+// HORIZONTAL view on a narrower screen, not a display bug, just the
+// geometry of a fixed vertical angle applied to a narrower width.
+// Rather than the old two-value landscape/portrait switch, this instead
+// targets a constant HORIZONTAL field of view and derives the vertical
+// FOV Three.js actually wants from whatever the real aspect ratio is —
+// so a kiosk's actual screen (which can land anywhere between a narrow
+// phone-like panel and a much wider portrait touchscreen) gets a
+// horizontal view that reads the same regardless of exact shape,
+// instead of jumping between two hardcoded numbers at a single
+// orientation boundary.
+//
+// Still clamped at both ends: MIN_FOV keeps a very wide/short screen
+// from zooming in uncomfortably tight, MAX_FOV keeps a very
+// tall/narrow one well short of fisheye territory (~150°+). These
+// numbers are reasonable starting points, not precisely derived —
+// worth tuning by eye at the real aspect ratio of the deployed kiosk
+// touchscreen, not just by the math.
+const TARGET_HORIZONTAL_FOV = 100; // degrees
+const MIN_FOV = 60;
+const MAX_FOV = 120;
+
+function computeFov(width, height) {
+  if (!width || !height) return TARGET_HORIZONTAL_FOV;
+  const aspect = width / height;
+  const targetHorizontalRad = (TARGET_HORIZONTAL_FOV * Math.PI) / 180;
+  const verticalRad = 2 * Math.atan(Math.tan(targetHorizontalRad / 2) / aspect);
+  const verticalDeg = (verticalRad * 180) / Math.PI;
+  return Math.min(MAX_FOV, Math.max(MIN_FOV, verticalDeg));
+}
 
 function usePanoramaFov() {
   const [fov, setFov] = useState(() =>
-    typeof window !== "undefined" && window.innerHeight > window.innerWidth
-      ? PORTRAIT_FOV
-      : LANDSCAPE_FOV
+    typeof window !== "undefined" ? computeFov(window.innerWidth, window.innerHeight) : TARGET_HORIZONTAL_FOV
   );
   useEffect(() => {
-    const updateFov = () => {
-      setFov(window.innerHeight > window.innerWidth ? PORTRAIT_FOV : LANDSCAPE_FOV);
-    };
+    const updateFov = () => setFov(computeFov(window.innerWidth, window.innerHeight));
     window.addEventListener("resize", updateFov);
     // orientationchange fires on real device rotation more reliably than
     // resize alone on some touchscreen/tablet setups.

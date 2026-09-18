@@ -48,19 +48,58 @@ function pickDefaultEntranceForBuilding(nodes, buildingId) {
   return [...inBuilding].sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0))[0];
 }
 
-// Simple viewport-width check — re-evaluated on resize. Mobile gets a
-// dedicated layout (bottom sheets, top bar) rather than a squeezed-down
-// version of the desktop floating UI.
+// Breakpoint-driven layout swap: below a width threshold, OR whenever the
+// screen is genuinely tall/portrait, this switches to the stacked
+// bottom-anchored layout (bottom sheets, bottom controls) instead of the
+// desktop floating UI. There's no separate kiosk build — a wall-mounted
+// kiosk is "vertically tall like a mobile phone" but can be much WIDER
+// than one (e.g. a 1080×1920 portrait touchscreen), so width alone would
+// miss it; the aspect-ratio check catches any portrait screen with real
+// height-over-width, regardless of its absolute size, and it gets
+// exactly the same treatment a phone does. Re-evaluated on resize/rotate.
+function isMobileLayout(breakpoint = 768) {
+  if (typeof window === "undefined") return false;
+  const { innerWidth: w, innerHeight: h } = window;
+  return w <= breakpoint || h > w * 1.15;
+}
+
 function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth <= breakpoint
-  );
+  const [isMobile, setIsMobile] = useState(() => isMobileLayout(breakpoint));
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= breakpoint);
+    const onResize = () => setIsMobile(isMobileLayout(breakpoint));
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
   }, [breakpoint]);
   return isMobile;
+}
+
+// Mobile/kiosk control dock: how far each radial icon sits from the
+// FAB's center (RADIAL_RADIUS, in px) and how much of a clock-face arc
+// they're fanned across (RADIAL_SPREAD_DEG, in degrees) — swept only
+// across the FAB's right side, like the 1-through-5 o'clock positions,
+// since the FAB itself sits at the screen's left edge with nothing but
+// more screen to its right. Kept as named constants since the actual
+// per-button placement (radialButtonTransform below) has to reproduce
+// this same geometry in JS, not just CSS.
+const RADIAL_RADIUS = 104;
+const RADIAL_SPREAD_DEG = 150;
+
+// Returns the CSS transform that places one radial icon's CENTER at the
+// correct point on the arc, given its position (index) among however
+// many are actually showing (total) — evenly spaced regardless of which
+// optional ones (Back, Account) are present this render. angle 0 points
+// straight right; positive angles sweep upward (screen Y is inverted
+// from standard math Y, hence the negated sin here).
+function radialButtonTransform(index, total) {
+  const angleDeg = total > 1 ? -RADIAL_SPREAD_DEG / 2 + (index * RADIAL_SPREAD_DEG) / (total - 1) : 0;
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const x = Math.cos(angleRad) * RADIAL_RADIUS;
+  const y = -Math.sin(angleRad) * RADIAL_RADIUS;
+  return `translate(${x}px, ${y}px)`;
 }
 
 export default function MainPage() {
@@ -100,6 +139,28 @@ export default function MainPage() {
   const closePanel = () => setPanelMode(null);
   const toggleMenu = () => setPanelMode((m) => (m === "menu" ? null : "menu"));
 
+  // Mobile/kiosk only: the search bar, primary actions, and Building
+  // selector are collapsed behind a single FAB on the middle-left edge
+  // (reachable at arm's length by someone standing at a wall-mounted
+  // kiosk) rather than sitting permanently on screen — a search bar just
+  // parked there on its own would be poor UX. Deliberately its own state,
+  // separate from panelMode: panelMode still tracks what's showing
+  // *inside* the expanded panel (search results vs. the account panel),
+  // this just tracks whether the panel is expanded at all. Blurring the
+  // search input (closePanel, via onBlur) intentionally does NOT collapse
+  // this — that fires on every incidental focus change within the panel
+  // (e.g. tapping the Building selector while the keyboard's still up)
+  // and would yank the panel away mid-interaction. It only collapses on
+  // an explicit close (the FAB itself, the backdrop, Escape) or once a
+  // navigation actually happens (see goTo/goBack/jumpToSearchResult) —
+  // at that point the visitor has what they came for and the panorama
+  // should be fully visible again.
+  const [mobileDockOpen, setMobileDockOpen] = useState(false);
+  const closeMobileDock = () => {
+    setPanelMode(null);
+    setMobileDockOpen(false);
+  };
+
   // Explicit, manual toggle rather than automatic on every search focus —
   // a phone's own native keyboard already works fine and would otherwise
   // end up stacked underneath this one, doubled up and wasting screen
@@ -113,21 +174,19 @@ export default function MainPage() {
   // panel), not part of the search/account panel system at all.
   const [showFeedback, setShowFeedback] = useState(false);
 
-  const [arModalOpen, setArModalOpen] = useState(false);
-
   // The backdrop behind the panel is purely visual on desktop (see
   // .floating-panel-backdrop's pointer-events: none) — it deliberately does
   // NOT intercept clicks there, so the panorama stays freely draggable
   // underneath. Escape is the keyboard-accessible way to close it instead of
   // a backdrop click.
   useEffect(() => {
-    if (!panelMode) return;
+    if (!panelMode && !mobileDockOpen) return;
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") closePanel();
+      if (e.key === "Escape") closeMobileDock();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [panelMode]);
+  }, [panelMode, mobileDockOpen]);
 
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
@@ -140,22 +199,11 @@ export default function MainPage() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [accountMenuOpen]);
 
-  // Mobile's bottom Building selector is a custom dropdown, not a native
-  // <select> — a native select's dropdown position is decided by the
-  // browser, not by our CSS, and since this trigger sits right at the
-  // bottom edge of the screen, some browsers don't flip it upward on their
-  // own, causing the options list to overflow off-screen. This opens
-  // upward unconditionally instead, guaranteed to stay on-screen.
+  // Mobile's Building selector opens as its own centered modal (see
+  // .mobile-building-modal) rather than a dropdown — dismissed the same
+  // way every other mobile modal is (its own close button or backdrop
+  // tap), so unlike a dropdown it needs no outside-click listener.
   const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
-  const buildingMenuRef = useRef(null);
-  useEffect(() => {
-    if (!buildingMenuOpen) return;
-    const handleOutsideClick = (e) => {
-      if (buildingMenuRef.current && !buildingMenuRef.current.contains(e.target)) setBuildingMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [buildingMenuOpen]);
 
   // Point-to-point directions ("just like Street View"): opened from a
   // search result, holds the from/to text + resolved node ids, the computed
@@ -268,13 +316,13 @@ export default function MainPage() {
   // constant, easy to retune. Suppressed entirely (enabled: false, no
   // timer even running) whenever any other overlay is already open, so
   // this can never appear stacked on top of the search panel, the
-  // feedback panel itself, the AR modal, a room's 360 view, or a
-  // flyover — each of those already means the visitor is actively doing
+  // feedback panel itself, a room's 360 view, or a flyover — each of
+  // those already means the visitor is actively doing
   // something, not idle in the sense this prompt cares about. Declared
   // here, after all of those, since it reads their current values —
   // JS's temporal dead zone would break this if placed any earlier.
   const IDLE_TIMEOUT_MS = 15000;
-  const idleDetectorEnabled = !panelMode && !showFeedback && !arModalOpen && !room360Open && !flyover;
+  const idleDetectorEnabled = !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover;
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   // Called unconditionally here (before any early returns below) since it's
@@ -350,7 +398,29 @@ export default function MainPage() {
     return true;
   };
 
+  // Guards every navigation entry point (hotspot taps, search/building/
+  // directions picks, back) against being fired twice in quick succession
+  // — a kiosk gets mashed, and a fast double-tap can otherwise queue two
+  // navigations before the first one's re-render/remount has a chance to
+  // take the old hotspot off screen. Deliberately a single shared cooldown
+  // across all of them, not one per call site: any of these firing twice
+  // within the window is the same "accidental double tap" problem.
+  const NAV_DEBOUNCE_MS = 500;
+  const lastNavAtRef = useRef(0);
+  const navGuardOk = () => {
+    // Only ever invoked from an event handler (a tap/click already in
+    // progress), never during render — the lint rule can't see that from
+    // this closure alone.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now();
+    if (now - lastNavAtRef.current < NAV_DEBOUNCE_MS) return false;
+    lastNavAtRef.current = now;
+    return true;
+  };
+
   const goTo = (id, angle) => {
+    if (!navGuardOk()) return;
+    setMobileDockOpen(false);
     const performWalk = () => {
       setHistory((h) => (currentId ? [...h, currentId] : h));
       setCurrentId(id);
@@ -362,6 +432,8 @@ export default function MainPage() {
   };
 
   const goBack = () => {
+    if (!navGuardOk()) return;
+    setMobileDockOpen(false);
     setHistory((h) => {
       if (h.length === 0) return h;
       const next = [...h];
@@ -376,6 +448,8 @@ export default function MainPage() {
   // Also dismisses whatever the floating panel was showing, same as Maps
   // closing search/place-details once you actually navigate somewhere.
   const jumpToSearchResult = (id) => {
+    if (!navGuardOk()) return;
+    setMobileDockOpen(false);
     const performJump = () => {
       setHistory([]);
       setCurrentId(id);
@@ -432,6 +506,7 @@ export default function MainPage() {
   // (search results, a room card, the menu) — same as Maps switching from
   // place details straight into directions mode, not stacking both.
   const openDirectionsTo = (node) => {
+    setMobileDockOpen(false);
     setDirections({
       fromQuery: current?.name || "",
       fromId: current?.id || null,
@@ -467,6 +542,7 @@ export default function MainPage() {
   // ambiguity if a building ever has more than one ground-floor open area.
   const openDirectionsToNearestExit = () => {
     if (!current || !nodes) return;
+    setMobileDockOpen(false);
     const assemblyPoints = nodes.filter((n) =>
       (n.markers || []).some(
         (m) => m.type === "exit" && (m.label || "").trim().toLowerCase() === "assembly point"
@@ -525,6 +601,7 @@ export default function MainPage() {
   // anywhere, which read as broken/inconsistent next to node search
   // results doing both at once.
   const openRoomCard = (room) => {
+    setMobileDockOpen(false);
     setHistory([]);
     setCurrentId(room.node.id);
     setEntryYaw(0);
@@ -768,6 +845,53 @@ export default function MainPage() {
     ? displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
     : "?";
 
+  // Mobile/kiosk radial menu items — icon-only, fanned out around the
+  // FAB (see .mobile-radial-menu). Each opens its own centered modal,
+  // same pattern as FeedbackPanel, except Back, which is an immediate
+  // action with nothing to show. Every handler collapses the radial menu
+  // itself first (setMobileDockOpen(false)) so only the modal (or,
+  // for Back, the panorama) is left showing, not both stacked at once.
+  // goBack closes over lastNavAtRef (see navGuardOk above), which is
+  // enough for the lint rule to flag this whole array construction as
+  // "may read a ref during render" — it doesn't; goBack itself is only
+  // ever invoked later, from a button's onClick.
+  // eslint-disable-next-line react-hooks/refs
+  const radialItems = [
+    history.length > 0 && { key: "back", icon: "←", title: "Back", onClick: goBack },
+    {
+      key: "search",
+      icon: "🔍",
+      title: "Search",
+      onClick: () => { setMobileDockOpen(false); setPanelMode("search"); },
+    },
+    {
+      key: "exit",
+      icon: "🚨",
+      title: "Nearest exit",
+      onClick: () => { setMobileDockOpen(false); openDirectionsToNearestExit(); },
+      className: "mobile-exit-btn",
+    },
+    {
+      key: "feedback",
+      icon: "💬",
+      title: "Give feedback",
+      onClick: () => { setMobileDockOpen(false); setShowFeedback(true); },
+    },
+    {
+      key: "building",
+      icon: "🏢",
+      title: "Choose a building",
+      onClick: () => { setMobileDockOpen(false); setBuildingMenuOpen(true); },
+    },
+    user && {
+      key: "account",
+      icon: initials,
+      title: displayName,
+      onClick: () => { setMobileDockOpen(false); setPanelMode("account"); },
+      className: "mobile-account-btn",
+    },
+  ].filter(Boolean);
+
   const searchResultsContent = (
     <>
       {!searchQuery.trim() && randomSuggestions.length > 0 && (
@@ -975,16 +1099,6 @@ export default function MainPage() {
     </>
   );
 
-  const arModal = arModalOpen && (
-    <div className="modal-overlay" onClick={() => setArModalOpen(false)}>
-      <div className="modal warning-modal" onClick={(e) => e.stopPropagation()}>
-        <h4>🚧 In the works!</h4>
-        <p>AR navigation is being built and isn't ready yet — check back soon.</p>
-        <button className="primary" onClick={() => setArModalOpen(false)}>OK</button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="main-page-layout">
       {/* Overlays everything below until the current node's photo has
@@ -1024,68 +1138,20 @@ export default function MainPage() {
               emergencyMode={directions?.kind === "exit"}
             />
 
-            {/* ---------- Mobile top bar: AR stub, combined title/search, account ---------- */}
-            <div className="mobile-topbar">
-              {history.length > 0 && (
-                <button className="mobile-back-btn" onClick={goBack} title="Back">←</button>
-              )}
-              <button className="mobile-ar-btn" onClick={() => setArModalOpen(true)}>AR</button>
-              <button
-                className="mobile-ar-btn mobile-exit-btn"
-                onClick={openDirectionsToNearestExit}
-                title="Find the nearest exit"
-              >
-                🚨
-              </button>
-              <button
-                className="mobile-ar-btn mobile-feedback-btn"
-                onClick={() => setShowFeedback(true)}
-                title="Give feedback"
-              >
-                💬
-              </button>
-              <div className="mobile-search-wrap">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  inputMode="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setPanelMode("search")}
-                  onBlur={() => setPanelMode((m) => (m === "search" ? null : m))}
-                  placeholder={current?.name || "Search a room..."}
-                  aria-label="Search"
-                />
-                {/* Manual toggle, not automatic — see showOnScreenKeyboard's
-                    own comment above for why. onMouseDown + preventDefault,
-                    same reasoning as every key inside the keyboard itself:
-                    stops this button from blurring the search input when
-                    tapped, which would otherwise close the whole panel. */}
-                <button
-                  type="button"
-                  className="onscreen-keyboard-toggle"
-                  onMouseDown={(e) => { e.preventDefault(); setShowOnScreenKeyboard((v) => !v); }}
-                  title="Toggle on-screen keyboard"
-                  aria-label="Toggle on-screen keyboard"
-                >
-                  ⌨️
-                </button>
+            {/* ---------- Top: read-only location title only — no buttons up
+                here. Every actionable control (search, back, exit,
+                feedback, account, building picker) lives behind the
+                middle-left FAB instead (see "Middle-left control dock"
+                below), within arm's reach of someone standing at a
+                wall-mounted kiosk, not up in the top corners. Safe-area
+                padded (see CSS) so it clears a notch or kiosk bezel. ---------- */}
+            <div className="mobile-title-wrap">
+              <div className="mobile-title-pill">
+                <span>{current.name}</span>
               </div>
-              {/* Hidden entirely for a logged-out visitor now that this
-                  page no longer requires an account — nothing to show
-                  in this spot for someone without a profile to display. */}
-              {user && (
-                <button
-                  className="mobile-account-btn"
-                  onClick={() => setPanelMode((m) => (m === "account" ? null : "account"))}
-                  title={displayName}
-                >
-                  {initials}
-                </button>
-              )}
             </div>
 
-            {showMinimap && panelMode !== "search" && panelMode !== "account" && (
+            {showMinimap && (
               <CrossCampusMinimap
                 lat={currentBuildingMeta.lat}
                 lng={currentBuildingMeta.lng}
@@ -1094,34 +1160,15 @@ export default function MainPage() {
               />
             )}
 
-            {/* ---------- Top-anchored panels: search results / account ---------- */}
-            {(panelMode === "search" || panelMode === "account") && (
-              <>
-                <div className="mobile-top-panel-backdrop" onClick={closePanel} />
-                <div className="mobile-top-panel">
-                  {panelMode === "search" && (
-                    <>
-                      {searchResultsContent}
-                      {showOnScreenKeyboard && (
-                        <OnScreenKeyboard value={searchQuery} onChange={setSearchQuery} onClose={closePanel} />
-                      )}
-                    </>
-                  )}
-                  {panelMode === "account" && user && (
-                    <div className="mobile-account-panel">
-                      <div className="account-avatar">{initials}</div>
-                      <span className="account-name" title={displayName}>{displayName}</span>
-                      {role === "admin" && (
-                        <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
-                      )}
-                      <button onClick={signOut} className="subtle account-signout mobile-signout-btn">Sign out</button>
-                    </div>
-                  )}
-                </div>
-              </>
+            {mobileDockOpen && (
+              <div className="mobile-panel-backdrop" onClick={closeMobileDock} />
             )}
 
-            {/* ---------- Bottom sheets: room card (draggable) / directions (fixed) ---------- */}
+            {/* ---------- Room card: still a draggable bottom sheet — the
+                other panels below all became centered modals instead
+                (see the "Mobile modals" comment further down), but this
+                one's peek/half/full drag gesture is its own established
+                feature, unaffected by any of that. ---------- */}
             {panelMode === "room" && selectedRoomCard && (
               <MobileRoomSheet
                 room={selectedRoomCard}
@@ -1131,51 +1178,168 @@ export default function MainPage() {
               />
             )}
 
+            {/* ---------- Middle-left control dock: a single FAB, collapsed
+                by default — reachable at arm's length by someone standing
+                at a wall-mounted kiosk. Tapping it fans icon-only buttons
+                out around it, clock-numbers style, swept across its right
+                side (see radialButtonTransform); tapping it again (or the
+                backdrop, or Escape) collapses it. Every icon opens its own
+                centered modal below except Back, an immediate action.
+                Hidden entirely while the room sheet already has the
+                visitor's attention. ---------- */}
+            {panelMode !== "room" && (
+              <div className="mobile-side-dock">
+                <button
+                  type="button"
+                  className="mobile-side-fab"
+                  onClick={() => (mobileDockOpen ? closeMobileDock() : setMobileDockOpen(true))}
+                  aria-label={mobileDockOpen ? "Close menu" : "Open menu"}
+                  aria-expanded={mobileDockOpen}
+                  title={mobileDockOpen ? "Close menu" : "Menu"}
+                >
+                  {mobileDockOpen ? "✕" : "☰"}
+                </button>
+
+                {mobileDockOpen && (
+                  <div className="mobile-radial-menu">
+                    {radialItems.map((item, i) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={"mobile-radial-btn" + (item.className ? ` ${item.className}` : "")}
+                        style={{ transform: radialButtonTransform(i, radialItems.length) }}
+                        onClick={item.onClick}
+                        title={item.title}
+                        aria-label={item.title}
+                      >
+                        {item.icon}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ---------- Mobile modals: search, directions/exit, account,
+                Building picker — each a centered .modal-overlay/.modal
+                (same pattern as FeedbackPanel), auto-sized to its own
+                content rather than a fixed-height sheet, so a short one
+                (e.g. the exit panel's lone "Get Directions" button) never
+                leaves awkward empty space below it. ---------- */}
+            {panelMode === "search" && (
+              <div className="modal-overlay" onClick={closePanel}>
+                <div className="modal mobile-search-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="preview-header">
+                    <h3>Search</h3>
+                    <button className="close-btn" onClick={closePanel}>✕</button>
+                  </div>
+
+                  {/* Fixed-height results area ABOVE the search row — see
+                      .mobile-search-results-area — so typing never shifts
+                      the row below it, the on-screen keyboard toggle, or
+                      the keyboard itself once it's open. */}
+                  <div className="mobile-search-results-area">
+                    {searchResultsContent}
+                  </div>
+
+                  <div className="mobile-search-row">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      inputMode="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={current?.name || "Search a room..."}
+                      aria-label="Search"
+                      autoFocus
+                    />
+                    {/* Manual toggle, not automatic — see showOnScreenKeyboard's
+                        own comment above for why. */}
+                    <button
+                      type="button"
+                      className="onscreen-keyboard-toggle"
+                      onClick={() => setShowOnScreenKeyboard((v) => !v)}
+                      title="Toggle on-screen keyboard"
+                      aria-label="Toggle on-screen keyboard"
+                    >
+                      ⌨️
+                    </button>
+                  </div>
+
+                  {/* Below the search row, not overlapping it — toggling
+                      this on/off never moves the row above. "Done" just
+                      retracts the keyboard now, not the whole modal (the
+                      ✕ above/the backdrop do that instead), since it's no
+                      longer the only way out of a bottom sheet. */}
+                  {showOnScreenKeyboard && (
+                    <OnScreenKeyboard
+                      value={searchQuery}
+                      onChange={setSearchQuery}
+                      onClose={() => setShowOnScreenKeyboard(false)}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
             {panelMode === "directions" && directions && (
-              <div className="mobile-sheet mobile-directions-sheet">
-                <div className="mobile-sheet-content">
-                  <div className="mobile-sheet-body directions-panel">
+              <div className="modal-overlay" onClick={closeDirections}>
+                <div className="modal directions-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="directions-panel">
                     {directionsContent}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ---------- Persistent bottom Building selector — hidden while a
-                bottom sheet (room/directions) is already occupying that space. ---------- */}
-            {panelMode !== "room" && panelMode !== "directions" && (
-              <div className="mobile-bottom-bar" ref={buildingMenuRef}>
-                {buildingMenuOpen && (
-                  <div className="mobile-building-menu">
-                    <div
+            {panelMode === "account" && user && (
+              <div className="modal-overlay" onClick={closePanel}>
+                <div className="modal mobile-account-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="preview-header">
+                    <h3>Account</h3>
+                    <button className="close-btn" onClick={closePanel}>✕</button>
+                  </div>
+                  <div className="mobile-account-panel">
+                    <div className="account-avatar">{initials}</div>
+                    <span className="account-name" title={displayName}>{displayName}</span>
+                    {role === "admin" && (
+                      <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
+                    )}
+                    <button onClick={signOut} className="subtle account-signout mobile-signout-btn">Sign out</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {buildingMenuOpen && (
+              <div className="modal-overlay" onClick={() => setBuildingMenuOpen(false)}>
+                <div className="modal mobile-building-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="preview-header">
+                    <h3>Choose a building</h3>
+                    <button className="close-btn" onClick={() => setBuildingMenuOpen(false)}>✕</button>
+                  </div>
+                  <div className="mobile-building-list">
+                    <button
+                      type="button"
                       className={"mobile-building-option" + (buildingFilter === "all" ? " mobile-building-option-active" : "")}
                       onClick={() => handleMobileBuildingPick("all")}
                     >
                       All Buildings
-                    </div>
+                    </button>
                     {allBuildings().map((b) => (
-                      <div
+                      <button
+                        type="button"
                         key={b.id}
                         className={"mobile-building-option" + (buildingFilter === b.id ? " mobile-building-option-active" : "")}
                         onClick={() => handleMobileBuildingPick(b.id)}
                       >
                         {b.label}
-                      </div>
+                      </button>
                     ))}
                   </div>
-                )}
-                <button
-                  type="button"
-                  className="mobile-building-trigger"
-                  onClick={() => setBuildingMenuOpen((o) => !o)}
-                >
-                  {buildingFilter === "all" ? "All Buildings" : buildingLabel(buildingFilter)}
-                  <span className="mobile-building-caret">{buildingMenuOpen ? "▴" : "▾"}</span>
-                </button>
+                </div>
               </div>
             )}
-
-            {arModal}
           </div>
         ) : (
           <div className="main-page-screen">

@@ -11,9 +11,9 @@ import { useState, useEffect } from "react";
 // count against it.
 //
 // enabled lets the caller suppress idle detection entirely while some
-// other overlay is already open (search panel, feedback panel, AR
-// modal, etc.) — no timer runs at all in that case, so this prompt
-// can never appear stacked on top of something else already showing.
+// other overlay is already open (search panel, feedback panel, etc.) —
+// no timer runs at all in that case, so this prompt can never appear
+// stacked on top of something else already showing.
 export function useIdleDetector(timeoutMs, enabled) {
   const [idle, setIdle] = useState(false);
 

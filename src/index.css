@@ -1013,6 +1013,16 @@ button.primary {
   height: 100vh;
   width: 100vw;
   display: flex;
+  /* Kiosk/touch hardening, scoped to the public tour view only (not the
+     admin editor or auth pages): a stray two-finger touch on the app
+     chrome shouldn't be able to pinch-zoom or rubber-band/bounce the
+     whole page — this is meant to read as an installed kiosk app, not a
+     scrollable web page. The panorama itself already has pinch-zoom
+     disabled separately (OrbitControls' enableZoom={false}). Individual
+     scrollable panels (search results, sheets, dropdowns) opt back into
+     vertical panning below via "touch-action: pan-y". */
+  touch-action: none;
+  overscroll-behavior: none;
 }
 .main-page-sidebar {
   width: 320px;
@@ -2862,6 +2872,14 @@ button.primary {
   max-width: calc(100vw - 92px);
   max-height: calc(100% - 88px);
   overflow-y: auto;
+  /* Opts back into vertical panning against the page-level touch-action:
+     none set on .main-page-layout — this panel genuinely scrolls, that
+     ancestor rule is only meant to stop pinch-zoom/rubber-band on the
+     app chrome as a whole. overscroll-behavior: contain stops an
+     over-scroll here from chaining into (and bouncing) the page behind
+     it once it hits the end of its own content. */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2937,12 +2955,13 @@ button.primary {
   bottom: 16px;
   left: 16px;
 }
-/* Mobile — kept at its original top-right spot, clear of the top bar and
-   the bottom building selector both. */
+/* Mobile/kiosk — top-right, clear of the (now much shorter, read-only)
+   title pill above and the bottom-anchored control cluster below.
+   Safe-area padded for a kiosk bezel/notch. */
 .minimap-widget-mobile {
   position: absolute;
-  top: 70px;
-  right: 16px;
+  top: calc(56px + env(safe-area-inset-top));
+  right: calc(16px + env(safe-area-inset-right));
 }
 /* Deliberately kept dark/hardcoded rather than tokenized — this label
    sits directly on top of OpenStreetMap tile imagery, not app chrome, so
@@ -3212,116 +3231,295 @@ button.primary {
   cursor: default;
 }
 /* =====================================================================
-   Mobile main-page layout
+   Touch press feedback — hover has no meaning on a touchscreen, so every
+   tappable control needs a visible pressed state instead, or there's no
+   way to tell a tap actually registered (no cursor to hint
+   interactivity the way a desktop pointer does). Scoped to devices that
+   genuinely have no hover capability — a touchscreen kiosk or phone —
+   so desktop's existing :hover treatments are untouched.
+   ===================================================================== */
+@media (hover: none) {
+  button:not(:disabled):active,
+  .room-search-result:active,
+  .room-search-result-actionable:active,
+  .entrance-btn:active,
+  .directions-btn:active,
+  .archive-thumb:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+}
+
+/* =====================================================================
+   Mobile/kiosk main-page layout — shared by phones and tall portrait
+   kiosk screens alike (see useIsMobile in MainPage.jsx); there is no
+   separate kiosk build, so every rule here is written kiosk-grade:
+   44px+ touch targets, safe-area insets for notches/kiosk bezels, every
+   actionable control collapsed behind a single middle-left FAB within
+   arm's reach of someone standing at a wall-mounted kiosk (see
+   "Middle-left control dock" below), and visible :active press feedback
+   since there's no cursor to hint interactivity.
    ===================================================================== */
 .mobile-screen {
   overflow: hidden;
 }
-/* ---------- Top bar ---------- */
-.mobile-topbar {
+/* ---------- Top: read-only location title, no controls ---------- */
+.mobile-title-wrap {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  /* Equal gutters on both sides — required for this to actually sit at
+     true screen-center (an asymmetric gutter, e.g. a bigger one on the
+     right to clear the minimap, shifts the centered content left of
+     center by half the difference, which read as "not centered" even
+     though justify-content: center was doing exactly what it was told).
+     140px matches the minimap's own width so it stays clear on the
+     right; the left side gets the same value purely for symmetry, even
+     though nothing actually sits there — .mobile-title-pill's own
+     text-overflow: ellipsis handles the rest gracefully on narrow
+     phones. */
+  left: calc(140px + env(safe-area-inset-left));
+  right: calc(140px + env(safe-area-inset-right));
   display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 30;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
 }
-.mobile-back-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: var(--shadow-1);
-}
-.mobile-ar-btn {
-  flex-shrink: 0;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--accent);
-  font-family: var(--font-sans-display);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  box-shadow: var(--shadow-1);
-}
-.mobile-exit-btn {
-  color: var(--danger-text);
-  border-color: var(--danger);
-  background: var(--danger-surface);
-  padding: 0 10px;
-}
-.mobile-search-wrap {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-}
-.mobile-search-wrap input {
-  width: 100%;
-  height: 40px;
-  padding: 0 40px 0 14px;
+.mobile-title-pill {
+  max-width: 100%;
+  padding: 8px 16px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
   background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
   color: var(--text);
   font-size: 14px;
-  box-shadow: var(--shadow-1);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.mobile-search-wrap input:focus {
-  outline: none;
-  border-color: var(--focus-ring);
-}
-/* Same treatment as .onscreen-keyboard-toggle above (desktop's floating
-   search bar) — this mobile version needs its own copy of the rule
-   rather than sharing it directly, since .mobile-search-wrap has no
-   separate decorative icon sharing the space here, just this one
-   button positioned against the input's own right edge. */
-.mobile-search-wrap .onscreen-keyboard-toggle {
-  right: 4px;
-}
-.mobile-account-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  box-shadow: var(--shadow-1);
-}
-/* ---------- Top-anchored panel (search results / account) ---------- */
-.mobile-top-panel-backdrop {
+/* ---------- Radial menu backdrop — full-screen, dims the panorama while
+   the middle-left dock is fanned open; tapping it collapses everything
+   (see closeMobileDock in MainPage.jsx). Every actual feature (search,
+   directions/exit, account, building picker) opens its own separate
+   .modal-overlay on top of this — same centered, auto-height pattern as
+   FeedbackPanel — so this backdrop only ever needs to cover the brief
+   moment between tapping the FAB and picking one of the radial icons. ---------- */
+.mobile-panel-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(32, 27, 27, 0.35);
   z-index: 25;
 }
-.mobile-top-panel {
+/* ---------- Middle-left control dock: a single FAB, vertically centered
+   on the left edge — reachable at arm's length by someone standing at a
+   wall-mounted kiosk. Tapping it fans out icon-only buttons around it,
+   clock-numbers style, swept across its right side only (nothing to its
+   left but the screen edge) — see .mobile-radial-menu/.mobile-radial-btn.
+   This box is sized to exactly match the FAB (56x56) so it can act as
+   the fan's own center point/anchor, regardless of how many icons are
+   actually shown. ---------- */
+.mobile-side-dock {
   position: absolute;
-  top: 60px;
-  left: 12px;
-  right: 12px;
-  max-height: calc(100% - 76px);
-  overflow-y: auto;
+  top: 50%;
+  left: calc(12px + env(safe-area-inset-left));
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  /* Must outrank .mobile-panel-backdrop's z-index: 25 — this establishes
+     its own stacking context (position + z-index together always do),
+     so z-index values set on its children only matter INSIDE that local
+     context; from the backdrop's side, the whole dock is ranked as one
+     layer at whatever z-index is set here. Set any lower than the
+     backdrop and the backdrop paints over the entire dock — a real bug
+     hit once already, before this was a radial fan rather than a
+     sliding side panel. */
+  z-index: 26;
+}
+.mobile-side-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.08s ease, opacity 0.08s ease;
+}
+.mobile-side-fab:active {
+  transform: scale(0.94);
+  opacity: 0.85;
+}
+/* Zero-size anchor at the FAB's exact center — each .mobile-radial-btn
+   is positioned from this same point via an inline transform (computed
+   in MainPage.jsx from the icon's clock-angle and a fixed radius), so
+   they fan out evenly no matter how many are actually shown (back/
+   account are conditional). */
+.mobile-radial-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+.mobile-radial-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px; /* centers the 48px button on its own translate()-computed point */
+  border-radius: 50%;
+  border: 1px solid var(--border);
   background: var(--surface);
+  color: var(--accent);
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.08s ease, opacity 0.08s ease;
+}
+.mobile-radial-btn:active {
+  transform: scale(0.9);
+  opacity: 0.85;
+}
+.mobile-radial-btn.mobile-exit-btn {
+  color: var(--danger-text);
+  border-color: var(--danger);
+  background: var(--danger-surface);
+}
+.mobile-radial-btn.mobile-account-btn {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 14px;
+}
+/* ---------- Bottom sheet (room card only — directions now opens as a
+   centered modal instead, see .directions-modal below) ---------- */
+.mobile-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mobile-sheet-handle-area {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 14px 0;
+  cursor: grab;
+  touch-action: none;
+}
+.mobile-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.mobile-sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+.mobile-room-photo-wrap {
+  height: 140px;
+}
+.mobile-sheet-body {
+  padding: 4px 16px 16px;
+  font-size: 15px;
+}
+.mobile-sheet-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mobile-sheet-title-row .room-card-title {
+  flex: 1;
+  min-width: 0;
+}
+/* 44px+ touch target for the room sheet's Get Directions/360° View
+   buttons, which share this compact desktop-tuned sizing otherwise. */
+.mobile-sheet button {
+  min-height: 44px;
+}
+/* ---------- Mobile modals: search, directions/exit, account, Building
+   picker — all reuse the shared .modal-overlay/.modal pattern
+   (FeedbackPanel.jsx is the reference implementation) rather than a
+   fixed-height bottom sheet, specifically so each one sizes itself to
+   its own content instead of leaving awkward empty space below a short
+   one (e.g. the exit panel's lone "Get Directions" button used to sit
+   in a fixed 62vh-tall sheet). ---------- */
+.directions-modal {
+  width: 400px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+.directions-modal button {
+  min-height: 44px;
+}
+.mobile-account-modal {
+  width: 320px;
+  max-width: 92vw;
+}
+.mobile-building-modal {
+  width: 340px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.mobile-search-modal {
+  width: 400px;
+  max-width: 92vw;
+}
+/* Fixed height regardless of how many results are in it (even zero) —
+   this is what keeps the search row and keyboard below it from ever
+   shifting position as the visitor types; only this area's own content
+   scrolls. */
+.mobile-search-results-area {
+  height: min(320px, 42vh);
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: var(--shadow-2);
-  padding: 12px;
-  z-index: 30;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+/* .room-search-results (searchResultsContent's own list box) normally
+   carries its own max-height: 260px + overflow-y: auto for the contexts
+   it's more commonly used in (the desktop/mobile dropdown panels) — left
+   as-is here, that would cap scrolling at 260px and leave the rest of
+   this area's own height (up to 320px) as unusable dead space below it,
+   with two independently-scrolling boxes nested inside each other.
+   Neutralized so this outer area is the ONE scroll container, using its
+   full height before it ever needs to scroll — with a long list of
+   suggestions, this keeps scrolling working the same simple, single-
+   region way regardless of how many there are. Its border/background/
+   shadow are dropped too, so it reads as one cohesive box rather than a
+   card nested inside another card. */
+.mobile-search-results-area .room-search-results {
+  margin-top: 0;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .mobile-account-panel {
   display: flex;
@@ -3341,118 +3539,102 @@ button.primary {
 }
 .mobile-signout-btn {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
+  min-height: 44px;
   border-radius: var(--radius-md);
   margin-top: 6px;
 }
-/* ---------- Bottom sheets (room card + directions) ---------- */
-.mobile-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.mobile-search-row {
+  position: relative;
 }
-.mobile-sheet-handle-area {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-  cursor: grab;
-  touch-action: none;
-}
-.mobile-sheet-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border);
-}
-.mobile-sheet-content {
-  flex: 1;
-  overflow-y: auto;
-}
-.mobile-room-photo-wrap {
-  height: 140px;
-}
-.mobile-sheet-body {
-  padding: 4px 16px 16px;
-}
-.mobile-sheet-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-.mobile-sheet-title-row .room-card-title {
-  flex: 1;
-  min-width: 0;
-}
-.mobile-directions-sheet {
-  height: 62vh;
-}
-.mobile-directions-sheet .mobile-sheet-body {
-  padding: 16px;
-}
-/* ---------- Persistent bottom Building selector ---------- */
-.mobile-bottom-bar {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 16px;
-  z-index: 20;
-}
-.mobile-building-trigger {
+.mobile-search-row input {
   width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
+  height: 48px;
+  padding: 0 44px 0 16px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
   box-shadow: var(--shadow-1);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
 }
-.mobile-building-caret {
-  color: var(--text-muted);
-  font-size: 12px;
+.mobile-search-row input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
 }
-.mobile-building-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  max-height: 50vh;
+/* Same treatment as .onscreen-keyboard-toggle above (desktop's floating
+   search bar) — this mobile version needs its own copy of the rule
+   rather than sharing it directly, since .mobile-search-row has no
+   separate decorative icon sharing the space here, just this one
+   button positioned against the input's own right edge. */
+.mobile-search-row .onscreen-keyboard-toggle {
+  right: 6px;
+}
+/* The on-screen keyboard sits BELOW the search row, not overlapping or
+   pushing it — see the "kiosk search" comment in MainPage.jsx. */
+.mobile-search-modal .onscreen-keyboard {
+  margin-top: 12px;
+}
+/* ---------- Building picker list — plain <button>s now (was a styled
+   <div> list under a dropdown trigger; that dropdown is gone now that
+   this opens as its own modal), reset back to a borderless, full-width
+   row so they still read as a simple tappable list. ---------- */
+.mobile-building-list {
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
-  padding: 6px;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .mobile-building-option {
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  border: none;
   border-radius: var(--radius-md);
-  font-size: 14px;
+  background: none;
+  font-size: 15px;
+  font-family: inherit;
   color: var(--text);
   cursor: pointer;
+  text-align: left;
 }
 .mobile-building-option:hover {
   background: var(--surface-hover);
 }
+.mobile-building-option:active {
+  background: var(--surface-hover);
+  transform: scale(0.98);
+}
 .mobile-building-option-active {
   color: var(--accent);
   font-weight: 700;
+}
+/* ---------- Larger default type scale for stand-back viewing distance —
+   a kiosk (and this same breakpoint's phones) is typically read from
+   further away than a phone held in hand; bump the search-result and
+   card text this layout renders. ---------- */
+.mobile-screen .room-search-name {
+  font-size: 15px;
+}
+.mobile-screen .room-search-sub {
+  font-size: 13px;
+}
+.mobile-screen .pano-marker-label,
+.mobile-screen .pano-hotspot-preview-label {
+  font-size: 13px;
+}
+/* ---------- 44px+ touch targets for a couple of controls that are
+   deliberately compact in their shared desktop styling. ---------- */
+.mobile-screen .directions-btn {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.mobile-screen .close-btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 20px;
 }
 /* ---------- Flowchart feature (admin) ---------- */
 .flowchart-controls {
@@ -4224,8 +4406,8 @@ button.primary {
    Idle prompt — "Done exploring?" after a period of inactivity (see
    IdlePrompt.jsx, useIdleDetector.js). Reuses .modal-overlay/.modal/
    .form-actions directly — genuinely locked and centered, same pattern
-   as MainPage's own arModal — only the width and message text need
-   their own rules here.
+   as the app's other warning-style modals — only the width and message
+   text need their own rules here.
    ===================================================================== */
 .idle-prompt-modal {
   width: 320px;
@@ -4312,6 +4494,19 @@ button.primary {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Mobile/kiosk: stays bottom-right (same as desktop) now that the
+   control dock lives on the middle-left edge instead of spanning the
+   bottom — just a 44px+ touch-target bump for the toggle. Mirrors
+   MainPage.jsx's own useIsMobile breakpoint (width, or a genuinely
+   portrait/tall aspect ratio) as closely as a media query can; ArchiveBar
+   isn't DOM-nested under .mobile-screen so it can't just inherit that
+   JS-driven class the way other mobile-only chrome does. */
+@media (max-width: 768px), (max-aspect-ratio: 87/100) {
+  .archive-bar-toggle {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
 }
 
 /* =====================================================================

@@ -1,10 +1,11 @@
 // The "Done exploring?" prompt shown after a period of inactivity.
-// Reuses .modal-overlay/.modal directly (same pattern as MainPage's own
-// arModal) for a genuinely locked, centered, scrim-backed prompt —
-// unlike arModal, though, the overlay itself has no onClick to dismiss
-// on a backdrop click. This prompt is only ever cleared by an explicit
-// choice (one of the two buttons below), matching "locked until clicked"
-// literally — a stray click outside shouldn't count as either choice.
+// Reuses .modal-overlay/.modal directly (same pattern as the app's
+// other warning-style modals) for a genuinely locked, centered,
+// scrim-backed prompt — unlike those, though, the overlay itself has no
+// onClick to dismiss on a backdrop click. This prompt is only ever
+// cleared by an explicit choice (one of the two buttons below), matching
+// "locked until clicked" literally — a stray click outside shouldn't
+// count as either choice.
 export default function IdlePrompt({ onContinue, onGiveFeedback }) {
   return (
     <div className="modal-overlay">
