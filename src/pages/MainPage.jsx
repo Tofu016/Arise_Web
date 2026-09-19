@@ -11,7 +11,8 @@ import OnScreenKeyboard from "../components/OnScreenKeyboard";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
-import { allBuildings, buildingLabel, defaultHotspotAngle, floorLabel } from "../utils/constants";
+import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
+import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
 import { pickDefaultEntranceForBuilding } from "../utils/navigation";
@@ -264,15 +265,10 @@ export default function MainPage() {
     }
   }, [nodes, photoReady, initialLoadDone]);
 
-  const hotspots = useMemo(() => {
-    if (!current) return [];
-    const neighborIds = current.neighbors || [];
-    return neighborIds.map((nid, idx) => {
-      const target = byId[nid];
-      const angle = current.hotspots?.[nid] || defaultHotspotAngle(idx, neighborIds.length);
-      return { id: nid, name: target?.name || nid, photo: target?.photo, ...angle };
-    });
-  }, [current, byId]);
+  const hotspots = useMemo(
+    () => (current ? buildHotspots(current, byId, { withPhoto: true }) : []),
+    [current, byId]
+  );
 
   const markers = current?.markers || [];
 

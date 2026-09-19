@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTourStops } from "../hooks/useTourStops";
 import { useTourSections } from "../hooks/useTourSections";
-import { defaultHotspotAngle } from "../utils/constants";
+import { buildHotspots } from "../utils/hotspots";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import PanoramaNav from "../components/PanoramaNav";
@@ -206,15 +206,7 @@ export default function PublicTourPage() {
   const photoReady = !current?.photo || imageLoaded;
   const stillLoading = stopsLoading || sectionsLoading || !current || !photoReady;
 
-  const hotspots = useMemo(() => {
-    if (!current) return [];
-    const neighborIds = current.neighbors || [];
-    return neighborIds.map((nid, idx) => {
-      const target = byId[nid];
-      const angle = current.hotspots?.[nid] || defaultHotspotAngle(idx, neighborIds.length);
-      return { id: nid, name: target?.name || nid, ...angle };
-    });
-  }, [current, byId]);
+  const hotspots = useMemo(() => (current ? buildHotspots(current, byId) : []), [current, byId]);
 
   const markers = current?.markers || [];
 

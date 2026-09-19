@@ -1,26 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useTourStops } from "../../hooks/useTourStops";
 import { useTourSections } from "../../hooks/useTourSections";
 import PanoramaNav from "../../components/PanoramaNav";
 import TourStopList from "../../components/TourStopList";
 import FilePickerButton from "../../components/FilePickerButton";
-import { defaultHotspotAngle } from "../../utils/constants";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
-import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { newMarkerId } from "../../utils/placement";
+import { useGraphEditor } from "../../hooks/useGraphEditor";
 
-function newMarkerId() {
-  return `m_${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`;
-}
-
-// Campus Tour equivalent of Virtual Map Navigation Editor — same walking/
-// linking mechanic (stop-to-stop hotspots), reuses PanoramaNav.jsx
-// directly since it's generic enough not to need any changes for this.
-// The marker system here is genuinely different from the indoor side's:
-// instead of picking a type (room/facility/exit/hydrant) and a plain
-// text label, an equipment marker is a label plus a set of photos that
-// open in a carousel on the public page ("Click to view photos") —
-// there's no type picker at all, every marker created here is the one
-// "equipment" type.
+// Campus Tour equivalent of Virtual Map Navigation Editor — the same
+// walking/linking/placing mechanic (stop-to-stop hotspots), shared through
+// useGraphEditor, and it reuses PanoramaNav.jsx directly. The marker
+// system here is genuinely different from the indoor side's: instead of
+// picking a type (room/facility/exit/hydrant) and a plain text label, an
+// equipment marker is a label plus a set of photos that open in a carousel
+// on the public page ("Click to view photos") — there's no type picker at
+// all, every marker created here is the one "equipment" type.
+//
+// Unlike the indoor system's marker, its id is generated up front, as soon
+// as "+ Add Marker" is started — the photos need a stable id to be named
+// around while the admin is still picking them, which happens BEFORE
+// placement, not after.
 //
 // Calls useTourStops()/useTourSections() directly, same as
 // TourStopsPage.jsx — not shared Outlet context yet (see that page's own
@@ -30,131 +30,27 @@ export default function TourNavigationEditorPage() {
   const { stops, selectedStopId, setSelectedStopId, setNeighbors, setHotspot, setMarkers } = useTourStops();
   const { sections } = useTourSections();
 
-  const byId = useMemo(() => Object.fromEntries(stops.map((s) => [s.id, s])), [stops]);
-  const [history, setHistory] = useState([]);
-  const [placingFor, setPlacingFor] = useState(null); // neighborId being positioned, or null
-  // Marker placement: { mode: "new", id, label, photos } before its first
-  // placement, or { mode: "reposition", id } when moving an existing one.
-  // Unlike the indoor system's newMarkerId() (generated only at the
-  // moment of placement), the id here is generated up front, as soon as
-  // "+ Add Marker" is started — the photos need a stable id to be named
-  // around while the admin is still picking them, which happens BEFORE
-  // placement, not after.
-  const [placingMarker, setPlacingMarker] = useState(null);
-  const [addSearch, setAddSearch] = useState("");
-  const [adding, setAdding] = useState(false);
+  const editor = useGraphEditor({
+    items: stops,
+    selectedId: selectedStopId,
+    setSelectedId: setSelectedStopId,
+    setNeighbors,
+    setHotspot,
+    setMarkers,
+  });
+  const { current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history } = editor;
+
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
-  const [newMarkerId_, setNewMarkerId_] = useState(null);
+  const [pendingMarkerId, setPendingMarkerId] = useState(null);
   const [newMarkerPhotos, setNewMarkerPhotos] = useState([]); // storage paths
   const [markerUploadState, setMarkerUploadState] = useState("idle");
-  const [photoMissing, setPhotoMissing] = useState(false);
-  const [entryYaw, setEntryYaw] = useState(0);
   const [sectionFilter, setSectionFilter] = useState("all");
-
-  const current = selectedStopId ? byId[selectedStopId] : null;
-  const { url: securePhotoUrl } = useSecurePhotoUrl(current?.photo);
-
-  useEffect(() => {
-    if (securePhotoUrl) setPhotoMissing(false);
-  }, [securePhotoUrl]);
-
-  const hotspots = useMemo(() => {
-    if (!current) return [];
-    const neighborIds = current.neighbors || [];
-    return neighborIds.map((nid, idx) => {
-      const target = byId[nid];
-      const angle = current.hotspots?.[nid] || defaultHotspotAngle(idx, neighborIds.length);
-      return { id: nid, name: target?.name || nid, ...angle };
-    });
-  }, [current, byId]);
-
-  const markers = current?.markers || [];
-
-  const handleSelectStop = (id) => {
-    setHistory([]);
-    setSelectedStopId(id);
-    setPlacingFor(null);
-    setPlacingMarker(null);
-    setPhotoMissing(false);
-    setEntryYaw(0);
-  };
-
-  const goTo = (id, angle) => {
-    setHistory((h) => (selectedStopId ? [...h, selectedStopId] : h));
-    setSelectedStopId(id);
-    setPlacingFor(null);
-    setPlacingMarker(null);
-    setPhotoMissing(false);
-    setEntryYaw(angle?.yaw ?? 0);
-  };
-
-  const goBack = () => {
-    setHistory((h) => {
-      if (h.length === 0) return h;
-      const next = [...h];
-      const prevId = next.pop();
-      setSelectedStopId(prevId);
-      setPlacingFor(null);
-      setPlacingMarker(null);
-      setPhotoMissing(false);
-      setEntryYaw(0);
-      return next;
-    });
-  };
-
-  const startReposition = (neighborId) => setPlacingFor(neighborId);
-
-  const handlePlaceAngle = (angle) => {
-    if (placingFor) {
-      setHotspot(current.id, placingFor, angle);
-      setPlacingFor(null);
-      return;
-    }
-    if (placingMarker) {
-      if (placingMarker.mode === "new") {
-        const marker = {
-          id: placingMarker.id,
-          type: "equipment",
-          label: placingMarker.label,
-          photos: placingMarker.photos,
-          ...angle,
-        };
-        setMarkers(current.id, [...markers, marker]);
-      } else if (placingMarker.mode === "reposition") {
-        setMarkers(
-          current.id,
-          markers.map((m) => (m.id === placingMarker.id ? { ...m, ...angle } : m))
-        );
-      }
-      setPlacingMarker(null);
-    }
-  };
-
-  const removeLink = (neighborId) => {
-    setNeighbors(current.id, (current.neighbors || []).filter((id) => id !== neighborId));
-  };
-
-  const candidateStops = useMemo(() => {
-    if (!current || !addSearch.trim()) return [];
-    const q = addSearch.toLowerCase();
-    return stops
-      .filter((s) => s.id !== current.id && !(current.neighbors || []).includes(s.id))
-      .filter((s) => s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [addSearch, stops, current]);
-
-  const addLink = (targetId) => {
-    setNeighbors(current.id, [...(current.neighbors || []), targetId]);
-    setAddSearch("");
-    setAdding(false);
-    setPlacingFor(targetId);
-  };
 
   const startAddMarker = () => {
     setAddingMarker(true);
     setNewMarkerLabel("");
-    setNewMarkerId_(newMarkerId());
+    setPendingMarkerId(newMarkerId());
     setNewMarkerPhotos([]);
     setMarkerUploadState("idle");
   };
@@ -171,7 +67,7 @@ export default function TourNavigationEditorPage() {
         // index, so several photos on the same marker don't collide with
         // each other, and re-adding more photos later keeps appending
         // rather than overwriting an earlier one at the same index.
-        const filename = photoFilename(file, `${newMarkerId_}_${newMarkerPhotos.length + i}`);
+        const filename = photoFilename(file, `${pendingMarkerId}_${newMarkerPhotos.length + i}`);
         const { path } = await uploadPhoto("tourMarker", file, { filename });
         uploaded.push(path);
       }
@@ -189,23 +85,14 @@ export default function TourNavigationEditorPage() {
 
   const confirmStartPlacingNewMarker = () => {
     if (!newMarkerLabel.trim() || newMarkerPhotos.length === 0) return;
-    setPlacingMarker({
-      mode: "new",
-      id: newMarkerId_,
+    editor.startPlacingMarker({
+      id: pendingMarkerId,
+      type: "equipment",
       label: newMarkerLabel.trim(),
       photos: newMarkerPhotos,
     });
     setAddingMarker(false);
   };
-
-  const startRepositionMarker = (id) => setPlacingMarker({ mode: "reposition", id });
-
-  const removeMarker = (id) => {
-    setMarkers(current.id, markers.filter((m) => m.id !== id));
-  };
-
-  const placing = !!placingFor || !!placingMarker;
-  const photoUrl = current?.photo ? securePhotoUrl : null;
 
   const sidebar = (
     <div className="navigation-editor-sidebar">
@@ -226,7 +113,7 @@ export default function TourNavigationEditorPage() {
         sections={sections}
         sectionFilter={sectionFilter}
         selectedStopId={selectedStopId}
-        onSelect={handleSelectStop}
+        onSelect={editor.select}
       />
     </div>
   );
@@ -251,14 +138,14 @@ export default function TourNavigationEditorPage() {
         {placingFor && (
           <div className="placing-banner">
             Click on the panorama to place the arrow toward "{byId[placingFor]?.name || placingFor}"
-            <button onClick={() => setPlacingFor(null)}>Cancel</button>
+            <button onClick={editor.cancelLinkPlacement}>Cancel</button>
           </div>
         )}
         {placingMarker && (
           <div className="placing-banner">
             Click on the panorama to place the marker
-            {placingMarker.mode === "new" ? ` "${placingMarker.label}"` : ""}
-            <button onClick={() => setPlacingMarker(null)}>Cancel</button>
+            {placingMarker.mode === "new" ? ` "${placingMarker.marker.label}"` : ""}
+            <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
           </div>
         )}
 
@@ -268,11 +155,11 @@ export default function TourNavigationEditorPage() {
             url={photoUrl || ""}
             hotspots={hotspots}
             markers={markers}
-            onNavigate={goTo}
-            onError={() => setPhotoMissing(true)}
-            placing={placing}
-            onPlaceAngle={handlePlaceAngle}
-            initialYaw={entryYaw}
+            onNavigate={editor.goTo}
+            onError={() => editor.setPhotoMissing(true)}
+            placing={editor.placing}
+            onPlaceAngle={editor.placeAngle}
+            initialYaw={editor.entryYaw}
           />
         </div>
         {(!current.photo || photoMissing) && (
@@ -286,7 +173,7 @@ export default function TourNavigationEditorPage() {
         <p className="preview-hint">
           Left-click and drag to look around · click a link to teleport
           {history.length > 0 && (
-            <button className="back-btn" onClick={goBack}>← Back</button>
+            <button className="back-btn" onClick={editor.goBack}>← Back</button>
           )}
         </p>
 
@@ -306,8 +193,8 @@ export default function TourNavigationEditorPage() {
                 <div key={h.id} className="link-row">
                   <span className="link-name">{h.name}</span>
                   <div className="link-actions">
-                    <button onClick={() => startReposition(h.id)}>Reposition</button>
-                    <button className="danger" onClick={() => removeLink(h.id)}>Remove</button>
+                    <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
+                    <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
                   </div>
                 </div>
               ))}
@@ -322,8 +209,8 @@ export default function TourNavigationEditorPage() {
                 <div key={m.id} className="link-row">
                   <span className="link-name">📷 {m.label} ({(m.photos || []).length} photo{(m.photos || []).length === 1 ? "" : "s"})</span>
                   <div className="link-actions">
-                    <button onClick={() => startRepositionMarker(m.id)}>Reposition</button>
-                    <button className="danger" onClick={() => removeMarker(m.id)}>Remove</button>
+                    <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
+                    <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
                   </div>
                 </div>
               ))}
@@ -334,28 +221,28 @@ export default function TourNavigationEditorPage() {
         <div className="navigation-editor-add-row">
           <div className="navigation-editor-add-col">
             <h5>Links</h5>
-            {!adding ? (
-              <button className="add-link-btn" onClick={() => setAdding(true)}>+ Add Links</button>
+            {!editor.adding ? (
+              <button className="add-link-btn" onClick={() => editor.setAdding(true)}>+ Add Links</button>
             ) : (
               <div className="add-link-box">
                 <input
                   type="text"
                   autoFocus
                   placeholder="Search stop by name or ID..."
-                  value={addSearch}
-                  onChange={(e) => setAddSearch(e.target.value)}
+                  value={editor.addSearch}
+                  onChange={(e) => editor.setAddSearch(e.target.value)}
                 />
                 <div className="add-link-results">
-                  {candidateStops.map((s) => (
-                    <div key={s.id} className="add-link-result" onClick={() => addLink(s.id)}>
+                  {editor.candidates.map((s) => (
+                    <div key={s.id} className="add-link-result" onClick={() => editor.addLink(s.id)}>
                       {s.name} <span className="neighbor-id">{s.id}</span>
                     </div>
                   ))}
-                  {addSearch && candidateStops.length === 0 && (
+                  {editor.addSearch && editor.candidates.length === 0 && (
                     <p className="empty-hint">No matches.</p>
                   )}
                 </div>
-                <button onClick={() => { setAdding(false); setAddSearch(""); }}>Cancel</button>
+                <button onClick={editor.cancelAddingLink}>Cancel</button>
               </div>
             )}
           </div>

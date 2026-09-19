@@ -51,8 +51,9 @@ async function refresh() {
 // Fire-and-forget on module load, same timing as the original
 // onSnapshot subscription firing once the first snapshot arrives —
 // consumers calling useCustomBuildingsVersion() re-render once this
-// resolves and notify() runs.
-refresh();
+// resolves and notify() runs. A failed load just leaves the list empty
+// (no admin-added buildings) rather than an unhandled rejection at import.
+refresh().catch(() => {});
 
 export function getCustomBuildings() {
   return customBuildings;

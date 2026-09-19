@@ -3,6 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
+import { toPosition, toAngles, initialCameraPosition, computeFov, TARGET_HORIZONTAL_FOV } from "../utils/panoramaMath";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 
 // Genuinely missing before this fix — referenced below (m.type ===
@@ -18,40 +19,11 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 // deliberate choice here rather than an arbitrary one.
 const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 
-const MARKER_RADIUS = 480; // just inside the 500-radius panorama sphere, so arrows sit in front of the image
-
 // A slight backward tilt on the hotspot arrow — just enough to hint
 // "forward, into the scene" rather than "straight up the screen". Kept
 // small on purpose: a steep lean makes the billboarded arrow look like
 // it's swinging around as the view moves. The arrow itself is static.
 const ARROW_FORWARD_LEAN = 0.26; // radians (~15°)
-
-function toPosition(yaw, pitch, radius = MARKER_RADIUS) {
-  const yawRad = (yaw * Math.PI) / 180;
-  const pitchRad = (pitch * Math.PI) / 180;
-  return [
-    radius * Math.sin(yawRad) * Math.cos(pitchRad),
-    radius * Math.sin(pitchRad),
-    -radius * Math.cos(yawRad) * Math.cos(pitchRad),
-  ];
-}
-
-// Converts a raycast hit point on the sphere back into yaw/pitch, used when the
-// user clicks the panorama itself to place or reposition a hotspot.
-function toAngles(point) {
-  const r = Math.sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
-  const pitch = (Math.asin(point.y / r) * 180) / Math.PI;
-  const yaw = ((Math.atan2(point.x, -point.z) * 180) / Math.PI + 360) % 360;
-  return { yaw, pitch };
-}
-
-// The camera "looks toward" whatever's opposite its position (since OrbitControls
-// points it at the target near the origin) — so to make the initial view face a
-// given yaw/pitch, the starting camera position has to sit on the OPPOSITE side.
-function initialCameraPosition(yaw, pitch, radius = 0.1) {
-  const [x, y, z] = toPosition(yaw, pitch, radius);
-  return [-x, -y, -z];
-}
 
 function PanoramaSphere({ url, onLoaded, onError, onSurfaceClick, placing }) {
   const [texture, setTexture] = useState(null);
@@ -392,34 +364,7 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
 // shape — so a FIXED vertical FOV mathematically produces a narrower
 // HORIZONTAL view on a narrower screen, not a display bug, just the
 // geometry of a fixed vertical angle applied to a narrower width.
-// Rather than the old two-value landscape/portrait switch, this instead
-// targets a constant HORIZONTAL field of view and derives the vertical
-// FOV Three.js actually wants from whatever the real aspect ratio is —
-// so a kiosk's actual screen (which can land anywhere between a narrow
-// phone-like panel and a much wider portrait touchscreen) gets a
-// horizontal view that reads the same regardless of exact shape,
-// instead of jumping between two hardcoded numbers at a single
-// orientation boundary.
-//
-// Still clamped at both ends: MIN_FOV keeps a very wide/short screen
-// from zooming in uncomfortably tight, MAX_FOV keeps a very
-// tall/narrow one well short of fisheye territory (~150°+). These
-// numbers are reasonable starting points, not precisely derived —
-// worth tuning by eye at the real aspect ratio of the deployed kiosk
-// touchscreen, not just by the math.
-const TARGET_HORIZONTAL_FOV = 100; // degrees
-const MIN_FOV = 60;
-const MAX_FOV = 180;
-
-function computeFov(width, height) {
-  if (!width || !height) return TARGET_HORIZONTAL_FOV;
-  const aspect = width / height;
-  const targetHorizontalRad = (TARGET_HORIZONTAL_FOV * Math.PI) / 180;
-  const verticalRad = 2 * Math.atan(Math.tan(targetHorizontalRad / 2) / aspect);
-  const verticalDeg = (verticalRad * 180) / Math.PI;
-  return Math.min(MAX_FOV, Math.max(MIN_FOV, verticalDeg));
-}
-
+// The field of view follows the window: see computeFov in utils/panoramaMath.js.
 function usePanoramaFov() {
   const [fov, setFov] = useState(() =>
     typeof window !== "undefined" ? computeFov(window.innerWidth, window.innerHeight) : TARGET_HORIZONTAL_FOV
