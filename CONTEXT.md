@@ -23,3 +23,18 @@ A photo only viewable after a role check (the indoor kinds).
 **Blur review**:
 The admin step where a new node panorama is manually blurred before it is published; until confirmed, the upload is held in a temporary area.
 _Avoid_: face scan, face review (automatic detection no longer exists)
+
+**Walk**:
+Moving to a neighboring Node by its hotspot; the visitor keeps their history and faces the way they went.
+
+**Jump**:
+Moving anywhere else (search result, entrance, room card, start of a route) as a fresh start; history is cleared.
+
+**Flyover**:
+The map animation shown before any move between two places with different real coordinates (a cross-campus move). GD1/GD2/GD3 share coordinates, so moves between them never fly over.
+
+**Route**:
+The shortest walkable sequence of Nodes between two points, followed one stop at a time (optionally hands-free, as auto-walk).
+
+**Assembly point**:
+A Node with an exit marker labeled "Assembly Point"; the only valid destination of the nearest-exit shortcut.

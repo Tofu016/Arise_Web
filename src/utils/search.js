@@ -54,3 +54,68 @@ export function searchRooms(query, searchableRooms) {
 
   return [...exact, ...partial, ...textMatch].slice(0, 8);
 }
+
+// Rooms with actual detail records (photo/description/department/use) —
+// built by matching each node's "Rooms served" entries against the
+// placard dialogs. Only rooms an admin has gone through Room Edit for are
+// searchable; a room existing on a node alone isn't enough, since there'd
+// be nothing to show on its card. Deduped case-insensitively.
+export function buildSearchableRooms(nodes, getForRoom) {
+  if (!nodes) return [];
+  const out = [];
+  const seen = new Set();
+  for (const n of nodes) {
+    for (const roomName of n.rooms || []) {
+      const key = roomName.trim().toUpperCase();
+      if (seen.has(key)) continue;
+      const placard = getForRoom(roomName);
+      if (!placard) continue; // no detail record yet — not searchable here
+      seen.add(key);
+      out.push({ roomName, node: n, placard });
+    }
+  }
+  return out;
+}
+
+// Rooms first, then plain node-name matches (entrances, hallways, ...) as
+// a fallback so "Main Entrance" still works, not just room numbers. A node
+// already surfaced through a room result is left out of the places, so
+// the same location never shows twice. Always scans the whole campus.
+export function searchCampus(query, nodes, searchableRooms) {
+  const roomResults = searchRooms(query, searchableRooms);
+  if (!nodes || !query.trim()) return { roomResults, placeResults: [] };
+  const roomNodeIds = new Set(roomResults.map((r) => r.node.id));
+  return { roomResults, placeResults: searchNodes(query, nodes).filter((n) => !roomNodeIds.has(n.id)) };
+}
+
+// A "don't know what to search for" starting point: a random sample of
+// searchable rooms. `random` is injectable so tests can pin the shuffle.
+export function pickSuggestions(searchableRooms, count = 6, random = Math.random) {
+  const pool = [...searchableRooms];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
+// A "room" marker's label is a separate, independently-typed field from a
+// node's "Rooms served" list, so it's matched by name, case/whitespace
+// insensitive. Undefined when no saved room details exist for the label.
+export function findRoomForMarker(marker, searchableRooms) {
+  const key = (marker.label || "").trim().toUpperCase();
+  return searchableRooms.find((r) => r.roomName.trim().toUpperCase() === key);
+}
+
+// Resolves typed text to a node by EXACT name (case/whitespace-
+// insensitive): node names first, then room names (a room's navigable
+// target is its node). Deliberately not fuzzy — an ambiguous partial match
+// could resolve to the wrong node.
+export function resolveExactNodeMatch(query, nodes, searchableRooms) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q || !nodes) return null;
+  const nodeMatch = nodes.find((n) => n.name.trim().toLowerCase() === q);
+  if (nodeMatch) return nodeMatch;
+  const roomMatch = searchableRooms.find((r) => r.roomName.trim().toLowerCase() === q);
+  return roomMatch ? roomMatch.node : null;
+}

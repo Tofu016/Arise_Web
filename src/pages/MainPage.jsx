@@ -13,39 +13,16 @@ import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { allBuildings, buildingLabel, defaultHotspotAngle, floorLabel } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
-import { searchNodes, searchRooms } from "../utils/search";
-import { findPath, getTurnInstruction } from "../utils/pathfinding";
+import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
+import { pickDefaultEntranceForBuilding } from "../utils/navigation";
+import * as route from "../utils/directionsRoute";
+import { useNavigation } from "../hooks/useNavigation";
+import { useDirections, useAutoWalk } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
-
-// Deterministic "where do we start" pick: prefer an entrance, in building
-// order (GD1, GD2, GD3, then any admin-added buildings), lowest floor first.
-// Falls back to the first node at all if the data has no entrances tagged.
-function pickDefaultNode(nodes) {
-  if (!nodes || nodes.length === 0) return null;
-  const entrances = nodes.filter((n) => n.type === "entrance");
-  if (entrances.length === 0) return nodes[0];
-  const order = allBuildings().map((b) => b.id);
-  return [...entrances].sort((a, b) => {
-    const ai = order.indexOf(a.building);
-    const bi = order.indexOf(b.building);
-    if (ai !== bi) return ai - bi;
-    return (a.floor ?? 0) - (b.floor ?? 0);
-  })[0];
-}
-
-// Same idea, scoped to one building — used by the mobile bottom Building
-// selector, which (unlike desktop's hamburger menu) has no separate
-// entrances list to browse, so picking a building jumps straight there.
-function pickDefaultEntranceForBuilding(nodes, buildingId) {
-  if (!nodes) return null;
-  const inBuilding = nodes.filter((n) => n.type === "entrance" && n.building === buildingId);
-  if (inBuilding.length === 0) return null;
-  return [...inBuilding].sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0))[0];
-}
 
 // Breakpoint-driven layout swap: below a width threshold, OR whenever the
 // screen is genuinely tall/portrait, this switches to the stacked
@@ -108,11 +85,8 @@ export default function MainPage() {
 
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
-  const [currentId, setCurrentId] = useState(null);
-  const [history, setHistory] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [entryYaw, setEntryYaw] = useState(0);
   const searchInputRef = useRef(null);
 
   // Single source of truth for what the floating panel below the search bar
@@ -188,23 +162,18 @@ export default function MainPage() {
   // tap), so unlike a dropdown it needs no outside-click listener.
   const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
 
+  const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
+
+  // Where the visitor is standing, their history, and any cross-campus
+  // flyover in progress — see utils/navigation.js.
+  const nav = useNavigation(nodes, byId);
+  const { currentId, history, entryYaw, flyover } = nav;
+
   // Point-to-point directions ("just like Street View"): opened from a
   // search result, holds the from/to text + resolved node ids, the computed
-  // path once requested, and how far along it the visitor currently is.
-  const [directions, setDirections] = useState(null);
-  // shape: { fromQuery, fromId, toQuery, toId, path, stepIndex, error, editingField, kind }
-  // kind: "point" (visitor picked the destination) | "exit" (auto-routed to the nearest assembly point)
-
-  // Land directly in the tour instead of an intermediate menu page.
-  useEffect(() => {
-    if (nodes && currentId === null) {
-      const start = pickDefaultNode(nodes);
-      if (start) setCurrentId(start.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes]);
-
-  const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
+  // path once requested, and how far along it the visitor currently is —
+  // see utils/directionsRoute.js for its shape.
+  const [directions, setDirections] = useDirections(nodes, currentId);
 
   // Rooms with actual detail records (photo/description/department/use) —
   // built by matching each node's "Rooms served" entries against
@@ -212,60 +181,27 @@ export default function MainPage() {
   // for show up in search this way; a room existing on a node alone isn't
   // enough, since there'd be nothing to show on the card.
   const { getForRoom } = usePlacardDialogs();
-  const searchableRooms = useMemo(() => {
-    if (!nodes) return [];
-    const out = [];
-    const seen = new Set();
-    for (const n of nodes) {
-      for (const roomName of n.rooms || []) {
-        const key = roomName.trim().toUpperCase();
-        if (seen.has(key)) continue;
-        const placard = getForRoom(roomName);
-        if (!placard) continue; // no detail record yet — not searchable here
-        seen.add(key);
-        out.push({ roomName, node: n, placard });
-      }
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, getForRoom]);
+  const searchableRooms = useMemo(() => buildSearchableRooms(nodes, getForRoom), [nodes, getForRoom]);
 
   // Room search always scans the whole campus regardless of the building filter —
   // that filter only picks which entrances are offered to browse from, it
   // shouldn't stop someone from finding "203" just because they'd selected GD2.
-  const roomResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    return searchRooms(searchQuery, searchableRooms);
-  }, [searchableRooms, searchQuery]);
-
-  // Plain node-name matches (entrances, hallways, etc.) — kept as a fallback
-  // alongside room results so searching "Main Entrance" still works the way
-  // it always has, not just room numbers/descriptions. Rooms already
-  // surfaced above are excluded here to avoid showing the same location twice.
-  const placeResults = useMemo(() => {
-    if (!nodes || !searchQuery.trim()) return [];
-    const roomNodeIds = new Set(roomResults.map((r) => r.node.id));
-    return searchNodes(searchQuery, nodes).filter((n) => !roomNodeIds.has(n.id));
-  }, [nodes, searchQuery, roomResults]);
+  const { roomResults, placeResults } = useMemo(
+    () => searchCampus(searchQuery, nodes, searchableRooms),
+    [nodes, searchQuery, searchableRooms]
+  );
 
   // A quick "don't know what to search for" starting point — a fresh random
   // sample of rooms (that actually have detail records) shown the moment the
   // (empty) search box is focused, re-shuffled each time it's opened.
   const randomSuggestions = useMemo(() => {
-    if (searchableRooms.length === 0) return [];
-    return [...searchableRooms].sort(() => Math.random() - 0.5).slice(0, 6);
+    return pickSuggestions(searchableRooms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelMode === "search", searchableRooms]);
 
   // The currently-open Google-Maps-style room detail card, or null.
   const [selectedRoomCard, setSelectedRoomCard] = useState(null);
   const [room360Open, setRoom360Open] = useState(false);
-  // Auto-walk: steps through directions.path automatically, one hop every
-  // 5s, simulating walking the route hands-free. Off by default — an
-  // explicit opt-in via its own button, never triggered by just having a
-  // path computed.
-  const [autoWalking, setAutoWalking] = useState(false);
-
   const entrances = useMemo(() => {
     if (!nodes) return [];
     return nodes.filter(
@@ -289,11 +225,6 @@ export default function MainPage() {
     current.building !== "gd3" &&
     currentBuildingMeta?.lat != null &&
     currentBuildingMeta?.lng != null;
-
-  // Active flyover, or null when none is in progress. Set by
-  // jumpToSearchResult when it detects a genuine cross-campus jump — see
-  // that function for the actual detection logic.
-  const [flyover, setFlyover] = useState(null);
 
   // 15s is the midpoint of the requested 10-20s range — a single named
   // constant, easy to retune. Suppressed entirely (enabled: false, no
@@ -345,226 +276,73 @@ export default function MainPage() {
 
   const markers = current?.markers || [];
 
-  // Shared by every "move the current node" path — goTo (hotspot clicks,
-  // AND "Walk to next stop" in directions, since handleWalkToNextStop
-  // itself calls goTo) and jumpToSearchResult (search results, building
-  // selector, room cards). Detects a genuine cross-campus move — real,
-  // DIFFERENT coordinates on both ends, not just any building change —
-  // and defers the caller's own normal-path logic into the flyover
-  // sequence instead of performing it immediately. GD1/GD2/GD3 all share
-  // identical coordinates (same physical cluster), so switching between
-  // them correctly never triggers this, regardless of which path is
-  // used. Returns true if a flyover was started (caller should stop, not
-  // also perform its own jump); false otherwise (caller should proceed
-  // normally, exactly as if this helper didn't exist).
-  const tryStartFlyover = (targetId, onProceed) => {
-    const targetNode = byId[targetId];
-    const targetBuildingMeta = targetNode ? allBuildings().find((b) => b.id === targetNode.building) : null;
-    const isCrossCampus =
-      current &&
-      targetNode &&
-      currentBuildingMeta?.lat != null &&
-      targetBuildingMeta?.lat != null &&
-      (currentBuildingMeta.lat !== targetBuildingMeta.lat || currentBuildingMeta.lng !== targetBuildingMeta.lng);
-
-    if (!isCrossCampus) return false;
-
-    setFlyover({
-      fromLat: currentBuildingMeta.lat,
-      fromLng: currentBuildingMeta.lng,
-      fromLabel: buildingLabel(current.building),
-      toLat: targetBuildingMeta.lat,
-      toLng: targetBuildingMeta.lng,
-      toLabel: buildingLabel(targetNode.building),
-      onProceed,
-    });
-    return true;
+  // What follows a move that actually happened — everything the navigation
+  // module deliberately knows nothing about: the search box, the open
+  // panel, the room card.
+  const afterMove = (action) => {
+    if (action.type === "back") return;
+    setSearchQuery("");
+    if (action.type === "walk") return;
+    if (action.meta?.room) {
+      setSelectedRoomCard(action.meta.room);
+      setPanelMode("room");
+    } else {
+      closePanel();
+    }
   };
 
-  // Guards every navigation entry point (hotspot taps, search/building/
-  // directions picks, back) against being fired twice in quick succession
-  // — a kiosk gets mashed, and a fast double-tap can otherwise queue two
-  // navigations before the first one's re-render/remount has a chance to
-  // take the old hotspot off screen. Deliberately a single shared cooldown
-  // across all of them, not one per call site: any of these firing twice
-  // within the window is the same "accidental double tap" problem.
-  const NAV_DEBOUNCE_MS = 500;
-  const lastNavAtRef = useRef(0);
-  const navGuardOk = () => {
-    // Only ever invoked from an event handler (a tap/click already in
-    // progress), never during render — the lint rule can't see that from
-    // this closure alone.
-    // eslint-disable-next-line react-hooks/purity
-    const now = Date.now();
-    if (now - lastNavAtRef.current < NAV_DEBOUNCE_MS) return false;
-    lastNavAtRef.current = now;
-    return true;
-  };
-
+  // Hotspot click, and "Walk to next stop" in directions.
   const goTo = (id, angle) => {
-    if (!navGuardOk()) return;
+    const { outcome, action } = nav.walk(id, angle?.yaw);
+    if (outcome === "ignored") return;
     setMobileDockOpen(false);
-    const performWalk = () => {
-      setHistory((h) => (currentId ? [...h, currentId] : h));
-      setCurrentId(id);
-      setSearchQuery("");
-      setEntryYaw(angle?.yaw ?? 0);
-    };
-    if (tryStartFlyover(id, performWalk)) return;
-    performWalk();
+    if (outcome === "moved") afterMove(action);
   };
 
   const goBack = () => {
-    if (!navGuardOk()) return;
+    const { outcome, action } = nav.back();
+    if (outcome === "ignored") return;
     setMobileDockOpen(false);
-    setHistory((h) => {
-      if (h.length === 0) return h;
-      const next = [...h];
-      setCurrentId(next.pop());
-      setEntryYaw(0);
-      return next;
-    });
+    if (outcome === "moved") afterMove(action);
   };
 
-  // Jumping in from search/an entrance/directions is a fresh start, not a
-  // "walk from where I was" — there's no path shown yet, just a direct hop.
-  // Also dismisses whatever the floating panel was showing, same as Maps
-  // closing search/place-details once you actually navigate somewhere.
-  const jumpToSearchResult = (id) => {
-    if (!navGuardOk()) return;
+  // Jumping in from search/an entrance/directions/a room card is a fresh
+  // start, not a "walk from where I was" — there's no path shown yet, just a
+  // direct hop. Also dismisses whatever the floating panel was showing, same
+  // as Maps closing search/place-details once you actually navigate somewhere.
+  // Every cross-campus move gets a flyover first, this included.
+  const jumpToSearchResult = (id, meta) => {
+    const { outcome, action } = nav.jump(id, meta);
+    if (outcome === "ignored") return;
     setMobileDockOpen(false);
-    const performJump = () => {
-      setHistory([]);
-      setCurrentId(id);
-      setSearchQuery("");
-      setEntryYaw(0);
-      closePanel();
-    };
-    if (tryStartFlyover(id, performJump)) {
-      closePanel(); // dismiss whatever panel was open, even though the actual jump itself is deferred
-      return;
-    }
-    performJump();
+    if (outcome === "moved") afterMove(action);
+    else closePanel(); // dismiss whatever panel was open, even though the actual jump itself is deferred
   };
 
-  // Called once the flyover sequence finishes (auto-proceed or Skip) —
-  // runs whichever caller's normal-path logic was deferred (goTo's
-  // "walk" behavior, or jumpToSearchResult's "jump" behavior), rather
-  // than a single hardcoded implementation that would only be correct
-  // for one of the two callers.
+  // Called once the flyover sequence finishes (auto-proceed or Skip).
   const completeFlyover = () => {
-    if (!flyover) return;
-    const proceed = flyover.onProceed;
-    setFlyover(null);
-    proceed();
+    const { action } = nav.completeFlyover();
+    if (action) afterMove(action);
   };
 
   // Cancelling just closes the flyover — the visitor stays exactly where
-  // they already were, no jump happens at all.
-  const cancelFlyover = () => setFlyover(null);
-
-  // Keep an active route in sync with wherever the visitor actually is: if
-  // they followed the highlighted hotspot, just advance the step counter; if
-  // they wandered off onto a different hotspot, re-route from their new spot
-  // instead of leaving a stale/broken path on screen.
-  useEffect(() => {
-    if (!directions?.path || !currentId) return;
-    const idx = directions.path.indexOf(currentId);
-    if (idx !== -1) {
-      if (idx !== directions.stepIndex) {
-        setDirections((d) => (d ? { ...d, stepIndex: idx } : d));
-      }
-      return;
-    }
-    const reroute = findPath(nodes, currentId, directions.toId);
-    setDirections((d) => {
-      if (!d) return d;
-      if (!reroute) return { ...d, path: null, stepIndex: 0, error: "Lost the route from here — try Get directions again." };
-      return { ...d, path: reroute, stepIndex: 0, error: "" };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId]);
+  // they already were, no move happens at all.
+  const cancelFlyover = () => nav.cancelFlyover();
 
   // Opening directions always REPLACES whatever the panel was showing
   // (search results, a room card, the menu) — same as Maps switching from
   // place details straight into directions mode, not stacking both.
   const openDirectionsTo = (node) => {
     setMobileDockOpen(false);
-    setDirections({
-      fromQuery: current?.name || "",
-      fromId: current?.id || null,
-      toQuery: node.name,
-      toId: node.id,
-      path: null,
-      stepIndex: 0,
-      error: "",
-      editingField: null,
-      kind: "point",
-    });
+    setDirections(route.openDirectionsTo(current, node));
     setSearchQuery("");
     setPanelMode("directions");
   };
 
-  // Emergency "nearest exit" shortcut: unlike openDirectionsTo, the
-  // destination isn't picked by the visitor — it's whichever node has a
-  // marker explicitly labeled "Assembly Point" (case-insensitive/trimmed,
-  // since this is free-typed by whoever creates the marker) that comes back
-  // shortest from where they currently are, checked across every building
-  // via the same neighbor graph normal directions use, so a GD2 visitor can
-  // route out through GD3's assembly point if that path is actually
-  // shorter. The route is computed immediately instead of waiting for a
-  // second "Get directions" click, since every second matters here.
-  //
-  // Deliberately NOT matching on node type/floor — a node with any other
-  // exit-type marker (e.g. "Emergency Fire Stairs") is a real, useful
-  // waypoint the path may legitimately pass through, but is intentionally
-  // NOT a valid endpoint here. Only a marker specifically labeled "Assembly
-  // Point" counts as the genuine, complete safe destination — this is what
-  // prevents the router from stopping short at a stairwell door instead of
-  // routing all the way to an actual outdoor assembly point, and avoids
-  // ambiguity if a building ever has more than one ground-floor open area.
   const openDirectionsToNearestExit = () => {
     if (!current || !nodes) return;
     setMobileDockOpen(false);
-    const assemblyPoints = nodes.filter((n) =>
-      (n.markers || []).some(
-        (m) => m.type === "exit" && (m.label || "").trim().toLowerCase() === "assembly point"
-      )
-    );
-    if (assemblyPoints.length === 0) {
-      setDirections({
-        fromQuery: current.name,
-        fromId: current.id,
-        toQuery: "",
-        toId: null,
-        path: null,
-        stepIndex: 0,
-        error: 'No assembly point has been set up yet — ask an admin to add an exit marker labeled "Assembly Point."',
-        editingField: null,
-        kind: "exit",
-      });
-      setSearchQuery("");
-      setPanelMode("directions");
-      return;
-    }
-
-    let best = null;
-    for (const area of assemblyPoints) {
-      const path = findPath(nodes, current.id, area.id);
-      if (path && (!best || path.length < best.path.length)) best = { area, path };
-    }
-
-    setDirections({
-      fromQuery: current.name,
-      fromId: current.id,
-      toQuery: best?.area.name || "",
-      toId: best?.area.id || null,
-      path: best?.path || null,
-      stepIndex: 0,
-      error: best ? "" : "No walkable route to an assembly point was found from here.",
-      editingField: null,
-      kind: "exit",
-    });
+    setDirections(route.openNearestExit(current, nodes));
     setSearchQuery("");
     setPanelMode("directions");
   };
@@ -574,36 +352,18 @@ export default function MainPage() {
     closePanel();
   };
 
-  // Selecting a room from search just opens its info card — it doesn't move
-  // the panorama on its own. "Get Directions"/"360° View" on the card itself
-  // are the explicit actions that actually navigate, reusing the exact same
-  // machinery a node search result already uses.
-  // Selecting a room now also moves the viewer to its attached node, same
-  // "teleport" jumpToSearchResult already does for a plain node result —
-  // previously this only opened the info card without actually moving
-  // anywhere, which read as broken/inconsistent next to node search
-  // results doing both at once.
-  const openRoomCard = (room) => {
-    setMobileDockOpen(false);
-    setHistory([]);
-    setCurrentId(room.node.id);
-    setEntryYaw(0);
-    setSelectedRoomCard(room);
-    setSearchQuery("");
-    setPanelMode("room");
-  };
+  // Selecting a room from search moves the viewer to its attached node (a
+  // jump, so it flies over a campus boundary like any other) and opens its
+  // info card once it lands. "Get Directions"/"360° View" on the card itself
+  // are the explicit actions that go further.
+  const openRoomCard = (room) => jumpToSearchResult(room.node.id, { room });
 
-  // Clicking a "room" type marker in the panorama itself — matches the
-  // marker's own label against searchableRooms by name (case/whitespace-
-  // insensitive, same normalization convention used throughout this
-  // file), since a marker's label is a separate, independently-typed
-  // field from a node's "Rooms served" list, not guaranteed to match
-  // character-for-character. If no saved room details exist for that
-  // label, nothing happens — same "only rooms an admin has actually gone
-  // through Room Edit for are actionable" rule search already follows.
+  // Clicking a "room" type marker in the panorama itself. If no saved room
+  // details exist for that label, nothing happens — same "only rooms an admin
+  // has actually gone through Room Edit for are actionable" rule search
+  // already follows.
   const handleRoomMarkerClick = (marker) => {
-    const key = (marker.label || "").trim().toUpperCase();
-    const match = searchableRooms.find((r) => r.roomName.trim().toUpperCase() === key);
+    const match = findRoomForMarker(marker, searchableRooms);
     if (match) openRoomCard(match);
   };
 
@@ -617,162 +377,43 @@ export default function MainPage() {
     openDirectionsTo(selectedRoomCard.node);
   };
 
-  // Now opens the room's OWN photo360 (set via the "360° room photo" field
-  // in Room Edit) as a standalone viewer — previously this just
-  // teleported the main tour to the room's node, which wasn't actually
-  // showing the room360 feature at all, and was also largely redundant
-  // with what opening the card already does since it moves the viewer
-  // there itself now. The button is disabled in RoomCard when no
-  // photo360 is set, so this can assume one exists.
+  // Opens the room's OWN photo360 (set via the "360° room photo" field in
+  // Room Edit) as a standalone viewer. The button is disabled in RoomCard
+  // when no photo360 is set, so this can assume one exists.
   const handleRoomView360 = () => {
     if (!selectedRoomCard?.placard?.photo360) return;
     setRoom360Open(true);
   };
 
-  const updateDirectionsField = (field, value) => {
-    setDirections((d) => ({
-      ...d,
-      [field === "from" ? "fromQuery" : "toQuery"]: value,
-      [field === "from" ? "fromId" : "toId"]: null,
-      editingField: field,
-      path: null,
-      error: "",
-    }));
-  };
-
-  const pickDirectionsField = (field, node) => {
-    setDirections((d) => ({
-      ...d,
-      [field === "from" ? "fromQuery" : "toQuery"]: node.name,
-      [field === "from" ? "fromId" : "toId"]: node.id,
-      editingField: null,
-    }));
-  };
-
-  // Same as pickDirectionsField, but for a ROOM result — the actual
-  // navigable target is still the room's own node (pathfinding operates
-  // over nodes, not rooms), but the field displays the room's name, since
-  // that's what was actually searched for and picked.
-  const pickDirectionsFieldRoom = (field, room) => {
-    setDirections((d) => ({
-      ...d,
-      [field === "from" ? "fromQuery" : "toQuery"]: room.roomName,
-      [field === "from" ? "fromId" : "toId"]: room.node.id,
-      editingField: null,
-    }));
-  };
-
-  const directionsQuery =
-    directions?.editingField === "from" ? directions?.fromQuery
-      : directions?.editingField === "to" ? directions?.toQuery
-        : "";
+  const updateDirectionsField = (field, value) => setDirections((d) => route.editField(d, field, value));
+  const pickDirectionsField = (field, node) => setDirections((d) => route.pickNodeField(d, field, node));
+  const pickDirectionsFieldRoom = (field, room) => setDirections((d) => route.pickRoomField(d, field, room));
 
   // Same "rooms first, places second, no duplicates" structure as the main
-  // search bar's roomResults/placeResults — the From/To fields previously
-  // only ever searched nodes directly, never rooms, unlike the main
-  // search bar right next to them.
-  const directionsRoomMatches = useMemo(() => {
-    if (!directions?.editingField || !directionsQuery?.trim()) return [];
-    return searchRooms(directionsQuery, searchableRooms);
-  }, [directions?.editingField, directionsQuery, searchableRooms]);
+  // search bar — the From/To fields search rooms too.
+  const directionsQuery = route.activeQuery(directions);
+  const { roomResults: directionsRoomMatches, placeResults: directionsPlaceMatches } = useMemo(
+    () =>
+      directions?.editingField && directionsQuery.trim()
+        ? searchCampus(directionsQuery, nodes, searchableRooms)
+        : { roomResults: [], placeResults: [] },
+    [directions?.editingField, directionsQuery, nodes, searchableRooms]
+  );
 
-  const directionsPlaceMatches = useMemo(() => {
-    if (!directions?.editingField || !nodes || !directionsQuery?.trim()) return [];
-    const roomNodeIds = new Set(directionsRoomMatches.map((r) => r.node.id));
-    return searchNodes(directionsQuery, nodes).filter((n) => !roomNodeIds.has(n.id));
-  }, [directions?.editingField, nodes, directionsQuery, directionsRoomMatches]);
-
-  // Auto-resolves typed text to a node by EXACT name match (case/whitespace
-  // -insensitive) — lets "Get directions"/"Start walking" work even when
-  // the user typed a name directly and never clicked the autocomplete
-  // suggestion, rather than silently failing with fromId/toId stuck at
-  // null. Deliberately requires an exact match, not a partial/fuzzy one —
-  // an ambiguous partial match could resolve to the wrong node; genuinely
-  // ambiguous text still needs the dropdown to disambiguate.
-  // Checks node names first, then room names — a room's own resolvable
-  // target is its node, same as picking it from the dropdown would set.
-  // Keeps this consistent with the From/To suggestions now including
-  // rooms, not just nodes.
-  const resolveExactNodeMatch = (query) => {
-    const q = (query || "").trim().toLowerCase();
-    if (!q || !nodes) return null;
-    const nodeMatch = nodes.find((n) => n.name.trim().toLowerCase() === q);
-    if (nodeMatch) return nodeMatch;
-    const roomMatch = searchableRooms.find((r) => r.roomName.trim().toLowerCase() === q);
-    return roomMatch ? roomMatch.node : null;
-  };
-
-  const handleGetDirections = () => {
-    let fromId = directions?.fromId;
-    let toId = directions?.toId;
-    if (!fromId && directions?.fromQuery) {
-      const match = resolveExactNodeMatch(directions.fromQuery);
-      if (match) fromId = match.id;
-    }
-    if (!toId && directions?.toQuery) {
-      const match = resolveExactNodeMatch(directions.toQuery);
-      if (match) toId = match.id;
-    }
-
-    if (!fromId || !toId) {
-      setDirections((d) => ({ ...d, error: "Pick both a starting point and a destination from the suggestions, or type the exact name." }));
-      return;
-    }
-    const path = findPath(nodes, fromId, toId);
-    if (!path) {
-      setDirections((d) => ({ ...d, path: null, error: "No walkable route found between these two points yet." }));
-      return;
-    }
-    // Persist the resolved ids, not just the path — handleStartWalking
-    // reads directions.path[0] (itself just the resolved fromId) to know
-    // where to teleport; without this, it would still be working from a
-    // stale null fromId in state even though the path itself is correct.
-    setDirections((d) => ({ ...d, fromId, toId, path, stepIndex: 0, error: "" }));
-  };
+  const handleGetDirections = () => setDirections((d) => route.getDirections(d, nodes, searchableRooms));
 
   const handleStartWalking = () => {
     if (!directions?.path) return;
     jumpToSearchResult(directions.path[0]);
-    setDirections((d) => ({ ...d, stepIndex: 0 }));
+    setDirections(route.restartRoute);
     setPanelMode("directions"); // jumpToSearchResult closes the panel — reopen it for the route in progress
   };
 
   const handleWalkToNextStop = () => {
-    if (!directions?.path) return;
-    const nextId = directions.path[directions.stepIndex + 1];
-    if (!nextId) return;
-    const hs = hotspots.find((h) => h.id === nextId);
-    goTo(nextId, hs ? { yaw: hs.yaw, pitch: hs.pitch } : undefined);
+    const step = route.nextStep(directions, hotspots);
+    if (step) goTo(step.id, { yaw: step.yaw });
   };
-
-  // Auto-walk: while active, steps through the path automatically, one hop
-  // every 5s. Stops ITSELF (not just pauses) rather than leaving a stale
-  // background timer — when the destination is reached, or the directions
-  // panel closes/loses its path entirely. directions?.path is deliberately
-  // in the dependency list even though only its identity matters here: a
-  // freshly-computed route should restart the 5s countdown clean, not
-  // inherit whatever was left over from a previous one.
-  //
-  // handleWalkToNextStop is intentionally NOT in the dependency array —
-  // it's redefined every render, and including it would clear/restart the
-  // timer on every unrelated re-render, breaking the actual 5s wait. Each
-  // step already changes directions.stepIndex, which re-runs this effect
-  // with a fresh closure anyway.
-  useEffect(() => {
-    if (!autoWalking) return;
-    if (!directions?.path) {
-      setAutoWalking(false);
-      return;
-    }
-    const isArrived = directions.stepIndex === directions.path.length - 1;
-    if (isArrived) {
-      setAutoWalking(false);
-      return;
-    }
-    const timer = setTimeout(handleWalkToNextStop, 5000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoWalking, directions?.stepIndex, directions?.path]);
+  useAutoWalk(directions, setDirections, handleWalkToNextStop);
 
   // Mobile-only: the bottom Building selector doubles as direct navigation
   // (there's no separate entrances list to browse on mobile) — picking a
@@ -804,22 +445,12 @@ export default function MainPage() {
   }
 
   const photoUrl = securePhotoUrl || "";
-  const arrived = directions?.path && directions.stepIndex === directions.path.length - 1;
-  const nextStopId = directions?.path?.[directions.stepIndex + 1] || null;
-  const nextStopName = nextStopId ? (byId[nextStopId]?.name || nextStopId) : null;
-  // The next step's own hotspot on the CURRENT node — same object
-  // handleWalkToNextStop already looks up to know which way to face when
-  // walking there.
-  const nextStopHotspot = nextStopId ? hotspots.find((h) => h.id === nextStopId) : null;
-  // Only meaningful once stepIndex > 0 — entryYaw is the direction you
-  // arrived facing, set from the hotspot you actually walked through to
-  // get here. At stepIndex 0 you're still at the starting node (or
-  // haven't even started walking this specific route yet), so there's no
-  // real prior direction to turn relative to.
-  const turnInstruction =
-    directions?.stepIndex > 0 && nextStopHotspot
-      ? getTurnInstruction(entryYaw, nextStopHotspot.yaw)
-      : null;
+  const { arrived, nextStopId, nextStopName, turnInstruction } = route.routeProgress(directions, {
+    byId,
+    hotspots,
+    entryYaw,
+  });
+  const autoWalking = directions?.autoWalking ?? false;
 
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
@@ -834,11 +465,6 @@ export default function MainPage() {
   // action with nothing to show. Every handler collapses the radial menu
   // itself first (setMobileDockOpen(false)) so only the modal (or,
   // for Back, the panorama) is left showing, not both stacked at once.
-  // goBack closes over lastNavAtRef (see navGuardOk above), which is
-  // enough for the lint rule to flag this whole array construction as
-  // "may read a ref during render" — it doesn't; goBack itself is only
-  // ever invoked later, from a button's onClick.
-  // eslint-disable-next-line react-hooks/refs
   const radialItems = [
     history.length > 0 && { key: "back", icon: "←", title: "Back", onClick: goBack },
     {
@@ -1011,7 +637,7 @@ export default function MainPage() {
           type="text"
           value={directions.fromQuery}
           onChange={(e) => updateDirectionsField("from", e.target.value)}
-          onFocus={() => setDirections((d) => ({ ...d, editingField: "from" }))}
+          onFocus={() => setDirections((d) => route.focusField(d, "from"))}
           placeholder="Starting point"
         />
       </label>
@@ -1023,7 +649,7 @@ export default function MainPage() {
           type="text"
           value={directions.toQuery}
           onChange={(e) => updateDirectionsField("to", e.target.value)}
-          onFocus={() => setDirections((d) => ({ ...d, editingField: "to" }))}
+          onFocus={() => setDirections((d) => route.focusField(d, "to"))}
           placeholder="Destination"
         />
       </label>
@@ -1063,7 +689,7 @@ export default function MainPage() {
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
-                onClick={() => setAutoWalking((w) => !w)}
+                onClick={() => setDirections(route.toggleAutoWalk)}
               >
                 {autoWalking ? "⏸ Stop auto-walk" : "▶ Auto-walk (every 5s)"}
               </button>
