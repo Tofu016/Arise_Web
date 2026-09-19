@@ -1,24 +1,18 @@
-import { useRef } from "react";
-import { importNodesFromFile, downloadBackup } from "../utils/exportImport";
+// Triggers a browser download of the current node list as a point-in-time
+// JSON snapshot — a manual backup independent of the live data. It is a
+// read-only snapshot in the app's own node shape; there is no import to
+// restore it with.
+function downloadBackup(nodes) {
+  const blob = new Blob([JSON.stringify(nodes, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nodes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
-export default function ExportImportBar({ nodes, onImport }) {
-  const fileInputRef = useRef();
-
-  const handleImportClick = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const imported = await importNodesFromFile(file);
-      onImport(imported);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      e.target.value = "";
-    }
-  };
-
+export default function ExportImportBar({ nodes }) {
   return (
     <div className="export-import-bar">
       <span className="node-count">{nodes.length} nodes</span>
@@ -28,14 +22,6 @@ export default function ExportImportBar({ nodes, onImport }) {
       <span className="sync-badge sync-ok">☁️ Auto-saved</span>
 
       <button onClick={() => downloadBackup(nodes)} className="subtle">Download backup</button>
-      <button onClick={handleImportClick} className="subtle">Import JSON</button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json"
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
     </div>
   );
 }

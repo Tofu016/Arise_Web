@@ -34,7 +34,6 @@ export default function NodeEditorPage() {
     updateNode,
     renameNodeId,
     deleteNode,
-    loadNodes,
   } = useOutletContext();
 
   const [filters, setFilters] = useState(defaultFilters);
@@ -90,14 +89,6 @@ export default function NodeEditorPage() {
     }
   };
 
-  const handleImport = (importedNodes) => {
-    if (nodes.length > 0 && !confirm(`Replace current ${nodes.length} nodes with ${importedNodes.length} imported nodes?`)) {
-      return;
-    }
-    loadNodes(importedNodes);
-    setCreating(false);
-  };
-
   return (
     <div className="node-editor-page node-editor-page-split">
       <h2 className="admin-page-heading">Node Editor</h2>
@@ -108,11 +99,11 @@ export default function NodeEditorPage() {
         <button onClick={() => setPreviewOpen(true)}>Node Preview</button>
 
         {/* Not shown in the wireframes at all — kept here rather than
-            silently dropped, since export/import is real, working
-            functionality (backing up/restoring node data), not something
-            to lose in a layout-only pass. Flag if this should live
-            somewhere else instead. */}
-        <ExportImportBar nodes={nodes} onImport={handleImport} />
+            silently dropped, since downloading a backup of the node data is
+            real, working functionality, not something to lose in a
+            layout-only pass. Flag if this should live somewhere else
+            instead. */}
+        <ExportImportBar nodes={nodes} />
 
         <label className="node-editor-search">
           Search Node

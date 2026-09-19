@@ -6,17 +6,12 @@ import { useCollection } from "./useCollection";
 
 // Admin-side Nodes_API hook. Public interface (nodes, loading,
 // selectedNodeId, addNode, updateNode, renameNodeId, deleteNode,
-// setNeighbors, setHotspot, setMarkers, loadNodes) — AdminLayout.jsx calls
+// setNeighbors, setHotspot, setMarkers) — AdminLayout.jsx calls
 // this once and shares it via Outlet context across the editor pages.
 //
 // Wire mapping lives in utils/entities.js and the neighbor/hotspot/marker
 // diffing in utils/graphSync.js (shared with useTourStops); what's left
 // here is what's specific to nodes: rooms, and the selection.
-//
-// loadNodes (Import JSON) is deliberately NOT implemented yet — a real,
-// separate bulk-replace operation across nodes+neighbors+markers+rooms
-// all at once. It's still exposed (so destructuring it doesn't break
-// anything) but throws a clear error if actually called.
 
 async function loadAll() {
   const data = await apiGet("Nodes_API/getAll");
@@ -119,12 +114,6 @@ export function useNodes() {
     [mutate, nodeById]
   );
 
-  const loadNodes = useCallback(async () => {
-    throw new Error(
-      "Import JSON isn't available yet on the new backend — this is a real, separate bulk-replace operation across nodes, neighbors, markers, and rooms all at once, deliberately deferred to its own later pass rather than rushed as part of the core conversion."
-    );
-  }, []);
-
   return {
     nodes,
     loading,
@@ -137,6 +126,5 @@ export function useNodes() {
     setNeighbors,
     setHotspot,
     setMarkers,
-    loadNodes,
   };
 }
