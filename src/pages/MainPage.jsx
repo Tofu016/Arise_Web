@@ -10,7 +10,6 @@ import MobileRoomSheet from "../components/MobileRoomSheet";
 import OnScreenKeyboard from "../components/OnScreenKeyboard";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
-import ArchiveBar from "../components/ArchiveBar";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { allBuildings, buildingLabel, defaultHotspotAngle, floorLabel } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
@@ -112,22 +111,6 @@ export default function MainPage() {
   const [currentId, setCurrentId] = useState(null);
   const [history, setHistory] = useState([]);
 
-  // Session-only visit history for the archive bar — deliberately
-  // separate from `history` above, which is a back-button stack that
-  // shrinks as you go back and gets explicitly cleared on a fresh
-  // search jump. This one only ever grows, never clears, and only
-  // needs currentId itself (not the full node object), so it's safe to
-  // declare this early, right after currentId — nodes/byId aren't
-  // needed until the actual thumbnail render later in this component.
-  // A useEffect watching currentId (rather than hooking into every
-  // individual goTo/goBack/jumpToSearchResult call site) catches every
-  // way currentId could change, without needing to touch any of those
-  // functions individually.
-  const [visitedNodeIds, setVisitedNodeIds] = useState([]);
-  useEffect(() => {
-    if (!currentId) return;
-    setVisitedNodeIds((ids) => (ids.includes(currentId) ? ids : [...ids, currentId]));
-  }, [currentId]);
   const [searchQuery, setSearchQuery] = useState("");
   const [entryYaw, setEntryYaw] = useState(0);
   const searchInputRef = useRef(null);
@@ -810,7 +793,7 @@ export default function MainPage() {
         <p className="empty-hint">
           {loadError.includes("permission")
             ? "This usually means you're not signed in, or your account hasn't been approved yet."
-            : "If this persists, check that Firestore has campus data and your account has access."}
+            : "If this persists, check that the API (Arise_API) is running and reachable, and that its database has campus data."}
         </p>
       </div>
     );
@@ -1562,13 +1545,6 @@ export default function MainPage() {
           }}
         />
       )}
-
-      <ArchiveBar
-        visitedNodeIds={visitedNodeIds}
-        currentNodeId={currentId}
-        byId={byId}
-        onPick={jumpToSearchResult}
-      />
     </div>
   );
 }

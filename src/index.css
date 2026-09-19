@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    ARISE — application stylesheet, on the SDCA Brand Style Guide.
 
    Colour, type, radius and elevation all come from design tokens in
@@ -3243,8 +3243,7 @@ button.primary {
   .room-search-result:active,
   .room-search-result-actionable:active,
   .entrance-btn:active,
-  .directions-btn:active,
-  .archive-thumb:active {
+  .directions-btn:active {
     transform: scale(0.96);
     opacity: 0.85;
   }
@@ -4419,94 +4418,6 @@ button.primary {
   font-size: 16px;
   font-weight: 700;
   color: var(--text);
-}
-
-/* =====================================================================
-   Archive bar — a collapsible strip of nodes visited this session (see
-   MainPage.jsx's own visitedNodeIds tracking and ArchiveBar.jsx).
-   Bottom-right, deliberately: bottom-left is already the minimap/exit/
-   feedback button cluster, and this needed its own, uncontested corner.
-   Session-only by design — nothing here persists past a page reload.
-   ===================================================================== */
-.archive-bar {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-.archive-bar-toggle {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--text);
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow-1);
-  white-space: nowrap;
-}
-.archive-bar-strip {
-  display: flex;
-  gap: 8px;
-  max-width: min(600px, 90vw);
-  overflow-x: auto;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-2);
-}
-.archive-thumb {
-  flex-shrink: 0;
-  width: 88px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 0;
-  text-align: center;
-}
-.archive-thumb-img {
-  width: 88px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  display: block;
-}
-.archive-thumb-placeholder {
-  width: 88px;
-  height: 56px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  display: block;
-}
-.archive-thumb-label {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Mobile/kiosk: stays bottom-right (same as desktop) now that the
-   control dock lives on the middle-left edge instead of spanning the
-   bottom — just a 44px+ touch-target bump for the toggle. Mirrors
-   MainPage.jsx's own useIsMobile breakpoint (width, or a genuinely
-   portrait/tall aspect ratio) as closely as a media query can; ArchiveBar
-   isn't DOM-nested under .mobile-screen so it can't just inherit that
-   JS-driven class the way other mobile-only chrome does. */
-@media (max-width: 768px), (max-aspect-ratio: 87/100) {
-  .archive-bar-toggle {
-    min-height: 44px;
-    padding: 10px 14px;
-  }
 }
 
 /* =====================================================================

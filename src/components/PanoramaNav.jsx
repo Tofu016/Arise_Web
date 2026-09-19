@@ -409,7 +409,7 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
 // touchscreen, not just by the math.
 const TARGET_HORIZONTAL_FOV = 100; // degrees
 const MIN_FOV = 60;
-const MAX_FOV = 120;
+const MAX_FOV = 180;
 
 function computeFov(width, height) {
   if (!width || !height) return TARGET_HORIZONTAL_FOV;

@@ -9,7 +9,7 @@ function formatBytes(bytes) {
 }
 
 // Its own component so useSecurePhotoUrl (a hook) can be called once
-// per card — same reasoning as ArchiveBar.jsx's own ArchiveThumbnail.
+// per card, since hooks can't be called inside a loop.
 function PhotoCard({ photo, onDelete, deleting }) {
   const { url } = useSecurePhotoUrl(photo.path);
 
