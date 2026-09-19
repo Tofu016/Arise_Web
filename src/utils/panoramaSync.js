@@ -1,8 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
-
-function getToken() {
-  return localStorage.getItem("authToken");
-}
+import { apiUpload } from "./apiClient";
 
 // Rewritten to call IndoorUploads_API's panoramaPublish endpoint instead
 // of Firebase Storage. Same panoramas/{building}/{filename} path shape,
@@ -17,21 +13,6 @@ export async function copyPanoramaFile(file, building, filename) {
   formData.append("building", building);
   formData.append("filename", filename);
 
-  const headers = {};
-  const token = getToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/IndoorUploads_API/panoramaPublish`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.error || "Upload failed.");
-  }
+  const data = await apiUpload("IndoorUploads_API/panoramaPublish", formData);
   return { path: data.path };
 }

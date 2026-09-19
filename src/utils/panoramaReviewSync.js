@@ -1,8 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
-
-function getToken() {
-  return localStorage.getItem("authToken");
-}
+import { apiPost, apiUpload } from "./apiClient";
 
 // Rewritten to call IndoorUploads_API instead of Firebase Storage. Same
 // temporary-holding-area purpose as before — a not-yet-reviewed
@@ -16,22 +12,7 @@ export async function uploadForReview(file, building, filename) {
   formData.append("building", building);
   formData.append("filename", filename);
 
-  const headers = {};
-  const token = getToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/IndoorUploads_API/panoramaReview`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.error || "Upload failed.");
-  }
+  const data = await apiUpload("IndoorUploads_API/panoramaReview", formData);
   return { path: data.path };
 }
 
@@ -41,16 +22,7 @@ export async function uploadForReview(file, building, filename) {
 // transient error.
 export async function deleteReviewFile(path) {
   try {
-    const headers = { "Content-Type": "application/json" };
-    const token = getToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    await fetch(`${API_BASE_URL}/IndoorUploads_API/deleteReviewFile`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ path }),
-    });
+    await apiPost("IndoorUploads_API/deleteReviewFile", { path });
   } catch {
     // ignore
   }

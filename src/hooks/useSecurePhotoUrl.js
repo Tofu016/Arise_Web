@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { API_BASE_URL, apiGetBlob } from "../utils/apiClient";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 // Same three prefixes TourUploads_API saves under and
 // tourPhotoSync.js's own upload functions use — genuinely public
 // content, servable as a direct static file, no auth needed to view.
@@ -11,10 +11,6 @@ const PUBLIC_TOUR_PREFIXES = ["tourpanorama/", "tourcover/", "tourmarker/"];
 // blurring only, per the client's own choice — no more Cloud Function
 // dependency).
 const PROTECTED_INDOOR_PREFIXES = ["roomphoto/", "room360/", "panoramas/"];
-
-function getToken() {
-  return localStorage.getItem("authToken");
-}
 
 // Recognizes the public tour path prefixes and resolves those as a
 // direct URL against the PHP backend; recognizes the protected indoor
@@ -52,16 +48,11 @@ function matchesProtectedIndoorPrefix(photo) {
 // imperative, on-demand call rather than a reactive hook tied to a
 // render. Centralized here rather than duplicated in NodeForm.jsx
 // itself.
-export async function fetchProtectedPhotoBytes(photo) {
-  const token = getToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}/IndoorUploads_API/serve?path=${encodeURIComponent(photo)}`, {
-    headers,
-  });
-  if (!response.ok) {
-    throw new Error("Couldn't load the existing photo.");
-  }
-  return response.blob();
+export function fetchProtectedPhotoBytes(photo) {
+  return apiGetBlob(
+    `IndoorUploads_API/serve?path=${encodeURIComponent(photo)}`,
+    "Couldn't load the existing photo."
+  );
 }
 
 export function useSecurePhotoUrl(photo) {
@@ -91,14 +82,7 @@ export function useSecurePhotoUrl(photo) {
       let cancelled = false;
       let objectUrl = null;
 
-      const token = getToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      fetch(`${API_BASE_URL}/IndoorUploads_API/serve?path=${encodeURIComponent(photo)}`, { headers })
-        .then((response) => {
-          if (!response.ok) throw new Error("Couldn't load photo.");
-          return response.blob();
-        })
+      apiGetBlob(`IndoorUploads_API/serve?path=${encodeURIComponent(photo)}`, "Couldn't load photo.")
         .then((blob) => {
           if (cancelled) return;
           objectUrl = URL.createObjectURL(blob);
