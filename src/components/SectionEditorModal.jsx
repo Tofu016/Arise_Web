@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTourSections } from "../hooks/useTourSections";
-import { uploadTourSectionCover } from "../utils/tourPhotoSync";
+import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import FilePickerButton from "./FilePickerButton";
 
@@ -27,12 +27,10 @@ export default function SectionEditorModal({ onClose }) {
   const handleCoverPick = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dot = file.name.lastIndexOf(".");
-    const ext = dot !== -1 ? file.name.slice(dot) : "";
-    const filename = `${Date.now()}${ext}`;
+    const filename = photoFilename(file, String(Date.now()));
     setUploadState("uploading");
     try {
-      const { path } = await uploadTourSectionCover(file, filename);
+      const { path } = await uploadPhoto("tourCover", file, { filename });
       setCoverPath(path);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);

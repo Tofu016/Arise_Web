@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { NODE_TYPES, TRANSITION_TYPES, allBuildings, floorLabel, floorsForBuilding, suggestNodeId, suggestedPhotoFilename } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
-import { extractStoragePath, fetchProtectedPhotoBytes } from "../hooks/useSecurePhotoUrl";
 import { useAutoId } from "../hooks/useAutoId";
 import FaceReviewPanel from "./FaceReviewPanel";
-import * as panoramaSync from "../utils/panoramaSync";
-import { uploadForReview, deleteReviewFile } from "../utils/panoramaReviewSync";
-import { convertImage } from "../utils/imageConverter";
+import { photoFilename } from "../utils/photoStore";
+import { startReview, reviewExisting, confirmReview, cancelReview } from "../utils/panoramaReview";
 
 const emptyDraft = () => ({
   id: "",
@@ -130,45 +128,28 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     if (!file) return;
 
     // Name the photo after the node's own ID (not the uploaded file's
-    // original name), preserving the real extension — so it's predictable,
-    // and re-uploading a replacement photo for the same node cleanly
-    // overwrites the same file instead of leaving old ones lying around
-    // under their original names. Falls back to the original filename if
-    // there's no ID yet to key off of.
-    const dot = file.name.lastIndexOf(".");
-    const ext = dot !== -1 ? file.name.slice(dot) : "";
-    const targetFilename = draft.id ? `${draft.id}${ext}` : file.name;
+    // original name) — see photoFilename for why.
+    const targetFilename = photoFilename(file, draft.id);
 
     setCopyState("copying");
     try {
-      // Converts to a standard, backend-accepted format before upload —
-      // no resizing anymore (see imageConverter.js's own comment for the
-      // trade-off: the mobile-decode performance benefit resizing used
-      // to provide is genuinely gone with this change).
-      const converted = await convertImage(file);
-      setPreviewUrl(URL.createObjectURL(converted));
-
       // Uploads to a temporary, admin-only holding area first — the
       // photo isn't reachable through the normal viewing path until an
       // admin actually confirms it in the review panel below.
-      const { path: tempPath } = await uploadForReview(converted, draft.building, targetFilename);
+      const nextReview = await startReview(file, { building: draft.building, filename: targetFilename });
+      setPreviewUrl(URL.createObjectURL(nextReview.imageBlob));
       setCopyState("idle");
-      setReview({ imageBlob: converted, storagePath: tempPath, targetFilename, tempPath });
+      setReview(nextReview);
     } catch {
       setCopyState("error");
     }
   };
 
   const handleRescanExisting = async () => {
-    const path = extractStoragePath(draft.photo);
-    if (!path) return;
+    if (!draft.photo) return;
     setRescanning(true);
     try {
-      // fetchProtectedPhotoBytes already returns a real Blob (not raw
-      // ArrayBuffer bytes the way Firebase's getBytes() did), so this is
-      // used directly rather than re-wrapped.
-      const blob = await fetchProtectedPhotoBytes(path);
-      setReview({ imageBlob: blob, storagePath: path, targetFilename: null, tempPath: null });
+      setReview(await reviewExisting(draft.photo));
     } catch (err) {
       alert(err.message || "Couldn't load the existing photo.");
     } finally {
@@ -177,28 +158,12 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   };
 
   const handleReviewConfirm = async (blurredBlob) => {
-    const { tempPath, targetFilename, storagePath } = review;
+    const current = review;
     setReview(null);
     setCopyState("copying");
     try {
-      if (tempPath) {
-        // New upload: publish the reviewed/blurred version under its real,
-        // permanent name, then clean up the temporary copy.
-        const { path } = await panoramaSync.copyPanoramaFile(blurredBlob, draft.building, targetFilename);
-        setDraft((d) => ({ ...d, photo: path }));
-        deleteReviewFile(tempPath);
-      } else {
-        // Reopening an already-published photo: convert format AFTER
-        // blurring (not before — see handleRescanExisting for why order
-        // matters here), then overwrite in place at the same real path.
-        // draft.photo (the path string) doesn't change here, so an
-        // already-open preview elsewhere may need a reload to pick up
-        // the new bytes — a known, minor limitation of overwriting in
-        // place rather than publishing under a fresh filename.
-        const convertedBlurred = await convertImage(blurredBlob);
-        const filename = storagePath.split("/").pop();
-        await panoramaSync.copyPanoramaFile(convertedBlurred, draft.building, filename);
-      }
+      const { path, isNew } = await confirmReview(current, blurredBlob, { building: draft.building });
+      if (isNew) setDraft((d) => ({ ...d, photo: path }));
       setCopyState("copied");
       setTimeout(() => setCopyState((s) => (s === "copied" ? "idle" : s)), 2500);
     } catch {
@@ -207,7 +172,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   };
 
   const handleReviewCancel = () => {
-    if (review?.tempPath) deleteReviewFile(review.tempPath);
+    cancelReview(review);
     setReview(null);
     setCopyState("idle");
     setPreviewUrl(null);

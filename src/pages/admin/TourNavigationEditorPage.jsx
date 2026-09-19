@@ -5,7 +5,7 @@ import PanoramaNav from "../../components/PanoramaNav";
 import TourStopList from "../../components/TourStopList";
 import FilePickerButton from "../../components/FilePickerButton";
 import { defaultHotspotAngle } from "../../utils/constants";
-import { uploadTourMarkerPhoto } from "../../utils/tourPhotoSync";
+import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 
 function newMarkerId() {
@@ -167,14 +167,12 @@ export default function TourNavigationEditorPage() {
       const uploaded = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dot = file.name.lastIndexOf(".");
-        const ext = dot !== -1 ? file.name.slice(dot) : "";
         // Named after the marker's own (already-generated) id plus an
         // index, so several photos on the same marker don't collide with
         // each other, and re-adding more photos later keeps appending
         // rather than overwriting an earlier one at the same index.
-        const filename = `${newMarkerId_}_${newMarkerPhotos.length + i}${ext}`;
-        const { path } = await uploadTourMarkerPhoto(file, filename);
+        const filename = photoFilename(file, `${newMarkerId_}_${newMarkerPhotos.length + i}`);
+        const { path } = await uploadPhoto("tourMarker", file, { filename });
         uploaded.push(path);
       }
       setNewMarkerPhotos((prev) => [...prev, ...uploaded]);

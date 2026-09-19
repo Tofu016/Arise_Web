@@ -5,7 +5,7 @@ import FilterPanel from "../../components/FilterPanel";
 import FilePickerButton from "../../components/FilePickerButton";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
-import { uploadRoomPhoto, uploadRoom360Photo } from "../../utils/roomPhotoSync";
+import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 
 const defaultFilters = {
   building: "all",
@@ -107,12 +107,10 @@ export default function RoomEditorPage() {
   const handleFilePick = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !selectedRoom || !node) return;
-    const dot = file.name.lastIndexOf(".");
-    const ext = dot !== -1 ? file.name.slice(dot) : "";
-    const filename = `${slugify(selectedRoom)}${ext}`;
+    const filename = photoFilename(file, slugify(selectedRoom));
     setUploadState("uploading");
     try {
-      const { path } = await uploadRoomPhoto(file, node.building, filename);
+      const { path } = await uploadPhoto("roomPhoto", file, { building: node.building, filename });
       setPhotoPath(path);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
@@ -124,12 +122,10 @@ export default function RoomEditorPage() {
   const handle360FilePick = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !selectedRoom || !node) return;
-    const dot = file.name.lastIndexOf(".");
-    const ext = dot !== -1 ? file.name.slice(dot) : "";
-    const filename = `${slugify(selectedRoom)}${ext}`;
+    const filename = photoFilename(file, slugify(selectedRoom));
     setUpload360State("uploading");
     try {
-      const { path } = await uploadRoom360Photo(file, node.building, filename);
+      const { path } = await uploadPhoto("room360", file, { building: node.building, filename });
       setPhoto360Path(path);
       setUpload360State("done");
       setTimeout(() => setUpload360State((s) => (s === "done" ? "idle" : s)), 2500);

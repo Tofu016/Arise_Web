@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { suggestTourStopId, suggestedTourPanoramaFilename } from "../utils/tourConstants";
-import { uploadTourPanorama } from "../utils/tourPhotoSync";
+import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useAutoId } from "../hooks/useAutoId";
 import FilePickerButton from "./FilePickerButton";
 
@@ -89,19 +89,17 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const dot = file.name.lastIndexOf(".");
-    const ext = dot !== -1 ? file.name.slice(dot) : "";
     // Named after the stop's own ID, not the section — a section is just
     // a grouping label, not a guaranteed-unique scope the way a building
     // is for room photos, so keying off the stop's own id (which IS
     // guaranteed unique) avoids any filename collision risk between two
     // differently-named stops.
-    const targetFilename = draft.id ? `${draft.id}${ext}` : file.name;
+    const targetFilename = photoFilename(file, draft.id);
 
     setUploadState("uploading");
     try {
       setPreviewUrl(URL.createObjectURL(file));
-      const { path } = await uploadTourPanorama(file, targetFilename);
+      const { path } = await uploadPhoto("tourPanorama", file, { filename: targetFilename });
       setDraft((d) => ({ ...d, photo: path }));
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
