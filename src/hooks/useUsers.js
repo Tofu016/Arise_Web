@@ -1,63 +1,29 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import { apiGet, apiPatch, apiDelete } from "../utils/apiClient";
+import { toUser } from "../utils/entities";
+import { useCollection } from "./useCollection";
 
-// Rewritten to call Users_API instead of Firestore + a Cloud Function.
-// Same public interface (users, updateUserRole, deleteUserAccount) —
-// UserPanelPage.jsx needs no changes.
-//
-// `uid` is used as the field name here (aliasing the backend's `id`),
-// matching Firebase Auth's own naming — UserPanelPage.jsx references
-// u.uid in several places (list keys, the delete/role-change calls, and
-// critically the isSelf check comparing against currentUser?.uid from
-// AuthContext, which needed its own matching fix for this comparison to
-// actually work at all — see that file's own withUid comment).
-//
-// No live subscription anymore — confirmed early in this migration that
-// reload-to-see-updates is fine — fetches once and refreshes after
-// every mutation instead. deleteUserAccount no longer needs a separate
-// Cloud Function for Admin SDK privileges either: that existed purely
-// because the client SDK couldn't delete another user's Firebase Auth
-// record directly. A plain authenticated DELETE request, checked by
-// requireAdmin() same as everything else, replaces that entirely.
+// Users_API hook. Public interface (users, loading, error, updateUserRole,
+// deleteUserAccount). `uid` aliases the backend's `id` — see toUser in
+// utils/entities.js.
 
-function toFrontendUser(row) {
-  return {
-    uid: row.id,
-    email: row.email,
-    name: row.name,
-    role: row.role,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+async function loadAll() {
+  const data = await apiGet("Users_API/getAll");
+  return data.users.map(toUser);
 }
 
 export function useUsers() {
-  const [users, setUsers] = useState([]);
-
-  const refresh = useCallback(async () => {
-    const data = await apiGet("Users_API/getAll");
-    setUsers(data.users.map(toFrontendUser));
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const { items: users, loading, error, mutate } = useCollection(loadAll);
 
   const updateUserRole = useCallback(
-    async (uid, role) => {
-      await apiPatch(`Users_API/updateRole/${uid}`, { role });
-      await refresh();
-    },
-    [refresh]
+    (uid, role) => mutate(() => apiPatch(`Users_API/updateRole/${uid}`, { role })),
+    [mutate]
   );
 
   const deleteUserAccount = useCallback(
-    async (uid) => {
-      await apiDelete(`Users_API/delete/${uid}`);
-      await refresh();
-    },
-    [refresh]
+    (uid) => mutate(() => apiDelete(`Users_API/delete/${uid}`)),
+    [mutate]
   );
 
-  return { users, updateUserRole, deleteUserAccount };
+  return { users, loading, error, updateUserRole, deleteUserAccount };
 }

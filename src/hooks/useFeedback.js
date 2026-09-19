@@ -1,29 +1,23 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import { apiGet, apiPatch } from "../utils/apiClient";
+import { useCollection } from "./useCollection";
 
-// Mirrors useUsers.js's own pattern — a dedicated hook for one admin
-// page's data, called directly here rather than shared through
-// AdminLayout's Outlet context, since (like user data) no other admin
-// section needs feedback data.
+// A dedicated hook for one admin page's data, called directly rather than
+// shared through AdminLayout's Outlet context, since no other admin
+// section needs feedback data. Rows are used as the backend returns them.
+
+async function loadAll() {
+  const data = await apiGet("Feedback_API/getAll");
+  return data.feedback;
+}
+
 export function useFeedback() {
-  const [feedback, setFeedback] = useState([]);
-
-  const refresh = useCallback(async () => {
-    const data = await apiGet("Feedback_API/getAll");
-    setFeedback(data.feedback);
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const { items: feedback, loading, error, mutate } = useCollection(loadAll);
 
   const markReviewed = useCallback(
-    async (id) => {
-      await apiPatch(`Feedback_API/markReviewed/${id}`, {});
-      await refresh();
-    },
-    [refresh]
+    (id) => mutate(() => apiPatch(`Feedback_API/markReviewed/${id}`, {})),
+    [mutate]
   );
 
-  return { feedback, markReviewed };
+  return { feedback, loading, error, markReviewed };
 }

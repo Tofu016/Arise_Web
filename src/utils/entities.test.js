@@ -1,0 +1,235 @@
+import { describe, it, expect } from "vitest";
+import {
+  toNode,
+  nodeCreateBody,
+  nodePatchBody,
+  toStop,
+  stopCreateBody,
+  stopPatchBody,
+  toSection,
+  sectionCreateBody,
+  sectionPatchBody,
+  toUser,
+  toDialog,
+  normalizeRoomName,
+  dialogPatchBody,
+  dialogCreateBody,
+} from "./entities";
+
+const nodeRow = {
+  id: "gd1_f1_hall_01",
+  name: "Hall",
+  building: "gd1",
+  floor: 1,
+  type: "hallway",
+  leads_to_floor: null,
+  photo_path: "panoramas/gd1/a.jpg",
+  rooms: [{ id: 7, room_name: "101" }, { id: 8, room_name: "102" }],
+  neighbors: [{ neighbor_id: "n2", yaw: 90, pitch: -5 }, { neighbor_id: "n3", yaw: 180, pitch: 0 }],
+  markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2 }],
+  flowchart_position_x: 12,
+  flowchart_position_y: 34,
+  created_at: "c",
+  updated_at: "u",
+};
+
+describe("toNode", () => {
+  it("maps a full row to the app's camelCase node", () => {
+    expect(toNode(nodeRow)).toEqual({
+      id: "gd1_f1_hall_01",
+      name: "Hall",
+      building: "gd1",
+      floor: 1,
+      type: "hallway",
+      leadsToFloor: null,
+      photo: "panoramas/gd1/a.jpg",
+      rooms: ["101", "102"],
+      neighbors: ["n2", "n3"],
+      hotspots: { n2: { yaw: 90, pitch: -5 }, n3: { yaw: 180, pitch: 0 } },
+      markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2 }],
+      flowchartPosition: { x: 12, y: 34 },
+      createdAt: "c",
+      updatedAt: "u",
+    });
+  });
+
+  it("uses safe empties for a bare row", () => {
+    const n = toNode({ id: "x", name: "X" });
+    expect(n).toMatchObject({ photo: "", rooms: [], neighbors: [], hotspots: {}, markers: [] });
+    expect(n.leadsToFloor).toBeNull();
+    expect(n.flowchartPosition).toBeNull();
+  });
+
+  it("has no flowchart position unless both coordinates are set", () => {
+    expect(toNode({ ...nodeRow, flowchart_position_y: null }).flowchartPosition).toBeNull();
+    expect(toNode({ ...nodeRow, flowchart_position_x: 0, flowchart_position_y: 0 }).flowchartPosition).toEqual({
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it("keeps a leads-to-floor of 0", () => {
+    expect(toNode({ ...nodeRow, leads_to_floor: 0 }).leadsToFloor).toBe(0);
+  });
+});
+
+describe("node request bodies", () => {
+  it("create drops empty optionals", () => {
+    const body = nodeCreateBody({ id: "a", name: "A", building: "gd1", floor: 1, type: "hallway", photo: "", leadsToFloor: null });
+    expect(body.photo_path).toBeUndefined();
+    expect(body.leads_to_floor).toBeUndefined();
+    expect(nodeCreateBody({ id: "a", leadsToFloor: 0, photo: "p" })).toMatchObject({ leads_to_floor: 0, photo_path: "p" });
+  });
+
+  it("patch sends only the fields given, under wire names", () => {
+    expect(nodePatchBody({ name: "N", photo: "", leadsToFloor: null })).toEqual({
+      name: "N",
+      photo_path: "",
+      leads_to_floor: null,
+    });
+    expect(nodePatchBody({})).toEqual({});
+  });
+
+  it("patch splits a flowchart position, and nulls both when cleared", () => {
+    expect(nodePatchBody({ flowchartPosition: { x: 1, y: 2 } })).toEqual({
+      flowchart_position_x: 1,
+      flowchart_position_y: 2,
+    });
+    expect(nodePatchBody({ flowchartPosition: null })).toEqual({
+      flowchart_position_x: null,
+      flowchart_position_y: null,
+    });
+  });
+
+  it("patch ignores rooms (synced separately)", () => {
+    expect(nodePatchBody({ rooms: ["1"] })).toEqual({});
+  });
+});
+
+describe("tour stops", () => {
+  const row = {
+    id: "s1",
+    name: "Stop",
+    section_id: null,
+    photo_path: null,
+    description: null,
+    neighbors: [{ neighbor_id: "s2", yaw: 1, pitch: 2 }],
+    markers: [{ id: 5, type: "info", label: "L", yaw: 3, pitch: 4, photos: [{ photo_path: "a.jpg" }, { photo_path: "b.jpg" }] }],
+    created_at: "c",
+    updated_at: "u",
+  };
+
+  it("maps empties to empty strings and marker photos to plain paths", () => {
+    expect(toStop(row)).toEqual({
+      id: "s1",
+      name: "Stop",
+      section: "",
+      photo: "",
+      description: "",
+      neighbors: ["s2"],
+      hotspots: { s2: { yaw: 1, pitch: 2 } },
+      markers: [{ id: 5, type: "info", label: "L", yaw: 3, pitch: 4, photos: ["a.jpg", "b.jpg"] }],
+      createdAt: "c",
+      updatedAt: "u",
+    });
+  });
+
+  it("marker without photos gets an empty list", () => {
+    expect(toStop({ ...row, markers: [{ id: 1, yaw: 0, pitch: 0 }] }).markers[0].photos).toEqual([]);
+  });
+
+  it("create drops empty optionals", () => {
+    const body = stopCreateBody({ id: "s", name: "S", section: "", photo: "", description: "" });
+    expect(body).toEqual({ id: "s", name: "S", section_id: undefined, photo_path: undefined, description: undefined });
+  });
+
+  it("patch sends a cleared section as null, never as an empty string", () => {
+    expect(stopPatchBody({ section: "" })).toEqual({ section_id: null });
+    expect(stopPatchBody({ section: "sec1" })).toEqual({ section_id: "sec1" });
+    expect(stopPatchBody({ photo: "", description: "d", name: "n" })).toEqual({
+      photo_path: "",
+      description: "d",
+      name: "n",
+    });
+    expect(stopPatchBody({})).toEqual({});
+  });
+});
+
+describe("tour sections", () => {
+  it("has a null cover photo when empty (unlike other photo fields)", () => {
+    expect(toSection({ id: 1, label: "L", cover_photo_path: "", created_at: "c", updated_at: "u" })).toEqual({
+      id: 1,
+      label: "L",
+      coverPhoto: null,
+      createdAt: "c",
+      updatedAt: "u",
+    });
+  });
+  it("bodies", () => {
+    expect(sectionCreateBody({ label: "L", coverPhoto: "" }).cover_photo_path).toBeUndefined();
+    expect(sectionPatchBody({ coverPhoto: "p" })).toEqual({ cover_photo_path: "p" });
+    expect(sectionPatchBody({})).toEqual({});
+  });
+});
+
+describe("users", () => {
+  it("aliases id as uid", () => {
+    expect(toUser({ id: 9, email: "e", name: "n", role: "admin", created_at: "c", updated_at: "u" })).toEqual({
+      uid: 9,
+      email: "e",
+      name: "n",
+      role: "admin",
+      createdAt: "c",
+      updatedAt: "u",
+    });
+  });
+});
+
+describe("room placard dialogs", () => {
+  it("maps a row, with empty strings for missing text", () => {
+    expect(
+      toDialog({ id: 1, room_name: "203", search_terms: [{ term: "203" }, { term: "two" }], photo_360_path: "r.jpg" })
+    ).toMatchObject({
+      id: 1,
+      roomName: "203",
+      roomDescription: "",
+      photo: "",
+      photo360: "r.jpg",
+      ocrSearchTerms: ["203", "two"],
+    });
+  });
+
+  it("normalizes names for lookup", () => {
+    expect(normalizeRoomName("  rm 203 ")).toBe("RM 203");
+    expect(normalizeRoomName(null)).toBe("");
+  });
+
+  it("patch maps app names to wire names", () => {
+    expect(dialogPatchBody({ roomName: "N", roomDescription: "D", photo360: "p", ocrSearchTerms: ["x"] })).toEqual({
+      room_name: "N",
+      description: "D",
+      photo_360_path: "p",
+      search_terms: ["x"],
+    });
+  });
+
+  it("a new record is seeded with a search term derived from the room name, then the patch applied", () => {
+    expect(dialogCreateBody(" Rm 2-03 ", { department: "Math" })).toEqual({
+      room_name: "Rm 2-03",
+      description: "",
+      search_terms: ["rm203"],
+      department: "Math",
+    });
+  });
+
+  it("a rename target wins over the lookup name, and patched terms win over the derived one", () => {
+    expect(dialogCreateBody("old", { roomName: "New", ocrSearchTerms: ["z"] })).toMatchObject({
+      room_name: "New",
+      search_terms: ["z"],
+    });
+  });
+
+  it("derives no search term from a name with no letters or digits", () => {
+    expect(dialogCreateBody("---", {}).search_terms).toEqual([]);
+  });
+});
