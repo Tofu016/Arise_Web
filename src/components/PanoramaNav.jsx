@@ -288,6 +288,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
           // No distanceFactor: the card is plain CSS pixels (sized in
           // index.css). With it, the card's size followed the camera's FOV
           // and came out at only ~0.2-0.4x of its CSS size.
+          zIndexRange={[0, 0]} // stays under the page's own UI, like the marker overlays
           position={[0, 50, 0]}
           // Anchor the card by its BOTTOM edge (translate -100% on Y), not
           // its middle. `center` would pin the card's centre to the anchor
@@ -382,7 +383,14 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
           raycaster can actually hit — confirmed this was the real,
           structural cause of room markers never responding to clicks,
           not a data-matching problem. */}
-      <Html center style={{ pointerEvents: isClickable ? "auto" : "none" }}>
+      <Html
+        center
+        // drei's default z-index range reaches ~16.7 million, which floats
+        // the marker above every dialog and panel. Pin it to the bottom
+        // layer so the page's own UI always sits over it, as with the
+        // (canvas-drawn) hotspots.
+        zIndexRange={[0, 0]}
+        style={{ pointerEvents: isClickable ? "auto" : "none" }}>
         {/* Layout/colour in index.css → "Panorama overlays"; only the
             per-marker size, type colour and selected ring are dynamic. */}
         <div
