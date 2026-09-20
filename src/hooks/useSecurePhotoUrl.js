@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { loadPhoto } from "../utils/photoStore";
+import { acquirePhoto, loadPhoto } from "../utils/photoStore";
 
 // React adapter over photoStore's loadPhoto: `photo` is a backend storage
 // path, e.g. "panoramas/gd1/gd1_f2_hallway01.jpg". Public tour paths
 // resolve to a direct URL; protected indoor paths are fetched with the
 // current auth token into a blob: URL, revoked on change or unmount.
-export function useSecurePhotoUrl(photo) {
+// `cached` serves it from photoStore's session cache instead (shared with
+// prefetchPhoto) — for the visitor view; admin editors leave it off so an
+// edited photo is never shown stale.
+export function useSecurePhotoUrl(photo, { cached = false } = {}) {
   const [url, setUrl] = useState(null);
   const [error, setError] = useState(null);
 
@@ -17,7 +20,7 @@ export function useSecurePhotoUrl(photo) {
     let cancelled = false;
     let release = null;
 
-    loadPhoto(photo)
+    (cached ? acquirePhoto : loadPhoto)(photo)
       .then((loaded) => {
         if (cancelled) {
           loaded.release();
@@ -34,7 +37,7 @@ export function useSecurePhotoUrl(photo) {
       cancelled = true;
       if (release) release();
     };
-  }, [photo]);
+  }, [photo, cached]);
 
   return { url, error };
 }

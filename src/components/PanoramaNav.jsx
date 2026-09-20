@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
@@ -25,33 +25,7 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 // it's swinging around as the view moves. The arrow itself is static.
 const ARROW_FORWARD_LEAN = 0.26; // radians (~15°)
 
-function PanoramaSphere({ url, onLoaded, onError, onSurfaceClick, placing }) {
-  const [texture, setTexture] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setTexture(null);
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      url,
-      (tex) => {
-        if (cancelled) return;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        setTexture(tex);
-        onLoaded?.();
-      },
-      undefined,
-      () => {
-        if (!cancelled) onError?.();
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  if (!texture) return null;
-
+function PanoramaSphere({ texture, onSurfaceClick, placing }) {
   return (
     <mesh
       scale={[-1, 1, 1]}
@@ -65,6 +39,42 @@ function PanoramaSphere({ url, onLoaded, onError, onSurfaceClick, placing }) {
       <meshBasicMaterial map={texture} side={THREE.BackSide} />
     </mesh>
   );
+}
+
+const CROSSFADE_SECONDS = 0.3;
+
+// The panorama being replaced, drawn just inside the new one and faded out
+// over it, so a move dissolves instead of cutting. Not clickable.
+function FadingSphere({ texture, onDone }) {
+  const material = useRef();
+  const elapsed = useRef(0);
+  useFrame((_, delta) => {
+    elapsed.current += delta;
+    const t = Math.min(1, elapsed.current / CROSSFADE_SECONDS);
+    if (material.current) material.current.opacity = 1 - t;
+    if (t >= 1) onDone();
+  });
+  return (
+    <mesh scale={[-1, 1, 1]} renderOrder={1} raycast={() => null}>
+      <sphereGeometry args={[499, 60, 40]} />
+      <meshBasicMaterial ref={material} map={texture} side={THREE.BackSide} transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
+// Aims the camera at the entry direction of a newly swapped-in scene. The
+// Canvas outlives moves, so this can't rely on the camera's initial position.
+function CameraAim({ aimKey, yaw, pitch }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls);
+  const lastKey = useRef(aimKey);
+  useEffect(() => {
+    if (lastKey.current === aimKey) return;
+    lastKey.current = aimKey;
+    camera.position.set(...initialCameraPosition(yaw, pitch));
+    controls?.update();
+  }, [aimKey, yaw, pitch, camera, controls]);
+  return null;
 }
 
 // Touch/stylus input has no hover state, so the "sneak-peek" preview
@@ -96,7 +106,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   const isTouch = useIsCoarsePointer();
   // Only fetches once genuinely hovered — a hotspot never hovered never
   // triggers a photo fetch at all.
-  const { url: previewUrl } = useSecurePhotoUrl(hovered ? photo : null);
+  const { url: previewUrl } = useSecurePhotoUrl(hovered ? photo : null, { cached: true });
 
   // Touch: first tap reveals the preview (reusing the same `hovered`
   // state hover already drives) instead of navigating; a second tap
@@ -401,6 +411,7 @@ function usePanoramaFov(heightFraction) {
  *  - highlightedId: optional neighbor id to render in a distinct color (used for directions)
  *  - emergencyMode: bool — when true, the highlighted hotspot pulses red instead of the normal green, for emergency exit routing
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
+ *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
@@ -421,6 +432,7 @@ export default function PanoramaNav({
   highlightedId = null,
   emergencyMode = false,
   selectedMarkerId = null,
+  sceneKey,
   heightFraction = 1,
 }) {
   const cursor = placing ? "crosshair" : "grab";
@@ -430,15 +442,88 @@ export default function PanoramaNav({
   // correctly updates live on an actual orientation change while the
   // viewer is already open, not just on initial mount.
   const fov = usePanoramaFov(heightFraction);
+
+  // What's actually on screen. Props describe the scene we're heading to;
+  // `shown` is the last one whose texture finished loading, with its own
+  // hotspots/markers/entry angle snapshotted at that moment.
+  const holdsScene = sceneKey !== undefined;
+  const key = sceneKey ?? url;
+  const [shown, setShown] = useState(null);
+  const [leaving, setLeaving] = useState(null); // previous texture, mid-fade
+  const shownRef = useRef(null);
+  const leavingRef = useRef(null);
+  const latest = useRef({ hotspots, markers, initialYaw, initialPitch, onError });
+  useEffect(() => {
+    latest.current = { hotspots, markers, initialYaw, initialPitch, onError };
+  });
+  // The Canvas is created once with the first scene's entry angle; later
+  // scenes are aimed by CameraAim when they swap in.
+  const [firstCameraPosition] = useState(() => initialCameraPosition(initialYaw, initialPitch));
+
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    new THREE.TextureLoader().load(
+      url,
+      (tex) => {
+        if (cancelled) {
+          tex.dispose();
+          return;
+        }
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const { hotspots: hs, markers: ms, initialYaw: yaw, initialPitch: pitch } = latest.current;
+        const previous = shownRef.current;
+        shownRef.current = { key, texture: tex, hotspots: hs, markers: ms, yaw, pitch };
+        leavingRef.current?.dispose(); // a fade still running when another move lands
+        leavingRef.current = holdsScene ? previous?.texture ?? null : null;
+        if (!holdsScene) previous?.texture.dispose();
+        setLeaving(leavingRef.current);
+        setShown(shownRef.current);
+      },
+      undefined,
+      () => {
+        if (!cancelled) latest.current.onError?.();
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, key]);
+
+  // Free the GPU memory of whichever texture is still up on unmount.
+  useEffect(
+    () => () => {
+      shownRef.current?.texture.dispose();
+      leavingRef.current?.dispose();
+    },
+    []
+  );
+
+  // Live props only once the screen has caught up with them; until then the
+  // scene being left keeps its own hotspots and markers.
+  const matches = shown?.key === key;
+  const visible = holdsScene || matches ? shown : null;
+  const live = !holdsScene || !shown || matches;
+  const shownHotspots = live ? hotspots : shown.hotspots;
+  const shownMarkers = live ? markers : shown.markers;
+
   return (
-    <Canvas camera={{ position: initialCameraPosition(initialYaw, initialPitch), fov }} style={{ cursor }}>
-      <PanoramaSphere
-        url={url}
-        onError={onError}
-        placing={placing}
-        onSurfaceClick={onPlaceAngle}
-      />
-      {hotspots.map((h) => (
+    <Canvas camera={{ position: firstCameraPosition, fov }} style={{ cursor }}>
+      {visible && <PanoramaSphere texture={visible.texture} placing={placing} onSurfaceClick={onPlaceAngle} />}
+      {leaving && (
+        <FadingSphere
+          key={leaving.uuid}
+          texture={leaving}
+          onDone={() => {
+            leaving.dispose();
+            leavingRef.current = null;
+            setLeaving(null);
+          }}
+        />
+      )}
+      {holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
+      {shownHotspots.map((h) => (
         <Hotspot
           key={h.id}
           yaw={h.yaw}
@@ -451,7 +536,7 @@ export default function PanoramaNav({
           onClick={() => !placing && onNavigate(h.id, { yaw: h.yaw, pitch: h.pitch })}
         />
       ))}
-      {markers.map((m) => (
+      {shownMarkers.map((m) => (
         <Marker
           key={m.id}
           yaw={m.yaw}
@@ -466,7 +551,7 @@ export default function PanoramaNav({
           onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}
         />
       ))}
-      <OrbitControls enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
+      <OrbitControls makeDefault enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
     </Canvas>
   );
 }

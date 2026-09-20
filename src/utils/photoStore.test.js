@@ -11,7 +11,7 @@ vi.mock("./imageConverter", () => ({ convertImage: vi.fn(async (f) => f) }));
 
 import { apiUpload, apiGetBlob } from "./apiClient";
 import { convertImage } from "./imageConverter";
-import { photoFilename, uploadPhoto, loadPhoto } from "./photoStore";
+import { photoFilename, uploadPhoto, loadPhoto, acquirePhoto, prefetchPhoto, invalidatePhoto } from "./photoStore";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -88,5 +88,60 @@ describe("loadPhoto", () => {
 
   it("rejects a path matching no known kind", async () => {
     await expect(loadPhoto("https://old.example/o/x.jpg")).rejects.toThrow("no longer supported");
+  });
+});
+
+describe("photo cache", () => {
+  let n;
+  beforeEach(() => {
+    n = 0;
+    apiGetBlob.mockImplementation(async () => new Blob(["x"]));
+    URL.createObjectURL.mockImplementation(() => `blob:${++n}`);
+  });
+
+  it("serves a repeat acquire from memory, and revokes nothing while in use", async () => {
+    const a = await acquirePhoto("panoramas/gd1/cached-a.jpg");
+    const b = await acquirePhoto("panoramas/gd1/cached-a.jpg");
+    expect(apiGetBlob).toHaveBeenCalledTimes(1);
+    expect(b.url).toBe(a.url);
+    a.release();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    b.release();
+  });
+
+  it("keeps a released photo for reuse, so a prefetched photo costs no fetch later", async () => {
+    await prefetchPhoto("panoramas/gd1/cached-b.jpg");
+    const held = await acquirePhoto("panoramas/gd1/cached-b.jpg");
+    expect(apiGetBlob).toHaveBeenCalledTimes(1);
+    held.release();
+  });
+
+  it("evicts and revokes the oldest idle photos past the cap", async () => {
+    for (let i = 0; i < 10; i++) await prefetchPhoto(`panoramas/gd1/evict-${i}.jpg`);
+    expect(URL.revokeObjectURL).toHaveBeenCalled();
+    const fetched = apiGetBlob.mock.calls.length;
+    (await acquirePhoto("panoramas/gd1/evict-9.jpg")).release(); // newest: still cached
+    expect(apiGetBlob).toHaveBeenCalledTimes(fetched);
+    (await acquirePhoto("panoramas/gd1/evict-0.jpg")).release(); // oldest: evicted, fetched again
+    expect(apiGetBlob).toHaveBeenCalledTimes(fetched + 1);
+  });
+
+  it("does not cache a failed load", async () => {
+    apiGetBlob.mockRejectedValueOnce(new Error("boom"));
+    await expect(acquirePhoto("panoramas/gd1/fail.jpg")).rejects.toThrow("boom");
+    const ok = await acquirePhoto("panoramas/gd1/fail.jpg");
+    expect(ok.url).toMatch(/^blob:/);
+    ok.release();
+  });
+
+  it("invalidate drops it from the cache, revoking once nobody holds it", async () => {
+    const held = await acquirePhoto("panoramas/gd1/inv.jpg");
+    invalidatePhoto("panoramas/gd1/inv.jpg");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    held.release();
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+    const fresh = await acquirePhoto("panoramas/gd1/inv.jpg");
+    expect(apiGetBlob).toHaveBeenCalledTimes(2);
+    fresh.release();
   });
 });

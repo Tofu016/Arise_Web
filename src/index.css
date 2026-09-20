@@ -1399,17 +1399,28 @@ button.primary {
   flex: 1;
   position: relative;
 }
-.photo-loading-overlay {
+/* Shown only while the next photo is still on its way — the current view
+   stays up underneath, so this is just a hint, not a blocker. The delay
+   keeps it from flashing at all on a fast (prefetched) move. */
+.photo-transition-indicator {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
   color: var(--text-muted);
-  font-size: 14px;
-  background: var(--surface-sunken);
+  font-size: 13px;
   z-index: 5;
   pointer-events: none;
+  animation: photo-transition-indicator-in 0.2s ease 0.4s both;
+}
+@keyframes photo-transition-indicator-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .room-search-box {
   width: 340px;

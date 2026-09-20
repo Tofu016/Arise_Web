@@ -21,6 +21,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import { useDirections, useAutoWalk } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
+import { prefetchPhoto } from "../utils/photoStore";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
@@ -258,7 +259,7 @@ export default function MainPage() {
 
   // Called unconditionally here (before any early returns below) since it's
   // a hook — the value is only actually used once we reach the main render.
-  const { url: securePhotoUrl } = useSecurePhotoUrl(current?.photo);
+  const { url: securePhotoUrl } = useSecurePhotoUrl(current?.photo, { cached: true });
 
   // Same "called before any early return" reasoning as securePhotoUrl
   // above — tracks whether the current photo's actual bytes have been
@@ -266,7 +267,7 @@ export default function MainPage() {
   // resolved. Used below to decide when the FIRST-LOAD splash screen can
   // dismiss; initialLoadDone latches true the first time this succeeds
   // and never resets, so walking to a different node later (which
-  // briefly has its own, much smaller .photo-loading-overlay indicator
+  // briefly has its own, much smaller .photo-transition-indicator
   // already) doesn't re-trigger the full-screen splash a second time.
   // photoReady (not imageLoaded alone) also covers the edge case where
   // no current node/photo ever ends up set at all (e.g. genuinely zero
@@ -287,6 +288,35 @@ export default function MainPage() {
   );
 
   const markers = current?.markers || [];
+
+  // Once this node's own photo is up, quietly fetch the photos its hotspots
+  // lead to, one at a time (so they never crowd out a photo the visitor
+  // actually tapped), the next stop on an active route first. Together with
+  // photoStore's cache this makes a move a swap, not a download. Capped at
+  // the cache's idle size; a tapped photo already in flight is simply shared.
+  const PREFETCH_LIMIT = 6;
+  const routeNextId = route.nextStep(directions, hotspots)?.id;
+  const prefetchKey = imageLoaded
+    ? hotspots
+        .filter((h) => h.photo && h.id !== current?.id)
+        .sort((a, b) => (b.id === routeNextId) - (a.id === routeNextId))
+        .slice(0, PREFETCH_LIMIT)
+        .map((h) => h.photo)
+        .join("|")
+    : "";
+  useEffect(() => {
+    if (!prefetchKey) return;
+    let cancelled = false;
+    (async () => {
+      for (const photo of prefetchKey.split("|")) {
+        if (cancelled) return;
+        await prefetchPhoto(photo);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prefetchKey]);
 
   // What follows a move that actually happened — everything the navigation
   // module deliberately knows nothing about: the search box, the open
@@ -728,7 +758,7 @@ export default function MainPage() {
           shows the same LoadingScreen for the initial data-fetch phase,
           this is just the continuation of that same splash into the
           photo-decode phase. Latches via initialLoadDone so it never
-          reappears once shown, unlike .photo-loading-overlay below
+          reappears once shown, unlike .photo-transition-indicator below
           (still there, unchanged) which DOES reappear on every
           subsequent walk to a new node — that's the existing, correct
           behavior for ordinary navigation; this is specifically a
@@ -741,15 +771,13 @@ export default function MainPage() {
           </div>
         ) : isMobile ? (
           <div className="main-page-screen mobile-screen">
-            {current.photo && !photoUrl && (
-              <div className="photo-loading-overlay">Loading photo…</div>
-            )}
             <div
               className="mobile-panorama-frame"
               style={{ top: `${MOBILE_TOP_INSET * 100}%`, bottom: `${MOBILE_BOTTOM_INSET * 100}%` }}
             >
+              {initialLoadDone && !photoReady && <div className="photo-transition-indicator">Loading…</div>}
               <PanoramaNav
-                key={current.id}
+                sceneKey={current.id}
                 url={photoUrl}
                 hotspots={hotspots}
                 markers={markers}
@@ -973,11 +1001,9 @@ export default function MainPage() {
           </div>
         ) : (
           <div className="main-page-screen">
-              {current.photo && !photoUrl && (
-                <div className="photo-loading-overlay">Loading photo…</div>
-              )}
+              {initialLoadDone && !photoReady && <div className="photo-transition-indicator">Loading…</div>}
               <PanoramaNav
-                key={current.id}
+                sceneKey={current.id}
                 url={photoUrl}
                 hotspots={hotspots}
                 markers={markers}
