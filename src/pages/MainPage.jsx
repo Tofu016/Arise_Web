@@ -244,8 +244,7 @@ export default function MainPage() {
     currentBuildingMeta?.lat != null &&
     currentBuildingMeta?.lng != null;
 
-  // 15s is the midpoint of the requested 10-20s range — a single named
-  // constant, easy to retune. Suppressed entirely (enabled: false, no
+  // A single named constant, easy to retune. Suppressed entirely (enabled: false, no
   // timer even running) whenever any other overlay is already open, so
   // this can never appear stacked on top of the search panel, the
   // feedback panel itself, a room's 360 view, or a flyover — each of
@@ -253,7 +252,7 @@ export default function MainPage() {
   // something, not idle in the sense this prompt cares about. Declared
   // here, after all of those, since it reads their current values —
   // JS's temporal dead zone would break this if placed any earlier.
-  const IDLE_TIMEOUT_MS = 15000;
+  const IDLE_TIMEOUT_MS = 60000;
   const idleDetectorEnabled = !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover;
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
