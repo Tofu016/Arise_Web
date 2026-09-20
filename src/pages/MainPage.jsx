@@ -8,6 +8,7 @@ import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import MobileRoomSheet from "../components/MobileRoomSheet";
 import KioskDialog from "../components/KioskDialog";
+import KioskWalkBar from "../components/KioskWalkBar";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
@@ -178,6 +179,10 @@ export default function MainPage() {
   // path once requested, and how far along it the visitor currently is —
   // see utils/directionsRoute.js for its shape.
   const [directions, setDirections] = useDirections(nodes, currentId);
+  // Kiosk: whether the big directions dialog is showing while a route is
+  // being walked (false = the compact walk bar instead). Starts open, so
+  // planning a route always shows the full dialog; walking collapses it.
+  const [walkDialogOpen, setWalkDialogOpen] = useState(true);
 
   // Rooms with actual detail records (photo/description/department/use) —
   // built by matching each node's "Rooms served" entries against
@@ -362,6 +367,7 @@ export default function MainPage() {
   const openDirectionsTo = (node) => {
     setMobileDockOpen(false);
     setDirections(route.openDirectionsTo(current, node));
+    setWalkDialogOpen(true);
     setSearchQuery("");
     setPanelMode("directions");
   };
@@ -370,12 +376,14 @@ export default function MainPage() {
     if (!current || !nodes) return;
     setMobileDockOpen(false);
     setDirections(route.openNearestExit(current, nodes));
+    setWalkDialogOpen(true);
     setSearchQuery("");
     setPanelMode("directions");
   };
 
   const closeDirections = () => {
     setDirections(null);
+    setWalkDialogOpen(true);
     closePanel();
   };
 
@@ -432,6 +440,7 @@ export default function MainPage() {
   const handleStartWalking = () => {
     if (!directions?.path) return;
     jumpToSearchResult(directions.path[0]);
+    setWalkDialogOpen(false); // walking has begun: collapse to the walk bar (kiosk)
     setDirections(route.restartRoute);
     setPanelMode("directions"); // jumpToSearchResult closes the panel — reopen it for the route in progress
   };
@@ -479,14 +488,27 @@ export default function MainPage() {
   });
   const autoWalking = directions?.autoWalking ?? false;
 
+  // Kiosk: once the route is actually being walked (the visitor is at its
+  // start, and hasn't arrived), the big directions dialog steps aside for the
+  // compact KioskWalkBar, so the panorama stays visible. `walkDialogOpen`
+  // brings the big dialog back on request.
+  const walkStarted =
+    !!directions?.path && !(directions.stepIndex === 0 && currentId !== directions.path[0]);
+  const walkBarShown =
+    isMobile && panelMode === "directions" && walkStarted && !arrived && !walkDialogOpen;
+
   // The kiosk dialog takes over the top of the panorama, so the node name
   // (and the menu button, whose actions would open a second dialog) step aside.
+  const kioskDialogOpen =
+    isMobile &&
+    (panelMode === "search" || (panelMode === "directions" && !!directions && !walkBarShown) || showFeedback);
+
   // Anything that pops up over the panorama — the radial menu, every dialog
   // and panel, the 360 room view, a flyover, the idle prompt — hides the
-  // hotspot previews so they don't sit on top of it.
+  // hotspot previews so they don't sit on top of it. The walk bar is small
+  // and leaves the panorama usable, so it doesn't count.
   const overlayOpen =
-    !!panelMode || mobileDockOpen || showFeedback || buildingMenuOpen || room360Open || !!flyover || isIdle;
-  const kioskDialogOpen = isMobile && (panelMode === "search" || (panelMode === "directions" && !!directions) || showFeedback);
+    (!!panelMode && !walkBarShown) || mobileDockOpen || showFeedback || buildingMenuOpen || room360Open || !!flyover || isIdle;
 
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
@@ -723,14 +745,14 @@ export default function MainPage() {
             <>
               <button
                 className="primary directions-go-btn"
-                onClick={handleWalkToNextStop}
+                onClick={() => { setWalkDialogOpen(false); handleWalkToNextStop(); }}
                 disabled={autoWalking}
               >
                 Walk to {nextStopName} →
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
-                onClick={() => setDirections(route.toggleAutoWalk)}
+                onClick={() => { setWalkDialogOpen(false); setDirections(route.toggleAutoWalk); }}
               >
                 {autoWalking ? "⏸ Stop auto-walk" : "▶ Auto-walk (every 5s)"}
               </button>
@@ -908,12 +930,25 @@ export default function MainPage() {
               </KioskDialog>
             )}
 
-            {panelMode === "directions" && directions && (
+            {panelMode === "directions" && directions && !walkBarShown && (
               <KioskDialog onClose={closeDirections}>
                 <div className="directions-panel">
                   {directionsContent}
                 </div>
               </KioskDialog>
+            )}
+
+            {walkBarShown && (
+              <KioskWalkBar
+                progressText={`Stop ${directions.stepIndex + 1} of ${directions.path.length}${
+                  turnInstruction ? ` — ${turnInstruction}` : ""
+                }`}
+                nextStopName={nextStopName}
+                autoWalking={autoWalking}
+                onWalk={handleWalkToNextStop}
+                onToggleAutoWalk={() => setDirections(route.toggleAutoWalk)}
+                onShowDialog={() => setWalkDialogOpen(true)}
+              />
             )}
 
             {panelMode === "account" && user && (
