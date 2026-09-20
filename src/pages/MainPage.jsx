@@ -34,10 +34,19 @@ import { useAuth } from "../context/useAuth";
 // miss it; the aspect-ratio check catches any portrait screen with real
 // height-over-width, regardless of its absolute size, and it gets
 // exactly the same treatment a phone does. Re-evaluated on resize/rotate.
+//
+// Deliberately a ratio, not an exact 1080×1920 match: innerWidth/innerHeight
+// are CSS pixels, so Windows display scaling (125% → 864×1536) and browser
+// chrome/taskbar (windowed, not F11/--kiosk) both change the reported size.
+// The kiosk's ratio is ~1.78; 1.3 leaves a wide margin below that while
+// keeping a merely slightly-portrait desktop window on the desktop layout
+// (portrait tablets, ~1.33, still get the shared touch layout).
+const PORTRAIT_ASPECT_THRESHOLD = 1.3;
+
 function isMobileLayout(breakpoint = 768) {
   if (typeof window === "undefined") return false;
   const { innerWidth: w, innerHeight: h } = window;
-  return w <= breakpoint || h > w * 1.15;
+  return w <= breakpoint || h > w * PORTRAIT_ASPECT_THRESHOLD;
 }
 
 function useIsMobile(breakpoint = 768) {
