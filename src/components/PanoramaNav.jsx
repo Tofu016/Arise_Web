@@ -19,11 +19,8 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 // deliberate choice here rather than an arbitrary one.
 const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 
-// A slight backward tilt on the hotspot arrow — just enough to hint
-// "forward, into the scene" rather than "straight up the screen". Kept
-// small on purpose: a steep lean makes the billboarded arrow look like
-// it's swinging around as the view moves. The arrow itself is static.
-const ARROW_FORWARD_LEAN = 0.26; // radians (~15°)
+// Period of the hotspot's outer-ring pulse.
+const RING_PULSE_SECONDS = 2;
 
 function PanoramaSphere({ texture, onSurfaceClick, placing }) {
   return (
@@ -156,6 +153,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   // tied to the hotspot rather than looking like a separate element.
   const arrowColor = "#ffffff";
   const groupRef = useRef();
+  const pulseRef = useRef();
 
   // The hotspot is a permanently-visible wayfinding marker now, not a
   // hover-only "sneak peek". Hover keeps a small emphasis bump and still
@@ -165,29 +163,34 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
 
   const dotRadius = highlighted ? 18 : 14;
 
-  // A plain filled up-arrow (head + stem), sized to sit inside the dot with
-  // a comfortable margin. Flat 2D geometry; the mesh gets a small backward
-  // tilt (ARROW_FORWARD_LEAN) for a subtle "forward" read — nothing
-  // animated.
+  // A wide upside-down "V" (chevron) sized to sit inside the dot, centred
+  // vertically. Flat 2D geometry with a constant stroke thickness.
   const arrowShape = useMemo(() => {
-    const w = dotRadius * 0.5;   // half-width of the arrow head
-    const h = dotRadius * 0.62;  // half-height of the whole arrow
-    const t = dotRadius * 0.2;   // half-thickness of the stem
-    const shoulderY = h - w;
+    const w = dotRadius * 0.55;      // half-width of the chevron
+    const rise = dotRadius * 0.4;    // height from apex down to the arm ends
+    const k = dotRadius * 0.26;      // stroke thickness (vertical)
+    const apex = (rise + k) / 2;
+    const armEnd = apex - rise;
     const s = new THREE.Shape();
-    s.moveTo(0, h);
-    s.lineTo(w, shoulderY);
-    s.lineTo(t, shoulderY);
-    s.lineTo(t, -h);
-    s.lineTo(-t, -h);
-    s.lineTo(-t, shoulderY);
-    s.lineTo(-w, shoulderY);
+    s.moveTo(0, apex);
+    s.lineTo(w, armEnd);
+    s.lineTo(w, armEnd - k);
+    s.lineTo(0, apex - k);
+    s.lineTo(-w, armEnd - k);
+    s.lineTo(-w, armEnd);
     s.closePath();
     return s;
   }, [dotRadius]);
 
   useFrame(({ camera, clock }) => {
     if (!groupRef.current) return;
+    // Pulse ring: every RING_PULSE_SECONDS an extra copy of the ring
+    // expands outward and fades, then restarts.
+    if (pulseRef.current) {
+      const phase = (clock.elapsedTime % RING_PULSE_SECONDS) / RING_PULSE_SECONDS;
+      pulseRef.current.scale.setScalar(1 + phase * 0.6);
+      pulseRef.current.material.opacity = ringOpacity * (1 - phase);
+    }
     // Billboard the whole marker toward the camera so the always-visible
     // disc / ring / arrow never turn edge-on as the visitor looks around.
     groupRef.current.quaternion.copy(camera.quaternion);
@@ -227,6 +230,12 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
         <ringGeometry args={highlighted ? [20, 26, 40] : [16, 20, 40]} />
         <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
+      {/* Extra ring copy that expands and fades (see useFrame); the static
+          ring above stays put. */}
+      <mesh ref={pulseRef}>
+        <ringGeometry args={highlighted ? [20, 26, 40] : [16, 20, 40]} />
+        <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
 
       {isPulsing ? (
         // During emergency routing the arrow gives way to a "!" — same
@@ -236,10 +245,9 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
           !
         </Text>
       ) : (
-        // Flat white arrow sitting just in front of the disc, tilted back a
-        // touch (ARROW_FORWARD_LEAN) for a subtle forward lean. renderOrder
+        // Flat white chevron sitting just in front of the disc. renderOrder
         // keeps it painted over the disc.
-        <mesh position={[0, 0, 0.5]} rotation={[-ARROW_FORWARD_LEAN, 0, 0]} renderOrder={2}>
+        <mesh position={[0, 0, 0.5]} renderOrder={2}>
           <shapeGeometry args={[arrowShape]} />
           <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
