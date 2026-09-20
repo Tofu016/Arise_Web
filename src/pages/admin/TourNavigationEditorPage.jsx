@@ -7,6 +7,7 @@ import FilePickerButton from "../../components/FilePickerButton";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
+import { useBlurReview } from "../../hooks/useBlurReview";
 
 // Campus Tour equivalent of Virtual Map Navigation Editor — the same
 // walking/linking/placing mechanic (stop-to-stop hotspots), shared through
@@ -46,6 +47,7 @@ export default function TourNavigationEditorPage() {
   const [newMarkerPhotos, setNewMarkerPhotos] = useState([]); // storage paths
   const [markerUploadState, setMarkerUploadState] = useState("idle");
   const [sectionFilter, setSectionFilter] = useState("all");
+  const { requestBlur, blurDialog } = useBlurReview();
 
   const startAddMarker = () => {
     setAddingMarker(true);
@@ -56,25 +58,37 @@ export default function TourNavigationEditorPage() {
   };
 
   const handleMarkerPhotosPick = async (e) => {
-    const files = Array.from(e.target.files || []);
+    const input = e.target;
+    const files = Array.from(input.files || []);
+    input.value = ""; // so picking the same files again (e.g. after Cancel) still fires
     if (files.length === 0) return;
-    setMarkerUploadState("uploading");
+    const uploaded = [];
     try {
-      const uploaded = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        // Each photo gets its own blur review before it's uploaded;
+        // cancelling one stops the rest of the batch.
+        const reviewed = await requestBlur(file);
+        if (!reviewed) break;
+        setMarkerUploadState("uploading");
         // Named after the marker's own (already-generated) id plus an
         // index, so several photos on the same marker don't collide with
         // each other, and re-adding more photos later keeps appending
         // rather than overwriting an earlier one at the same index.
         const filename = photoFilename(file, `${pendingMarkerId}_${newMarkerPhotos.length + i}`);
-        const { path } = await uploadPhoto("tourMarker", file, { filename });
+        const { path } = await uploadPhoto("tourMarker", reviewed, { filename });
         uploaded.push(path);
       }
-      setNewMarkerPhotos((prev) => [...prev, ...uploaded]);
-      setMarkerUploadState("done");
-      setTimeout(() => setMarkerUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+      if (uploaded.length > 0) {
+        setNewMarkerPhotos((prev) => [...prev, ...uploaded]);
+        setMarkerUploadState("done");
+        setTimeout(() => setMarkerUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+      } else {
+        setMarkerUploadState("idle"); // every review was cancelled
+      }
     } catch {
+      // Keep the ones that did upload before the failure.
+      if (uploaded.length > 0) setNewMarkerPhotos((prev) => [...prev, ...uploaded]);
       setMarkerUploadState("error");
     }
   };
@@ -296,6 +310,7 @@ export default function TourNavigationEditorPage() {
       </div>
 
       {sidebar}
+      {blurDialog}
     </div>
   );
 }

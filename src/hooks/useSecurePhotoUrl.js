@@ -8,7 +8,11 @@ import { acquirePhoto, loadPhoto } from "../utils/photoStore";
 // `cached` serves it from photoStore's session cache instead (shared with
 // prefetchPhoto) — for the visitor view; admin editors leave it off so an
 // edited photo is never shown stale.
-export function useSecurePhotoUrl(photo, { cached = false } = {}) {
+//
+// `version` is for a photo edited in place (same path, new bytes): bump it to
+// reload, and public photos get a cache-busting query so the browser doesn't
+// keep showing the old file.
+export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
   const [url, setUrl] = useState(null);
   const [error, setError] = useState(null);
 
@@ -27,7 +31,7 @@ export function useSecurePhotoUrl(photo, { cached = false } = {}) {
           return;
         }
         release = loaded.release;
-        setUrl(loaded.url);
+        setUrl(version && !loaded.url.startsWith("blob:") ? `${loaded.url}?v=${version}` : loaded.url);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -37,7 +41,7 @@ export function useSecurePhotoUrl(photo, { cached = false } = {}) {
       cancelled = true;
       if (release) release();
     };
-  }, [photo, cached]);
+  }, [photo, cached, version]);
 
   return { url, error };
 }

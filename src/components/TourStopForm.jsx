@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { suggestTourStopId, suggestedTourPanoramaFilename } from "../utils/tourConstants";
 import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useAutoId } from "../hooks/useAutoId";
+import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
 
 const emptyDraft = () => ({
@@ -13,9 +14,9 @@ const emptyDraft = () => ({
 });
 
 // Tour Stop equivalent of NodeForm.jsx — deliberately much simpler, since
-// a tour stop has no building/floor/type/rooms-served, and doesn't need
-// the face-review pipeline NodeForm.jsx uses (confirmed not needed for
-// outdoor campus photos in this pass). Neighbor-linking is likewise not
+// a tour stop has no building/floor/type/rooms-served. Its photo goes
+// through the manual blur review (useBlurReview) before it's uploaded, but
+// not NodeForm.jsx's server-side holding-area flow. Neighbor-linking is likewise not
 // edited here — same separation as the indoor system, where Navigation
 // Edit is the sole place that's managed.
 export default function TourStopForm({ mode, stop, stops, sections, onSave, onCancel, onDelete }) {
@@ -25,6 +26,22 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
   const [errors, setErrors] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
+  const { requestBlur, reblurStored, blurDialog } = useBlurReview();
+
+  // "Edit blur regions" on the stop's already-uploaded panorama. Saves over
+  // it; if that lands on a different path (old .jpg re-saved as .webp) the
+  // form adopts the new one and Save stores it on the stop.
+  const handleReblur = async () => {
+    try {
+      const saved = await reblurStored(draft.photo);
+      if (!saved) return;
+      setDraft((d) => ({ ...d, photo: saved.path }));
+      setUploadState("done");
+      setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+    } catch (err) {
+      alert(err.message || "Couldn't update the photo.");
+    }
+  };
 
   // Same "auto-manage until the admin types their own" behavior as
   // NodeForm.jsx's ID field — true only for a fresh new stop.
@@ -86,7 +103,9 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
   };
 
   const handleFilePick = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
     if (!file) return;
 
     // Named after the stop's own ID, not the section — a section is just
@@ -96,10 +115,12 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
     // differently-named stops.
     const targetFilename = photoFilename(file, draft.id);
 
-    setUploadState("uploading");
     try {
-      setPreviewUrl(URL.createObjectURL(file));
-      const { path } = await uploadPhoto("tourPanorama", file, { filename: targetFilename });
+      const reviewed = await requestBlur(file); // blur review first; null = cancelled
+      if (!reviewed) return;
+      setUploadState("uploading");
+      setPreviewUrl(URL.createObjectURL(reviewed));
+      const { path } = await uploadPhoto("tourPanorama", reviewed, { filename: targetFilename });
       setDraft((d) => ({ ...d, photo: path }));
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
@@ -178,6 +199,17 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         </span>
       </label>
 
+      {mode === "edit" && draft.photo && (
+        <button
+          type="button"
+          className="rescan-faces-btn"
+          onClick={handleReblur}
+          disabled={uploadState === "uploading"}
+        >
+          ✏️ Edit blur regions on this photo
+        </button>
+      )}
+
       {previewUrl && (
         <img src={previewUrl} alt="preview" className="photo-preview" />
       )}
@@ -197,6 +229,8 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         )}
         <button onClick={onCancel}>Cancel</button>
       </div>
+
+      {blurDialog}
     </div>
   );
 }

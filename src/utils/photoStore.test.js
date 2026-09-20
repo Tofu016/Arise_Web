@@ -11,7 +11,7 @@ vi.mock("./imageConverter", () => ({ convertImage: vi.fn(async (f) => f) }));
 
 import { apiUpload, apiGetBlob } from "./apiClient";
 import { convertImage } from "./imageConverter";
-import { photoFilename, uploadPhoto, loadPhoto, acquirePhoto, prefetchPhoto, invalidatePhoto } from "./photoStore";
+import { photoFilename, uploadPhoto, loadPhoto, acquirePhoto, prefetchPhoto, invalidatePhoto, fetchPhotoBlob, reuploadPhoto } from "./photoStore";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -143,5 +143,53 @@ describe("photo cache", () => {
     const fresh = await acquirePhoto("panoramas/gd1/inv.jpg");
     expect(apiGetBlob).toHaveBeenCalledTimes(2);
     fresh.release();
+  });
+});
+
+describe("fetchPhotoBlob", () => {
+  it("reads a protected photo through the authenticated endpoint", async () => {
+    const blob = new Blob(["p"]);
+    apiGetBlob.mockResolvedValue(blob);
+    expect(await fetchPhotoBlob("roomphoto/gd1/r.webp")).toBe(blob);
+    expect(apiGetBlob.mock.calls[0][0]).toBe("IndoorUploads_API/serve?path=roomphoto%2Fgd1%2Fr.webp");
+  });
+
+  it("reads a public photo straight from its static URL, skipping the cache", async () => {
+    const blob = new Blob(["t"]);
+    const fetchMock = vi.fn(async () => ({ ok: true, blob: async () => blob }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await fetchPhotoBlob("tourcover/a.webp")).toBe(blob);
+    expect(fetchMock).toHaveBeenCalledWith("http://host/api/uploads/tourcover/a.webp", { cache: "no-cache" });
+  });
+
+  it("fails clearly when a public photo can't be read, or the path is unknown", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    await expect(fetchPhotoBlob("tourcover/a.webp")).rejects.toThrow("Couldn't load the existing photo.");
+    await expect(fetchPhotoBlob("old-firebase-path.jpg")).rejects.toThrow("old storage path");
+  });
+});
+
+describe("reuploadPhoto", () => {
+  it("saves back under the same category, building and name (per-building photo)", async () => {
+    apiUpload.mockResolvedValue({ path: "room360/gd1/r.webp" });
+    const result = await reuploadPhoto("room360/gd1/r.webp", new Blob(["x"]));
+    const [endpoint, formData] = apiUpload.mock.calls[0];
+    expect(endpoint).toBe("IndoorUploads_API/room360Photo");
+    expect(formData.get("building")).toBe("gd1");
+    expect(formData.get("filename")).toBe("r.webp");
+    expect(result).toEqual({ path: "room360/gd1/r.webp" });
+  });
+
+  it("sends no building for a flat (public tour) photo", async () => {
+    apiUpload.mockResolvedValue({ path: "tourpanorama/s.webp" });
+    await reuploadPhoto("tourpanorama/s.webp", new Blob(["x"]));
+    const [endpoint, formData] = apiUpload.mock.calls[0];
+    expect(endpoint).toBe("TourUploads_API/panorama");
+    expect(formData.get("building")).toBeNull();
+  });
+
+  it("reports a different path when the format changed", async () => {
+    apiUpload.mockResolvedValue({ path: "roomphoto/gd1/r.webp" });
+    expect(await reuploadPhoto("roomphoto/gd1/r.jpg", new Blob(["x"]))).toEqual({ path: "roomphoto/gd1/r.webp" });
   });
 });

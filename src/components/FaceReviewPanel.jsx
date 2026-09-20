@@ -51,6 +51,8 @@ function pixelateRegion(ctx, x, y, w, h, blockSize = 12) {
 // site passes it) but genuinely unused now — there's nothing left to
 // download-and-scan server-side, so removing the prop from the caller
 // isn't necessary; an unused prop is harmless.
+const PREVIEW_WIDTH = 880;
+
 export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, onConfirm, onCancel }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -211,8 +213,10 @@ export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, 
 
         <canvas
           ref={canvasRef}
-          width={880}
-          height={495}
+          width={PREVIEW_WIDTH}
+          // Follows the photo's own shape (not a fixed 16:9), so a portrait
+          // or square room photo isn't drawn stretched in the preview.
+          height={naturalSize ? Math.max(1, Math.round((PREVIEW_WIDTH * naturalSize.height) / naturalSize.width)) : 495}
           className="face-review-canvas"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

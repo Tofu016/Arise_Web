@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTourSections } from "../hooks/useTourSections";
 import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
+import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
 
 // Section equivalent of AddBuildingDialog.jsx — same "Add New X" /
@@ -22,15 +23,33 @@ export default function SectionEditorModal({ onClose }) {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const { url: coverPreviewUrl } = useSecurePhotoUrl(coverPath);
+  const [coverVersion, setCoverVersion] = useState(0); // bumped when the cover is edited in place
+  const { url: coverPreviewUrl } = useSecurePhotoUrl(coverPath, { version: coverVersion });
+  const { requestBlur, reblurStored, blurDialog } = useBlurReview();
+
+  // "Edit blur regions" on the cover that's already uploaded.
+  const handleCoverReblur = async () => {
+    try {
+      const saved = await reblurStored(coverPath);
+      if (!saved) return;
+      setCoverPath(saved.path);
+      setCoverVersion((v) => v + 1);
+    } catch (err) {
+      setError(err.message || "Couldn't update the photo.");
+    }
+  };
 
   const handleCoverPick = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
     if (!file) return;
     const filename = photoFilename(file, String(Date.now()));
-    setUploadState("uploading");
     try {
-      const { path } = await uploadPhoto("tourCover", file, { filename });
+      const reviewed = await requestBlur(file); // blur review first; null = cancelled
+      if (!reviewed) return;
+      setUploadState("uploading");
+      const { path } = await uploadPhoto("tourCover", reviewed, { filename });
       setCoverPath(path);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
@@ -63,6 +82,7 @@ export default function SectionEditorModal({ onClose }) {
   };
 
   return (
+    <>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal add-building-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
@@ -97,6 +117,16 @@ export default function SectionEditorModal({ onClose }) {
               {uploadState === "error" && "⚠ Upload failed — check Storage rules/connection."}
               {uploadState === "idle" && !coverPath && "No cover photo set yet."}
             </span>
+            {coverPath && (
+              <button
+                type="button"
+                className="rescan-faces-btn"
+                onClick={handleCoverReblur}
+                disabled={uploadState === "uploading"}
+              >
+                ✏️ Edit blur regions on this photo
+              </button>
+            )}
             {coverPath && coverPreviewUrl && (
               <img src={coverPreviewUrl} alt="Cover preview" className="photo-preview" />
             )}
@@ -133,5 +163,9 @@ export default function SectionEditorModal({ onClose }) {
         </div>
       </div>
     </div>
+    {/* Outside the overlay above: a click on the review dialog's backdrop
+        would otherwise bubble up and close this whole modal. */}
+    {blurDialog}
+    </>
   );
 }

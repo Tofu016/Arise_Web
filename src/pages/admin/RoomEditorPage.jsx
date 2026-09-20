@@ -5,6 +5,7 @@ import FilterPanel from "../../components/FilterPanel";
 import FilePickerButton from "../../components/FilePickerButton";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { useBlurReview } from "../../hooks/useBlurReview";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 
 const defaultFilters = {
@@ -101,16 +102,40 @@ export default function RoomEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoom, existing?.id]);
 
-  const { url: securePhotoUrl } = useSecurePhotoUrl(photoPath);
-  const { url: secure360PhotoUrl } = useSecurePhotoUrl(photo360Path);
+  const { requestBlur, reblurStored, blurDialog } = useBlurReview();
+  // Bumped when a stored photo is edited in place (same path, new bytes), so
+  // the preview reloads.
+  const [photoVersion, setPhotoVersion] = useState(0);
+  const [photo360Version, setPhoto360Version] = useState(0);
+
+  const { url: securePhotoUrl } = useSecurePhotoUrl(photoPath, { version: photoVersion });
+  const { url: secure360PhotoUrl } = useSecurePhotoUrl(photo360Path, { version: photo360Version });
+
+  // "Edit blur regions" on an already-saved photo. Saves straight over it;
+  // if that ever lands on a different path (old .jpg re-saved as .webp) the
+  // field adopts the new one, and Save then stores it on the room.
+  const handleReblur = async (path, setPath, setVersion) => {
+    try {
+      const saved = await reblurStored(path);
+      if (!saved) return;
+      setPath(saved.path);
+      setVersion((v) => v + 1);
+    } catch (err) {
+      alert(err.message || "Couldn't update the photo.");
+    }
+  };
 
   const handleFilePick = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
     if (!file || !selectedRoom || !node) return;
     const filename = photoFilename(file, slugify(selectedRoom));
-    setUploadState("uploading");
     try {
-      const { path } = await uploadPhoto("roomPhoto", file, { building: node.building, filename });
+      const reviewed = await requestBlur(file); // blur review first; null = cancelled
+      if (!reviewed) return;
+      setUploadState("uploading");
+      const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
       setPhotoPath(path);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
@@ -120,12 +145,16 @@ export default function RoomEditorPage() {
   };
 
   const handle360FilePick = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = "";
     if (!file || !selectedRoom || !node) return;
     const filename = photoFilename(file, slugify(selectedRoom));
-    setUpload360State("uploading");
     try {
-      const { path } = await uploadPhoto("room360", file, { building: node.building, filename });
+      const reviewed = await requestBlur(file);
+      if (!reviewed) return;
+      setUpload360State("uploading");
+      const { path } = await uploadPhoto("room360", reviewed, { building: node.building, filename });
       setPhoto360Path(path);
       setUpload360State("done");
       setTimeout(() => setUpload360State((s) => (s === "done" ? "idle" : s)), 2500);
@@ -305,6 +334,16 @@ export default function RoomEditorPage() {
                     {uploadState === "idle" && !photoPath && "No photo set yet."}
                   </span>
                 </label>
+                {photoPath && (
+                  <button
+                    type="button"
+                    className="rescan-faces-btn"
+                    onClick={() => handleReblur(photoPath, setPhotoPath, setPhotoVersion)}
+                    disabled={uploadState === "uploading"}
+                  >
+                    ✏️ Edit blur regions on this photo
+                  </button>
+                )}
                 {/* Always shows a preview-sized box, even with no photo set
                     yet — matching the wireframe, which gives both photo
                     sections consistent visual weight regardless of upload
@@ -334,6 +373,16 @@ export default function RoomEditorPage() {
                 <p className="field-hint">
                   Used by the mobile app's AR placard scanner — separate from the room photo above.
                 </p>
+                {photo360Path && (
+                  <button
+                    type="button"
+                    className="rescan-faces-btn"
+                    onClick={() => handleReblur(photo360Path, setPhoto360Path, setPhoto360Version)}
+                    disabled={upload360State === "uploading"}
+                  >
+                    ✏️ Edit blur regions on this photo
+                  </button>
+                )}
                 <div className="room-editor-photo-preview-box">
                   {photo360Path ? (
                     secure360PhotoUrl
@@ -361,6 +410,7 @@ export default function RoomEditorPage() {
       </div>
 
       {sidebar}
+      {blurDialog}
     </div>
   );
 }

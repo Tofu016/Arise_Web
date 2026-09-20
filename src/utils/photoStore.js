@@ -65,6 +65,42 @@ export function fetchProtectedPhoto(path, fallbackError = "Couldn't load photo."
   return apiGetBlob(`IndoorUploads_API/serve?path=${encodeURIComponent(path)}`, fallbackError);
 }
 
+function publicPhotoUrl(path) {
+  return `${API_BASE_URL.replace(/\/index\.php$/, "")}/uploads/${path}`;
+}
+
+// The raw bytes of any stored photo, for editing it (the blur review).
+// Protected photos come through the authenticated serve endpoint; public
+// ones are plain static files. no-cache so an edit made a moment ago isn't
+// read back stale from the browser cache.
+export async function fetchPhotoBlob(path) {
+  const spec = specForPath(path);
+  if (!spec) throw new Error(UNSUPPORTED_PATH_MESSAGE);
+  if (spec.visibility === "protected") {
+    return fetchProtectedPhoto(path, "Couldn't load the existing photo.");
+  }
+  const response = await fetch(publicPhotoUrl(path), { cache: "no-cache" });
+  if (!response.ok) throw new Error("Couldn't load the existing photo.");
+  return response.blob();
+}
+
+// Saves edited bytes back over an existing photo, under the same category,
+// building and name, so everything already pointing at it keeps working.
+// Returns { path } — normally the same path. It differs only when the new
+// file's format doesn't match the old extension (e.g. an old .jpg re-saved
+// as .webp); the caller must then point its record at the new path.
+export async function reuploadPhoto(path, blob) {
+  const spec = specForPath(path);
+  if (!spec) throw new Error(UNSUPPORTED_PATH_MESSAGE);
+  const kind = Object.keys(KINDS).find((k) => KINDS[k] === spec);
+  const segments = path.split("/");
+  const perBuilding = segments.length === 3; // category/building/file vs category/file
+  return uploadPhoto(kind, blob, {
+    filename: segments[segments.length - 1],
+    ...(perBuilding ? { building: segments[1] } : {}),
+  });
+}
+
 // Resolves a stored photo path to something an <img> can display:
 // { url, release }. Public paths resolve to a direct static URL; protected
 // paths are fetched with the current auth token into a blob: URL, which
@@ -74,10 +110,7 @@ export async function loadPhoto(path) {
   if (!spec) throw new Error(UNSUPPORTED_PATH_MESSAGE);
 
   if (spec.visibility === "public") {
-    return {
-      url: `${API_BASE_URL.replace(/\/index\.php$/, "")}/uploads/${path}`,
-      release() {},
-    };
+    return { url: publicPhotoUrl(path), release() {} };
   }
 
   const blob = await fetchProtectedPhoto(path);
