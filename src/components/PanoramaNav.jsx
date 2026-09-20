@@ -559,7 +559,7 @@ export default function PanoramaNav({
           onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}
         />
       ))}
-      <OrbitControls makeDefault enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
+      <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
     </Canvas>
   );
 }
