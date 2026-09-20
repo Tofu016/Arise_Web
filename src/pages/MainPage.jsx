@@ -481,6 +481,11 @@ export default function MainPage() {
 
   // The kiosk dialog takes over the top of the panorama, so the node name
   // (and the menu button, whose actions would open a second dialog) step aside.
+  // Anything that pops up over the panorama — the radial menu, every dialog
+  // and panel, the 360 room view, a flyover, the idle prompt — hides the
+  // hotspot previews so they don't sit on top of it.
+  const overlayOpen =
+    !!panelMode || mobileDockOpen || showFeedback || buildingMenuOpen || room360Open || !!flyover || isIdle;
   const kioskDialogOpen = isMobile && (panelMode === "search" || (panelMode === "directions" && !!directions) || showFeedback);
 
   // Show the person's actual name, not their email — falls back to email
@@ -781,6 +786,8 @@ export default function MainPage() {
                 highlightedId={nextStopId}
                 emergencyMode={directions?.kind === "exit"}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
+                alwaysShowPreview
+                previewsHidden={overlayOpen}
               />
             </div>
 

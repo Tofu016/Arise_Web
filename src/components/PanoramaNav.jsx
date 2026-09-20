@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
 import { toPosition, toAngles, initialCameraPosition, computeFov, TARGET_HORIZONTAL_FOV } from "../utils/panoramaMath";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
+import { useRectilinearPreview } from "../hooks/useRectilinearPreview";
 
 // Genuinely missing before this fix — referenced below (m.type ===
 // "equipment") but never actually defined anywhere in the codebase,
@@ -97,13 +98,31 @@ function useIsCoarsePointer() {
   return coarse;
 }
 
-function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency }) {
+function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency, alwaysPreview, previewHidden }) {
   const pos = toPosition(yaw, pitch);
   const [hovered, setHovered] = useState(false);
   const isTouch = useIsCoarsePointer();
-  // Only fetches once genuinely hovered — a hotspot never hovered never
-  // triggers a photo fetch at all.
-  const { url: previewUrl } = useSecurePhotoUrl(hovered ? photo : null, { cached: true });
+  // Kiosk: the preview is permanently shown, so a tap just walks there.
+  // `clicked`: this hotspot was just used to leave the scene, so its preview
+  // goes away at once instead of lingering while the next photo loads.
+  const [clicked, setClicked] = useState(false);
+  // `facing`: the hotspot is in front of the camera. The preview is only
+  // mounted then. drei's <Html> re-places itself only when its projected
+  // position changes, so one first placed while the hotspot was behind the
+  // camera (e.g. the link back where you came from, right after a move)
+  // could sit stuck over the view ahead until you looked round to it.
+  // Mounting it only while facing it means it always starts from a fresh,
+  // correct placement.
+  const [facing, setFacing] = useState(false);
+  const showPreview = previewHidden || clicked || !facing ? false : alwaysPreview || hovered;
+  // Only fetches once the preview is actually shown — a hotspot that never
+  // shows one never triggers a photo fetch at all.
+  const { url: photoUrl } = useSecurePhotoUrl(showPreview ? photo : null, { cached: true });
+  // The photo is a flat 360° map; show a normal-looking view of it, looking
+  // the way the visitor will be facing on arrival (this hotspot's yaw). Falls
+  // back to the raw photo if the projection can't be made.
+  const projected = useRectilinearPreview(photoUrl, yaw);
+  const previewUrl = projected || photoUrl;
 
   // Touch: first tap reveals the preview (reusing the same `hovered`
   // state hover already drives) instead of navigating; a second tap
@@ -129,11 +148,12 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   };
   const handleClick = (e) => {
     e.stopPropagation();
-    if (isTouch && !hovered) {
+    if (isTouch && !hovered && !alwaysPreview) {
       setHovered(true); // tap-to-preview: show the sneak-peek, don't walk yet
       return;
     }
     setHovered(false);
+    setClicked(true);
     onClick(); // tap-again-to-go (touch), or the only tap needed at all (mouse)
   };
 
@@ -154,6 +174,8 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   const arrowColor = "#ffffff";
   const groupRef = useRef();
   const pulseRef = useRef();
+  const cameraDir = useMemo(() => new THREE.Vector3(), []);
+  const hotspotDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch)).normalize(), [yaw, pitch]);
 
   // The hotspot is a permanently-visible wayfinding marker now, not a
   // hover-only "sneak peek". Hover keeps a small emphasis bump and still
@@ -184,6 +206,9 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
 
   useFrame(({ camera, clock }) => {
     if (!groupRef.current) return;
+    // cos(~78°): generous, so a card near the screen edge still shows.
+    const nowFacing = camera.getWorldDirection(cameraDir).dot(hotspotDir) > 0.2;
+    if (nowFacing !== facing) setFacing(nowFacing);
     // Pulse ring: every RING_PULSE_SECONDS an extra copy of the ring
     // expands outward and fades, then restarts.
     if (pulseRef.current) {
@@ -253,11 +278,13 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
         </mesh>
       )}
 
-      {/* Sneak-peek preview — still only on genuine hover, a "check before
-          you click" affordance, separate from the always-on marker itself. */}
-      {hovered && (
+      {/* Sneak-peek preview — on hover (or always, on the kiosk), a "check
+          before you click" affordance separate from the marker itself. */}
+      {showPreview && (
         <Html
-          distanceFactor={260}
+          // No distanceFactor: the card is plain CSS pixels (sized in
+          // index.css). With it, the card's size followed the camera's FOV
+          // and came out at only ~0.2-0.4x of its CSS size.
           position={[0, 50, 0]}
           // Anchor the card by its BOTTOM edge (translate -100% on Y), not
           // its middle. `center` would pin the card's centre to the anchor
@@ -421,6 +448,8 @@ function usePanoramaFov(heightFraction) {
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
+ *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
+ *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
  */
@@ -442,6 +471,8 @@ export default function PanoramaNav({
   selectedMarkerId = null,
   sceneKey,
   heightFraction = 1,
+  alwaysShowPreview = false,
+  previewsHidden = false,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // @react-three/fiber reactively applies changes to the camera prop's
@@ -533,7 +564,10 @@ export default function PanoramaNav({
       {holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
       {shownHotspots.map((h) => (
         <Hotspot
-          key={h.id}
+          // Scoped to the scene: a hotspot with the same target id in the
+          // next scene is a new marker, not this one carried over with its
+          // stale hover/clicked state.
+          key={`${live ? key : shown.key}:${h.id}`}
           yaw={h.yaw}
           pitch={h.pitch}
           label={h.name}
@@ -541,6 +575,10 @@ export default function PanoramaNav({
           dimmed={placing}
           highlighted={!placing && h.id === highlightedId}
           emergency={emergencyMode}
+          alwaysPreview={alwaysShowPreview && !placing}
+          // Also hidden while a move is loading: `!live` means the screen is
+          // still showing the scene being left.
+          previewHidden={previewsHidden || !live}
           onClick={() => !placing && onNavigate(h.id, { yaw: h.yaw, pitch: h.pitch })}
         />
       ))}
