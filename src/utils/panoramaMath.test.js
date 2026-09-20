@@ -8,6 +8,7 @@ import {
   toAngles,
   initialCameraPosition,
   computeFov,
+  overlayScale,
 } from "./panoramaMath";
 
 const close = (actual, expected) => actual.forEach((v, i) => expect(v).toBeCloseTo(expected[i], 6));
@@ -67,5 +68,25 @@ describe("computeFov", () => {
   });
   it("keeps the same horizontal view: a square screen's vertical FOV equals the target", () => {
     expect(computeFov(800, 800)).toBeCloseTo(TARGET_HORIZONTAL_FOV, 6);
+  });
+});
+
+describe("overlayScale", () => {
+  const scaleFor = (w, h) => overlayScale(w, h, computeFov(w, h));
+  it("is 1 at the 1920x1080 reference desktop", () => {
+    expect(scaleFor(1920, 1080)).toBeCloseTo(1, 6);
+  });
+  it("stays 1 for any screen of the same shape (window resizes)", () => {
+    // Scene units already scale with the canvas height at a fixed FOV, so a
+    // smaller window of the same shape needs no correction.
+    expect(scaleFor(1280, 720)).toBeCloseTo(1, 6);
+    expect(scaleFor(960, 540)).toBeCloseTo(1, 6);
+  });
+  it("is larger on a tall kiosk, where the wide vertical FOV shrinks things", () => {
+    expect(scaleFor(1080, 1152)).toBeGreaterThan(1.5);
+  });
+  it("falls back to 1 without a size or FOV", () => {
+    expect(overlayScale(0, 0, 90)).toBe(1);
+    expect(overlayScale(800, 600, 0)).toBe(1);
   });
 });

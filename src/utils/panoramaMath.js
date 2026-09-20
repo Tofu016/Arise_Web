@@ -47,6 +47,22 @@ export const TARGET_HORIZONTAL_FOV = 100; // degrees
 export const MIN_FOV = 60;
 export const MAX_FOV = 180;
 
+// Hotspots and markers are sized in scene units, so on screen they're
+// proportional to canvasHeight / tan(fov/2): a tall kiosk (wide vertical FOV)
+// shrinks them to about half of what a landscape desktop shows. This factor
+// undoes that, so they keep the same apparent size relative to the screen's
+// shorter side. Normalised so a 1920x1080 desktop is exactly 1 — the size
+// they were tuned at — and any screen with the same shape scales in step.
+const OVERLAY_REF_HEIGHT = 1080;
+const OVERLAY_REF_PX_PER_UNIT =
+  OVERLAY_REF_HEIGHT / 2 / Math.tan(((computeFov(1920, 1080) * Math.PI) / 180) / 2);
+
+export function overlayScale(width, height, fov) {
+  if (!width || !height || !fov) return 1;
+  const pxPerUnit = height / 2 / Math.tan(((fov * Math.PI) / 180) / 2);
+  return (Math.min(width, height) / OVERLAY_REF_HEIGHT) * (OVERLAY_REF_PX_PER_UNIT / pxPerUnit);
+}
+
 export function computeFov(width, height) {
   if (!width || !height) return TARGET_HORIZONTAL_FOV;
   const aspect = width / height;

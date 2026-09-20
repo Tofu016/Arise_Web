@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
-import { toPosition, toAngles, initialCameraPosition, computeFov, TARGET_HORIZONTAL_FOV } from "../utils/panoramaMath";
+import { toPosition, toAngles, initialCameraPosition, computeFov, overlayScale, TARGET_HORIZONTAL_FOV } from "../utils/panoramaMath";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useRectilinearPreview } from "../hooks/useRectilinearPreview";
 
@@ -98,8 +98,11 @@ function useIsCoarsePointer() {
   return coarse;
 }
 
-function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency, alwaysPreview, previewHidden }) {
+function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency, alwaysPreview, previewHidden, fov }) {
   const pos = toPosition(yaw, pitch);
+  // Keeps the marker the same apparent size on any screen (see overlayScale).
+  const canvasSize = useThree((state) => state.size);
+  const uiScale = overlayScale(canvasSize.width, canvasSize.height, fov);
   const [hovered, setHovered] = useState(false);
   const isTouch = useIsCoarsePointer();
   // Kiosk: the preview is permanently shown, so a tap just walks there.
@@ -224,7 +227,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
     // purpose; the "!" below is real geometry, so it inherits this scale
     // the same way the disc and ring do.
     const scale = isPulsing ? 1 + Math.sin(clock.elapsedTime * 4) * 0.15 : 1;
-    groupRef.current.scale.setScalar(scale);
+    groupRef.current.scale.setScalar(scale * uiScale);
   });
 
   return (
@@ -328,6 +331,11 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
 // onRoomClick; the public viewer never sets onClick).
 function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, dimmed, selected }) {
   const pos = toPosition(yaw, pitch);
+  // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
+  // tied the size to the camera's FOV and left icons ~13px on desktop and
+  // smaller still on the kiosk), scaled with the screen's shorter side.
+  const canvasSize = useThree((state) => state.size);
+  const uiScale = Math.min(1.5, Math.max(0.75, Math.min(canvasSize.width, canvasSize.height) / 1080));
   // markerInfo lets a caller override the icon/color lookup entirely,
   // rather than this component always resolving it from constants.js's
   // MARKER_TYPES — needed for the Virtual Tour's "equipment" marker type,
@@ -358,10 +366,11 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
         : undefined;
   const isClickable = !!clickHandler;
 
-  const baseSize = 33;
-  const hoverSize = 46;
+  const baseSize = Math.round(48 * uiScale);
+  const hoverSize = Math.round(64 * uiScale);
   const size = hovered && isClickable ? hoverSize : baseSize;
-  const fontSize = Math.round(13 * (size / 26));
+  const fontSize = Math.round(size * 0.5);
+  const labelFontSize = Math.round(16 * uiScale);
 
   return (
     <group position={pos}>
@@ -373,7 +382,7 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
           raycaster can actually hit — confirmed this was the real,
           structural cause of room markers never responding to clicks,
           not a data-matching problem. */}
-      <Html center distanceFactor={260} style={{ pointerEvents: isClickable ? "auto" : "none" }}>
+      <Html center style={{ pointerEvents: isClickable ? "auto" : "none" }}>
         {/* Layout/colour in index.css → "Panorama overlays"; only the
             per-marker size, type colour and selected ring are dynamic. */}
         <div
@@ -397,7 +406,7 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
           >
             {info.icon}
           </div>
-          <div className="pano-marker-label">{label}</div>
+          <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
         </div>
       </Html>
     </group>
@@ -575,6 +584,7 @@ export default function PanoramaNav({
           dimmed={placing}
           highlighted={!placing && h.id === highlightedId}
           emergency={emergencyMode}
+          fov={fov}
           alwaysPreview={alwaysShowPreview && !placing}
           // Also hidden while a move is loading: `!live` means the screen is
           // still showing the scene being left.
