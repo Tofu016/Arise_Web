@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../context/useAuth";
 import { useUsers } from "../../hooks/useUsers";
+import { fuzzyIncludes } from "../../utils/fuzzy";
 
 const ROLES = ["pending", "user", "admin"];
 
@@ -87,11 +88,9 @@ export default function UserPanelPage() {
   });
 
   const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return sorted.filter((u) => {
       if (roleFilter !== "all" && (u.role || "pending") !== roleFilter) return false;
-      if (!q) return true;
-      return (u.email || "").toLowerCase().includes(q) || (u.name || "").toLowerCase().includes(q);
+      return fuzzyIncludes(search, [u.email, u.name]);
     });
   }, [sorted, search, roleFilter]);
 

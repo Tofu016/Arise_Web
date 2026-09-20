@@ -14,6 +14,8 @@
 //   entryYaw       the yaw the admin arrived facing
 // At most one of placingFor / placingMarker is meant to be active.
 
+import { fuzzyIncludes } from "./fuzzy";
+
 export function newMarkerId() {
   return `m_${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`;
 }
@@ -84,9 +86,8 @@ export const withoutMarker = (current, id) => (current.markers || []).filter((m)
 // name), leaving out itself and existing neighbors; at most 8.
 export function candidateLinks(items, current, query) {
   if (!current || !query.trim()) return [];
-  const q = query.toLowerCase();
   return items
     .filter((i) => i.id !== current.id && !(current.neighbors || []).includes(i.id))
-    .filter((i) => i.id.toLowerCase().includes(q) || i.name.toLowerCase().includes(q))
+    .filter((i) => fuzzyIncludes(query, [i.id, i.name]))
     .slice(0, 8);
 }

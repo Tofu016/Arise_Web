@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { buildingLabel, floorLabel, typeLabel } from "../utils/constants";
 import EntityListPanel from "./EntityListPanel";
+import { fuzzyIncludes } from "../utils/fuzzy";
 
 export default function NodeList({ nodes, filters, selectedNodeId, onSelect }) {
   const filtered = useMemo(() => {
@@ -10,13 +11,7 @@ export default function NodeList({ nodes, filters, selectedNodeId, onSelect }) {
       if (filters.type !== "all" && n.type !== filters.type) return false;
       if (filters.photoStatus === "missing" && n.photo) return false;
       if (filters.photoStatus === "has" && !n.photo) return false;
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const matchesId = n.id.toLowerCase().includes(q);
-        const matchesName = n.name.toLowerCase().includes(q);
-        const matchesRoom = (n.rooms || []).some((r) => r.toLowerCase().includes(q));
-        if (!matchesId && !matchesName && !matchesRoom) return false;
-      }
+      if (filters.search && !fuzzyIncludes(filters.search, [n.id, n.name, ...(n.rooms || [])])) return false;
       return true;
     });
   }, [nodes, filters]);

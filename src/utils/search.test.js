@@ -106,3 +106,33 @@ describe("resolveExactNodeMatch", () => {
     expect(resolveExactNodeMatch("x", null, rooms)).toBeNull();
   });
 });
+
+describe("forgiving matching", () => {
+  const rooms = buildSearchableRooms(nodes, getForRoom);
+
+  it("ignores case and spaces in what's typed and in what's stored", () => {
+    expect(searchNodes("MAINENTRANCE", nodes).map((n) => n.id)).toEqual(["n1"]);
+    expect(searchNodes("  main   entrance ", nodes).map((n) => n.id)).toEqual(["n1"]);
+    expect(searchNodes("room203annex", nodes).map((n) => n.id)).toEqual(["n3"]);
+    expect(searchRooms("REGISTRARS office", rooms).map((r) => r.roomName)).toEqual(["Registrar"]);
+  });
+  it("tolerates a typo in a word, and ranks those after real matches", () => {
+    expect(searchNodes("entrnace", nodes).map((n) => n.id)).toEqual(["n1"]);
+    expect(searchRooms("registar", rooms).map((r) => r.roomName)).toEqual(["Registrar"]);
+    const ns = [{ id: "a", name: "Hallway", rooms: [] }, { id: "b", name: "Hello Hall", rooms: [] }];
+    expect(searchNodes("hall", ns).map((n) => n.id)).toEqual(["a", "b"]); // prefix, then contains
+    expect(searchNodes("hell", ns).map((n) => n.id)).toEqual(["b", "a"]); // contains beats typo
+  });
+  it("never blurs one room number into another", () => {
+    expect(searchNodes("204", nodes)).toEqual([]);
+    expect(searchRooms("208", rooms)).toEqual([]);
+  });
+  it("does not fuzz very short queries", () => {
+    expect(searchNodes("mun", nodes)).toEqual([]);
+  });
+  it("matches markers and typed directions endpoints without regard to case or spacing", () => {
+    expect(findRoomForMarker({ label: "  reg istrar" }, rooms)?.roomName).toBe("Registrar");
+    expect(resolveExactNodeMatch("MAIN entrance", nodes, rooms)?.id).toBe("n1");
+    expect(resolveExactNodeMatch("main entrnace", nodes, rooms)).toBeNull(); // exact only
+  });
+});
