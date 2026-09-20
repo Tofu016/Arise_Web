@@ -537,28 +537,45 @@ export default function MainPage() {
     },
   ].filter(Boolean);
 
+  // The two actions on a search result. The entry itself isn't clickable —
+  // "Go To" jumps there, "Directions" routes there. onMouseDown +
+  // preventDefault keeps the search input focused (its blur closes the panel).
+  const renderResultActions = (onGoTo, directionsNode) => (
+    <div className="search-result-actions">
+      <button
+        type="button"
+        className="directions-btn"
+        onMouseDown={(e) => { e.preventDefault(); onGoTo(); }}
+        title="Go to this location"
+      >
+        ⤳ Go To
+      </button>
+      <button
+        type="button"
+        className="directions-btn"
+        onMouseDown={(e) => { e.preventDefault(); openDirectionsTo(directionsNode); }}
+        title="Get directions"
+      >
+        ➜ Directions
+      </button>
+    </div>
+  );
+
   const searchResultsContent = (
     <>
       {!searchQuery.trim() && randomSuggestions.length > 0 && (
         <div className="room-search-results">
-          <p className="room-search-suggestions-label">Suggested rooms — click to view, or start typing to search</p>
+          <p className="room-search-suggestions-label">Suggested rooms: use Go To or Directions, or start typing to search</p>
           {randomSuggestions.map((r) => (
             <div key={r.roomName} className="room-search-result-actionable">
-              <div className="room-search-result-main" onMouseDown={(e) => { e.preventDefault(); openRoomCard(r); }}>
+              <div className="room-search-result-main">
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
                   {r.placard.use ? `${r.placard.use} · ` : ""}
                   {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                 </span>
               </div>
-              <button
-                type="button"
-                className="directions-btn"
-                onMouseDown={(e) => { e.preventDefault(); openDirectionsTo(r.node); }}
-                title="Get directions"
-              >
-                ➜ Directions
-              </button>
+              {renderResultActions(() => openRoomCard(r), r.node)}
             </div>
           ))}
         </div>
@@ -570,21 +587,14 @@ export default function MainPage() {
               <p className="room-search-suggestions-label">Rooms</p>
               {roomResults.map((r) => (
                 <div key={r.roomName} className="room-search-result-actionable">
-                  <div className="room-search-result-main" onMouseDown={(e) => { e.preventDefault(); openRoomCard(r); }}>
+                  <div className="room-search-result-main">
                     <span className="room-search-name">{r.roomName}</span>
                     <span className="room-search-sub">
                       {r.placard.use ? `${r.placard.use} · ` : ""}
                       {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="directions-btn"
-                    onMouseDown={(e) => { e.preventDefault(); openDirectionsTo(r.node); }}
-                    title="Get directions"
-                  >
-                    ➜ Directions
-                  </button>
+                  {renderResultActions(() => openRoomCard(r), r.node)}
                 </div>
               ))}
             </>
@@ -594,21 +604,14 @@ export default function MainPage() {
               <p className="room-search-suggestions-label">Places</p>
               {placeResults.map((n) => (
                 <div key={n.id} className="room-search-result-actionable">
-                  <div className="room-search-result-main" onMouseDown={(e) => { e.preventDefault(); jumpToSearchResult(n.id); }}>
+                  <div className="room-search-result-main">
                     <span className="room-search-name">{n.name}</span>
                     <span className="room-search-sub">
                       {n.rooms?.length ? `Rooms: ${n.rooms.join(", ")} · ` : ""}
                       {buildingLabel(n.building)} · {floorLabel(n.floor)}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="directions-btn"
-                    onMouseDown={(e) => { e.preventDefault(); openDirectionsTo(n); }}
-                    title="Get directions"
-                  >
-                    ➜ Directions
-                  </button>
+                  {renderResultActions(() => jumpToSearchResult(n.id), n)}
                 </div>
               ))}
             </>
@@ -1080,7 +1083,7 @@ export default function MainPage() {
               {panelMode && (
                 <>
                   <div className="floating-panel-backdrop" />
-                  <div className="floating-panel">
+                  <div className={"floating-panel" + (panelMode === "search" ? " floating-panel-search" : "")}>
                     {panelMode === "search" && (
                       <>
                         {searchResultsContent}

@@ -1490,7 +1490,19 @@ button.primary {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  cursor: pointer;
+}
+/* Go To + Directions, side by side at the right of a search result. */
+.search-result-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  flex-shrink: 0;
+  align-self: center;
+}
+.search-result-actions .directions-btn {
+  margin-top: 0;
+  align-self: auto;
+  white-space: nowrap;
 }
 .room-search-result:last-child {
   border-bottom: none;
@@ -2815,7 +2827,7 @@ button.primary {
   top: 16px;
   left: 76px;
   right: 16px;
-  max-width: 360px;
+  max-width: 520px;
   z-index: 30;
   pointer-events: none;
 }
@@ -2829,12 +2841,12 @@ button.primary {
 }
 .floating-search-bar input {
   width: 100%;
-  padding: 12px 68px 12px 18px;
+  padding: 15px 68px 15px 22px;
   border-radius: var(--radius-pill);
   border: none;
   background: transparent;
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
 }
 .floating-search-bar input:focus {
   outline: none;
@@ -2847,6 +2859,11 @@ button.primary {
   font-size: 14px;
   color: var(--text-muted);
   pointer-events: none;
+}
+/* The search results list matches the (wider) search bar above it and has
+   room for the Go To + Directions buttons. */
+.floating-panel.floating-panel-search {
+  width: 520px;
 }
 .floating-panel-backdrop {
   position: absolute;
