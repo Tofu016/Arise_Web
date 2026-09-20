@@ -2848,26 +2848,6 @@ button.primary {
   color: var(--text-muted);
   pointer-events: none;
 }
-/* Sits just left of the (purely decorative, pointer-events: none)
-   search icon above — genuinely interactive and clickable, unlike that
-   icon, so this needs its own right offset rather than overlapping it. */
-.onscreen-keyboard-toggle {
-  position: absolute;
-  right: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 6px;
-  opacity: 0.7;
-  touch-action: manipulation;
-}
-.onscreen-keyboard-toggle:hover,
-.onscreen-keyboard-toggle:active {
-  opacity: 1;
-}
 .floating-panel-backdrop {
   position: absolute;
   inset: 0;
@@ -3265,9 +3245,9 @@ button.primary {
    kiosk screens alike (see useIsMobile in MainPage.jsx); there is no
    separate kiosk build, so every rule here is written kiosk-grade:
    44px+ touch targets, safe-area insets for notches/kiosk bezels, every
-   actionable control collapsed behind a single middle-left FAB within
+   actionable control collapsed behind a single middle-right FAB within
    arm's reach of someone standing at a wall-mounted kiosk (see
-   "Middle-left control dock" below), and visible :active press feedback
+   "Middle-right control dock" below), and visible :active press feedback
    since there's no cursor to hint interactivity.
    ===================================================================== */
 .mobile-screen {
@@ -3318,7 +3298,7 @@ button.primary {
   text-overflow: ellipsis;
 }
 /* ---------- Radial menu backdrop — full-screen, dims the panorama while
-   the middle-left dock is fanned open; tapping it collapses everything
+   the middle-right dock is fanned open; tapping it collapses everything
    (see closeMobileDock in MainPage.jsx). Every actual feature (search,
    directions/exit, account, building picker) opens its own separate
    .modal-overlay on top of this — same centered, auto-height pattern as
@@ -3330,18 +3310,18 @@ button.primary {
   background: rgba(32, 27, 27, 0.35);
   z-index: 25;
 }
-/* ---------- Middle-left control dock: a single FAB, vertically centered
-   on the left edge — reachable at arm's length by someone standing at a
+/* ---------- Middle-right control dock: a single FAB, vertically centered
+   on the right edge — reachable at arm's length by someone standing at a
    wall-mounted kiosk. Tapping it fans out icon-only buttons around it,
-   clock-numbers style, swept across its right side only (nothing to its
-   left but the screen edge) — see .mobile-radial-menu/.mobile-radial-btn.
+   clock-numbers style, swept across its left side only (nothing to its
+   right but the screen edge) — see .mobile-radial-menu/.mobile-radial-btn.
    This box is sized to exactly match the FAB (56x56) so it can act as
    the fan's own center point/anchor, regardless of how many icons are
    actually shown. ---------- */
 .mobile-side-dock {
   position: absolute;
   top: 50%;
-  left: calc(12px + env(safe-area-inset-left));
+  right: calc(12px + env(safe-area-inset-right));
   transform: translateY(-50%);
   width: 56px;
   height: 56px;
@@ -3481,15 +3461,6 @@ button.primary {
    its own content instead of leaving awkward empty space below a short
    one (e.g. the exit panel's lone "Get Directions" button used to sit
    in a fixed 62vh-tall sheet). ---------- */
-.directions-modal {
-  width: 400px;
-  max-width: 92vw;
-  max-height: 86vh;
-  overflow-y: auto;
-}
-.directions-modal button {
-  min-height: 44px;
-}
 .mobile-account-modal {
   width: 320px;
   max-width: 92vw;
@@ -3501,16 +3472,12 @@ button.primary {
   display: flex;
   flex-direction: column;
 }
-.mobile-search-modal {
-  width: 400px;
-  max-width: 92vw;
-}
 /* Fixed height regardless of how many results are in it (even zero) —
    this is what keeps the search row and keyboard below it from ever
    shifting position as the visitor types; only this area's own content
    scrolls. */
 .mobile-search-results-area {
-  height: min(320px, 42vh);
+  height: min(320px, 42vh); /* the kiosk dialog overrides this to fill its column */
   overflow-y: auto;
   touch-action: pan-y;
   overscroll-behavior: contain;
@@ -3569,7 +3536,7 @@ button.primary {
 .mobile-search-row input {
   width: 100%;
   height: 48px;
-  padding: 0 44px 0 16px;
+  padding: 0 16px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -3580,19 +3547,6 @@ button.primary {
 .mobile-search-row input:focus {
   outline: none;
   border-color: var(--focus-ring);
-}
-/* Same treatment as .onscreen-keyboard-toggle above (desktop's floating
-   search bar) — this mobile version needs its own copy of the rule
-   rather than sharing it directly, since .mobile-search-row has no
-   separate decorative icon sharing the space here, just this one
-   button positioned against the input's own right edge. */
-.mobile-search-row .onscreen-keyboard-toggle {
-  right: 6px;
-}
-/* The on-screen keyboard sits BELOW the search row, not overlapping or
-   pushing it — see the "kiosk search" comment in MainPage.jsx. */
-.mobile-search-modal .onscreen-keyboard {
-  margin-top: 12px;
 }
 /* ---------- Building picker list — plain <button>s now (was a styled
    <div> list under a dropdown trigger; that dropdown is gone now that
@@ -4136,9 +4090,8 @@ button.primary {
    for a website to directly force the OS's own virtual keyboard to
    appear, and Windows specifically is known to sometimes skip
    auto-showing its touch keyboard on a device that still has a
-   physical keyboard technically available. Manual toggle rather than
-   automatic — a phone's own native keyboard already works fine and
-   would otherwise end up stacked underneath this one.
+   physical keyboard technically available. Shown automatically on the
+   kiosk layout wherever there's a text field (search, directions, feedback).
    ===================================================================== */
 .onscreen-keyboard {
   margin-top: 12px;
@@ -4185,23 +4138,19 @@ button.primary {
   flex: 4;
   max-width: none;
 }
-.onscreen-keyboard-backspace,
-.onscreen-keyboard-done {
-  flex: 2;
+.onscreen-keyboard-shift {
+  flex: 1;
   max-width: none;
 }
-.onscreen-keyboard-done {
+.onscreen-keyboard-shift-active {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
-  font-family: var(--font-sans-display);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
-.onscreen-keyboard-done:active {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+.onscreen-keyboard-enter,
+.onscreen-keyboard-backspace {
+  flex: 2;
+  max-width: none;
 }
 
 /* =====================================================================
@@ -4215,15 +4164,15 @@ button.primary {
   width: 380px;
   max-width: 92vw;
 }
-.feedback-modal label {
+.feedback-body label {
   display: block;
   margin-bottom: 12px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
 }
-.feedback-modal input,
-.feedback-modal textarea {
+.feedback-body input,
+.feedback-body textarea {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -4235,11 +4184,11 @@ button.primary {
   font-size: 14px;
   font-family: inherit;
 }
-.feedback-modal textarea {
+.feedback-body textarea {
   resize: vertical;
 }
-.feedback-modal input:focus,
-.feedback-modal textarea:focus {
+.feedback-body input:focus,
+.feedback-body textarea:focus {
   outline: none;
   border-color: var(--focus-ring);
 }
@@ -4248,6 +4197,9 @@ button.primary {
   justify-content: center;
   gap: 6px;
   margin-bottom: 18px;
+}
+.feedback-row {
+  display: block;
 }
 .feedback-star {
   border: none;
@@ -4481,4 +4433,251 @@ button.primary {
   margin: 0;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* =====================================================================
+   Kiosk dialog — the shared shell for search, directions/nearest exit
+   and feedback on the kiosk layout (see KioskDialog.jsx). A 2x2 grid
+   filling the top half of the panorama area: content on the two left
+   quadrants, the on-screen keyboard bottom-right, top-right reserved.
+   The close button is a separate circle below the grid.
+   ===================================================================== */
+.kiosk-dialog-scrim {
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: var(--scrim);
+  z-index: 90;
+}
+.kiosk-dialog-layer {
+  --kiosk-dialog-gap: 16px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  padding: var(--kiosk-dialog-gap);
+  z-index: 100;
+  /* Clicks in the margins fall through to the scrim (= close). */
+  pointer-events: none;
+}
+.kiosk-dialog {
+  pointer-events: auto;
+  box-sizing: border-box;
+  height: var(--kiosk-grid-height);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-2);
+}
+.kiosk-dialog-content {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.kiosk-dialog-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.kiosk-dialog-aside {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+}
+.kiosk-dialog-keyboard {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+}
+/* The keyboard stretches to fill its quadrant instead of using its fixed
+   key height, so it fits whatever height the dialog ends up with. */
+.kiosk-dialog-keyboard .onscreen-keyboard {
+  box-sizing: border-box;
+  height: 100%;
+  margin-top: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.kiosk-dialog-keyboard .onscreen-keyboard-row {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 4px;
+}
+.kiosk-dialog-keyboard .onscreen-keyboard-row:last-child {
+  margin-bottom: 0;
+}
+.kiosk-dialog-keyboard .onscreen-keyboard-key {
+  height: auto;
+  max-width: none;
+}
+.kiosk-dialog-keyboard .onscreen-keyboard-space {
+  flex: 4;
+}
+.kiosk-dialog button {
+  min-height: 44px;
+}
+.kiosk-dialog .onscreen-keyboard-key {
+  min-height: 0;
+}
+.kiosk-dialog .mobile-search-results-area {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  margin-bottom: 0;
+  margin-top: 10px;
+}
+.kiosk-dialog-close {
+  pointer-events: auto;
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: var(--kiosk-dialog-gap) auto 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 24px;
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.kiosk-dialog-close:active {
+  transform: scale(0.95);
+}
+
+/* ---------- Kiosk dialog content: fill the two left quadrants instead of
+   leaving the short forms floating in empty space. ---------- */
+.kiosk-dialog .feedback-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Three rows: empty / stars / the fields. The empty row is sized so the
+   stars' center lands ~30% down the dialog (37px = half the star row plus
+   its margin), with the prompt (pinned to the top, below) above them and
+   the comment box under. */
+.kiosk-dialog .feedback-body form {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: calc(30% - 37px) auto 1fr;
+}
+.kiosk-dialog .feedback-star-row {
+  grid-row: 2;
+  margin-bottom: 14px;
+}
+.kiosk-dialog .feedback-fields {
+  grid-row: 3;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kiosk-dialog .feedback-star-row {
+  gap: 10px;
+}
+.kiosk-dialog .feedback-star {
+  font-size: 48px;
+  padding: 0 4px;
+  min-height: 0;
+}
+/* The comments box takes whatever height the rest leaves. */
+.kiosk-dialog .feedback-body label {
+  margin-bottom: 0;
+  font-size: 14px;
+}
+.kiosk-dialog .feedback-body label:has(textarea) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kiosk-dialog .feedback-body textarea {
+  flex: 1;
+  min-height: 56px;
+  resize: none;
+}
+.kiosk-dialog .feedback-body input,
+.kiosk-dialog .feedback-body textarea {
+  padding: 12px 14px;
+  font-size: 17px;
+}
+.kiosk-dialog .feedback-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.kiosk-dialog .feedback-body .form-actions button {
+  min-height: 56px;
+  font-size: 17px;
+}
+.kiosk-dialog .feedback-panel-thanks {
+  margin: auto 0;
+  font-size: 22px;
+  text-align: center;
+}
+
+/* Directions / nearest exit: the panel fills the column, its parts spread
+   out evenly with big touch-sized fields and a big primary button. */
+.kiosk-dialog .directions-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+}
+.kiosk-dialog .directions-panel-header h3 {
+  font-size: 15px;
+}
+.kiosk-dialog .directions-panel .sidebar-field-label {
+  font-size: 15px;
+}
+.kiosk-dialog .directions-panel .sidebar-field-label input {
+  padding: 14px 16px;
+  font-size: 19px;
+  margin-top: 6px;
+}
+.kiosk-dialog .directions-panel .directions-go-btn {
+  min-height: 64px;
+  font-size: 19px;
+}
+.kiosk-dialog .directions-progress {
+  gap: 12px;
+}
+.kiosk-dialog .directions-progress-text {
+  font-size: 18px;
+  line-height: 1.4;
+}
+.kiosk-dialog .directions-autowalk-btn {
+  margin-top: 0;
+}
+
+/* Feedback prompt in the kiosk dialog: big, centered, pinned to the top of
+   the column (out of flow, so the stars can be centered on the whole dialog). */
+.kiosk-dialog-content:has(.kiosk-dialog-title-prompt) {
+  position: relative;
+}
+.kiosk-dialog-title-prompt {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
 }

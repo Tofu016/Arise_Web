@@ -7,7 +7,7 @@ import Room360Modal from "../components/Room360Modal";
 import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import MobileRoomSheet from "../components/MobileRoomSheet";
-import OnScreenKeyboard from "../components/OnScreenKeyboard";
+import KioskDialog from "../components/KioskDialog";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
@@ -22,6 +22,7 @@ import { useDirections, useAutoWalk } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { prefetchPhoto } from "../utils/photoStore";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
@@ -43,14 +44,6 @@ import { useAuth } from "../context/useAuth";
 // keeping a merely slightly-portrait desktop window on the desktop layout
 // (portrait tablets, ~1.33, still get the shared touch layout).
 const PORTRAIT_ASPECT_THRESHOLD = 1.3;
-
-// Kiosk layout only: the panorama is inset to leave whitespace above and
-// below it, since the screen's very bottom sits at shin height and is hard
-// to look at. Fractions of the screen height. The top band is reserved for
-// a future header, the bottom band for a future graphic.
-const MOBILE_TOP_INSET = 0.15;
-const MOBILE_BOTTOM_INSET = 0.25;
-const MOBILE_PANORAMA_FRACTION = 1 - MOBILE_TOP_INSET - MOBILE_BOTTOM_INSET;
 
 function isMobileLayout(breakpoint = 768) {
   if (typeof window === "undefined") return false;
@@ -75,9 +68,9 @@ function useIsMobile(breakpoint = 768) {
 // Mobile/kiosk control dock: how far each radial icon sits from the
 // FAB's center (RADIAL_RADIUS, in px) and how much of a clock-face arc
 // they're fanned across (RADIAL_SPREAD_DEG, in degrees) — swept only
-// across the FAB's right side, like the 1-through-5 o'clock positions,
-// since the FAB itself sits at the screen's left edge with nothing but
-// more screen to its right. Kept as named constants since the actual
+// across the FAB's left side, like the 7-through-11 o'clock positions,
+// since the FAB itself sits at the screen's right edge with nothing but
+// more screen to its left. Kept as named constants since the actual
 // per-button placement (radialButtonTransform below) has to reproduce
 // this same geometry in JS, not just CSS.
 const RADIAL_RADIUS = 104;
@@ -87,12 +80,12 @@ const RADIAL_SPREAD_DEG = 150;
 // correct point on the arc, given its position (index) among however
 // many are actually showing (total) — evenly spaced regardless of which
 // optional ones (Back, Account) are present this render. angle 0 points
-// straight right; positive angles sweep upward (screen Y is inverted
+// straight left; positive angles sweep upward (screen Y is inverted
 // from standard math Y, hence the negated sin here).
 function radialButtonTransform(index, total) {
   const angleDeg = total > 1 ? -RADIAL_SPREAD_DEG / 2 + (index * RADIAL_SPREAD_DEG) / (total - 1) : 0;
   const angleRad = (angleDeg * Math.PI) / 180;
-  const x = Math.cos(angleRad) * RADIAL_RADIUS;
+  const x = -Math.cos(angleRad) * RADIAL_RADIUS; // fans out to the left of the FAB
   const y = -Math.sin(angleRad) * RADIAL_RADIUS;
   return `translate(${x}px, ${y}px)`;
 }
@@ -116,7 +109,7 @@ export default function MainPage() {
   const toggleMenu = () => setPanelMode((m) => (m === "menu" ? null : "menu"));
 
   // Mobile/kiosk only: the search bar, primary actions, and Building
-  // selector are collapsed behind a single FAB on the middle-left edge
+  // selector are collapsed behind a single FAB on the middle-right edge
   // (reachable at arm's length by someone standing at a wall-mounted
   // kiosk) rather than sitting permanently on screen — a search bar just
   // parked there on its own would be poor UX. Deliberately its own state,
@@ -136,14 +129,6 @@ export default function MainPage() {
     setPanelMode(null);
     setMobileDockOpen(false);
   };
-
-  // Explicit, manual toggle rather than automatic on every search focus —
-  // a phone's own native keyboard already works fine and would otherwise
-  // end up stacked underneath this one, doubled up and wasting screen
-  // space on exactly the devices that were never actually broken. Someone
-  // on a touchscreen monitor taps this when they need it; someone on a
-  // phone simply never does.
-  const [showOnScreenKeyboard, setShowOnScreenKeyboard] = useState(false);
 
   // Its own independent state, not tied to panelMode — this is a
   // separate, standalone overlay (its own button, its own dismissible
@@ -494,6 +479,10 @@ export default function MainPage() {
   });
   const autoWalking = directions?.autoWalking ?? false;
 
+  // The kiosk dialog takes over the top of the panorama, so the node name
+  // (and the menu button, whose actions would open a second dialog) step aside.
+  const kioskDialogOpen = isMobile && (panelMode === "search" || (panelMode === "directions" && !!directions) || showFeedback);
+
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
   const displayName = profile?.name || user?.email || "";
@@ -670,7 +659,7 @@ export default function MainPage() {
     <>
       <div className="directions-panel-header">
         <h3>{directions.kind === "exit" ? "🚨 Nearest Exit" : "Directions"}</h3>
-        <button className="close-btn" onClick={closeDirections}>✕</button>
+        {!isMobile && <button className="close-btn" onClick={closeDirections}>✕</button>}
       </div>
 
       <label className="sidebar-field-label">
@@ -680,6 +669,7 @@ export default function MainPage() {
           value={directions.fromQuery}
           onChange={(e) => updateDirectionsField("from", e.target.value)}
           onFocus={() => setDirections((d) => route.focusField(d, "from"))}
+          inputMode={isMobile ? "none" : undefined}
           placeholder="Starting point"
         />
       </label>
@@ -692,6 +682,7 @@ export default function MainPage() {
           value={directions.toQuery}
           onChange={(e) => updateDirectionsField("to", e.target.value)}
           onFocus={() => setDirections((d) => route.focusField(d, "to"))}
+          inputMode={isMobile ? "none" : undefined}
           placeholder="Destination"
         />
       </label>
@@ -773,7 +764,7 @@ export default function MainPage() {
           <div className="main-page-screen mobile-screen">
             <div
               className="mobile-panorama-frame"
-              style={{ top: `${MOBILE_TOP_INSET * 100}%`, bottom: `${MOBILE_BOTTOM_INSET * 100}%` }}
+              style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
             >
               {initialLoadDone && !photoReady && <div className="photo-transition-indicator">Loading…</div>}
               <PanoramaNav
@@ -789,25 +780,27 @@ export default function MainPage() {
                 initialYaw={entryYaw}
                 highlightedId={nextStopId}
                 emergencyMode={directions?.kind === "exit"}
-                heightFraction={MOBILE_PANORAMA_FRACTION}
+                heightFraction={KIOSK_PANORAMA_FRACTION}
               />
             </div>
 
             {/* ---------- Top: read-only location title only — no buttons up
                 here. Every actionable control (search, back, exit,
                 feedback, account, building picker) lives behind the
-                middle-left FAB instead (see "Middle-left control dock"
+                middle-right FAB instead (see "Middle-right control dock"
                 below), within arm's reach of someone standing at a
                 wall-mounted kiosk, not up in the top corners. Safe-area
                 padded (see CSS) so it clears a notch or kiosk bezel. ---------- */}
+            {!kioskDialogOpen && (
             <div
               className="mobile-title-wrap"
-              style={{ top: `calc(${MOBILE_TOP_INSET * 100}% + 12px)` }}
+              style={{ top: `calc(${KIOSK_TOP_INSET * 100}% + 12px)` }}
             >
               <div className="mobile-title-pill">
                 <span>{current.name}</span>
               </div>
             </div>
+            )}
 
             {showMinimap && (
               <CrossCampusMinimap
@@ -836,7 +829,7 @@ export default function MainPage() {
               />
             )}
 
-            {/* ---------- Middle-left control dock: a single FAB, collapsed
+            {/* ---------- Middle-right control dock: a single FAB, collapsed
                 by default — reachable at arm's length by someone standing
                 at a wall-mounted kiosk. Tapping it fans icon-only buttons
                 out around it, clock-numbers style, swept across its right
@@ -845,7 +838,7 @@ export default function MainPage() {
                 centered modal below except Back, an immediate action.
                 Hidden entirely while the room sheet already has the
                 visitor's attention. ---------- */}
-            {panelMode !== "room" && (
+            {panelMode !== "room" && !kioskDialogOpen && (
               <div className="mobile-side-dock">
                 <button
                   type="button"
@@ -878,76 +871,39 @@ export default function MainPage() {
               </div>
             )}
 
-            {/* ---------- Mobile modals: search, directions/exit, account,
-                Building picker — each a centered .modal-overlay/.modal
-                (same pattern as FeedbackPanel), auto-sized to its own
-                content rather than a fixed-height sheet, so a short one
-                (e.g. the exit panel's lone "Get Directions" button) never
-                leaves awkward empty space below it. ---------- */}
+            {/* ---------- Mobile dialogs. Search and directions/exit (and
+                feedback, below) are the keyboard modules: they share the
+                KioskDialog grid. Account and the Building picker have no
+                text entry and stay small centered .modal-overlay/.modal
+                boxes, auto-sized to their own content. ---------- */}
             {panelMode === "search" && (
-              <div className="modal-overlay" onClick={closePanel}>
-                <div className="modal mobile-search-modal" onClick={(e) => e.stopPropagation()}>
-                  <div className="preview-header">
-                    <h3>Search</h3>
-                    <button className="close-btn" onClick={closePanel}>✕</button>
-                  </div>
-
-                  {/* Fixed-height results area ABOVE the search row — see
-                      .mobile-search-results-area — so typing never shifts
-                      the row below it, the on-screen keyboard toggle, or
-                      the keyboard itself once it's open. */}
-                  <div className="mobile-search-results-area">
-                    {searchResultsContent}
-                  </div>
-
-                  <div className="mobile-search-row">
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      inputMode="search"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={current?.name || "Search a room..."}
-                      aria-label="Search"
-                      autoFocus
-                    />
-                    {/* Manual toggle, not automatic — see showOnScreenKeyboard's
-                        own comment above for why. */}
-                    <button
-                      type="button"
-                      className="onscreen-keyboard-toggle"
-                      onClick={() => setShowOnScreenKeyboard((v) => !v)}
-                      title="Toggle on-screen keyboard"
-                      aria-label="Toggle on-screen keyboard"
-                    >
-                      ⌨️
-                    </button>
-                  </div>
-
-                  {/* Below the search row, not overlapping it — toggling
-                      this on/off never moves the row above. "Done" just
-                      retracts the keyboard now, not the whole modal (the
-                      ✕ above/the backdrop do that instead), since it's no
-                      longer the only way out of a bottom sheet. */}
-                  {showOnScreenKeyboard && (
-                    <OnScreenKeyboard
-                      value={searchQuery}
-                      onChange={setSearchQuery}
-                      onClose={() => setShowOnScreenKeyboard(false)}
-                    />
-                  )}
+              <KioskDialog title="Search" onClose={closePanel}>
+                <div className="mobile-search-row">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    inputMode="none"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={current?.name || "Search a room..."}
+                    aria-label="Search"
+                    autoFocus
+                  />
                 </div>
-              </div>
+                {/* Fills whatever height the dialog has left below the field,
+                    scrolling on its own — see .kiosk-dialog .mobile-search-results-area. */}
+                <div className="mobile-search-results-area">
+                  {searchResultsContent}
+                </div>
+              </KioskDialog>
             )}
 
             {panelMode === "directions" && directions && (
-              <div className="modal-overlay" onClick={closeDirections}>
-                <div className="modal directions-modal" onClick={(e) => e.stopPropagation()}>
-                  <div className="directions-panel">
-                    {directionsContent}
-                  </div>
+              <KioskDialog onClose={closeDirections}>
+                <div className="directions-panel">
+                  {directionsContent}
                 </div>
-              </div>
+              </KioskDialog>
             )}
 
             {panelMode === "account" && user && (
@@ -1110,18 +1066,6 @@ export default function MainPage() {
                     placeholder="Search a room..."
                     aria-label="Search"
                   />
-                  {/* Same manual toggle as the mobile search bar — see
-                      showOnScreenKeyboard's own comment for why this
-                      isn't automatic. */}
-                  <button
-                    type="button"
-                    className="onscreen-keyboard-toggle"
-                    onMouseDown={(e) => { e.preventDefault(); setShowOnScreenKeyboard((v) => !v); }}
-                    title="Toggle on-screen keyboard"
-                    aria-label="Toggle on-screen keyboard"
-                  >
-                    ⌨️
-                  </button>
                   <span className="floating-search-icon">🔍</span>
                 </div>
               </div>
@@ -1133,9 +1077,6 @@ export default function MainPage() {
                     {panelMode === "search" && (
                       <>
                         {searchResultsContent}
-                        {showOnScreenKeyboard && (
-                          <OnScreenKeyboard value={searchQuery} onChange={setSearchQuery} onClose={closePanel} />
-                        )}
                       </>
                     )}
 
@@ -1206,7 +1147,7 @@ export default function MainPage() {
       )}
 
       {showFeedback && (
-        <FeedbackPanel onClose={() => setShowFeedback(false)} />
+        <FeedbackPanel onClose={() => setShowFeedback(false)} kiosk={isMobile} />
       )}
 
       {isIdle && (

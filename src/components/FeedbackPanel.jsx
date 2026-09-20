@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { apiPost } from "../utils/apiClient";
+import KioskDialog from "./KioskDialog";
 
 // General app/experience feedback — genuinely optional and skippable,
 // triggered by its own button rather than shown automatically. Not
 // tied to any specific room/office; rating is the only required field,
 // matching Feedback_API's own server-side validation (1-5, rejected
 // otherwise) — comment, name, and email are all optional there too.
-export default function FeedbackPanel({ onClose }) {
+//
+// kiosk: render in the kiosk view's dialog (with its keyboard, and the
+// OS keyboard suppressed) instead of a centered modal.
+export default function FeedbackPanel({ onClose, kiosk = false }) {
+  const inputMode = kiosk ? "none" : undefined;
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -40,73 +45,88 @@ export default function FeedbackPanel({ onClose }) {
   };
 
   const displayRating = hoverRating || rating;
+  const title = submitted ? "Thank you!" : "How was your experience?";
+
+  const body = submitted ? (
+    <p className="feedback-panel-thanks">
+      Your feedback helps us improve ARISE — thanks for taking the time to share it.
+    </p>
+  ) : (
+    <form onSubmit={handleSubmit}>
+      <div className="feedback-star-row" role="radiogroup" aria-label="Rating">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            className="feedback-star"
+            onClick={() => setRating(star)}
+            onMouseEnter={() => setHoverRating(star)}
+            onMouseLeave={() => setHoverRating(0)}
+            aria-label={`${star} star${star === 1 ? "" : "s"}`}
+            aria-checked={rating === star}
+            role="radio"
+          >
+            {star <= displayRating ? "★" : "☆"}
+          </button>
+        ))}
+      </div>
+
+      <div className="feedback-fields">
+        <label>
+          Comments (optional)
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="What worked well, or what could be better?"
+            rows={3}
+            inputMode={inputMode}
+          />
+        </label>
+
+        <div className="feedback-row">
+          <label>
+            Name (optional)
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} inputMode={inputMode} />
+          </label>
+
+          <label>
+            Email (optional)
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} inputMode={inputMode} />
+          </label>
+        </div>
+
+        {error && (
+          <div className="error-box">
+            <p>{error}</p>
+          </div>
+        )}
+
+        <div className="form-actions">
+          <button type="submit" className="primary" disabled={submitting}>
+            {submitting ? "Sending…" : "Send Feedback"}
+          </button>
+          {!kiosk && <button type="button" onClick={onClose}>Cancel</button>}
+        </div>
+      </div>
+    </form>
+  );
+
+  if (kiosk) {
+    return (
+      <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" onClose={onClose}>
+        <div className="feedback-body">{body}</div>
+      </KioskDialog>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal feedback-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
-          <h3>{submitted ? "Thank you!" : "How was your experience?"}</h3>
+          <h3>{title}</h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
-
-        {submitted ? (
-          <p className="feedback-panel-thanks">
-            Your feedback helps us improve ARISE — thanks for taking the time to share it.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="feedback-star-row" role="radiogroup" aria-label="Rating">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  className="feedback-star"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  aria-label={`${star} star${star === 1 ? "" : "s"}`}
-                  aria-checked={rating === star}
-                  role="radio"
-                >
-                  {star <= displayRating ? "★" : "☆"}
-                </button>
-              ))}
-            </div>
-
-            <label>
-              Comments (optional)
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="What worked well, or what could be better?"
-                rows={3}
-              />
-            </label>
-
-            <label>
-              Name (optional)
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-
-            <label>
-              Email (optional)
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-
-            {error && (
-              <div className="error-box">
-                <p>{error}</p>
-              </div>
-            )}
-
-            <div className="form-actions">
-              <button type="submit" className="primary" disabled={submitting}>
-                {submitting ? "Sending…" : "Send Feedback"}
-              </button>
-              <button type="button" onClick={onClose}>Cancel</button>
-            </div>
-          </form>
-        )}
+        <div className="feedback-body">{body}</div>
       </div>
     </div>
   );
