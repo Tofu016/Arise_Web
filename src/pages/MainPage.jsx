@@ -43,6 +43,14 @@ import { useAuth } from "../context/useAuth";
 // (portrait tablets, ~1.33, still get the shared touch layout).
 const PORTRAIT_ASPECT_THRESHOLD = 1.3;
 
+// Kiosk layout only: the panorama is inset to leave whitespace above and
+// below it, since the screen's very bottom sits at shin height and is hard
+// to look at. Fractions of the screen height. The top band is reserved for
+// a future header, the bottom band for a future graphic.
+const MOBILE_TOP_INSET = 0.15;
+const MOBILE_BOTTOM_INSET = 0.25;
+const MOBILE_PANORAMA_FRACTION = 1 - MOBILE_TOP_INSET - MOBILE_BOTTOM_INSET;
+
 function isMobileLayout(breakpoint = 768) {
   if (typeof window === "undefined") return false;
   const { innerWidth: w, innerHeight: h } = window;
@@ -737,20 +745,26 @@ export default function MainPage() {
             {current.photo && !photoUrl && (
               <div className="photo-loading-overlay">Loading photo…</div>
             )}
-            <PanoramaNav
-              key={current.id}
-              url={photoUrl}
-              hotspots={hotspots}
-              markers={markers}
-              onNavigate={goTo}
-              onRoomMarkerClick={handleRoomMarkerClick}
-              onError={() => {}}
-              placing={false}
-              onPlaceAngle={() => {}}
-              initialYaw={entryYaw}
-              highlightedId={nextStopId}
-              emergencyMode={directions?.kind === "exit"}
-            />
+            <div
+              className="mobile-panorama-frame"
+              style={{ top: `${MOBILE_TOP_INSET * 100}%`, bottom: `${MOBILE_BOTTOM_INSET * 100}%` }}
+            >
+              <PanoramaNav
+                key={current.id}
+                url={photoUrl}
+                hotspots={hotspots}
+                markers={markers}
+                onNavigate={goTo}
+                onRoomMarkerClick={handleRoomMarkerClick}
+                onError={() => {}}
+                placing={false}
+                onPlaceAngle={() => {}}
+                initialYaw={entryYaw}
+                highlightedId={nextStopId}
+                emergencyMode={directions?.kind === "exit"}
+                heightFraction={MOBILE_PANORAMA_FRACTION}
+              />
+            </div>
 
             {/* ---------- Top: read-only location title only — no buttons up
                 here. Every actionable control (search, back, exit,
@@ -759,7 +773,10 @@ export default function MainPage() {
                 below), within arm's reach of someone standing at a
                 wall-mounted kiosk, not up in the top corners. Safe-area
                 padded (see CSS) so it clears a notch or kiosk bezel. ---------- */}
-            <div className="mobile-title-wrap">
+            <div
+              className="mobile-title-wrap"
+              style={{ top: `calc(${MOBILE_TOP_INSET * 100}% + 12px)` }}
+            >
               <div className="mobile-title-pill">
                 <span>{current.name}</span>
               </div>

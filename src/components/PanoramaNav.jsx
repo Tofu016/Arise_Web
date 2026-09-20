@@ -365,12 +365,17 @@ function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onE
 // HORIZONTAL view on a narrower screen, not a display bug, just the
 // geometry of a fixed vertical angle applied to a narrower width.
 // The field of view follows the window: see computeFov in utils/panoramaMath.js.
-function usePanoramaFov() {
+// heightFraction is how much of the window's height the canvas actually
+// occupies (1 = all of it), so a canvas inset by whitespace still gets the
+// FOV for its own, shorter shape.
+function usePanoramaFov(heightFraction) {
   const [fov, setFov] = useState(() =>
-    typeof window !== "undefined" ? computeFov(window.innerWidth, window.innerHeight) : TARGET_HORIZONTAL_FOV
+    typeof window !== "undefined"
+      ? computeFov(window.innerWidth, window.innerHeight * heightFraction)
+      : TARGET_HORIZONTAL_FOV
   );
   useEffect(() => {
-    const updateFov = () => setFov(computeFov(window.innerWidth, window.innerHeight));
+    const updateFov = () => setFov(computeFov(window.innerWidth, window.innerHeight * heightFraction));
     window.addEventListener("resize", updateFov);
     // orientationchange fires on real device rotation more reliably than
     // resize alone on some touchscreen/tablet setups.
@@ -379,7 +384,7 @@ function usePanoramaFov() {
       window.removeEventListener("resize", updateFov);
       window.removeEventListener("orientationchange", updateFov);
     };
-  }, []);
+  }, [heightFraction]);
   return fov;
 }
 
@@ -396,6 +401,7 @@ function usePanoramaFov() {
  *  - highlightedId: optional neighbor id to render in a distinct color (used for directions)
  *  - emergencyMode: bool — when true, the highlighted hotspot pulses red instead of the normal green, for emergency exit routing
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
+ *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
  */
@@ -415,6 +421,7 @@ export default function PanoramaNav({
   highlightedId = null,
   emergencyMode = false,
   selectedMarkerId = null,
+  heightFraction = 1,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // @react-three/fiber reactively applies changes to the camera prop's
@@ -422,7 +429,7 @@ export default function PanoramaNav({
   // (including calling updateProjectionMatrix() itself) — so this
   // correctly updates live on an actual orientation change while the
   // viewer is already open, not just on initial mount.
-  const fov = usePanoramaFov();
+  const fov = usePanoramaFov(heightFraction);
   return (
     <Canvas camera={{ position: initialCameraPosition(initialYaw, initialPitch), fov }} style={{ cursor }}>
       <PanoramaSphere

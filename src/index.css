@@ -3262,6 +3262,15 @@ button.primary {
 .mobile-screen {
   overflow: hidden;
 }
+/* Insets the panorama from the top/bottom (top/bottom set inline from
+   MainPage's MOBILE_*_INSET) — the bands left over are plain whitespace,
+   for a header above and a graphic below later. */
+.mobile-panorama-frame {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
 /* ---------- Top: read-only location title, no controls ---------- */
 .mobile-title-wrap {
   position: absolute;
