@@ -140,3 +140,10 @@ export function routeProgress(d, { byId, hotspots, entryYaw }) {
     d?.stepIndex > 0 && nextStopHotspot ? getTurnInstruction(entryYaw, nextStopHotspot.yaw) : null;
   return { arrived, nextStopId, nextStopName, nextStopHotspot, turnInstruction };
 }
+
+// Whether the visitor has actually begun walking the route: it exists, and
+// they are standing on its first stop (or already past it). Before that the
+// panel offers "Start walking" instead.
+export function hasStartedWalking(d, currentId) {
+  return !!d?.path && !(d.stepIndex === 0 && currentId !== d.path[0]);
+}

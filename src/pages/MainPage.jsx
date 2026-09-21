@@ -25,9 +25,9 @@ import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
 import { pickBuildingStart, pickFloorStart } from "../utils/navigation";
-import * as route from "../utils/directionsRoute";
 import { useNavigation } from "../hooks/useNavigation";
-import { useDirections, useAutoWalk, AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
+import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
+import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useNodePhoto } from "../hooks/useNodePhoto";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
@@ -117,11 +117,6 @@ function MainPageContent({ onReset }) {
   const nav = useNavigation(nodes, byId);
   const { currentId, history, entryYaw, flyover } = nav;
 
-  // Point-to-point directions ("just like Street View"): opened from a
-  // search result, holds the from/to text + resolved node ids, the computed
-  // path once requested, and how far along it the visitor currently is —
-  // see utils/directionsRoute.js for its shape.
-  const [directions, setDirections] = useDirections(nodes, currentId);
   // Rooms with actual detail records (photo/description/department/use) —
   // built by matching each node's "Rooms served" entries against
   // placardDialogs. Only rooms an admin has actually gone through Room Edit
@@ -192,20 +187,6 @@ function MainPageContent({ onReset }) {
 
   const markers = current?.markers || [];
 
-  // Called unconditionally here (before any early returns below) since it's a
-  // hook. `ready` covers "no photo at all" too, so the splash can't stick when
-  // zero nodes are configured; `firstLoadDone` latches for the full-screen
-  // splash only — later moves use the small .photo-transition-indicator.
-  const {
-    url: photoUrl,
-    ready: photoReady,
-    firstLoadDone: initialLoadDone,
-  } = useNodePhoto(current, {
-    neighbors: hotspots,
-    priorityId: route.nextStep(directions, hotspots)?.id,
-    nodesLoaded: !!nodes,
-  });
-
   // What follows a move that actually happened — everything the navigation
   // module deliberately knows nothing about: the search box (the overlay
   // module handles the panel, dock and room card).
@@ -251,26 +232,36 @@ function MainPageContent({ onReset }) {
   // they already were, no move happens at all.
   const cancelFlyover = () => nav.cancelFlyover();
 
-  // Opening directions always REPLACES whatever the panel was showing
-  // (search results, a room card, the menu) — same as Maps switching from
-  // place details straight into directions mode, not stacking both.
-  const openDirectionsTo = (node) => {
-    setDirections(route.openDirectionsTo(current, node));
-    overlay.openDirections();
-    setSearchQuery("");
-  };
+  // Directions ("just like Street View"): the from/to panel and the Route it
+  // computes — see hooks/useDirectionsFlow.js. Called before any early
+  // return, since it's a hook.
+  const flow = useDirectionsFlow({
+    nodes,
+    current,
+    currentId,
+    byId,
+    entryYaw,
+    hotspots,
+    searchableRooms,
+    moves: { jump: jumpToSearchResult, walk: goTo },
+    overlay,
+    clearSearch: () => setSearchQuery(""),
+  });
+  const { directions, progress, suggestions } = flow;
 
-  const openDirections = () => {
-    if (!current || !nodes) return;
-    setDirections(route.openDirections(current));
-    overlay.openDirections();
-    setSearchQuery("");
-  };
-
-  const closeDirections = () => {
-    setDirections(null);
-    overlay.closeDirections();
-  };
+  // Called unconditionally here (before any early returns below) since it's a
+  // hook. `ready` covers "no photo at all" too, so the splash can't stick when
+  // zero nodes are configured; `firstLoadDone` latches for the full-screen
+  // splash only — later moves use the small .photo-transition-indicator.
+  const {
+    url: photoUrl,
+    ready: photoReady,
+    firstLoadDone: initialLoadDone,
+  } = useNodePhoto(current, {
+    neighbors: hotspots,
+    priorityId: progress.nextStopId,
+    nodesLoaded: !!nodes,
+  });
 
   // Selecting a room from search moves the viewer to its attached node (a
   // jump, so it flies over a campus boundary like any other) and opens its
@@ -289,7 +280,7 @@ function MainPageContent({ onReset }) {
 
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
-    openDirectionsTo(selectedRoomCard.node);
+    flow.openTo(selectedRoomCard.node);
   };
 
   // Opens the room's OWN photo360 (set via the "360° room photo" field in
@@ -299,42 +290,6 @@ function MainPageContent({ onReset }) {
     if (!selectedRoomCard?.placard?.photo360) return;
     overlay.openRoom360();
   };
-
-  const updateDirectionsField = (field, value) => setDirections((d) => route.editField(d, field, value));
-  const pickDirectionsField = (field, node) => setDirections((d) => route.pickNodeField(d, field, node));
-  const pickDirectionsFieldRoom = (field, room) => setDirections((d) => route.pickRoomField(d, field, room));
-
-  // Same "rooms first, places second, no duplicates" structure as the main
-  // search bar — the From/To fields search rooms too.
-  const directionsQuery = route.activeQuery(directions);
-  const { roomResults: directionsRoomMatches, placeResults: directionsPlaceMatches } = useMemo(
-    () =>
-      directions?.editingField && directionsQuery.trim()
-        ? searchCampus(directionsQuery, nodes, searchableRooms)
-        : { roomResults: [], placeResults: [] },
-    [directions?.editingField, directionsQuery, nodes, searchableRooms]
-  );
-
-  // "Get directions" computes the route and starts the walk in one go —
-  // no second "Start walking" press.
-  const handleGetDirections = () => {
-    const next = route.getDirections(directions, nodes, searchableRooms);
-    setDirections(next);
-    if (next.path) handleStartWalking(next);
-  };
-
-  const handleStartWalking = (d = directions) => {
-    if (!d?.path) return;
-    jumpToSearchResult(d.path[0]);
-    setDirections(route.restartRoute);
-    overlay.walkStarted(); // jumpToSearchResult closes the panel — reopen it for the route in progress, collapsed to the walk bar (kiosk)
-  };
-
-  const handleWalkToNextStop = () => {
-    const step = route.nextStep(directions, hotspots);
-    if (step) goTo(step.id, { yaw: step.yaw });
-  };
-  useAutoWalk(directions, setDirections, handleWalkToNextStop);
 
   // Mobile-only: the bottom Building selector doubles as direct navigation
   // (there's no separate entrances list to browse on mobile) — picking a
@@ -380,19 +335,13 @@ function MainPageContent({ onReset }) {
     );
   }
 
-  const { arrived, nextStopId, nextStopName, turnInstruction } = route.routeProgress(directions, {
-    byId,
-    hotspots,
-    entryYaw,
-  });
+  const { arrived, nextStopId, nextStopName, turnInstruction, walkStarted } = progress;
   const autoWalking = directions?.autoWalking ?? false;
 
   // Kiosk: once the route is actually being walked (the visitor is at its
   // start, and hasn't arrived), the big directions dialog steps aside for the
   // compact KioskWalkBar, so the panorama stays visible. `overlay.walkDialog`
   // brings the big dialog back on request.
-  const walkStarted =
-    !!directions?.path && !(directions.stepIndex === 0 && currentId !== directions.path[0]);
   const { walkBarShown, kioskDialogOpen, coversPanorama } = coverage(overlay, {
     compact,
     directions,
@@ -428,7 +377,7 @@ function MainPageContent({ onReset }) {
       key: "exit",
       icon: "🧭",
       title: "Directions",
-      onClick: openDirections, // also collapses the dock
+      onClick: flow.open, // also collapses the dock
     },
     {
       key: "feedback",
@@ -467,7 +416,7 @@ function MainPageContent({ onReset }) {
       <button
         type="button"
         className="directions-btn"
-        onMouseDown={(e) => { e.preventDefault(); openDirectionsTo(directionsNode); }}
+        onMouseDown={(e) => { e.preventDefault(); flow.openTo(directionsNode); }}
         title="Get directions"
       >
         ➜ Directions
@@ -545,14 +494,14 @@ function MainPageContent({ onReset }) {
   // field is currently being edited.
   const renderDirectionsSuggestions = (field) => {
     if (directions?.editingField !== field) return null;
-    if (directionsRoomMatches.length === 0 && directionsPlaceMatches.length === 0) return null;
+    if (suggestions.rooms.length === 0 && suggestions.places.length === 0) return null;
     return (
       <div className="room-search-results directions-suggestions">
-        {directionsRoomMatches.length > 0 && (
+        {suggestions.rooms.length > 0 && (
           <>
             <p className="room-search-suggestions-label">Rooms</p>
-            {directionsRoomMatches.map((r) => (
-              <div key={r.roomName} className="room-search-result" onClick={() => pickDirectionsFieldRoom(field, r)}>
+            {suggestions.rooms.map((r) => (
+              <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
                   {r.placard.use ? `${r.placard.use} · ` : ""}
@@ -562,11 +511,11 @@ function MainPageContent({ onReset }) {
             ))}
           </>
         )}
-        {directionsPlaceMatches.length > 0 && (
+        {suggestions.places.length > 0 && (
           <>
             <p className="room-search-suggestions-label">Places</p>
-            {directionsPlaceMatches.map((n) => (
-              <div key={n.id} className="room-search-result" onClick={() => pickDirectionsField(field, n)}>
+            {suggestions.places.map((n) => (
+              <div key={n.id} className="room-search-result" onClick={() => flow.pickNode(field, n)}>
                 <span className="room-search-name">{n.name}</span>
                 <span className="room-search-sub">{buildingLabel(n.building)} · {floorLabel(n.floor)}</span>
               </div>
@@ -581,7 +530,7 @@ function MainPageContent({ onReset }) {
     <>
       <div className="directions-panel-header">
         <h3>Directions</h3>
-        {!compact && <button className="close-btn" onClick={closeDirections}>✕</button>}
+        {!compact && <button className="close-btn" onClick={flow.close}>✕</button>}
       </div>
 
       <label className="sidebar-field-label">
@@ -589,8 +538,8 @@ function MainPageContent({ onReset }) {
         <input
           type="text"
           value={directions.fromQuery}
-          onChange={(e) => updateDirectionsField("from", e.target.value)}
-          onFocus={() => setDirections((d) => route.focusField(d, "from"))}
+          onChange={(e) => flow.editField("from", e.target.value)}
+          onFocus={() => flow.focusField("from")}
           inputMode={compact ? "none" : undefined}
           placeholder="Starting point"
         />
@@ -602,8 +551,8 @@ function MainPageContent({ onReset }) {
         <input
           type="text"
           value={directions.toQuery}
-          onChange={(e) => updateDirectionsField("to", e.target.value)}
-          onFocus={() => setDirections((d) => route.focusField(d, "to"))}
+          onChange={(e) => flow.editField("to", e.target.value)}
+          onFocus={() => flow.focusField("to")}
           inputMode={compact ? "none" : undefined}
           placeholder="Destination"
         />
@@ -613,7 +562,7 @@ function MainPageContent({ onReset }) {
       {directions.error && <p className="directions-error">{directions.error}</p>}
 
       {!directions.path && (
-        <button className="primary directions-go-btn" onClick={handleGetDirections}>Get directions</button>
+        <button className="primary directions-go-btn" onClick={flow.get}>Get directions</button>
       )}
 
       {directions.path && !arrived && (
@@ -632,19 +581,19 @@ function MainPageContent({ onReset }) {
             )}
           </p>
           {directions.stepIndex === 0 && currentId !== directions.path[0] ? (
-            <button className="primary directions-go-btn" onClick={() => handleStartWalking()}>Start walking</button>
+            <button className="primary directions-go-btn" onClick={() => flow.startWalking()}>Start walking</button>
           ) : (
             <>
               <button
                 className="primary directions-go-btn"
-                onClick={() => { overlay.setWalkDialog(false); handleWalkToNextStop(); }}
+                onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
                 disabled={autoWalking}
               >
                 Walk to {nextStopName} →
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
-                onClick={() => { overlay.setWalkDialog(false); setDirections(route.toggleAutoWalk); }}
+                onClick={() => { overlay.setWalkDialog(false); flow.toggleAutoWalk(); }}
               >
                 {autoWalking ? "⏸ Stop auto-walk" : `▶ Auto-walk (every ${AUTO_WALK_STEP_SECONDS}s)`}
                 {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
@@ -659,7 +608,7 @@ function MainPageContent({ onReset }) {
 
   return (
     <div className="main-page-layout">
-      {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={closeDirections} />}
+      {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={flow.close} />}
       {/* Overlays everything below until the current node's photo has
           actually finished decoding, not just until nodes data has
           loaded — matches how the !nodes early-return above already
@@ -835,7 +784,7 @@ function MainPageContent({ onReset }) {
             )}
 
             {panelMode === "directions" && directions && !arrived && !walkBarShown && (
-              <KioskDialog onClose={closeDirections}>
+              <KioskDialog onClose={flow.close}>
                 <div className="directions-panel">
                   {directionsContent}
                 </div>
@@ -850,8 +799,8 @@ function MainPageContent({ onReset }) {
                 nextStopName={nextStopName}
                 autoWalking={autoWalking}
                 stepIndex={directions.stepIndex}
-                onWalk={handleWalkToNextStop}
-                onToggleAutoWalk={() => setDirections(route.toggleAutoWalk)}
+                onWalk={flow.walkToNext}
+                onToggleAutoWalk={() => flow.toggleAutoWalk()}
                 onShowDialog={() => overlay.setWalkDialog(true)}
               />
             )}
@@ -984,7 +933,7 @@ function MainPageContent({ onReset }) {
                   shouldn't jump around based on unrelated state. */}
               <button
                 className="floating-rail-btn floating-exit-btn-stacked"
-                onClick={openDirections}
+                onClick={flow.open}
                 title="Get directions"
               >
                 🧭

@@ -45,3 +45,6 @@ _Avoid_: mobile layout
 
 **Kiosk session**:
 The flow a visitor goes through on the Compact layout: the start screen until it is tapped, then the building screen until a building is picked, then exploring. It ends by remounting the visitor view (finished feedback, or "Start over" on the idle prompt), which drops all visitor state. Desktop skips it.
+
+**Directions**:
+The from/to panel and the Route it computes. Opening it replaces whatever panel was showing, and getting directions starts the walk in one go (a Jump to the Route's first stop, then the Route is followed one stop at a time).

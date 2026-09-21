@@ -150,3 +150,21 @@ describe("routeProgress", () => {
     });
   });
 });
+
+describe("hasStartedWalking", () => {
+  const d = (stepIndex) => ({ path: ["a", "b", "c"], stepIndex });
+
+  it("is false with no route", () => {
+    expect(route.hasStartedWalking(null, "a")).toBe(false);
+    expect(route.hasStartedWalking({ path: null, stepIndex: 0 }, "a")).toBe(false);
+  });
+
+  it("is false while still away from the route's first stop", () => {
+    expect(route.hasStartedWalking(d(0), "z")).toBe(false);
+  });
+
+  it("is true standing on the first stop, or past it", () => {
+    expect(route.hasStartedWalking(d(0), "a")).toBe(true);
+    expect(route.hasStartedWalking(d(1), "b")).toBe(true);
+  });
+});
