@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   MARKER_RADIUS,
+  isFacing,
+  previewScale,
+  autoPanStep,
+  PREVIEW_MAX_SCALE,
+  PREVIEW_MIN_SCALE,
+  PREVIEW_FALLOFF_DEG,
+  AUTO_PAN_MIN_DEG_PER_SEC,
+  AUTO_PAN_MAX_DEG_PER_SEC,
   TARGET_HORIZONTAL_FOV,
   MIN_FOV,
   MAX_FOV,
@@ -109,5 +117,50 @@ describe("pinch zoom", () => {
     expect(clampZoom(99)).toBe(MAX_ZOOM);
     expect(clampZoom(0)).toBe(MIN_ZOOM);
     expect(zoomedFov(170, MIN_ZOOM)).toBeLessThanOrEqual(165);
+  });
+});
+
+describe("isFacing and previewScale", () => {
+  it("counts a hotspot as facing until it is about 78° off the view", () => {
+    expect(isFacing(1)).toBe(true);
+    expect(isFacing(Math.cos((70 * Math.PI) / 180))).toBe(true);
+    expect(isFacing(Math.cos((85 * Math.PI) / 180))).toBe(false);
+    expect(isFacing(-1)).toBe(false);
+  });
+
+  it("scales the preview from full size straight ahead down to the minimum", () => {
+    expect(previewScale(1)).toBeCloseTo(PREVIEW_MAX_SCALE);
+    expect(previewScale(Math.cos((PREVIEW_FALLOFF_DEG * Math.PI) / 180))).toBeCloseTo(PREVIEW_MIN_SCALE);
+    expect(previewScale(-1)).toBeCloseTo(PREVIEW_MIN_SCALE);
+    const half = previewScale(Math.cos(((PREVIEW_FALLOFF_DEG / 2) * Math.PI) / 180));
+    expect(half).toBeCloseTo((PREVIEW_MAX_SCALE + PREVIEW_MIN_SCALE) / 2);
+  });
+
+  it("tolerates a dot product nudged past ±1 by rounding", () => {
+    expect(previewScale(1.0000001)).toBeCloseTo(PREVIEW_MAX_SCALE);
+    expect(previewScale(-1.0000001)).toBeCloseTo(PREVIEW_MIN_SCALE);
+  });
+});
+
+describe("autoPanStep", () => {
+  const rad = (deg) => (deg * Math.PI) / 180;
+
+  it("stops once within half a degree", () => {
+    expect(autoPanStep(rad(0.4), 0.016)).toBe(0);
+  });
+
+  it("turns at the floor speed for a small angle and the ceiling for a large one", () => {
+    expect(autoPanStep(rad(4), 0.05)).toBeCloseTo(rad(AUTO_PAN_MIN_DEG_PER_SEC * 0.05)); // 4° * 0.5 = 2 → floor
+    expect(autoPanStep(rad(120), 0.05)).toBeCloseTo(rad(AUTO_PAN_MAX_DEG_PER_SEC * 0.05)); // 60 → ceiling
+  });
+
+  it("eases in between", () => {
+    expect(autoPanStep(rad(40), 0.05)).toBeCloseTo(rad(20 * 0.05));
+  });
+
+  it("caps a long frame at 0.1s and never overshoots the target", () => {
+    expect(autoPanStep(rad(120), 5)).toBeCloseTo(rad(AUTO_PAN_MAX_DEG_PER_SEC * 0.1));
+    expect(autoPanStep(rad(1), 5)).toBeCloseTo(rad(AUTO_PAN_MIN_DEG_PER_SEC * 0.1));
+    expect(autoPanStep(rad(0.6), 5)).toBeLessThanOrEqual(rad(0.6));
   });
 });

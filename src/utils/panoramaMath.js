@@ -90,3 +90,45 @@ export function computeFov(width, height) {
   const verticalDeg = (verticalRad * 180) / Math.PI;
   return Math.min(MAX_FOV, Math.max(MIN_FOV, verticalDeg));
 }
+
+// A hotspot counts as "facing" the visitor (its preview may be mounted) while
+// the cosine of the angle between the view direction and the hotspot is above
+// this: cos(~78°), generous, so a card near the screen edge still shows.
+export const FACING_DOT = 0.2;
+
+export function isFacing(lookDot) {
+  return lookDot > FACING_DOT;
+}
+
+// The sneak-peek preview card scales with how directly the visitor looks at
+// its hotspot: PREVIEW_MAX_SCALE when looking straight at it, shrinking
+// linearly to PREVIEW_MIN_SCALE once the hotspot is PREVIEW_FALLOFF_DEG away
+// from the view direction (about where it leaves the screen). Raise
+// PREVIEW_MAX_SCALE for a bigger card up close; lower PREVIEW_MIN_SCALE to make
+// far-off cards shrink more.
+export const PREVIEW_MAX_SCALE = 1.0;
+export const PREVIEW_MIN_SCALE = 0.38;
+export const PREVIEW_FALLOFF_DEG = 75;
+
+// `lookDot` is the cosine of that angle (view direction · hotspot direction).
+export function previewScale(lookDot) {
+  const angleDeg = (Math.acos(Math.min(1, Math.max(-1, lookDot))) * 180) / Math.PI;
+  const t = Math.min(1, angleDeg / PREVIEW_FALLOFF_DEG);
+  return PREVIEW_MAX_SCALE + (PREVIEW_MIN_SCALE - PREVIEW_MAX_SCALE) * t;
+}
+
+// Directions auto-pan: how far (radians) to turn this frame toward a target
+// `angleRad` away. Eases out (speed follows the remaining angle) between a
+// floor and a ceiling in degrees per second so it stays gentle; a long frame
+// is capped at 0.1s so a hitch can't jump the view. 0 once close enough.
+export const AUTO_PAN_MIN_DEG_PER_SEC = 6;
+export const AUTO_PAN_MAX_DEG_PER_SEC = 30;
+export const AUTO_PAN_EASE = 0.5; // share of the remaining angle covered per second
+export const AUTO_PAN_DONE_DEG = 0.5;
+
+export function autoPanStep(angleRad, deltaSeconds) {
+  const angleDeg = (angleRad * 180) / Math.PI;
+  if (angleDeg < AUTO_PAN_DONE_DEG) return 0;
+  const speed = Math.min(AUTO_PAN_MAX_DEG_PER_SEC, Math.max(AUTO_PAN_MIN_DEG_PER_SEC, angleDeg * AUTO_PAN_EASE));
+  return Math.min(angleRad, ((speed * Math.PI) / 180) * Math.min(deltaSeconds, 0.1));
+}
