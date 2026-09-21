@@ -38,3 +38,10 @@ The shortest walkable sequence of Nodes between two points, followed one stop at
 
 **Entity mapping**:
 Translating between a backend row (snake_case) and the app's object (camelCase), and back into request bodies. Kept in one place per entity; empty-value conventions (e.g. a photo is "" when empty, but a section cover is null) are part of the backend contract.
+
+**Compact layout**:
+The stacked, touch-first layout (radial dock, bottom sheets, on-screen keyboard) shared by phones and portrait kiosk screens. There is no separate kiosk build: any narrow screen, or any portrait screen taller than 1.3× its width, gets it, so the range of kiosk resolutions is deliberately generous (the first kiosk is 1080 × 1920).
+_Avoid_: mobile layout
+
+**Kiosk session**:
+The flow a visitor goes through on the Compact layout: the start screen until it is tapped, then the building screen until a building is picked, then exploring. It ends by remounting the visitor view (finished feedback, or "Start over" on the idle prompt), which drops all visitor state. Desktop skips it.

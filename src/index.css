@@ -3315,7 +3315,7 @@ button.primary {
 
 /* =====================================================================
    Mobile/kiosk main-page layout — shared by phones and tall portrait
-   kiosk screens alike (see useIsMobile in MainPage.jsx); there is no
+   kiosk screens alike (see useCompactLayout); there is no
    separate kiosk build, so every rule here is written kiosk-grade:
    44px+ touch targets, safe-area insets for notches/kiosk bezels, every
    actionable control collapsed behind a single middle-right FAB within

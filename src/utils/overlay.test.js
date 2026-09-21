@@ -97,7 +97,7 @@ describe("blocksIdle", () => {
 });
 
 describe("coverage", () => {
-  const base = { isMobile: true, directions: { path: [] }, arrived: false, walkStarted: true, flyover: null };
+  const base = { compact: true, directions: { path: [] }, arrived: false, walkStarted: true, flyover: null };
 
   it("covers the panorama for a panel, but not for the walk bar", () => {
     const dialog = run({ type: "openDirections" });
@@ -108,13 +108,13 @@ describe("coverage", () => {
 
   it("only shows the walk bar on the kiosk, and not once arrived", () => {
     const bar = run({ type: "openDirections" }, { type: "walkStarted" });
-    expect(coverage(bar, { ...base, isMobile: false }).walkBarShown).toBe(false);
+    expect(coverage(bar, { ...base, compact: false }).walkBarShown).toBe(false);
     expect(coverage(bar, { ...base, arrived: true }).walkBarShown).toBe(false);
   });
 
   it("kiosk dialogs are search, directions and feedback, and only on the kiosk", () => {
     expect(coverage(run({ type: "showPanel", mode: "search" }), base).kioskDialogOpen).toBe(true);
-    expect(coverage(run({ type: "showPanel", mode: "search" }), { ...base, isMobile: false }).kioskDialogOpen).toBe(false);
+    expect(coverage(run({ type: "showPanel", mode: "search" }), { ...base, compact: false }).kioskDialogOpen).toBe(false);
     expect(coverage(run({ type: "openFeedback" }), base).kioskDialogOpen).toBe(true);
     expect(coverage(run({ type: "showPanel", mode: "account" }), base).kioskDialogOpen).toBe(false);
   });

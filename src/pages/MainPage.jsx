@@ -17,6 +17,8 @@ import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useOverlay } from "../hooks/useOverlay";
+import { useCompactLayout } from "../hooks/useCompactLayout";
+import { useKioskSession, useKioskZoomLock } from "../hooks/useKioskSession";
 import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
@@ -31,44 +33,6 @@ import { useNodePhoto } from "../hooks/useNodePhoto";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
-
-// Breakpoint-driven layout swap: below a width threshold, OR whenever the
-// screen is genuinely tall/portrait, this switches to the stacked
-// bottom-anchored layout (bottom sheets, bottom controls) instead of the
-// desktop floating UI. There's no separate kiosk build — a wall-mounted
-// kiosk is "vertically tall like a mobile phone" but can be much WIDER
-// than one (e.g. a 1080×1920 portrait touchscreen), so width alone would
-// miss it; the aspect-ratio check catches any portrait screen with real
-// height-over-width, regardless of its absolute size, and it gets
-// exactly the same treatment a phone does. Re-evaluated on resize/rotate.
-//
-// Deliberately a ratio, not an exact 1080×1920 match: innerWidth/innerHeight
-// are CSS pixels, so Windows display scaling (125% → 864×1536) and browser
-// chrome/taskbar (windowed, not F11/--kiosk) both change the reported size.
-// The kiosk's ratio is ~1.78; 1.3 leaves a wide margin below that while
-// keeping a merely slightly-portrait desktop window on the desktop layout
-// (portrait tablets, ~1.33, still get the shared touch layout).
-const PORTRAIT_ASPECT_THRESHOLD = 1.3;
-
-function isMobileLayout(breakpoint = 768) {
-  if (typeof window === "undefined") return false;
-  const { innerWidth: w, innerHeight: h } = window;
-  return w <= breakpoint || h > w * PORTRAIT_ASPECT_THRESHOLD;
-}
-
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() => isMobileLayout(breakpoint));
-  useEffect(() => {
-    const onResize = () => setIsMobile(isMobileLayout(breakpoint));
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-    };
-  }, [breakpoint]);
-  return isMobile;
-}
 
 // Mobile/kiosk control dock: how far each radial icon sits from the
 // FAB's center (RADIAL_RADIUS, in px) and how much of a clock-face arc
@@ -106,35 +70,11 @@ export default function MainPage() {
 function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, profile, role, signOut } = useAuth();
-  const isMobile = useIsMobile();
-  // Kiosk only: the attract screen covers everything until it's tapped.
-  const [kioskStarted, setKioskStarted] = useState(false);
-  // ...then the building selection screen, until a building is picked.
-  const [buildingChosen, setBuildingChosen] = useState(false);
-
-  // Kiosk: the panorama zooms only through its on-screen buttons. Stop the browser
-  // from zooming the whole page — header and bottom whitespace included —
-  // on a pinch: touch-action via the kiosk-mode class (see index.css), plus the
-  // pinch events that bypass it (Safari's gestures, ctrl+wheel from a trackpad
-  // pinch or a touchscreen driver that emulates one).
-  useEffect(() => {
-    if (!isMobile) return;
-    const root = document.documentElement;
-    root.classList.add("kiosk-mode");
-    const block = (e) => e.preventDefault();
-    const blockCtrlWheel = (e) => {
-      if (e.ctrlKey) e.preventDefault();
-    };
-    document.addEventListener("gesturestart", block);
-    document.addEventListener("gesturechange", block);
-    document.addEventListener("wheel", blockCtrlWheel, { passive: false });
-    return () => {
-      root.classList.remove("kiosk-mode");
-      document.removeEventListener("gesturestart", block);
-      document.removeEventListener("gesturechange", block);
-      document.removeEventListener("wheel", blockCtrlWheel);
-    };
-  }, [isMobile]);
+  const compact = useCompactLayout();
+  // Kiosk session: the attract screen, then the building screen, then
+  // exploring — see utils/kioskSession.js. Desktop skips straight to exploring.
+  const kiosk = useKioskSession(compact);
+  useKioskZoomLock(compact);
 
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
@@ -242,7 +182,7 @@ function MainPageContent({ onReset }) {
   // Also off while the kiosk's start/building screens are up — nobody is
   // exploring yet, so "Done exploring?" would make no sense there.
   const idleDetectorEnabled =
-    !blocksIdle(overlay, { flyover, awaitingStart: isMobile && !buildingChosen });
+    !blocksIdle(overlay, { flyover, awaitingStart: kiosk.awaitingStart });
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   const hotspots = useMemo(
@@ -435,7 +375,7 @@ function MainPageContent({ onReset }) {
     return (
       <>
         <LoadingScreen show label="Loading campus…" />
-        {isMobile && <KioskStartScreen hidden={kioskStarted} onStart={() => setKioskStarted(true)} />}
+        {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
       </>
     );
   }
@@ -454,7 +394,7 @@ function MainPageContent({ onReset }) {
   const walkStarted =
     !!directions?.path && !(directions.stepIndex === 0 && currentId !== directions.path[0]);
   const { walkBarShown, kioskDialogOpen, coversPanorama } = coverage(overlay, {
-    isMobile,
+    compact,
     directions,
     arrived,
     walkStarted,
@@ -641,7 +581,7 @@ function MainPageContent({ onReset }) {
     <>
       <div className="directions-panel-header">
         <h3>Directions</h3>
-        {!isMobile && <button className="close-btn" onClick={closeDirections}>✕</button>}
+        {!compact && <button className="close-btn" onClick={closeDirections}>✕</button>}
       </div>
 
       <label className="sidebar-field-label">
@@ -651,7 +591,7 @@ function MainPageContent({ onReset }) {
           value={directions.fromQuery}
           onChange={(e) => updateDirectionsField("from", e.target.value)}
           onFocus={() => setDirections((d) => route.focusField(d, "from"))}
-          inputMode={isMobile ? "none" : undefined}
+          inputMode={compact ? "none" : undefined}
           placeholder="Starting point"
         />
       </label>
@@ -664,7 +604,7 @@ function MainPageContent({ onReset }) {
           value={directions.toQuery}
           onChange={(e) => updateDirectionsField("to", e.target.value)}
           onFocus={() => setDirections((d) => route.focusField(d, "to"))}
-          inputMode={isMobile ? "none" : undefined}
+          inputMode={compact ? "none" : undefined}
           placeholder="Destination"
         />
       </label>
@@ -719,7 +659,7 @@ function MainPageContent({ onReset }) {
 
   return (
     <div className="main-page-layout">
-      {directions?.path && arrived && <ArrivalModal kiosk={isMobile} onDone={closeDirections} />}
+      {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={closeDirections} />}
       {/* Overlays everything below until the current node's photo has
           actually finished decoding, not just until nodes data has
           loaded — matches how the !nodes early-return above already
@@ -732,24 +672,24 @@ function MainPageContent({ onReset }) {
           behavior for ordinary navigation; this is specifically a
           first-load-only splash. */}
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
-      {isMobile && (
+      {compact && (
         <KioskBuildingScreen
-          hidden={buildingChosen}
+          hidden={kiosk.stage === "exploring"}
           buildings={allBuildings()}
           available={new Set(nodes.map((n) => n.building))}
           onPick={(b) => {
             handleMobileBuildingPick(b);
-            setBuildingChosen(true);
+            kiosk.chooseBuilding();
           }}
         />
       )}
-      {isMobile && <KioskStartScreen hidden={kioskStarted} onStart={() => setKioskStarted(true)} />}
+      {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
       <div className="main-page-viewer">
         {!current ? (
           <div className="main-page-status">
             <p>No campus locations available yet.</p>
           </div>
-        ) : isMobile ? (
+        ) : compact ? (
           <div className="main-page-screen mobile-screen">
             <div
               className="mobile-panorama-frame"
@@ -1184,13 +1124,13 @@ function MainPageContent({ onReset }) {
       )}
 
       {showFeedback && (
-        <FeedbackPanel onClose={overlay.closeFeedback} onFinished={onReset} kiosk={isMobile} />
+        <FeedbackPanel onClose={overlay.closeFeedback} onFinished={onReset} kiosk={compact} />
       )}
 
       {isIdle && (
         <IdlePrompt
           onContinue={resetIdle}
-          onStartOver={isMobile ? onReset : undefined}
+          onStartOver={compact ? onReset : undefined}
           onGiveFeedback={() => {
             resetIdle();
             overlay.openFeedback();

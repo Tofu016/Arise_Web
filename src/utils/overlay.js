@@ -103,10 +103,10 @@ export function blocksIdle(state, { flyover, awaitingStart }) {
 //   coversPanorama   something pops up over the panorama, so hotspot previews hide; the walk bar
 //                    is small and leaves the panorama usable, so it doesn't count. The idle
 //                    prompt is not included — the caller adds it.
-export function coverage(state, { isMobile, directions, arrived, walkStarted, flyover }) {
-  const walkBarShown = !!isMobile && state.panel === "directions" && walkStarted && !arrived && !state.walkDialog;
+export function coverage(state, { compact, directions, arrived, walkStarted, flyover }) {
+  const walkBarShown = !!compact && state.panel === "directions" && walkStarted && !arrived && !state.walkDialog;
   const kioskDialogOpen =
-    !!isMobile &&
+    !!compact &&
     (state.panel === "search" ||
       (state.panel === "directions" && !!directions && !arrived && !walkBarShown) ||
       state.feedback);
