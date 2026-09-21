@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { settleAutoWalk, syncToPosition } from "../utils/directionsRoute";
 
-const AUTO_WALK_STEP_MS = 5000;
+export const AUTO_WALK_STEP_SECONDS = 5;
+const AUTO_WALK_STEP_MS = AUTO_WALK_STEP_SECONDS * 1000;
 
 // React adapters over utils/directionsRoute.js.
 //

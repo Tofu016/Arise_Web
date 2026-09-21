@@ -36,8 +36,5 @@ The map animation shown before any move between two places with different real c
 **Route**:
 The shortest walkable sequence of Nodes between two points, followed one stop at a time (optionally hands-free, as auto-walk).
 
-**Assembly point**:
-A Node with an exit marker labeled "Assembly Point"; the only valid destination of the nearest-exit shortcut.
-
 **Entity mapping**:
 Translating between a backend row (snake_case) and the app's object (camelCase), and back into request bodies. Kept in one place per entity; empty-value conventions (e.g. a photo is "" when empty, but a section cover is null) are part of the backend contract.

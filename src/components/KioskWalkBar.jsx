@@ -1,3 +1,4 @@
+import AutoWalkCountdown from "./AutoWalkCountdown";
 import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 
 // Kiosk view only: the compact controls that replace the big directions
@@ -16,6 +17,7 @@ export default function KioskWalkBar({
   progressText,
   nextStopName,
   autoWalking,
+  stepIndex,
   onWalk,
   onToggleAutoWalk,
   onShowDialog,
@@ -27,6 +29,7 @@ export default function KioskWalkBar({
   return (
     <div className="kiosk-walkbar" style={{ bottom }} role="region" aria-label="Walking controls">
       <p className="kiosk-walkbar-progress">{progressText}</p>
+      <p className="kiosk-walkbar-hint">Follow the green hotspot — it marks the correct path to your destination.</p>
 
       <button type="button" className="primary kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
         Walk to {nextStopName} →
@@ -44,6 +47,7 @@ export default function KioskWalkBar({
             <span className="kiosk-walkbar-switch-thumb" />
           </span>
           <span>Auto-walk</span>
+          {autoWalking && <AutoWalkCountdown key={stepIndex} />}
         </button>
 
         <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onShowDialog}>

@@ -11,6 +11,8 @@ import KioskStartScreen from "../components/KioskStartScreen";
 import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskWalkBar from "../components/KioskWalkBar";
+import AutoWalkCountdown from "../components/AutoWalkCountdown";
+import ArrivalModal from "../components/ArrivalModal";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
@@ -21,7 +23,7 @@ import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus 
 import { pickBuildingStart, pickFloorStart } from "../utils/navigation";
 import * as route from "../utils/directionsRoute";
 import { useNavigation } from "../hooks/useNavigation";
-import { useDirections, useAutoWalk } from "../hooks/useDirections";
+import { useDirections, useAutoWalk, AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { prefetchPhoto } from "../utils/photoStore";
@@ -415,10 +417,10 @@ function MainPageContent({ onReset }) {
     setPanelMode("directions");
   };
 
-  const openDirectionsToNearestExit = () => {
+  const openDirections = () => {
     if (!current || !nodes) return;
     setMobileDockOpen(false);
-    setDirections(route.openNearestExit(current, nodes));
+    setDirections(route.openDirections(current));
     setWalkDialogOpen(true);
     setSearchQuery("");
     setPanelMode("directions");
@@ -478,11 +480,17 @@ function MainPageContent({ onReset }) {
     [directions?.editingField, directionsQuery, nodes, searchableRooms]
   );
 
-  const handleGetDirections = () => setDirections((d) => route.getDirections(d, nodes, searchableRooms));
+  // "Get directions" computes the route and starts the walk in one go —
+  // no second "Start walking" press.
+  const handleGetDirections = () => {
+    const next = route.getDirections(directions, nodes, searchableRooms);
+    setDirections(next);
+    if (next.path) handleStartWalking(next);
+  };
 
-  const handleStartWalking = () => {
-    if (!directions?.path) return;
-    jumpToSearchResult(directions.path[0]);
+  const handleStartWalking = (d = directions) => {
+    if (!d?.path) return;
+    jumpToSearchResult(d.path[0]);
     setWalkDialogOpen(false); // walking has begun: collapse to the walk bar (kiosk)
     setDirections(route.restartRoute);
     setPanelMode("directions"); // jumpToSearchResult closes the panel — reopen it for the route in progress
@@ -559,7 +567,7 @@ function MainPageContent({ onReset }) {
   // (and the menu button, whose actions would open a second dialog) step aside.
   const kioskDialogOpen =
     isMobile &&
-    (panelMode === "search" || (panelMode === "directions" && !!directions && !walkBarShown) || showFeedback);
+    (panelMode === "search" || (panelMode === "directions" && !!directions && !arrived && !walkBarShown) || showFeedback);
 
   // Anything that pops up over the panorama — the radial menu, every dialog
   // and panel, the 360 room view, a flyover, the idle prompt — hides the
@@ -591,10 +599,9 @@ function MainPageContent({ onReset }) {
     },
     {
       key: "exit",
-      icon: "🚨",
-      title: "Nearest exit",
-      onClick: () => { setMobileDockOpen(false); openDirectionsToNearestExit(); },
-      className: "mobile-exit-btn",
+      icon: "🧭",
+      title: "Directions",
+      onClick: () => { setMobileDockOpen(false); openDirections(); },
     },
     {
       key: "feedback",
@@ -746,7 +753,7 @@ function MainPageContent({ onReset }) {
   const directionsContent = directions && (
     <>
       <div className="directions-panel-header">
-        <h3>{directions.kind === "exit" ? "🚨 Nearest Exit" : "Directions"}</h3>
+        <h3>Directions</h3>
         {!isMobile && <button className="close-btn" onClick={closeDirections}>✕</button>}
       </div>
 
@@ -798,7 +805,7 @@ function MainPageContent({ onReset }) {
             )}
           </p>
           {directions.stepIndex === 0 && currentId !== directions.path[0] ? (
-            <button className="primary directions-go-btn" onClick={handleStartWalking}>Start walking</button>
+            <button className="primary directions-go-btn" onClick={() => handleStartWalking()}>Start walking</button>
           ) : (
             <>
               <button
@@ -812,18 +819,12 @@ function MainPageContent({ onReset }) {
                 className="directions-go-btn directions-autowalk-btn"
                 onClick={() => { setWalkDialogOpen(false); setDirections(route.toggleAutoWalk); }}
               >
-                {autoWalking ? "⏸ Stop auto-walk" : "▶ Auto-walk (every 5s)"}
+                {autoWalking ? "⏸ Stop auto-walk" : `▶ Auto-walk (every ${AUTO_WALK_STEP_SECONDS}s)`}
+                {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
               </button>
             </>
           )}
-          <p className="field-hint">Or just click the glowing arrow in the photo.</p>
-        </div>
-      )}
-
-      {directions.path && arrived && (
-        <div className="directions-progress">
-          <p className="directions-progress-text">🎉 You've arrived at <strong>{directions.toQuery}</strong>.</p>
-          <button onClick={closeDirections}>Done</button>
+          <p className="field-hint">Follow the green hotspot in the photo — it marks the correct path to your destination.</p>
         </div>
       )}
     </>
@@ -831,6 +832,7 @@ function MainPageContent({ onReset }) {
 
   return (
     <div className="main-page-layout">
+      {directions?.path && arrived && <ArrivalModal kiosk={isMobile} onDone={closeDirections} />}
       {/* Overlays everything below until the current node's photo has
           actually finished decoding, not just until nodes data has
           loaded — matches how the !nodes early-return above already
@@ -885,7 +887,7 @@ function MainPageContent({ onReset }) {
                 onPlaceAngle={() => {}}
                 initialYaw={entryYaw}
                 highlightedId={nextStopId}
-                emergencyMode={directions?.kind === "exit"}
+                autoPan={!!nextStopId}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
                 alwaysShowPreview
                 zoomable
@@ -1005,7 +1007,7 @@ function MainPageContent({ onReset }) {
               </KioskDialog>
             )}
 
-            {panelMode === "directions" && directions && !walkBarShown && (
+            {panelMode === "directions" && directions && !arrived && !walkBarShown && (
               <KioskDialog onClose={closeDirections}>
                 <div className="directions-panel">
                   {directionsContent}
@@ -1020,6 +1022,7 @@ function MainPageContent({ onReset }) {
                 }`}
                 nextStopName={nextStopName}
                 autoWalking={autoWalking}
+                stepIndex={directions.stepIndex}
                 onWalk={handleWalkToNextStop}
                 onToggleAutoWalk={() => setDirections(route.toggleAutoWalk)}
                 onShowDialog={() => setWalkDialogOpen(true)}
@@ -1117,7 +1120,7 @@ function MainPageContent({ onReset }) {
                 onPlaceAngle={() => {}}
                 initialYaw={entryYaw}
                 highlightedId={nextStopId}
-                emergencyMode={directions?.kind === "exit"}
+                autoPan={!!nextStopId}
               />
 
               <div className="floating-title-wrap">
@@ -1153,11 +1156,11 @@ function MainPageContent({ onReset }) {
                   minimap is actually showing right now — a safety button
                   shouldn't jump around based on unrelated state. */}
               <button
-                className="floating-rail-btn floating-exit-btn floating-exit-btn-stacked"
-                onClick={openDirectionsToNearestExit}
-                title="Find the nearest exit"
+                className="floating-rail-btn floating-exit-btn-stacked"
+                onClick={openDirections}
+                title="Get directions"
               >
-                🚨
+                🧭
               </button>
 
               {/* Client-requested: bottom-left, alongside the exit
@@ -1269,7 +1272,7 @@ function MainPageContent({ onReset }) {
                       />
                     )}
 
-                    {panelMode === "directions" && directions && (
+                    {panelMode === "directions" && directions && !arrived && (
                       <div className="directions-panel">
                         {directionsContent}
                       </div>

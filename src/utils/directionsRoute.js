@@ -6,8 +6,7 @@ import { resolveExactNodeMatch } from "./search";
 //
 // State: { fromQuery, fromId, toQuery, toId, path, stepIndex, error,
 //          editingField, kind, autoWalking }
-//   kind         "point" (visitor picked the destination) or "exit"
-//                (auto-routed to the nearest assembly point)
+//   kind         "point" (always — the visitor picks the destination)
 //   autoWalking  stepping through `path` hands-free; lives here so it can
 //                never outlive the route it walks
 //
@@ -33,39 +32,10 @@ export function openDirectionsTo(current, node) {
   return { ...blank(current, "point"), toQuery: node.name, toId: node.id };
 }
 
-// Emergency "nearest exit" shortcut: the destination isn't picked by the
-// visitor — it's whichever node has a marker labeled "Assembly Point"
-// (case-insensitive/trimmed, since it's free-typed) that comes back
-// shortest from here, across every building. The route is computed
-// immediately instead of waiting for a "Get directions" click.
-//
-// Only a marker specifically labeled "Assembly Point" counts as a valid
-// endpoint — any other exit-type marker (e.g. "Emergency Fire Stairs") is a
-// legitimate waypoint the path may pass through, but not a destination.
-export function openNearestExit(current, nodes) {
-  const assemblyPoints = nodes.filter((n) =>
-    (n.markers || []).some((m) => m.type === "exit" && (m.label || "").trim().toLowerCase() === "assembly point")
-  );
-  if (assemblyPoints.length === 0) {
-    return {
-      ...blank(current, "exit"),
-      error: 'No assembly point has been set up yet — ask an admin to add an exit marker labeled "Assembly Point."',
-    };
-  }
-
-  let best = null;
-  for (const area of assemblyPoints) {
-    const path = findPath(nodes, current.id, area.id);
-    if (path && (!best || path.length < best.path.length)) best = { area, path };
-  }
-
-  return {
-    ...blank(current, "exit"),
-    toQuery: best?.area.name || "",
-    toId: best?.area.id || null,
-    path: best?.path || null,
-    error: best ? "" : "No walkable route to an assembly point was found from here.",
-  };
+// Opens an empty directions panel starting from where the visitor is; the
+// destination is picked (or typed) in the panel.
+export function openDirections(current) {
+  return blank(current, "point");
 }
 
 const queryKey = (field) => (field === "from" ? "fromQuery" : "toQuery");

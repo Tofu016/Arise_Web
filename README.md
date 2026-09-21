@@ -395,8 +395,8 @@ The public page — no login, no account, no editing controls, just the tour.
   walk to the connected location. Marker icons (🚪📍🚨🧯) are informational
   only.
 - **← Back** — retraces your steps one node at a time.
-- **🚨 Nearest exit** — jumps straight into step-by-step directions to the
-  closest marked emergency exit from wherever you currently are.
+- **🧭 Directions** — opens the directions panel starting from wherever you
+  currently are; pick a destination to get step-by-step directions.
 - **Visited places** — a collapsible strip (bottom-right on desktop) of
   every node visited so far this session, each with a real thumbnail; click
   one to jump straight back. Genuinely session-only — nothing persists past

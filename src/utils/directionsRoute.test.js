@@ -29,31 +29,10 @@ describe("opening", () => {
     });
   });
 
-  it("nearest exit routes to an Assembly Point marker, ignoring other exit markers", () => {
-    const d = route.openNearestExit(byId.a, nodes);
-    expect(d).toMatchObject({ kind: "exit", toId: "d", path: ["a", "b", "c", "d"], error: "" });
-  });
-
-  it("nearest exit picks the shortest of several assembly points", () => {
-    const ns = [
-      node("a", ["b", "x"]),
-      node("b", ["a", "far"], { markers: [{ type: "exit", label: "assembly point" }] }),
-      node("x", ["a", "y"]),
-      node("y", ["x"], { markers: [{ type: "exit", label: "Assembly Point" }] }),
-      node("far", ["b"]),
-    ];
-    expect(route.openNearestExit(ns[0], ns).toId).toBe("b");
-  });
-
-  it("says so when no assembly point exists", () => {
-    const d = route.openNearestExit(byId.a, [node("a", [])]);
-    expect(d.error).toMatch(/No assembly point/);
-    expect(d.path).toBeNull();
-  });
-
-  it("says so when no assembly point is reachable", () => {
-    const ns = [node("a", []), node("d", [], { markers: [{ type: "exit", label: "Assembly Point" }] })];
-    expect(route.openNearestExit(ns[0], ns).error).toMatch(/No walkable route/);
+  it("openDirections starts at the current node with nothing picked yet", () => {
+    expect(route.openDirections(byId.a)).toMatchObject({
+      fromId: "a", fromQuery: "A", toId: null, toQuery: "", path: null, kind: "point", error: "",
+    });
   });
 });
 

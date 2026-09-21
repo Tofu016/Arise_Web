@@ -2829,16 +2829,6 @@ button.primary {
   font-size: 13px;
   border-color: var(--accent);
 }
-.floating-exit-btn {
-  background: var(--danger-surface);
-  border-color: var(--danger);
-  color: var(--danger-text);
-}
-.floating-exit-btn:hover {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: var(--accent-contrast);
-}
 /* Now positioned OUTSIDE the rail's own flex layout, so it needs its own
    absolute position — stacked directly above where the desktop minimap
    sits (same left offset), not beside it. 130px (the minimap's own
@@ -3465,11 +3455,6 @@ button.primary {
 .mobile-radial-btn:active {
   transform: scale(0.9);
   opacity: 0.85;
-}
-.mobile-radial-btn.mobile-exit-btn {
-  color: var(--danger-text);
-  border-color: var(--danger);
-  background: var(--danger-surface);
 }
 .mobile-radial-btn.mobile-account-btn {
   border-color: var(--accent);
@@ -4869,6 +4854,11 @@ button.primary {
   font-size: 15px;
   color: var(--text-muted);
 }
+.kiosk-walkbar-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
 .kiosk-walkbar button {
   min-height: 56px;
   font-size: 16px;
@@ -5208,4 +5198,58 @@ html.kiosk-mode body {
 .node-form .starting-node-field .field-hint {
   display: block;
   margin-top: 6px;
+}
+
+/* Auto-walk's step countdown: the shared ring, shrunk to sit inside a button. */
+.auto-walk-countdown {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+.auto-walk-countdown .countdown-ring {
+  width: 28px;
+  height: 28px;
+}
+.auto-walk-countdown .countdown-ring-number {
+  font-size: 13px;
+}
+
+/* Arrival notice: positioned like a centered modal, but no scrim and it
+   never captures touches. */
+.arrival-notice-overlay {
+  background: none;
+  pointer-events: none;
+}
+.arrival-notice {
+  width: 320px;
+  max-width: 90vw;
+  padding: 14px 20px;
+  text-align: center;
+}
+.arrival-notice .idle-prompt-text {
+  margin: 0;
+}
+
+/* Pulse so the notice is hard to miss: the card breathes between its own
+   look and a green tint, with a glow ring that expands and fades. */
+.arrival-notice {
+  animation: arrival-notice-pulse 1.2s ease-in-out infinite;
+}
+@keyframes arrival-notice-pulse {
+  0%, 100% {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-2), 0 0 0 0 var(--success);
+    scale: 1;
+  }
+  50% {
+    background: var(--success-surface, var(--surface));
+    border-color: var(--success);
+    box-shadow: var(--shadow-2), 0 0 0 12px transparent;
+    scale: 1.04;
+  }
+}
+/* `scale` (not `transform`) so it doesn't clobber the kiosk's translateY centring. */
+@media (prefers-reduced-motion: reduce) {
+  .arrival-notice { animation: none; }
 }

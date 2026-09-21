@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, Text } from "@react-three/drei";
+import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
 import { toPosition, toAngles, initialCameraPosition, computeFov, overlayScale, TARGET_HORIZONTAL_FOV, clampZoom, zoomedFov, MIN_ZOOM, MAX_ZOOM } from "../utils/panoramaMath";
@@ -90,6 +90,51 @@ function CameraAim({ aimKey, yaw, pitch }) {
   return null;
 }
 
+// Directions: slowly turns the view until `target` (a hotspot's yaw/pitch)
+// is centred. Eases out (speed follows the remaining angle) between a floor
+// and a ceiling in degrees per second, so it stays gentle. A drag by the
+// visitor hands control back until the target changes (a new stop or scene).
+const AUTO_PAN_MIN_DEG_PER_SEC = 6;
+const AUTO_PAN_MAX_DEG_PER_SEC = 30;
+const AUTO_PAN_EASE = 0.5; // share of the remaining angle covered per second
+const AUTO_PAN_DONE_DEG = 0.5;
+
+function AutoPan({ target, targetKey }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls);
+  const overridden = useRef(false);
+  const scratch = useMemo(() => ({ look: new THREE.Vector3(), want: new THREE.Vector3(), axis: new THREE.Vector3() }), []);
+
+  useEffect(() => {
+    overridden.current = false;
+  }, [targetKey]);
+
+  useEffect(() => {
+    if (!controls) return;
+    const onStart = () => { overridden.current = true; };
+    controls.addEventListener("start", onStart);
+    return () => controls.removeEventListener("start", onStart);
+  }, [controls]);
+
+  useFrame((_, delta) => {
+    if (!target || overridden.current || !controls) return;
+    const { look, want, axis } = scratch;
+    camera.getWorldDirection(look);
+    want.set(...toPosition(target.yaw, target.pitch)).normalize();
+    const angle = look.angleTo(want);
+    const angleDeg = (angle * 180) / Math.PI;
+    if (angleDeg < AUTO_PAN_DONE_DEG) return;
+    const speed = Math.min(AUTO_PAN_MAX_DEG_PER_SEC, Math.max(AUTO_PAN_MIN_DEG_PER_SEC, angleDeg * AUTO_PAN_EASE));
+    const step = Math.min(angle, (speed * Math.PI / 180) * Math.min(delta, 0.1));
+    axis.crossVectors(look, want);
+    if (axis.lengthSq() < 1e-8) axis.set(0, 1, 0); // facing directly away: any turn will do
+    axis.normalize();
+    camera.position.applyAxisAngle(axis, step); // the camera sits opposite its view direction
+    controls.update();
+  });
+  return null;
+}
+
 // How fast dragging turns the view: bigger = the view moves further for the
 // same finger (or mouse) movement, smaller = slower and finer. The sign only
 // sets the drag direction, so keep the numbers positive and change these two.
@@ -121,7 +166,7 @@ function useIsCoarsePointer() {
   return coarse;
 }
 
-function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emergency, alwaysPreview, previewHidden, fov }) {
+function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alwaysPreview, previewHidden, fov }) {
   const pos = toPosition(yaw, pitch);
   // Keeps the marker the same apparent size on any screen (see overlayScale).
   const canvasSize = useThree((state) => state.size);
@@ -183,17 +228,13 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
     onClick(); // tap-again-to-go (touch), or the only tap needed at all (mouse)
   };
 
-  // Only the highlighted hotspot pulses red during emergency routing — an
-  // un-highlighted hotspot the visitor isn't meant to follow stays its
-  // normal color, same as it already does outside emergency mode.
-  const isPulsing = emergency && highlighted;
   // 3D materials can't read CSS custom properties — these mirror the brand
-  // tokens: --accent (SDCA maroon), --success, a contrast-tuned emergency
-  // red, and --text-subtle for the dimmed/placing state.
-  const color = dimmed ? "#8c8180" : isPulsing ? "#c62a2c" : highlighted ? "#2e7d46" : "#a12124";
+  // tokens: --accent (SDCA maroon), --success, and --text-subtle for the
+  // dimmed/placing state.
+  const color = dimmed ? "#8c8180" : highlighted ? "#2e7d46" : "#a12124";
   // The arrow inside the hotspot always uses the design system's on-accent
   // contrast colour (--accent-contrast === #fff). White reads clearly on
-  // every hotspot fill — maroon, success green, emergency red and the
+  // every hotspot fill — maroon, success green and the
   // dimmed grey — and matches how the app already paints icons and text
   // that sit on an accent-coloured surface, so the arrow stays visually
   // tied to the hotspot rather than looking like a separate element.
@@ -260,12 +301,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
     // Billboard the whole marker toward the camera so the always-visible
     // disc / ring / arrow never turn edge-on as the visitor looks around.
     groupRef.current.quaternion.copy(camera.quaternion);
-    // Emergency: a gentle breathing scale on top of the billboard rotation
-    // — reads as "urgent, alive". Kept imperative (no re-render) on
-    // purpose; the "!" below is real geometry, so it inherits this scale
-    // the same way the disc and ring do.
-    const scale = isPulsing ? 1 + Math.sin(clock.elapsedTime * 4) * 0.15 : 1;
-    groupRef.current.scale.setScalar(scale * uiScale);
+    groupRef.current.scale.setScalar(uiScale);
   });
 
   return (
@@ -310,29 +346,12 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
         <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
       </mesh>
 
-      {isPulsing ? (
-        // During emergency routing the arrow gives way to a "!" — same
-        // white, still real geometry (not an Html overlay) so the pulse
-        // scale reaches it too, exactly as the disc and ring get it.
-        <Text
-          position={[0, 0, 0.2]}
-          fontSize={dotRadius}
-          color={arrowColor}
-          anchorX="center"
-          anchorY="middle"
-          renderOrder={HOTSPOT_RENDER_ORDER + 1}
-          material-depthTest={false}
-        >
-          !
-        </Text>
-      ) : (
-        // Flat white chevron sitting just in front of the disc. renderOrder
-        // keeps it painted over the disc.
-        <mesh position={[0, 0, 0.5]} renderOrder={HOTSPOT_RENDER_ORDER + 1}>
-          <shapeGeometry args={[arrowShape]} />
-          <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
-        </mesh>
-      )}
+      // Flat white chevron sitting just in front of the disc. renderOrder
+      // keeps it painted over the disc.
+      <mesh position={[0, 0, 0.5]} renderOrder={HOTSPOT_RENDER_ORDER + 1}>
+        <shapeGeometry args={[arrowShape]} />
+        <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* Sneak-peek preview — on hover (or always, on the kiosk), a "check
           before you click" affordance separate from the marker itself. */}
@@ -538,12 +557,12 @@ function FovController({ fov }) {
  *  - placing: bool — when true, clicking the panorama itself (not a hotspot/marker) reports the click angle
  *  - onPlaceAngle({yaw, pitch}): called when placing and the user clicks the sphere
  *  - highlightedId: optional neighbor id to render in a distinct color (used for directions)
- *  - emergencyMode: bool — when true, the highlighted hotspot pulses red instead of the normal green, for emergency exit routing
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
  *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator; hidden along with the previews while previewsHidden
+ *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
@@ -562,13 +581,13 @@ export default function PanoramaNav({
   initialYaw = 0,
   initialPitch = 0,
   highlightedId = null,
-  emergencyMode = false,
   selectedMarkerId = null,
   sceneKey,
   heightFraction = 1,
   alwaysShowPreview = false,
   previewsHidden = false,
   zoomable = false,
+  autoPan = false,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // The kiosk (zoomable) is always touch, even if the OS still reports a mouse.
@@ -647,6 +666,8 @@ export default function PanoramaNav({
   const shownHotspots = live ? hotspots : shown.hotspots;
   const shownMarkers = live ? markers : shown.markers;
 
+  const highlightedHotspot = shownHotspots.find((h) => h.id === highlightedId) || null;
+
   const canvas = (
     <Canvas camera={{ position: firstCameraPosition, fov: baseFov }} style={{ cursor }}>
       {zoomable && <FovController fov={fov} />}
@@ -663,6 +684,9 @@ export default function PanoramaNav({
         />
       )}
       {holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
+      {autoPan && !placing && highlightedHotspot && (
+        <AutoPan target={highlightedHotspot} targetKey={`${live ? key : shown.key}:${highlightedHotspot.id}`} />
+      )}
       {shownHotspots.map((h) => (
         <Hotspot
           // Scoped to the scene: a hotspot with the same target id in the
@@ -675,7 +699,6 @@ export default function PanoramaNav({
           photo={h.photo}
           dimmed={placing}
           highlighted={!placing && h.id === highlightedId}
-          emergency={emergencyMode}
           fov={fov}
           alwaysPreview={alwaysShowPreview && !placing}
           // Also hidden while a move is loading: `!live` means the screen is
