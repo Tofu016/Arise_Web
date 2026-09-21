@@ -24,6 +24,17 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 // (renderOrder 1); the arrow inside a hotspot goes one step above its disc.
 const HOTSPOT_RENDER_ORDER = 10;
 
+// The sneak-peek preview card scales with how directly the visitor looks at
+// its hotspot: PREVIEW_MAX_SCALE when looking straight at it, shrinking
+// linearly to PREVIEW_MIN_SCALE once the hotspot is PREVIEW_FALLOFF_DEG away
+// from the view direction (about where it leaves the screen). Raise
+// PREVIEW_MAX_SCALE for a bigger card up close; lower PREVIEW_MIN_SCALE to make
+// far-off cards shrink more.
+const PREVIEW_MAX_SCALE = 1.0;
+const PREVIEW_MIN_SCALE = 0.38;
+const PREVIEW_FALLOFF_DEG = 75;
+const PREVIEW_GAP_FRACTION = 0.5; // gap between hotspot ring and card, as a share of the original
+
 // Period of the hotspot's outer-ring pulse.
 const RING_PULSE_SECONDS = 2;
 
@@ -189,6 +200,7 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   const arrowColor = "#ffffff";
   const groupRef = useRef();
   const pulseRef = useRef();
+  const previewRef = useRef(); // the preview card; scaled every frame, see useFrame
   const cameraDir = useMemo(() => new THREE.Vector3(), []);
   const hotspotDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch)).normalize(), [yaw, pitch]);
 
@@ -199,6 +211,11 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   const ringOpacity = hovered ? 0.7 : 0.5;
 
   const dotRadius = highlighted ? 18 : 14;
+  // Where the preview card's bottom edge sits above the hotspot: it used to be
+  // 50 units up, i.e. (50 - ring radius) clear of the ring; the gap is now half
+  // that. Raise PREVIEW_GAP_FRACTION for more space, lower it for less.
+  const ringOuter = highlighted ? 26 : 20;
+  const previewY = ringOuter + (50 - ringOuter) * PREVIEW_GAP_FRACTION;
 
   // A wide upside-down "V" (chevron) sized to sit inside the dot, centred
   // vertically. Flat 2D geometry with a constant stroke thickness.
@@ -222,8 +239,17 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
   useFrame(({ camera, clock }) => {
     if (!groupRef.current) return;
     // cos(~78°): generous, so a card near the screen edge still shows.
-    const nowFacing = camera.getWorldDirection(cameraDir).dot(hotspotDir) > 0.2;
+    const lookDot = camera.getWorldDirection(cameraDir).dot(hotspotDir);
+    const nowFacing = lookDot > 0.2;
     if (nowFacing !== facing) setFacing(nowFacing);
+    // Preview card: big when looked at directly, smaller the further away
+    // you look. Imperative (no re-render), anchored at the card's bottom
+    // centre so it stays put above the marker.
+    if (previewRef.current) {
+      const angleDeg = (Math.acos(Math.min(1, Math.max(-1, lookDot))) * 180) / Math.PI;
+      const t = Math.min(1, angleDeg / PREVIEW_FALLOFF_DEG);
+      previewRef.current.style.transform = `scale(${PREVIEW_MAX_SCALE + (PREVIEW_MIN_SCALE - PREVIEW_MAX_SCALE) * t})`;
+    }
     // Pulse ring: every RING_PULSE_SECONDS an extra copy of the ring
     // expands outward and fades, then restarts.
     if (pulseRef.current) {
@@ -316,27 +342,26 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
           // index.css). With it, the card's size followed the camera's FOV
           // and came out at only ~0.2-0.4x of its CSS size.
           zIndexRange={[0, 0]} // stays under the page's own UI, like the marker overlays
-          position={[0, 50, 0]}
+          position={[0, previewY, 0]}
           // Anchor the card by its BOTTOM edge (translate -100% on Y), not
           // its middle. `center` would pin the card's centre to the anchor
           // and the now-large card would swallow the hotspot; bottom-anchored
           // it always sits fully above the marker no matter how tall the
-          // card grows with a long label. The +50 local Y clears the ring
-          // (outer radius ~26) with a comfortable gap; -50% on X keeps it
+          // card grows with a long label. previewY (see above) clears the
+          // ring by a small gap; -50% on X keeps it
           // horizontally centred over the hotspot.
           style={{ pointerEvents: "none", transform: "translate(-50%, -100%)" }}
         >
           {/* Styling lives in index.css → "Panorama overlays" so it stays on
               the brand tokens; only the image src is dynamic here. */}
-          <div className="pano-hotspot-preview">
+          <div className="pano-hotspot-preview" ref={previewRef}>
             <div className="pano-hotspot-preview-thumb">
               {previewUrl ? (
                 <img src={previewUrl} alt={label} />
               ) : (
-                <span>…</span>
+                <div className="loading-spinner" role="status" aria-label="Loading preview" />
               )}
             </div>
-            <div className="pano-hotspot-preview-label">{label}</div>
           </div>
         </Html>
       )}

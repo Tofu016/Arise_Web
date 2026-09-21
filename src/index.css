@@ -1436,12 +1436,14 @@ button.primary {
   background: rgba(0, 0, 0, 0.55);
   animation: photo-transition-indicator-in 0.2s ease 0.4s both;
 }
+/* The one shared spinner (gray ring, red arc — see .loading-spinner), just
+   larger here and on a white disc so it reads against the dimmed panorama. */
 .kiosk-loading-overlay .loading-spinner {
   width: 72px;
   height: 72px;
   border-width: 6px;
-  border-color: rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
+  background: var(--surface);
+  box-shadow: 0 0 0 10px var(--surface);
 }
 .room-search-box {
   width: 340px;
@@ -3165,6 +3167,7 @@ button.primary {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-2);
   user-select: none;
+  transform-origin: 50% 100%; /* scaled by look direction (PanoramaNav) from its bottom centre */
 }
 .pano-hotspot-preview-thumb {
   width: 100%;
@@ -3181,15 +3184,11 @@ button.primary {
   height: 100%;
   object-fit: cover;
 }
-.pano-hotspot-preview-thumb span {
-  color: var(--text-muted);
-  font-size: 14px;
-}
-.pano-hotspot-preview-label {
-  color: var(--text);
-  font-size: 15px;
-  margin-top: 6px;
-  text-align: center;
+/* Shown until the preview photo arrives: the shared spinner, sized for the card. */
+.pano-hotspot-preview-thumb .loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-width: 4px;
 }
 .pano-marker {
   display: flex;
@@ -3663,12 +3662,9 @@ button.primary {
 .mobile-screen .pano-hotspot-preview-thumb {
   height: 160px;
 }
-.mobile-screen .pano-hotspot-preview-thumb span {
-  font-size: 20px;
-}
-.mobile-screen .pano-hotspot-preview-label {
-  font-size: 24px;
-  margin-top: 8px;
+.mobile-screen .pano-hotspot-preview-thumb .loading-spinner {
+  width: 44px;
+  height: 44px;
 }
 /* ---------- 44px+ touch targets for a couple of controls that are
    deliberately compact in their shared desktop styling. ---------- */
