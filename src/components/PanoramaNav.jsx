@@ -20,6 +20,10 @@ import { useRectilinearPreview } from "../hooks/useRectilinearPreview";
 // deliberate choice here rather than an arbitrary one.
 const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 
+// Hotspots are drawn after (over) the panorama and its cross-fade sphere
+// (renderOrder 1); the arrow inside a hotspot goes one step above its disc.
+const HOTSPOT_RENDER_ORDER = 10;
+
 // Period of the hotspot's outer-ring pulse.
 const RING_PULSE_SECONDS = 2;
 
@@ -257,35 +261,50 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, emerg
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Flat disc + ring, billboarded (see useFrame) to face the camera. */}
-      <mesh>
+      {/* Flat disc + ring, billboarded (see useFrame) to face the camera.
+          depthTest is off on everything drawn here (with a renderOrder above
+          the panorama's cross-fade) because the marker sits only 20 units
+          inside the panorama sphere: turned toward the camera, the far side
+          of the disc/ring (the pulse ring especially) pokes outside that
+          sphere as soon as you look well away from the hotspot, and the depth
+          test then cut that part off. The marker is always meant to be in
+          front of the image, so it never needs the test. */}
+      <mesh renderOrder={HOTSPOT_RENDER_ORDER}>
         <circleGeometry args={[dotRadius, 40]} />
-        <meshBasicMaterial color={color} transparent opacity={dotOpacity} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={color} transparent opacity={dotOpacity} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
       </mesh>
-      <mesh>
+      <mesh renderOrder={HOTSPOT_RENDER_ORDER}>
         <ringGeometry args={highlighted ? [20, 26, 40] : [16, 20, 40]} />
-        <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
       </mesh>
       {/* Extra ring copy that expands and fades (see useFrame); the static
           ring above stays put. */}
-      <mesh ref={pulseRef}>
+      <mesh ref={pulseRef} renderOrder={HOTSPOT_RENDER_ORDER}>
         <ringGeometry args={highlighted ? [20, 26, 40] : [16, 20, 40]} />
-        <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
       </mesh>
 
       {isPulsing ? (
         // During emergency routing the arrow gives way to a "!" — same
         // white, still real geometry (not an Html overlay) so the pulse
         // scale reaches it too, exactly as the disc and ring get it.
-        <Text position={[0, 0, 0.2]} fontSize={dotRadius} color={arrowColor} anchorX="center" anchorY="middle">
+        <Text
+          position={[0, 0, 0.2]}
+          fontSize={dotRadius}
+          color={arrowColor}
+          anchorX="center"
+          anchorY="middle"
+          renderOrder={HOTSPOT_RENDER_ORDER + 1}
+          material-depthTest={false}
+        >
           !
         </Text>
       ) : (
         // Flat white chevron sitting just in front of the disc. renderOrder
         // keeps it painted over the disc.
-        <mesh position={[0, 0, 0.5]} renderOrder={2}>
+        <mesh position={[0, 0, 0.5]} renderOrder={HOTSPOT_RENDER_ORDER + 1}>
           <shapeGeometry args={[arrowShape]} />
-          <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
       )}
 
