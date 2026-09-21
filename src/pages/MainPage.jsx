@@ -866,7 +866,13 @@ function MainPageContent({ onReset }) {
               className="mobile-panorama-frame"
               style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
             >
-              {initialLoadDone && !photoReady && <div className="photo-transition-indicator">Loading…</div>}
+              {/* Kiosk: a spinner in the middle of the panorama band, with the band dimmed
+                  around it; the header and bottom whitespace aren't covered. */}
+              {initialLoadDone && !photoReady && (
+                <div className="kiosk-loading-overlay" role="status" aria-label="Loading">
+                  <div className="loading-spinner" />
+                </div>
+              )}
               <PanoramaNav
                 sceneKey={current.id}
                 url={photoUrl}

@@ -1422,6 +1422,27 @@ button.primary {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* Kiosk photo-load overlay: fills the panorama frame (so it stops at the
+   header and the bottom whitespace), dims it and centers a spinner. Same
+   short delay as the indicator above, so a fast move never flashes it.
+   Blocks touches while it's up, so a second move can't start mid-load. */
+.kiosk-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6; /* above the zoom controls (5), which it dims too */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  animation: photo-transition-indicator-in 0.2s ease 0.4s both;
+}
+.kiosk-loading-overlay .loading-spinner {
+  width: 72px;
+  height: 72px;
+  border-width: 6px;
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
 .room-search-box {
   width: 340px;
   max-width: 90vw;
