@@ -75,6 +75,14 @@ function CameraAim({ aimKey, yaw, pitch }) {
   return null;
 }
 
+// How fast dragging turns the view: bigger = the view moves further for the
+// same finger (or mouse) movement, smaller = slower and finer. The sign only
+// sets the drag direction, so keep the numbers positive and change these two.
+//   TOUCH_ROTATE_SPEED   the kiosk and any touch screen — tune this for the kiosk
+//   MOUSE_ROTATE_SPEED   mouse dragging on desktop and the admin previews
+const TOUCH_ROTATE_SPEED = 0.8;
+const MOUSE_ROTATE_SPEED = 0.4;
+
 // Touch/stylus input has no hover state, so the "sneak-peek" preview
 // (built around onPointerOver/onPointerOut below) has no touch
 // equivalent — matchMedia("pointer: coarse") is the standard way to
@@ -519,6 +527,8 @@ export default function PanoramaNav({
   zoomable = false,
 }) {
   const cursor = placing ? "crosshair" : "grab";
+  // The kiosk (zoomable) is always touch, even if the OS still reports a mouse.
+  const touchInput = useIsCoarsePointer() || zoomable;
   // @react-three/fiber reactively applies changes to the camera prop's
   // own properties to the live camera instance on every re-render
   // (including calling updateProjectionMatrix() itself) — so this
@@ -645,7 +655,7 @@ export default function PanoramaNav({
           onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}
         />
       ))}
-      <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
+      <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-(touchInput ? TOUCH_ROTATE_SPEED : MOUSE_ROTATE_SPEED)} target={[0, 0, 0]} />
     </Canvas>
   );
 
