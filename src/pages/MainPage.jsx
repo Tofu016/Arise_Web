@@ -110,6 +110,30 @@ function MainPageContent({ onReset }) {
   // ...then the building selection screen, until a building is picked.
   const [buildingChosen, setBuildingChosen] = useState(false);
 
+  // Kiosk: the panorama zooms only through its on-screen buttons. Stop the browser
+  // from zooming the whole page — header and bottom whitespace included —
+  // on a pinch: touch-action via the kiosk-mode class (see index.css), plus the
+  // pinch events that bypass it (Safari's gestures, ctrl+wheel from a trackpad
+  // pinch or a touchscreen driver that emulates one).
+  useEffect(() => {
+    if (!isMobile) return;
+    const root = document.documentElement;
+    root.classList.add("kiosk-mode");
+    const block = (e) => e.preventDefault();
+    const blockCtrlWheel = (e) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
+    document.addEventListener("gesturestart", block);
+    document.addEventListener("gesturechange", block);
+    document.addEventListener("wheel", blockCtrlWheel, { passive: false });
+    return () => {
+      root.classList.remove("kiosk-mode");
+      document.removeEventListener("gesturestart", block);
+      document.removeEventListener("gesturechange", block);
+      document.removeEventListener("wheel", blockCtrlWheel);
+    };
+  }, [isMobile]);
+
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
 
@@ -858,6 +882,7 @@ function MainPageContent({ onReset }) {
                 emergencyMode={directions?.kind === "exit"}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
                 alwaysShowPreview
+                zoomable
                 previewsHidden={overlayOpen}
               />
             </div>

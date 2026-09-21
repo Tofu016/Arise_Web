@@ -8,6 +8,10 @@ import {
   toAngles,
   initialCameraPosition,
   computeFov,
+  zoomedFov,
+  clampZoom,
+  MIN_ZOOM,
+  MAX_ZOOM,
   overlayScale,
 } from "./panoramaMath";
 
@@ -88,5 +92,22 @@ describe("overlayScale", () => {
   it("falls back to 1 without a size or FOV", () => {
     expect(overlayScale(0, 0, 90)).toBe(1);
     expect(overlayScale(800, 600, 0)).toBe(1);
+  });
+});
+
+describe("pinch zoom", () => {
+  it("leaves the base FOV alone at zoom 1", () => {
+    expect(zoomedFov(100, 1)).toBeCloseTo(100);
+  });
+
+  it("narrows the FOV when zooming in and widens it when zooming out", () => {
+    expect(zoomedFov(100, 2)).toBeLessThan(100);
+    expect(zoomedFov(100, 0.8)).toBeGreaterThan(100);
+  });
+
+  it("clamps the zoom, and keeps the FOV out of fisheye territory", () => {
+    expect(clampZoom(99)).toBe(MAX_ZOOM);
+    expect(clampZoom(0)).toBe(MIN_ZOOM);
+    expect(zoomedFov(170, MIN_ZOOM)).toBeLessThanOrEqual(165);
   });
 });

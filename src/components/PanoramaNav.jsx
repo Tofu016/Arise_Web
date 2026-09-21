@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
-import { toPosition, toAngles, initialCameraPosition, computeFov, overlayScale, TARGET_HORIZONTAL_FOV } from "../utils/panoramaMath";
+import { toPosition, toAngles, initialCameraPosition, computeFov, overlayScale, TARGET_HORIZONTAL_FOV, clampZoom, zoomedFov, MIN_ZOOM, MAX_ZOOM } from "../utils/panoramaMath";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useRectilinearPreview } from "../hooks/useRectilinearPreview";
 
@@ -450,6 +450,31 @@ function usePanoramaFov(heightFraction) {
   return fov;
 }
 
+// Kiosk zoom level (1 = the screen's own default view). Changed only by the
+// on-screen + / - / reset buttons — there is deliberately no two-finger pinch
+// or wheel zoom: the kiosk's touch hardware reports two-finger gestures
+// unreliably.
+const BUTTON_ZOOM_FACTOR = 1.25; // one tap of + or -
+
+function useZoom() {
+  const [zoom, setZoomState] = useState(1);
+  const setZoom = (z) => setZoomState(clampZoom(z));
+  return { zoom, setZoom };
+}
+
+// Applies the zoomed FOV to the live camera every frame. Done here rather
+// than through <Canvas camera>, whose reactive re-apply also resets the
+// camera position (the view direction) on every FOV change.
+function FovController({ fov }) {
+  useFrame(({ camera }) => {
+    if (camera.fov !== fov) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+  });
+  return null;
+}
+
 /**
  * Props:
  *  - url: panorama image URL for the current node
@@ -466,6 +491,7 @@ function usePanoramaFov(heightFraction) {
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
+ *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
@@ -490,6 +516,7 @@ export default function PanoramaNav({
   heightFraction = 1,
   alwaysShowPreview = false,
   previewsHidden = false,
+  zoomable = false,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // @react-three/fiber reactively applies changes to the camera prop's
@@ -497,7 +524,9 @@ export default function PanoramaNav({
   // (including calling updateProjectionMatrix() itself) — so this
   // correctly updates live on an actual orientation change while the
   // viewer is already open, not just on initial mount.
-  const fov = usePanoramaFov(heightFraction);
+  const baseFov = usePanoramaFov(heightFraction);
+  const { zoom, setZoom } = useZoom();
+  const fov = zoomable ? zoomedFov(baseFov, zoom) : baseFov;
 
   // What's actually on screen. Props describe the scene we're heading to;
   // `shown` is the last one whose texture finished loading, with its own
@@ -564,8 +593,9 @@ export default function PanoramaNav({
   const shownHotspots = live ? hotspots : shown.hotspots;
   const shownMarkers = live ? markers : shown.markers;
 
-  return (
-    <Canvas camera={{ position: firstCameraPosition, fov }} style={{ cursor }}>
+  const canvas = (
+    <Canvas camera={{ position: firstCameraPosition, fov: baseFov }} style={{ cursor }}>
+      {zoomable && <FovController fov={fov} />}
       {visible && <PanoramaSphere texture={visible.texture} placing={placing} onSurfaceClick={onPlaceAngle} />}
       {leaving && (
         <FadingSphere
@@ -617,5 +647,51 @@ export default function PanoramaNav({
       ))}
       <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-0.4} target={[0, 0, 0]} />
     </Canvas>
+  );
+
+  if (!zoomable) return canvas;
+  return (
+    <div className="pano-zoom-wrap">
+      {canvas}
+      {/* Top-right of the panorama band: level indicator (only while zoomed
+          away from the default 1.0x) beside the + / - / reset buttons. */}
+      <div className="pano-zoom-controls">
+        {zoom.toFixed(1) !== "1.0" && (
+          <span className="pano-zoom-indicator" role="status" aria-label={`Zoom ${zoom.toFixed(1)}x`}>
+            {zoom.toFixed(1)}×
+          </span>
+        )}
+        <div className="pano-zoom-buttons">
+          <button
+            type="button"
+            className="pano-zoom-btn"
+            onClick={() => setZoom(zoom * BUTTON_ZOOM_FACTOR)}
+            disabled={zoom >= MAX_ZOOM}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="pano-zoom-btn"
+            onClick={() => setZoom(zoom / BUTTON_ZOOM_FACTOR)}
+            disabled={zoom <= MIN_ZOOM}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="pano-zoom-btn"
+            onClick={() => setZoom(1)}
+            disabled={zoom.toFixed(1) === "1.0"}
+            title="Reset zoom"
+            aria-label="Reset zoom"
+          >
+            ↺
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
