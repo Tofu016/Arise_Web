@@ -7,6 +7,7 @@ import Room360Modal from "../components/Room360Modal";
 import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
+import KioskStartScreen from "../components/KioskStartScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskWalkBar from "../components/KioskWalkBar";
 import FeedbackPanel from "../components/FeedbackPanel";
@@ -91,10 +92,20 @@ function radialButtonTransform(index, total) {
   return `translate(${x}px, ${y}px)`;
 }
 
+// Kiosk: finishing feedback resets the whole system to the start screen and
+// starting node. Remounting the page under a fresh key drops every piece of
+// visitor state at once (position, history, panels, route, start screen).
 export default function MainPage() {
+  const [session, setSession] = useState(0);
+  return <MainPageContent key={session} onReset={() => setSession((s) => s + 1)} />;
+}
+
+function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, profile, role, signOut } = useAuth();
   const isMobile = useIsMobile();
+  // Kiosk only: the attract screen covers everything until it's tapped.
+  const [kioskStarted, setKioskStarted] = useState(false);
 
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
@@ -477,7 +488,14 @@ export default function MainPage() {
   }
 
   if (!nodes) {
-    return <LoadingScreen show label="Loading campus…" />;
+    // The kiosk start screen covers the initial data load too, so the
+    // loading screen never shows before it.
+    return (
+      <>
+        <LoadingScreen show label="Loading campus…" />
+        {isMobile && <KioskStartScreen hidden={kioskStarted} onStart={() => setKioskStarted(true)} />}
+      </>
+    );
   }
 
   const photoUrl = securePhotoUrl || "";
@@ -785,6 +803,7 @@ export default function MainPage() {
           behavior for ordinary navigation; this is specifically a
           first-load-only splash. */}
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
+      {isMobile && <KioskStartScreen hidden={kioskStarted} onStart={() => setKioskStarted(true)} />}
       <div className="main-page-viewer">
         {!current ? (
           <div className="main-page-status">
@@ -1190,12 +1209,13 @@ export default function MainPage() {
       )}
 
       {showFeedback && (
-        <FeedbackPanel onClose={() => setShowFeedback(false)} kiosk={isMobile} />
+        <FeedbackPanel onClose={() => setShowFeedback(false)} onFinished={onReset} kiosk={isMobile} />
       )}
 
       {isIdle && (
         <IdlePrompt
           onContinue={resetIdle}
+          onStartOver={isMobile ? onReset : undefined}
           onGiveFeedback={() => {
             resetIdle();
             setShowFeedback(true);

@@ -4365,6 +4365,25 @@ button.primary {
   max-width: 90vw;
   text-align: center;
 }
+.idle-prompt-kiosk {
+  width: 440px;
+}
+.idle-prompt-kiosk .form-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.idle-prompt-kiosk .form-actions button {
+  min-height: 56px;
+  font-size: 16px;
+}
+.idle-prompt-countdown {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
 .idle-prompt-text {
   margin: 0 0 16px 0;
   font-size: 16px;
@@ -4812,4 +4831,129 @@ button.primary {
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
+}
+
+/* Kiosk start screen (KioskStartScreen.jsx): full-viewport attract screen,
+   above the loading screen (500) and every dialog. */
+.kiosk-start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  touch-action: manipulation;
+  opacity: 1;
+  transition: opacity 0.6s ease, visibility 0s;
+}
+/* No press feedback: the global button:active rule shrinks it, exposing
+   whatever is behind its corners. Beats that rule on specificity. */
+.kiosk-start-screen.kiosk-start-screen:active {
+  transform: none;
+  opacity: 1;
+}
+/* Fades out, then goes inert (visibility flips only after the fade). */
+.kiosk-start-screen-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0s 0.6s;
+}
+.kiosk-start-title {
+  font-size: 96px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.kiosk-start-prompt {
+  font-size: 36px;
+  color: #555;
+}
+
+/* Kiosk thank-you card (KioskThanks.jsx): small, horizontally centered;
+   its `top` (inline) is the vertical center, hence the translate. Above the
+   dialog scrim (90) and dialogs (100). */
+.kiosk-thanks {
+  position: fixed;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 110;
+  box-sizing: border-box;
+  width: min(440px, 80vw);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-2);
+}
+.kiosk-thanks-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+.kiosk-thanks-countdown {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  color: var(--text-muted);
+}
+.countdown-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+}
+/* m:ss needs a bit more room and smaller digits than a bare second count. */
+.countdown-ring-wide {
+  width: 64px;
+  height: 64px;
+}
+.countdown-ring-wide .countdown-ring-number {
+  font-size: 17px;
+}
+.countdown-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.countdown-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+.countdown-ring-track {
+  stroke: var(--border);
+}
+.countdown-ring-bar {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  animation: countdown-drain var(--countdown-seconds) linear forwards;
+}
+@keyframes countdown-drain {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 100; }
+}
+.countdown-ring-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
 }

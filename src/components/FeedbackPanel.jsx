@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { apiPost } from "../utils/apiClient";
 import KioskDialog from "./KioskDialog";
+import KioskThanks from "./KioskThanks";
 
 // General app/experience feedback — genuinely optional and skippable,
 // triggered by its own button rather than shown automatically. Not
@@ -9,8 +10,9 @@ import KioskDialog from "./KioskDialog";
 // otherwise) — comment, name, and email are all optional there too.
 //
 // kiosk: render in the kiosk view's dialog (with its keyboard, and the
-// OS keyboard suppressed) instead of a centered modal.
-export default function FeedbackPanel({ onClose, kiosk = false }) {
+// OS keyboard suppressed) instead of a centered modal. onFinished (kiosk)
+// runs when the post-submit thank-you countdown ends.
+export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
   const inputMode = kiosk ? "none" : undefined;
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -112,6 +114,9 @@ export default function FeedbackPanel({ onClose, kiosk = false }) {
   );
 
   if (kiosk) {
+    // Kiosk: a finished evaluation gets the small thank-you card, which
+    // resets the system (onFinished) when its countdown ends.
+    if (submitted) return <KioskThanks onDone={onFinished ?? onClose} />;
     return (
       <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" onClose={onClose}>
         <div className="feedback-body">{body}</div>

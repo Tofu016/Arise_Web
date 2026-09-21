@@ -1,4 +1,4 @@
-# Arise
+# ARISE
 
 Campus virtual tour: visitors walk through 360° panoramas of indoor and outdoor locations; admins author the content.
 
