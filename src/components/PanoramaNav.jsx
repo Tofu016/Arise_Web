@@ -4,8 +4,7 @@ import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../utils/constants";
 import { toPosition, toAngles, initialCameraPosition, computeFov, overlayScale, TARGET_HORIZONTAL_FOV, clampZoom, zoomedFov, MIN_ZOOM, MAX_ZOOM } from "../utils/panoramaMath";
-import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
-import { useRectilinearPreview } from "../hooks/useRectilinearPreview";
+import { useHotspotPreview } from "../hooks/useNodePhoto";
 
 // Genuinely missing before this fix — referenced below (m.type ===
 // "equipment") but never actually defined anywhere in the codebase,
@@ -187,15 +186,10 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alway
   const [facing, setFacing] = useState(false);
   const showPreview = previewHidden || clicked || !facing ? false : alwaysPreview || hovered;
   // Only fetches once the preview is actually shown — a hotspot that never
-  // shows one never triggers a photo fetch at all.
-  const { url: photoUrl } = useSecurePhotoUrl(showPreview ? photo : null, { cached: true });
-  // The photo is a flat 360° map; show a normal-looking view of it, looking
-  // the way the visitor will be facing on arrival (this hotspot's yaw). Falls
-  // back to the raw photo only once the projection has actually failed; until
-  // the rectilinear image is ready the spinner stays up, so the flat 360° map
-  // never flashes.
-  const { url: projected, failed: projectionFailed } = useRectilinearPreview(photoUrl, yaw);
-  const previewUrl = projected || (projectionFailed ? photoUrl : null);
+  // shows one never triggers a photo fetch at all. The preview looks the way
+  // the visitor will be facing on arrival (this hotspot's yaw); null until it
+  // is ready, so the spinner stays up and the flat 360° map never flashes.
+  const previewUrl = useHotspotPreview(photo, yaw, showPreview);
 
   // Touch: first tap reveals the preview (reusing the same `hovered`
   // state hover already drives) instead of navigating; a second tap

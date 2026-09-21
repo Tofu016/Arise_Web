@@ -25,10 +25,8 @@ import * as route from "../utils/directionsRoute";
 import { useNavigation } from "../hooks/useNavigation";
 import { useDirections, useAutoWalk, AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
-import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
-import { prefetchPhoto } from "../utils/photoStore";
+import { useNodePhoto } from "../hooks/useNodePhoto";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
-import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
 
@@ -292,31 +290,6 @@ function MainPageContent({ onReset }) {
     !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover && !(isMobile && !buildingChosen);
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
-  // Called unconditionally here (before any early returns below) since it's
-  // a hook — the value is only actually used once we reach the main render.
-  const { url: securePhotoUrl } = useSecurePhotoUrl(current?.photo, { cached: true });
-
-  // Same "called before any early return" reasoning as securePhotoUrl
-  // above — tracks whether the current photo's actual bytes have been
-  // decoded and are paintable, not just that the secure-fetch URL
-  // resolved. Used below to decide when the FIRST-LOAD splash screen can
-  // dismiss; initialLoadDone latches true the first time this succeeds
-  // and never resets, so walking to a different node later (which
-  // briefly has its own, much smaller .photo-transition-indicator
-  // already) doesn't re-trigger the full-screen splash a second time.
-  // photoReady (not imageLoaded alone) also covers the edge case where
-  // no current node/photo ever ends up set at all (e.g. genuinely zero
-  // nodes configured) — without this, imageLoaded would never resolve
-  // and the splash would stay stuck forever with nothing to wait for.
-  const imageLoaded = useImagePreloaded(securePhotoUrl);
-  const photoReady = !current?.photo || imageLoaded;
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-  useEffect(() => {
-    if (nodes && photoReady && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [nodes, photoReady, initialLoadDone]);
-
   const hotspots = useMemo(
     () => (current ? buildHotspots(current, byId, { withPhoto: true }) : []),
     [current, byId]
@@ -324,34 +297,19 @@ function MainPageContent({ onReset }) {
 
   const markers = current?.markers || [];
 
-  // Once this node's own photo is up, quietly fetch the photos its hotspots
-  // lead to, one at a time (so they never crowd out a photo the visitor
-  // actually tapped), the next stop on an active route first. Together with
-  // photoStore's cache this makes a move a swap, not a download. Capped at
-  // the cache's idle size; a tapped photo already in flight is simply shared.
-  const PREFETCH_LIMIT = 6;
-  const routeNextId = route.nextStep(directions, hotspots)?.id;
-  const prefetchKey = imageLoaded
-    ? hotspots
-        .filter((h) => h.photo && h.id !== current?.id)
-        .sort((a, b) => (b.id === routeNextId) - (a.id === routeNextId))
-        .slice(0, PREFETCH_LIMIT)
-        .map((h) => h.photo)
-        .join("|")
-    : "";
-  useEffect(() => {
-    if (!prefetchKey) return;
-    let cancelled = false;
-    (async () => {
-      for (const photo of prefetchKey.split("|")) {
-        if (cancelled) return;
-        await prefetchPhoto(photo);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [prefetchKey]);
+  // Called unconditionally here (before any early returns below) since it's a
+  // hook. `ready` covers "no photo at all" too, so the splash can't stick when
+  // zero nodes are configured; `firstLoadDone` latches for the full-screen
+  // splash only — later moves use the small .photo-transition-indicator.
+  const {
+    url: photoUrl,
+    ready: photoReady,
+    firstLoadDone: initialLoadDone,
+  } = useNodePhoto(current, {
+    neighbors: hotspots,
+    priorityId: route.nextStep(directions, hotspots)?.id,
+    nodesLoaded: !!nodes,
+  });
 
   // What follows a move that actually happened — everything the navigation
   // module deliberately knows nothing about: the search box, the open
@@ -546,7 +504,6 @@ function MainPageContent({ onReset }) {
     );
   }
 
-  const photoUrl = securePhotoUrl || "";
   const { arrived, nextStopId, nextStopName, turnInstruction } = route.routeProgress(directions, {
     byId,
     hotspots,
