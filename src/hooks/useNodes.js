@@ -88,6 +88,22 @@ export function useNodes() {
     [mutate]
   );
 
+  // Applies a planBuildingMove() plan: per node, switch the building, then
+  // rename its id (the backend cascades the rename to neighbors, markers and
+  // rooms). One refetch at the end.
+  const moveNodesToBuilding = useCallback(
+    (moves, toBuilding) =>
+      mutate(async () => {
+        for (const { id, newId } of moves) {
+          await apiPatch(`Nodes_API/update/${id}`, { building: toBuilding });
+          if (newId !== id) {
+            await apiPatch(`Nodes_API/rename/${id}`, { new_id: newId });
+          }
+        }
+      }),
+    [mutate]
+  );
+
   const deleteNode = useCallback(
     (id) =>
       mutate(async () => {
@@ -122,6 +138,7 @@ export function useNodes() {
     addNode,
     updateNode,
     renameNodeId,
+    moveNodesToBuilding,
     deleteNode,
     setNeighbors,
     setHotspot,

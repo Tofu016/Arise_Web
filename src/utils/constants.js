@@ -1,4 +1,4 @@
-import { getCustomBuildings } from "./buildingStore";
+import { getCustomBuildings, getServerBuildingNames } from "./buildingStore";
 
 // GD1/GD2/GD3 share the same "Main Campus" coordinates — they're a single
 // physical location (already interconnected via the node graph), not
@@ -70,7 +70,10 @@ export const FLOORS = [...new Set(Object.values(BUILDING_FLOORS).flat())].sort((
 // BUILDINGS/BUILDING_FLOORS constants so admin-created buildings show up
 // everywhere a building list is used, without altering the verified data.
 export function allBuildings() {
-  return [...BUILDINGS, ...getCustomBuildings()];
+  // Built-ins keep their hardcoded label unless an admin renamed them.
+  const names = getServerBuildingNames();
+  const builtIns = BUILDINGS.map((b) => ({ ...b, label: names[b.id] ?? b.label }));
+  return [...builtIns, ...getCustomBuildings()];
 }
 
 export function allBuildingIds() {

@@ -1712,6 +1712,46 @@ button.primary {
 .custom-building-row span:first-child {
   flex: 1;
 }
+.custom-building-edit {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.custom-building-edit label {
+  flex: 1;
+  min-width: 90px;
+  font-size: 12px;
+}
+.building-move-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.building-move-panel p {
+  margin: 0;
+}
+.building-move-problems {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 120px;
+  overflow-y: auto;
+  color: var(--danger-text);
+  font-size: 12px;
+}
+.custom-building-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+.custom-building-row button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
 .custom-building-row button.danger {
   padding: 4px 10px;
   font-size: 12px;

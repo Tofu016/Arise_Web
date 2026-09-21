@@ -33,6 +33,7 @@ export default function NodeEditorPage() {
     addNode,
     updateNode,
     renameNodeId,
+    moveNodesToBuilding,
     deleteNode,
   } = useOutletContext();
 
@@ -159,7 +160,7 @@ export default function NodeEditorPage() {
         <PreviewTour nodes={nodes} startNodeId={selectedNodeId} onClose={() => setPreviewOpen(false)} />
       )}
 
-      {addBuildingOpen && <AddBuildingDialog nodes={nodes} onClose={handleAddBuildingClose} />}
+      {addBuildingOpen && <AddBuildingDialog nodes={nodes} onMoveNodes={moveNodesToBuilding} onClose={handleAddBuildingClose} />}
     </div>
   );
 }

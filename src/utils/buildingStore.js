@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiGet, apiPost, apiDelete } from "./apiClient";
+import { apiGet, apiPost, apiPatch, apiDelete } from "./apiClient";
 
 // Rewritten to call Buildings_API instead of Firestore. Same public
 // interface (getCustomBuildings, subscribeCustomBuildings,
@@ -25,6 +25,10 @@ import { apiGet, apiPost, apiDelete } from "./apiClient";
 const HARDCODED_IDS = ["gd1", "gd2", "gd3"];
 
 let customBuildings = [];
+// Backend names for every row, built-in GD1/GD2/GD3 included, so a rename
+// of a built-in building shows up (constants.js overlays these onto its
+// hardcoded labels). Only ids that actually have a backend row appear.
+let serverNames = {};
 const listeners = new Set();
 
 function notify() {
@@ -42,6 +46,7 @@ function toFrontendBuilding(row) {
 
 async function refresh() {
   const data = await apiGet("Buildings_API/getAll");
+  serverNames = Object.fromEntries(data.buildings.map((b) => [b.id, b.name]));
   customBuildings = data.buildings
     .filter((b) => !HARDCODED_IDS.includes(b.id))
     .map(toFrontendBuilding);
@@ -57,6 +62,10 @@ refresh().catch(() => {});
 
 export function getCustomBuildings() {
   return customBuildings;
+}
+
+export function getServerBuildingNames() {
+  return serverNames;
 }
 
 export function subscribeCustomBuildings(fn) {
@@ -102,5 +111,29 @@ export async function addCustomBuilding({ name, floorCount, reservedIds: _reserv
 
 export async function deleteCustomBuilding(id) {
   await apiDelete(`Buildings_API/delete/${id}`);
+  await refresh();
+}
+
+// Edits a building that has a backend row (built-in ones included). Pass
+// only what changes: name and/or floorCount.
+export async function updateBuilding(id, { name, floorCount }) {
+  if (!(id in serverNames)) {
+    throw new Error("This building has no backend record to edit.");
+  }
+  const patch = {};
+  if (name !== undefined) {
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error("Building name is required.");
+    patch.name = trimmedName;
+  }
+  if (floorCount !== undefined) {
+    const count = Math.floor(Number(floorCount));
+    if (!Number.isFinite(count) || count < 1) {
+      throw new Error("Floor count must be a whole number of at least 1.");
+    }
+    if (count > 100) throw new Error("Floor count seems too high — double check it.");
+    patch.floor_count = count;
+  }
+  await apiPatch(`Buildings_API/update/${id}`, patch);
   await refresh();
 }
