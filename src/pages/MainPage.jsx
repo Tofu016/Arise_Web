@@ -6,7 +6,7 @@ import RoomCard from "../components/RoomCard";
 import Room360Modal from "../components/Room360Modal";
 import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
-import MobileRoomSheet from "../components/MobileRoomSheet";
+import KioskRoomCard from "../components/KioskRoomCard";
 import KioskDialog from "../components/KioskDialog";
 import KioskWalkBar from "../components/KioskWalkBar";
 import FeedbackPanel from "../components/FeedbackPanel";
@@ -847,13 +847,11 @@ export default function MainPage() {
               <div className="mobile-panel-backdrop" onClick={closeMobileDock} />
             )}
 
-            {/* ---------- Room card: still a draggable bottom sheet — the
-                other panels below all became centered modals instead
-                (see the "Mobile modals" comment further down), but this
-                one's peek/half/full drag gesture is its own established
-                feature, unaffected by any of that. ---------- */}
+            {/* ---------- Room card: same footprint as the kiosk dialogs
+                (top half of the panorama band), not a bottom sheet — the
+                screen's very bottom sits at shin height. ---------- */}
             {panelMode === "room" && selectedRoomCard && (
-              <MobileRoomSheet
+              <KioskRoomCard
                 room={selectedRoomCard}
                 onClose={closeRoomCard}
                 onGetDirections={handleRoomGetDirections}

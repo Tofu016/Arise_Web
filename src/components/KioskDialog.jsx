@@ -13,9 +13,9 @@ import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "..
 //   │  both left   │   keyboard   │
 //   │  quadrants)  │              │
 //   └──────────────┴──────────────┘
-//               (  ✕  )
+//                      (  ✕  )
 //
-// The close button is deliberately outside the grid, centered below it.
+// The close button is deliberately outside the grid, right-aligned below it.
 // The keyboard lives here, not in each module, so it always sits in the
 // bottom-right quadrant; it types into whichever field of `children` is
 // focused (see OnScreenKeyboard). Fields inside should set inputMode="none".

@@ -3418,65 +3418,6 @@ button.primary {
   font-weight: 700;
   font-size: 14px;
 }
-/* ---------- Bottom sheet (room card only — directions now opens as a
-   centered modal instead, see .directions-modal below) ---------- */
-.mobile-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -8px 28px rgba(32, 27, 27, 0.18);
-  padding-bottom: env(safe-area-inset-bottom);
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.mobile-sheet-handle-area {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 14px 0;
-  cursor: grab;
-  touch-action: none;
-}
-.mobile-sheet-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border);
-}
-.mobile-sheet-content {
-  flex: 1;
-  overflow-y: auto;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-}
-.mobile-room-photo-wrap {
-  height: 140px;
-}
-.mobile-sheet-body {
-  padding: 4px 16px 16px;
-  font-size: 15px;
-}
-.mobile-sheet-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-.mobile-sheet-title-row .room-card-title {
-  flex: 1;
-  min-width: 0;
-}
-/* 44px+ touch target for the room sheet's Get Directions/360° View
-   buttons, which share this compact desktop-tuned sizing otherwise. */
-.mobile-sheet button {
-  min-height: 44px;
-}
 /* ---------- Mobile modals: search, directions/exit, account, Building
    picker — all reuse the shared .modal-overlay/.modal pattern
    (FeedbackPanel.jsx is the reference implementation) rather than a
@@ -4576,12 +4517,68 @@ button.primary {
   margin-bottom: 0;
   margin-top: 10px;
 }
+/* Room card: photo | details, same footprint as .kiosk-dialog. */
+.kiosk-room-card {
+  pointer-events: auto;
+  box-sizing: border-box;
+  height: var(--kiosk-grid-height);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-2);
+}
+.kiosk-room-card-photo {
+  min-height: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+.kiosk-room-card-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kiosk-room-card-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.kiosk-room-card .room-card-title {
+  font-size: 26px;
+}
+.kiosk-room-card .room-card-badge {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.kiosk-room-card .room-card-location,
+.kiosk-room-card .room-card-department {
+  font-size: 16px;
+}
+.kiosk-room-card .room-card-description {
+  font-size: 18px;
+}
+.kiosk-room-card .room-card-actions {
+  margin-bottom: 0;
+}
+.kiosk-room-card .room-card-actions button {
+  min-height: 64px;
+  font-size: 18px;
+  touch-action: manipulation;
+}
 .kiosk-dialog-close {
   pointer-events: auto;
   display: block;
   width: 64px;
   height: 64px;
-  margin: var(--kiosk-dialog-gap) auto 0;
+  /* Right-aligned, flush with the dialog's right edge. */
+  margin: var(--kiosk-dialog-gap) 0 0 auto;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
