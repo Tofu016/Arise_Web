@@ -191,9 +191,11 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alway
   const { url: photoUrl } = useSecurePhotoUrl(showPreview ? photo : null, { cached: true });
   // The photo is a flat 360° map; show a normal-looking view of it, looking
   // the way the visitor will be facing on arrival (this hotspot's yaw). Falls
-  // back to the raw photo if the projection can't be made.
-  const projected = useRectilinearPreview(photoUrl, yaw);
-  const previewUrl = projected || photoUrl;
+  // back to the raw photo only once the projection has actually failed; until
+  // the rectilinear image is ready the spinner stays up, so the flat 360° map
+  // never flashes.
+  const { url: projected, failed: projectionFailed } = useRectilinearPreview(photoUrl, yaw);
+  const previewUrl = projected || (projectionFailed ? photoUrl : null);
 
   // Touch: first tap reveals the preview (reusing the same `hovered`
   // state hover already drives) instead of navigating; a second tap
@@ -346,8 +348,8 @@ function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alway
         <meshBasicMaterial color={color} transparent opacity={ringOpacity} side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
       </mesh>
 
-      // Flat white chevron sitting just in front of the disc. renderOrder
-      // keeps it painted over the disc.
+      {/* Flat white chevron sitting just in front of the disc. renderOrder
+          keeps it painted over the disc. */}
       <mesh position={[0, 0, 0.5]} renderOrder={HOTSPOT_RENDER_ORDER + 1}>
         <shapeGeometry args={[arrowShape]} />
         <meshBasicMaterial color={arrowColor} transparent opacity={1} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />

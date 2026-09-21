@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { projectRectilinear } from "../utils/rectilinear";
 
 // Turns a node's equirectangular photo URL into a normal-looking preview
-// (a rectilinear crop looking along `yaw`) as a data URL. Returns null while
-// it works, and null forever if it can't (e.g. a cross-origin photo that
-// taints the canvas) — callers fall back to showing the raw photo then.
+// (a rectilinear crop looking along `yaw`) as a data URL. Returns
+// { url, failed }: url is null while it works; failed turns true if it can't
+// be made (e.g. a cross-origin photo that taints the canvas), and only then
+// should callers fall back to the raw photo — never while it's still working,
+// or the flat equirectangular image flashes up.
 
 const SOURCE_WIDTH = 2048; // equirect is downscaled to this before sampling
 const OUT_WIDTH = 288;
@@ -13,6 +15,7 @@ const FOV = 80; // horizontal degrees — reads as a natural photo
 
 const sourceCache = new Map(); // url -> Promise<{data,width,height}>
 const previewCache = new Map(); // key -> data URL
+const failedKeys = new Set();
 const SOURCE_CACHE_MAX = 8;
 
 // One projection at a time, so several hotspots appearing together don't
@@ -64,20 +67,22 @@ export function useRectilinearPreview(photoUrl, rawYaw) {
   const key = photoUrl && Number.isFinite(yaw) ? `${photoUrl}|${Math.round(yaw)}` : null;
   // The result is stored with its key, so a stale one is never returned for
   // a different photo/angle.
-  const [done, setDone] = useState({ key: null, url: null });
+  const [done, setDone] = useState({ key: null, url: null, failed: false });
 
   useEffect(() => {
-    if (!key || previewCache.has(key)) return;
+    if (!key || previewCache.has(key) || failedKeys.has(key)) return;
     let cancelled = false;
     queue = queue.then(async () => {
       if (cancelled) return;
       try {
         const dataUrl = await render(photoUrl, yaw);
         previewCache.set(key, dataUrl);
-        if (!cancelled) setDone({ key, url: dataUrl });
+        if (!cancelled) setDone({ key, url: dataUrl, failed: false });
       } catch (err) {
-        // leave null — the caller shows the raw photo
+        // the caller falls back to the raw photo
         console.warn("Hotspot preview projection failed:", err);
+        failedKeys.add(key);
+        if (!cancelled) setDone({ key, url: null, failed: true });
       }
     });
     return () => {
@@ -85,6 +90,7 @@ export function useRectilinearPreview(photoUrl, rawYaw) {
     };
   }, [key, photoUrl, yaw]);
 
-  if (!key) return null;
-  return previewCache.get(key) ?? (done.key === key ? done.url : null);
+  if (!key) return { url: null, failed: false };
+  const url = previewCache.get(key) ?? (done.key === key ? done.url : null);
+  return { url, failed: !url && failedKeys.has(key) };
 }
