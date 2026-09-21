@@ -16,6 +16,8 @@ import ArrivalModal from "../components/ArrivalModal";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
 import { useIdleDetector } from "../hooks/useIdleDetector";
+import { useOverlay } from "../hooks/useOverlay";
+import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
@@ -140,53 +142,22 @@ function MainPageContent({ onReset }) {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
 
-  // Single source of truth for what the floating panel below the search bar
-  // is currently showing — only one thing at a time, Maps-style:
-  // null | "menu" (desktop hamburger) | "search" | "room" | "directions" | "account" (mobile only)
-  const [panelMode, setPanelMode] = useState(null);
-  const closePanel = () => setPanelMode(null);
-  const toggleMenu = () => setPanelMode((m) => (m === "menu" ? null : "menu"));
-
-  // Mobile/kiosk only: the search bar, primary actions, and Building
-  // selector are collapsed behind a single FAB on the middle-right edge
-  // (reachable at arm's length by someone standing at a wall-mounted
-  // kiosk) rather than sitting permanently on screen — a search bar just
-  // parked there on its own would be poor UX. Deliberately its own state,
-  // separate from panelMode: panelMode still tracks what's showing
-  // *inside* the expanded panel (search results vs. the account panel),
-  // this just tracks whether the panel is expanded at all. Blurring the
-  // search input (closePanel, via onBlur) intentionally does NOT collapse
-  // this — that fires on every incidental focus change within the panel
-  // (e.g. tapping the Building selector while the keyboard's still up)
-  // and would yank the panel away mid-interaction. It only collapses on
-  // an explicit close (the FAB itself, the backdrop, Escape) or once a
-  // navigation actually happens (see goTo/goBack/jumpToSearchResult) —
-  // at that point the visitor has what they came for and the panorama
-  // should be fully visible again.
-  const [mobileDockOpen, setMobileDockOpen] = useState(false);
-  const closeMobileDock = () => {
-    setPanelMode(null);
-    setMobileDockOpen(false);
-  };
-
-  // Its own independent state, not tied to panelMode — this is a
-  // separate, standalone overlay (its own button, its own dismissible
-  // panel), not part of the search/account panel system at all.
-  const [showFeedback, setShowFeedback] = useState(false);
-
-  // The backdrop behind the panel is purely visual on desktop (see
-  // .floating-panel-backdrop's pointer-events: none) — it deliberately does
-  // NOT intercept clicks there, so the panorama stays freely draggable
-  // underneath. Escape is the keyboard-accessible way to close it instead of
-  // a backdrop click.
-  useEffect(() => {
-    if (!panelMode && !mobileDockOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") closeMobileDock();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [panelMode, mobileDockOpen]);
+  // What's on screen over the panorama — the floating panel, the mobile/kiosk
+  // dock, feedback, a room's 360 view, the building dialog, the walk bar —
+  // lives in one module; see utils/overlay.js. Blurring the search input
+  // (blurSearch) deliberately does NOT collapse the dock: that fires on every
+  // incidental focus change within the panel and would yank it away
+  // mid-interaction.
+  const overlay = useOverlay();
+  const {
+    panel: panelMode,
+    dock: mobileDockOpen,
+    feedback: showFeedback,
+    room360: room360Open,
+    buildingMenu: buildingMenuOpen,
+    floorPick: floorPickBuilding,
+    roomCard: selectedRoomCard,
+  } = overlay;
 
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
@@ -198,14 +169,6 @@ function MainPageContent({ onReset }) {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [accountMenuOpen]);
-
-  // Mobile's Building selector opens as its own centered modal (see
-  // .mobile-building-modal) rather than a dropdown — dismissed the same
-  // way every other mobile modal is (its own close button or backdrop
-  // tap), so unlike a dropdown it needs no outside-click listener.
-  const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
-  // Which building's floor list is expanded inside that modal, if any.
-  const [floorPickBuilding, setFloorPickBuilding] = useState(null);
 
   const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
 
@@ -219,11 +182,6 @@ function MainPageContent({ onReset }) {
   // path once requested, and how far along it the visitor currently is —
   // see utils/directionsRoute.js for its shape.
   const [directions, setDirections] = useDirections(nodes, currentId);
-  // Kiosk: whether the big directions dialog is showing while a route is
-  // being walked (false = the compact walk bar instead). Starts open, so
-  // planning a route always shows the full dialog; walking collapses it.
-  const [walkDialogOpen, setWalkDialogOpen] = useState(true);
-
   // Rooms with actual detail records (photo/description/department/use) —
   // built by matching each node's "Rooms served" entries against
   // placardDialogs. Only rooms an admin has actually gone through Room Edit
@@ -248,9 +206,6 @@ function MainPageContent({ onReset }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelMode === "search", searchableRooms]);
 
-  // The currently-open Google-Maps-style room detail card, or null.
-  const [selectedRoomCard, setSelectedRoomCard] = useState(null);
-  const [room360Open, setRoom360Open] = useState(false);
   const entrances = useMemo(() => {
     if (!nodes) return [];
     return nodes.filter(
@@ -287,7 +242,7 @@ function MainPageContent({ onReset }) {
   // Also off while the kiosk's start/building screens are up — nobody is
   // exploring yet, so "Done exploring?" would make no sense there.
   const idleDetectorEnabled =
-    !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover && !(isMobile && !buildingChosen);
+    !blocksIdle(overlay, { flyover, awaitingStart: isMobile && !buildingChosen });
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   const hotspots = useMemo(
@@ -312,33 +267,26 @@ function MainPageContent({ onReset }) {
   });
 
   // What follows a move that actually happened — everything the navigation
-  // module deliberately knows nothing about: the search box, the open
-  // panel, the room card.
+  // module deliberately knows nothing about: the search box (the overlay
+  // module handles the panel, dock and room card).
   const afterMove = (action) => {
-    if (action.type === "back") return;
-    setSearchQuery("");
-    if (action.type === "walk") return;
-    if (action.meta?.room) {
-      setSelectedRoomCard(action.meta.room);
-      setPanelMode("room");
-    } else {
-      closePanel();
-    }
+    overlay.moved({ type: action.type, room: action.meta?.room });
+    if (action.type !== "back") setSearchQuery("");
   };
 
   // Hotspot click, and "Walk to next stop" in directions.
   const goTo = (id, angle) => {
     const { outcome, action } = nav.walk(id, angle?.yaw);
     if (outcome === "ignored") return;
-    setMobileDockOpen(false);
     if (outcome === "moved") afterMove(action);
+    else overlay.heldForFlyover();
   };
 
   const goBack = () => {
     const { outcome, action } = nav.back();
     if (outcome === "ignored") return;
-    setMobileDockOpen(false);
     if (outcome === "moved") afterMove(action);
+    else overlay.heldForFlyover();
   };
 
   // Jumping in from search/an entrance/directions/a room card is a fresh
@@ -349,9 +297,8 @@ function MainPageContent({ onReset }) {
   const jumpToSearchResult = (id, meta) => {
     const { outcome, action } = nav.jump(id, meta);
     if (outcome === "ignored") return;
-    setMobileDockOpen(false);
     if (outcome === "moved") afterMove(action);
-    else closePanel(); // dismiss whatever panel was open, even though the actual jump itself is deferred
+    else overlay.heldForFlyover({ closePanel: true }); // the hop itself is deferred, the panel is not
   };
 
   // Called once the flyover sequence finishes (auto-proceed or Skip).
@@ -368,26 +315,21 @@ function MainPageContent({ onReset }) {
   // (search results, a room card, the menu) — same as Maps switching from
   // place details straight into directions mode, not stacking both.
   const openDirectionsTo = (node) => {
-    setMobileDockOpen(false);
     setDirections(route.openDirectionsTo(current, node));
-    setWalkDialogOpen(true);
+    overlay.openDirections();
     setSearchQuery("");
-    setPanelMode("directions");
   };
 
   const openDirections = () => {
     if (!current || !nodes) return;
-    setMobileDockOpen(false);
     setDirections(route.openDirections(current));
-    setWalkDialogOpen(true);
+    overlay.openDirections();
     setSearchQuery("");
-    setPanelMode("directions");
   };
 
   const closeDirections = () => {
     setDirections(null);
-    setWalkDialogOpen(true);
-    closePanel();
+    overlay.closeDirections();
   };
 
   // Selecting a room from search moves the viewer to its attached node (a
@@ -405,11 +347,6 @@ function MainPageContent({ onReset }) {
     if (match) openRoomCard(match);
   };
 
-  const closeRoomCard = () => {
-    setSelectedRoomCard(null);
-    closePanel();
-  };
-
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
     openDirectionsTo(selectedRoomCard.node);
@@ -420,7 +357,7 @@ function MainPageContent({ onReset }) {
   // when no photo360 is set, so this can assume one exists.
   const handleRoomView360 = () => {
     if (!selectedRoomCard?.placard?.photo360) return;
-    setRoom360Open(true);
+    overlay.openRoom360();
   };
 
   const updateDirectionsField = (field, value) => setDirections((d) => route.editField(d, field, value));
@@ -449,9 +386,8 @@ function MainPageContent({ onReset }) {
   const handleStartWalking = (d = directions) => {
     if (!d?.path) return;
     jumpToSearchResult(d.path[0]);
-    setWalkDialogOpen(false); // walking has begun: collapse to the walk bar (kiosk)
     setDirections(route.restartRoute);
-    setPanelMode("directions"); // jumpToSearchResult closes the panel — reopen it for the route in progress
+    overlay.walkStarted(); // jumpToSearchResult closes the panel — reopen it for the route in progress, collapsed to the walk bar (kiosk)
   };
 
   const handleWalkToNextStop = () => {
@@ -465,7 +401,7 @@ function MainPageContent({ onReset }) {
   // building jumps straight to its first entrance.
   const handleMobileBuildingPick = (b) => {
     setBuildingFilter(b);
-    setBuildingMenuOpen(false);
+    overlay.closeBuildingMenu();
     if (b === "all") return;
     const start = pickBuildingStart(nodes, b);
     if (start) jumpToSearchResult(start.id);
@@ -475,7 +411,7 @@ function MainPageContent({ onReset }) {
   const handleMobileFloorPick = (buildingId, floor) => {
     const start = pickFloorStart(nodes, buildingId, floor);
     setBuildingFilter(buildingId);
-    setBuildingMenuOpen(false);
+    overlay.closeBuildingMenu();
     if (start && start.id !== currentId) jumpToSearchResult(start.id);
   };
 
@@ -513,25 +449,19 @@ function MainPageContent({ onReset }) {
 
   // Kiosk: once the route is actually being walked (the visitor is at its
   // start, and hasn't arrived), the big directions dialog steps aside for the
-  // compact KioskWalkBar, so the panorama stays visible. `walkDialogOpen`
+  // compact KioskWalkBar, so the panorama stays visible. `overlay.walkDialog`
   // brings the big dialog back on request.
   const walkStarted =
     !!directions?.path && !(directions.stepIndex === 0 && currentId !== directions.path[0]);
-  const walkBarShown =
-    isMobile && panelMode === "directions" && walkStarted && !arrived && !walkDialogOpen;
-
-  // The kiosk dialog takes over the top of the panorama, so the node name
-  // (and the menu button, whose actions would open a second dialog) step aside.
-  const kioskDialogOpen =
-    isMobile &&
-    (panelMode === "search" || (panelMode === "directions" && !!directions && !arrived && !walkBarShown) || showFeedback);
-
-  // Anything that pops up over the panorama — the radial menu, every dialog
-  // and panel, the 360 room view, a flyover, the idle prompt — hides the
-  // hotspot previews so they don't sit on top of it. The walk bar is small
-  // and leaves the panorama usable, so it doesn't count.
-  const overlayOpen =
-    (!!panelMode && !walkBarShown) || mobileDockOpen || showFeedback || buildingMenuOpen || room360Open || !!flyover || isIdle;
+  const { walkBarShown, kioskDialogOpen, coversPanorama } = coverage(overlay, {
+    isMobile,
+    directions,
+    arrived,
+    walkStarted,
+    flyover,
+  });
+  // The idle prompt covers the panorama too, so it hides the hotspot previews as well.
+  const overlayOpen = coversPanorama || isIdle;
 
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
@@ -544,7 +474,7 @@ function MainPageContent({ onReset }) {
   // FAB (see .mobile-radial-menu). Each opens its own centered modal,
   // same pattern as FeedbackPanel, except Back, which is an immediate
   // action with nothing to show. Every handler collapses the radial menu
-  // itself first (setMobileDockOpen(false)) so only the modal (or,
+  // itself first (openFromDock) so only the modal (or,
   // for Back, the panorama) is left showing, not both stacked at once.
   const radialItems = [
     history.length > 0 && { key: "back", icon: "←", title: "Back", onClick: goBack },
@@ -552,31 +482,31 @@ function MainPageContent({ onReset }) {
       key: "search",
       icon: "🔍",
       title: "Search",
-      onClick: () => { setMobileDockOpen(false); setPanelMode("search"); },
+      onClick: () => overlay.openFromDock("search"),
     },
     {
       key: "exit",
       icon: "🧭",
       title: "Directions",
-      onClick: () => { setMobileDockOpen(false); openDirections(); },
+      onClick: openDirections, // also collapses the dock
     },
     {
       key: "feedback",
       icon: "💬",
       title: "Give feedback",
-      onClick: () => { setMobileDockOpen(false); setShowFeedback(true); },
+      onClick: () => overlay.openFromDock("feedback"),
     },
     {
       key: "building",
       icon: "🏢",
       title: "Choose a building",
-      onClick: () => { setMobileDockOpen(false); setFloorPickBuilding(null); setBuildingMenuOpen(true); },
+      onClick: () => overlay.openFromDock("building"),
     },
     user && {
       key: "account",
       icon: initials,
       title: displayName,
-      onClick: () => { setMobileDockOpen(false); setPanelMode("account"); },
+      onClick: () => overlay.openFromDock("account"),
       className: "mobile-account-btn",
     },
   ].filter(Boolean);
@@ -767,14 +697,14 @@ function MainPageContent({ onReset }) {
             <>
               <button
                 className="primary directions-go-btn"
-                onClick={() => { setWalkDialogOpen(false); handleWalkToNextStop(); }}
+                onClick={() => { overlay.setWalkDialog(false); handleWalkToNextStop(); }}
                 disabled={autoWalking}
               >
                 Walk to {nextStopName} →
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
-                onClick={() => { setWalkDialogOpen(false); setDirections(route.toggleAutoWalk); }}
+                onClick={() => { overlay.setWalkDialog(false); setDirections(route.toggleAutoWalk); }}
               >
                 {autoWalking ? "⏸ Stop auto-walk" : `▶ Auto-walk (every ${AUTO_WALK_STEP_SECONDS}s)`}
                 {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
@@ -880,7 +810,7 @@ function MainPageContent({ onReset }) {
             )}
 
             {mobileDockOpen && (
-              <div className="mobile-panel-backdrop" onClick={closeMobileDock} />
+              <div className="mobile-panel-backdrop" onClick={overlay.dismiss} />
             )}
 
             {/* ---------- Room card: same footprint as the kiosk dialogs
@@ -889,7 +819,7 @@ function MainPageContent({ onReset }) {
             {panelMode === "room" && selectedRoomCard && (
               <KioskRoomCard
                 room={selectedRoomCard}
-                onClose={closeRoomCard}
+                onClose={overlay.closeRoomCard}
                 onGetDirections={handleRoomGetDirections}
                 onView360={handleRoomView360}
               />
@@ -909,7 +839,7 @@ function MainPageContent({ onReset }) {
                 <button
                   type="button"
                   className="mobile-side-fab"
-                  onClick={() => (mobileDockOpen ? closeMobileDock() : setMobileDockOpen(true))}
+                  onClick={() => (mobileDockOpen ? overlay.dismiss() : overlay.openDock())}
                   aria-label={mobileDockOpen ? "Close menu" : "Open menu"}
                   aria-expanded={mobileDockOpen}
                   title={mobileDockOpen ? "Close menu" : "Menu"}
@@ -943,7 +873,7 @@ function MainPageContent({ onReset }) {
                 text entry and stay small centered .modal-overlay/.modal
                 boxes, auto-sized to their own content. ---------- */}
             {panelMode === "search" && (
-              <KioskDialog title="Search" onClose={closePanel}>
+              <KioskDialog title="Search" onClose={overlay.closePanel}>
                 <div className="mobile-search-row">
                   <input
                     ref={searchInputRef}
@@ -982,16 +912,16 @@ function MainPageContent({ onReset }) {
                 stepIndex={directions.stepIndex}
                 onWalk={handleWalkToNextStop}
                 onToggleAutoWalk={() => setDirections(route.toggleAutoWalk)}
-                onShowDialog={() => setWalkDialogOpen(true)}
+                onShowDialog={() => overlay.setWalkDialog(true)}
               />
             )}
 
             {panelMode === "account" && user && (
-              <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE} onClick={closePanel}>
+              <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE} onClick={overlay.closePanel}>
                 <div className="modal mobile-account-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="preview-header">
                     <h3>Account</h3>
-                    <button className="close-btn" onClick={closePanel}>✕</button>
+                    <button className="close-btn" onClick={overlay.closePanel}>✕</button>
                   </div>
                   <div className="mobile-account-panel">
                     <div className="account-avatar">{initials}</div>
@@ -1009,12 +939,12 @@ function MainPageContent({ onReset }) {
               <div
                 className="modal-overlay mobile-building-overlay"
                 style={{ paddingTop: `calc(${KIOSK_CARD_CENTER * 100}vh - 170px)` }}
-                onClick={() => setBuildingMenuOpen(false)}
+                onClick={overlay.closeBuildingMenu}
               >
                 <div className="modal mobile-building-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="preview-header">
                     <h3>Choose a building</h3>
-                    <button className="close-btn" onClick={() => setBuildingMenuOpen(false)}>✕</button>
+                    <button className="close-btn" onClick={overlay.closeBuildingMenu}>✕</button>
                   </div>
                   <div className="mobile-building-list">
                     <button
@@ -1036,7 +966,7 @@ function MainPageContent({ onReset }) {
                             className={"mobile-building-option" + (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "")}
                             disabled={floors.length === 0}
                             aria-expanded={expanded}
-                            onClick={() => setFloorPickBuilding(expanded ? null : b.id)}
+                            onClick={() => overlay.setFloorPick(expanded ? null : b.id)}
                           >
                             {b.label}
                           </button>
@@ -1102,7 +1032,7 @@ function MainPageContent({ onReset }) {
                   floating panel — all positioned over the panorama itself,
                   Maps-style, rather than pushing it aside. */}
               <div className="floating-rail">
-                <button className="floating-rail-btn" onClick={toggleMenu} title="Menu">☰</button>
+                <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
                 <div className="floating-rail-spacer" />
               </div>
 
@@ -1126,7 +1056,7 @@ function MainPageContent({ onReset }) {
                   step up from the exit button. */}
               <button
                 className="floating-rail-btn floating-feedback-btn"
-                onClick={() => setShowFeedback(true)}
+                onClick={overlay.openFeedback}
                 title="Give feedback"
               >
                 💬
@@ -1168,8 +1098,8 @@ function MainPageContent({ onReset }) {
                     inputMode="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setPanelMode("search")}
-                    onBlur={() => setPanelMode((m) => (m === "search" ? null : m))}
+                    onFocus={() => overlay.showPanel("search")}
+                    onBlur={overlay.blurSearch}
                     placeholder="Search a room..."
                     aria-label="Search"
                   />
@@ -1223,7 +1153,7 @@ function MainPageContent({ onReset }) {
                     {panelMode === "room" && selectedRoomCard && (
                       <RoomCard
                         room={selectedRoomCard}
-                        onClose={closeRoomCard}
+                        onClose={overlay.closeRoomCard}
                         onGetDirections={handleRoomGetDirections}
                         onView360={handleRoomView360}
                       />
@@ -1245,7 +1175,7 @@ function MainPageContent({ onReset }) {
         <Room360Modal
           roomName={selectedRoomCard.roomName}
           photo360={selectedRoomCard.placard?.photo360}
-          onClose={() => setRoom360Open(false)}
+          onClose={overlay.closeRoom360}
         />
       )}
 
@@ -1254,7 +1184,7 @@ function MainPageContent({ onReset }) {
       )}
 
       {showFeedback && (
-        <FeedbackPanel onClose={() => setShowFeedback(false)} onFinished={onReset} kiosk={isMobile} />
+        <FeedbackPanel onClose={overlay.closeFeedback} onFinished={onReset} kiosk={isMobile} />
       )}
 
       {isIdle && (
@@ -1263,7 +1193,7 @@ function MainPageContent({ onReset }) {
           onStartOver={isMobile ? onReset : undefined}
           onGiveFeedback={() => {
             resetIdle();
-            setShowFeedback(true);
+            overlay.openFeedback();
           }}
         />
       )}
