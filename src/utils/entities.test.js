@@ -33,6 +33,15 @@ const nodeRow = {
   updated_at: "u",
 };
 
+describe("starting node", () => {
+  it("reads is_starting_node and writes it as 1/0", () => {
+    expect(toNode({ id: "x", name: "X", is_starting_node: "1" }).startingNode).toBe(true);
+    expect(nodePatchBody({ startingNode: true }).is_starting_node).toBe(1);
+    expect(nodePatchBody({ startingNode: false }).is_starting_node).toBe(0);
+    expect("is_starting_node" in nodePatchBody({ name: "n" })).toBe(false);
+  });
+});
+
 describe("toNode", () => {
   it("maps a full row to the app's camelCase node", () => {
     expect(toNode(nodeRow)).toEqual({
@@ -42,6 +51,7 @@ describe("toNode", () => {
       floor: 1,
       type: "hallway",
       leadsToFloor: null,
+      startingNode: false,
       photo: "panoramas/gd1/a.jpg",
       rooms: ["101", "102"],
       neighbors: ["n2", "n3"],

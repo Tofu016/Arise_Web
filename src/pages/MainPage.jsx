@@ -8,6 +8,7 @@ import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
+import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskWalkBar from "../components/KioskWalkBar";
 import FeedbackPanel from "../components/FeedbackPanel";
@@ -17,14 +18,14 @@ import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
-import { pickDefaultEntranceForBuilding } from "../utils/navigation";
+import { pickBuildingStart, pickFloorStart } from "../utils/navigation";
 import * as route from "../utils/directionsRoute";
 import { useNavigation } from "../hooks/useNavigation";
 import { useDirections, useAutoWalk } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { prefetchPhoto } from "../utils/photoStore";
-import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER } from "../utils/kioskLayout";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
@@ -106,6 +107,8 @@ function MainPageContent({ onReset }) {
   const isMobile = useIsMobile();
   // Kiosk only: the attract screen covers everything until it's tapped.
   const [kioskStarted, setKioskStarted] = useState(false);
+  // ...then the building selection screen, until a building is picked.
+  const [buildingChosen, setBuildingChosen] = useState(false);
 
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
@@ -177,6 +180,8 @@ function MainPageContent({ onReset }) {
   // way every other mobile modal is (its own close button or backdrop
   // tap), so unlike a dropdown it needs no outside-click listener.
   const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
+  // Which building's floor list is expanded inside that modal, if any.
+  const [floorPickBuilding, setFloorPickBuilding] = useState(null);
 
   const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
 
@@ -255,7 +260,10 @@ function MainPageContent({ onReset }) {
   // here, after all of those, since it reads their current values —
   // JS's temporal dead zone would break this if placed any earlier.
   const IDLE_TIMEOUT_MS = 60000;
-  const idleDetectorEnabled = !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover;
+  // Also off while the kiosk's start/building screens are up — nobody is
+  // exploring yet, so "Done exploring?" would make no sense there.
+  const idleDetectorEnabled =
+    !panelMode && !mobileDockOpen && !showFeedback && !room360Open && !flyover && !(isMobile && !buildingChosen);
   const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   // Called unconditionally here (before any early returns below) since it's
@@ -469,8 +477,16 @@ function MainPageContent({ onReset }) {
     setBuildingFilter(b);
     setBuildingMenuOpen(false);
     if (b === "all") return;
-    const entrance = pickDefaultEntranceForBuilding(nodes, b);
-    if (entrance) jumpToSearchResult(entrance.id);
+    const start = pickBuildingStart(nodes, b);
+    if (start) jumpToSearchResult(start.id);
+  };
+
+  // Building dialog, floor step: land on that floor's starting node.
+  const handleMobileFloorPick = (buildingId, floor) => {
+    const start = pickFloorStart(nodes, buildingId, floor);
+    setBuildingFilter(buildingId);
+    setBuildingMenuOpen(false);
+    if (start && start.id !== currentId) jumpToSearchResult(start.id);
   };
 
   if (loadError) {
@@ -566,7 +582,7 @@ function MainPageContent({ onReset }) {
       key: "building",
       icon: "🏢",
       title: "Choose a building",
-      onClick: () => { setMobileDockOpen(false); setBuildingMenuOpen(true); },
+      onClick: () => { setMobileDockOpen(false); setFloorPickBuilding(null); setBuildingMenuOpen(true); },
     },
     user && {
       key: "account",
@@ -803,6 +819,17 @@ function MainPageContent({ onReset }) {
           behavior for ordinary navigation; this is specifically a
           first-load-only splash. */}
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
+      {isMobile && (
+        <KioskBuildingScreen
+          hidden={buildingChosen}
+          buildings={allBuildings()}
+          available={new Set(nodes.map((n) => n.building))}
+          onPick={(b) => {
+            handleMobileBuildingPick(b);
+            setBuildingChosen(true);
+          }}
+        />
+      )}
       {isMobile && <KioskStartScreen hidden={kioskStarted} onStart={() => setKioskStarted(true)} />}
       <div className="main-page-viewer">
         {!current ? (
@@ -988,7 +1015,11 @@ function MainPageContent({ onReset }) {
             )}
 
             {buildingMenuOpen && (
-              <div className="modal-overlay" onClick={() => setBuildingMenuOpen(false)}>
+              <div
+                className="modal-overlay mobile-building-overlay"
+                style={{ paddingTop: `calc(${KIOSK_CARD_CENTER * 100}vh - 170px)` }}
+                onClick={() => setBuildingMenuOpen(false)}
+              >
                 <div className="modal mobile-building-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="preview-header">
                     <h3>Choose a building</h3>
@@ -1002,16 +1033,39 @@ function MainPageContent({ onReset }) {
                     >
                       All Buildings
                     </button>
-                    {allBuildings().map((b) => (
-                      <button
-                        type="button"
-                        key={b.id}
-                        className={"mobile-building-option" + (buildingFilter === b.id ? " mobile-building-option-active" : "")}
-                        onClick={() => handleMobileBuildingPick(b.id)}
-                      >
-                        {b.label}
-                      </button>
-                    ))}
+                    {allBuildings().map((b) => {
+                      const floors = [...new Set(nodes.filter((n) => n.building === b.id).map((n) => Number(n.floor)))].sort(
+                        (x, y) => x - y
+                      );
+                      const expanded = floorPickBuilding === b.id;
+                      return (
+                        <div key={b.id}>
+                          <button
+                            type="button"
+                            className={"mobile-building-option" + (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "")}
+                            disabled={floors.length === 0}
+                            aria-expanded={expanded}
+                            onClick={() => setFloorPickBuilding(expanded ? null : b.id)}
+                          >
+                            {b.label}
+                          </button>
+                          {expanded && (
+                            <div className="mobile-floor-grid">
+                              {floors.map((f) => (
+                                <button
+                                  key={f}
+                                  type="button"
+                                  className="mobile-floor-btn"
+                                  onClick={() => handleMobileFloorPick(b.id, f)}
+                                >
+                                  {floorLabel(f)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

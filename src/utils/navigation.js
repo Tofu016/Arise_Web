@@ -57,6 +57,26 @@ export function pickDefaultEntranceForBuilding(nodes, buildingId) {
   return [...inBuilding].sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0))[0];
 }
 
+// Where a visitor lands on one floor of a building: the node an admin
+// flagged as that floor's starting node, else the floor's first entrance,
+// else its first node. Null if the floor has no nodes.
+export function pickFloorStart(nodes, buildingId, floor) {
+  if (!nodes) return null;
+  const onFloor = nodes.filter((n) => n.building === buildingId && Number(n.floor) === Number(floor));
+  return onFloor.find((n) => n.startingNode) || onFloor.find((n) => n.type === "entrance") || onFloor[0] || null;
+}
+
+// Where picking a whole building lands: the start of its lowest floor above
+// ground (floor > 0) that has nodes; failing that, its default entrance or
+// any node (buildings with only underground nodes).
+export function pickBuildingStart(nodes, buildingId) {
+  if (!nodes) return null;
+  const floors = [...new Set(nodes.filter((n) => n.building === buildingId).map((n) => Number(n.floor)))];
+  const firstFloor = floors.filter((f) => f > 0).sort((a, b) => a - b)[0];
+  if (firstFloor !== undefined) return pickFloorStart(nodes, buildingId, firstFloor);
+  return pickDefaultEntranceForBuilding(nodes, buildingId) || nodes.find((n) => n.building === buildingId) || null;
+}
+
 // Land directly in the tour: once nodes exist and nowhere is chosen yet,
 // stand at the default node.
 export function landOnDefault(nav, nodes, buildings) {

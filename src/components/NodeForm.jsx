@@ -14,6 +14,7 @@ const emptyDraft = () => ({
   floor: 1,
   type: "hallway",
   leadsToFloor: "",
+  startingNode: false,
   photo: "",
   rooms: [],
   neighbors: [],
@@ -212,6 +213,9 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   };
 
   const isTransitionType = TRANSITION_TYPES.includes(draft.type);
+  const currentStart = nodes.find(
+    (n) => n.startingNode && n.building === draft.building && Number(n.floor) === Number(draft.floor)
+  );
 
   return (
     <div className="panel node-form">
@@ -276,6 +280,23 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           </select>
         </label>
       )}
+
+      <div className="starting-node-field">
+        <label className="starting-node-toggle">
+          <input
+            type="checkbox"
+            checked={!!draft.startingNode}
+            onChange={(e) => field("startingNode")(e.target.checked)}
+          />
+          <span>Starting node for this floor</span>
+        </label>
+        <span className="field-hint">
+          Where the kiosk drops visitors who pick this building floor. Only one per floor
+          {currentStart && currentStart.id !== draft.id
+            ? ` — saving this replaces ${currentStart.id}.`
+            : "."}
+        </span>
+      </div>
 
       <div className="rooms-field">
         <label>Rooms served (optional)</label>

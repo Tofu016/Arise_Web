@@ -4,6 +4,8 @@ import {
   initialNavigation,
   pickDefaultNode,
   pickDefaultEntranceForBuilding,
+  pickFloorStart,
+  pickBuildingStart,
   landOnDefault,
   findFlyover,
   requestWalk,
@@ -168,5 +170,26 @@ describe("cross-campus flyover", () => {
 
   it("never flies over from nowhere (before the tour has landed)", () => {
     expect(requestJump(initialNavigation(), world, { id: "f" }, tick()).outcome).toBe("moved");
+  });
+});
+
+describe("floor and building starts", () => {
+  const n = (id, floor, extra = {}) => ({ id, building: "gd1", floor, type: "hallway", ...extra });
+
+  it("prefers the flagged node, then an entrance, then any node on that floor", () => {
+    expect(pickFloorStart([n("a", 1), n("b", 1, { startingNode: true })], "gd1", 1).id).toBe("b");
+    expect(pickFloorStart([n("a", 1), n("e", 1, { type: "entrance" })], "gd1", 1).id).toBe("e");
+    expect(pickFloorStart([n("a", 1)], "gd1", 1).id).toBe("a");
+    expect(pickFloorStart([n("a", 1)], "gd1", 2)).toBeNull();
+  });
+
+  it("starts a building on its lowest above-ground floor, skipping underground", () => {
+    const ns = [n("ug", -1, { startingNode: true }), n("f2", 2, { startingNode: true }), n("f1", 1, { startingNode: true })];
+    expect(pickBuildingStart(ns, "gd1").id).toBe("f1");
+  });
+
+  it("falls back when a building only has underground nodes", () => {
+    expect(pickBuildingStart([n("ug", -1)], "gd1").id).toBe("ug");
+    expect(pickBuildingStart([n("ug", -1)], "gd2")).toBeNull();
   });
 });

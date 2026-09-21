@@ -1,4 +1,4 @@
-import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER } from "../utils/kioskLayout";
 import { useCountdown } from "../hooks/useCountdown";
 import CountdownRing from "./CountdownRing";
 
@@ -11,7 +11,7 @@ export const KIOSK_THANKS_SECONDS = 5;
 export default function KioskThanks({ onDone }) {
   const remaining = useCountdown(KIOSK_THANKS_SECONDS, onDone);
 
-  const centerVh = (KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.375) * 100;
+  const centerVh = KIOSK_CARD_CENTER * 100;
 
   return (
     <>

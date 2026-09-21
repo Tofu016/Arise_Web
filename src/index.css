@@ -3556,6 +3556,29 @@ button.primary {
    <div> list under a dropdown trigger; that dropdown is gone now that
    this opens as its own modal), reset back to a borderless, full-width
    row so they still read as a simple tappable list. ---------- */
+/* The hamburger's building/floor dialog: top-anchored (inline padding-top on
+   the overlay) at the same height as the kiosk thank-you card, so opening a
+   building's floors grows it downward instead of shifting it. */
+.mobile-building-overlay {
+  align-items: flex-start;
+}
+.mobile-floor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.mobile-floor-btn {
+  min-height: 56px;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .mobile-building-list {
   overflow-y: auto;
   touch-action: pan-y;
@@ -4894,6 +4917,65 @@ button.primary {
   opacity: 1;
   transition: opacity 0.6s ease, visibility 0s;
 }
+/* Kiosk building selection screen (KioskBuildingScreen.jsx): sits just under
+   the start screen (600) so that one fades out onto it. */
+.kiosk-building-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 590;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  background: #fff;
+  color: #000;
+  opacity: 1;
+  transition: opacity 0.6s ease, visibility 0s;
+}
+.kiosk-building-screen-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0s 0.6s;
+}
+.kiosk-building-title {
+  margin: 0;
+  font-size: 48px;
+}
+.kiosk-building-columns {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+}
+.kiosk-building-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+}
+.kiosk-building-column + .kiosk-building-column {
+  padding-left: 48px;
+  border-left: 2px solid var(--border);
+}
+.kiosk-building-btn {
+  min-height: 140px;
+  font-size: 40px;
+  font-weight: 700;
+  border-radius: 20px;
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.kiosk-building-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 /* No press feedback: the global button:active rule shrinks it, exposing
    whatever is behind its corners. Beats that rule on specificity. */
 .kiosk-start-screen.kiosk-start-screen:active {
@@ -4996,4 +5078,37 @@ button.primary {
   font-size: 22px;
   font-weight: 700;
   color: var(--text);
+}
+
+/* Checkbox row: .node-form's blanket input rule (block, full width, padded)
+   would stretch a bare checkbox, so it's reset here. */
+.node-form .starting-node-field {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.node-form .starting-node-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.node-form .starting-node-toggle input {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.node-form .starting-node-field .field-hint {
+  display: block;
+  margin-top: 6px;
 }

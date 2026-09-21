@@ -61,6 +61,9 @@ export function useNodes() {
       mutate(async () => {
         await apiPost("Nodes_API/create", nodeCreateBody(item));
         await syncRooms(item.id, item.rooms || []); // a new node has no rooms yet, so all are added
+        if (item.startingNode) {
+          await apiPatch(`Nodes_API/update/${item.id}`, { is_starting_node: 1 });
+        }
       }),
     [mutate, syncRooms]
   );

@@ -6,3 +6,8 @@
 export const KIOSK_TOP_INSET = 0.15;
 export const KIOSK_BOTTOM_INSET = 0.25;
 export const KIOSK_PANORAMA_FRACTION = 1 - KIOSK_TOP_INSET - KIOSK_BOTTOM_INSET;
+
+// Vertical center (fraction of screen height) of the kiosk's small cards —
+// the middle of the panorama band's second quarter. Shared by the thank-you
+// card and the building selection screen.
+export const KIOSK_CARD_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.375;

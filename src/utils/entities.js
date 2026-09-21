@@ -42,6 +42,7 @@ export function toNode(row) {
     floor: row.floor,
     type: row.type,
     leadsToFloor: row.leads_to_floor ?? null,
+    startingNode: Number(row.is_starting_node) === 1,
     photo: row.photo_path || "",
     rooms: (row.rooms || []).map((r) => r.room_name),
     ...toEdges(row.neighbors),
@@ -76,6 +77,7 @@ export function nodePatchBody(patch) {
     photo: "photo_path",
     leadsToFloor: "leads_to_floor",
   });
+  if (patch.startingNode !== undefined) body.is_starting_node = patch.startingNode ? 1 : 0;
   if (patch.flowchartPosition !== undefined) {
     body.flowchart_position_x = patch.flowchartPosition ? patch.flowchartPosition.x : null;
     body.flowchart_position_y = patch.flowchartPosition ? patch.flowchartPosition.y : null;
