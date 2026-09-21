@@ -10,3 +10,16 @@ export function backspaceAt(value, start, end) {
   if (start === 0) return { value, caret: 0 };
   return { value: value.slice(0, start - 1) + value.slice(start), caret: start - 1 };
 }
+
+// Whether the next letter typed at `caret` should be a capital, for the two
+// keyboards:
+//   "words"     the start of every word — at the start of the text, or after
+//               whitespace or a dash (an apostrophe doesn't count: "Don't")
+//   "sentences" the start of the text, or after . ! or ? (plus any closing
+//               quote/bracket) followed by whitespace — so "example.com" and
+//               "3.5" are left alone
+export function shouldCapitalize(text, caret, mode) {
+  const before = text.slice(0, caret);
+  if (mode === "words") return before === "" || /[\s-]$/.test(before);
+  return /^\s*$/.test(before) || /[.!?]["')\]]*\s+$/.test(before);
+}

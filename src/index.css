@@ -4528,17 +4528,21 @@ button.primary {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
+}
+/* The shell itself is invisible: the content and the keyboard are two
+   separate, detached cards in one grid. (The keyboard brings its own card
+   styling, see .onscreen-keyboard.) */
+.kiosk-dialog-content {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-height: 0;
+  box-sizing: border-box;
   padding: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow-2);
-}
-.kiosk-dialog-content {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -4556,18 +4560,24 @@ button.primary {
   grid-row: 1;
   min-height: 0;
 }
+/* Vertically centered across both right-hand quadrants, at the height of
+   one quadrant (half the right column, less half the row gap). */
 .kiosk-dialog-keyboard {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  height: calc(50% - 8px);
   min-height: 0;
 }
-/* The keyboard stretches to fill its quadrant instead of using its fixed
+/* The keyboard stretches to fill its box instead of using its fixed
    key height, so it fits whatever height the dialog ends up with. */
 .kiosk-dialog-keyboard .onscreen-keyboard {
   box-sizing: border-box;
   height: 100%;
   margin-top: 0;
-  padding: 6px;
+  padding: 8px;
+  border-radius: 14px; /* same card look as the content beside it */
+  box-shadow: var(--shadow-2);
   display: flex;
   flex-direction: column;
 }
@@ -4791,8 +4801,8 @@ button.primary {
 .kiosk-dialog-title-prompt {
   position: absolute;
   top: 8px;
-  left: 0;
-  right: 0;
+  left: 12px;
+  right: 12px;
   margin: 0;
   font-size: 36px;
   font-weight: 800;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { insertAt, backspaceAt } from "../utils/textEdit";
+import { insertAt, backspaceAt, shouldCapitalize } from "../utils/textEdit";
 
 // A custom, in-app on-screen keyboard for the kiosk layout — built because
 // there's no way for a website to directly force the OS's own virtual
@@ -22,7 +22,14 @@ import { insertAt, backspaceAt } from "../utils/textEdit";
 // instant a key is tapped.
 const SCOPE_SELECTOR = ".kiosk-dialog";
 const FIELD_SELECTOR = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
-const ROWS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm", "@.-_,?'!"].map((r) => r.split(""));
+// Two configurations, chosen by the dialog that hosts the keyboard:
+//   "search"  (default: search, directions) letters, digits, dash and
+//             apostrophe only; every word starts with a capital on its own, so
+//             there is no shift and no enter key.
+//   "text"    (feedback) the full key set with shift and enter; only the first
+//             letter and the first after . ! ? are capitalized on their own.
+const SEARCH_ROWS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm-'"].map((r) => r.split(""));
+const TEXT_ROWS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm", "@.-_,?'!"].map((r) => r.split(""));
 
 function setFieldValue(el, value) {
   const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -51,21 +58,49 @@ function editField(el, edit) {
   }
 }
 
-export default function OnScreenKeyboard() {
+export default function OnScreenKeyboard({ layout = "search" }) {
+  const text = layout === "text";
+  const rows = text ? TEXT_ROWS : SEARCH_ROWS;
+  const capMode = text ? "sentences" : "words";
   const rootRef = useRef(null);
   const fieldRef = useRef(null);
   const [shift, setShift] = useState(false);
+  // Whether the field's caret sits where a capital belongs (see shouldCapitalize).
+  const [autoCap, setAutoCap] = useState(false);
+
+  // Recomputes autoCap from the current field and caret, without touching
+  // focus. Never on for an email field, where a capital would be wrong.
+  const refreshCap = () => {
+    const el = fieldRef.current;
+    if (!el?.isConnected || el.type === "email") {
+      setAutoCap(false);
+      return;
+    }
+    let caret = null;
+    try {
+      caret = el.selectionStart;
+    } catch {
+      // no selection API on this field: treat the caret as at the end
+    }
+    setAutoCap(shouldCapitalize(el.value, caret ?? el.value.length, capMode));
+  };
 
   useEffect(() => {
     const scope = rootRef.current?.closest(SCOPE_SELECTOR);
     if (!scope) return;
     const remember = (e) => {
       if (e.target.matches?.(FIELD_SELECTOR)) fieldRef.current = e.target;
+      refreshCap();
     };
-    scope.addEventListener("focusin", remember);
     const active = document.activeElement;
     if (scope.contains(active) && active.matches(FIELD_SELECTOR)) fieldRef.current = active;
-    return () => scope.removeEventListener("focusin", remember);
+    else fieldRef.current = scope.querySelector(FIELD_SELECTOR);
+    refreshCap();
+    // The caret can move without the keyboard: taps in the field, typed input.
+    const events = ["focusin", "input", "click", "keyup"];
+    events.forEach((name) => scope.addEventListener(name, remember));
+    return () => events.forEach((name) => scope.removeEventListener(name, remember));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The field to type into: the last one focused here, else the first.
@@ -83,8 +118,12 @@ export default function OnScreenKeyboard() {
   const press = (char) => {
     const el = target();
     if (!el) return;
-    editField(el, (value, start, end) => insertAt(value, start, end, shift ? char.toUpperCase() : char));
+    editField(el, (value, start, end) => {
+      const capital = shift || (el.type !== "email" && shouldCapitalize(value, start, capMode));
+      return insertAt(value, start, end, capital ? char.toUpperCase() : char);
+    });
     setShift(false);
+    refreshCap();
   };
   // A line break in the comments box; in a single-line field there's
   // nothing to break, so it moves on to the next field instead.
@@ -101,11 +140,14 @@ export default function OnScreenKeyboard() {
   const backspace = () => {
     const el = target();
     if (el) editField(el, backspaceAt);
+    refreshCap();
   };
+
+  const upper = shift || autoCap;
 
   return (
     <div className="onscreen-keyboard" ref={rootRef} onMouseDown={(e) => e.preventDefault()}>
-      {ROWS.map((row, i) => (
+      {rows.map((row, i) => (
         <div className="onscreen-keyboard-row" key={i}>
           {row.map((k) => (
             <button
@@ -114,21 +156,23 @@ export default function OnScreenKeyboard() {
               className="onscreen-keyboard-key"
               onMouseDown={(e) => { e.preventDefault(); press(k); }}
             >
-              {shift ? k.toUpperCase() : k}
+              {upper ? k.toUpperCase() : k}
             </button>
           ))}
         </div>
       ))}
       <div className="onscreen-keyboard-row onscreen-keyboard-bottom-row">
-        <button
-          type="button"
-          className={"onscreen-keyboard-key onscreen-keyboard-shift" + (shift ? " onscreen-keyboard-shift-active" : "")}
-          onMouseDown={(e) => { e.preventDefault(); setShift((s) => !s); }}
-          aria-label="Shift"
-          aria-pressed={shift}
-        >
-          ⇧
-        </button>
+        {text && (
+          <button
+            type="button"
+            className={"onscreen-keyboard-key onscreen-keyboard-shift" + (shift ? " onscreen-keyboard-shift-active" : "")}
+            onMouseDown={(e) => { e.preventDefault(); setShift((s) => !s); }}
+            aria-label="Shift"
+            aria-pressed={shift}
+          >
+            ⇧
+          </button>
+        )}
         <button
           type="button"
           className="onscreen-keyboard-key onscreen-keyboard-space"
@@ -136,14 +180,16 @@ export default function OnScreenKeyboard() {
         >
           Space
         </button>
-        <button
-          type="button"
-          className="onscreen-keyboard-key onscreen-keyboard-enter"
-          onMouseDown={(e) => { e.preventDefault(); enter(); }}
-          aria-label="Enter"
-        >
-          ↵
-        </button>
+        {text && (
+          <button
+            type="button"
+            className="onscreen-keyboard-key onscreen-keyboard-enter"
+            onMouseDown={(e) => { e.preventDefault(); enter(); }}
+            aria-label="Enter"
+          >
+            ↵
+          </button>
+        )}
         <button
           type="button"
           className="onscreen-keyboard-key onscreen-keyboard-backspace"

@@ -19,7 +19,9 @@ import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "..
 // The keyboard lives here, not in each module, so it always sits in the
 // bottom-right quadrant; it types into whichever field of `children` is
 // focused (see OnScreenKeyboard). Fields inside should set inputMode="none".
-export default function KioskDialog({ title, titleClassName = "", onClose, children }) {
+// keyboard: which key set the on-screen keyboard shows — "search" (default) or
+// "text" (see OnScreenKeyboard).
+export default function KioskDialog({ title, titleClassName = "", keyboard = "search", onClose, children }) {
   return (
     <>
       {/* Dims and blocks the panorama area behind the dialog; a tap on it
@@ -44,7 +46,7 @@ export default function KioskDialog({ title, titleClassName = "", onClose, child
           {/* Top-right quadrant: intentionally empty for now. */}
           <aside className="kiosk-dialog-aside" />
           <div className="kiosk-dialog-keyboard">
-            <OnScreenKeyboard />
+            <OnScreenKeyboard layout={keyboard} />
           </div>
         </div>
         <button type="button" className="kiosk-dialog-close" onClick={onClose} aria-label="Close">

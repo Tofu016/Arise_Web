@@ -491,7 +491,7 @@ function FovController({ fov }) {
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
- *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator
+ *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator; hidden along with the previews while previewsHidden
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
@@ -654,44 +654,47 @@ export default function PanoramaNav({
     <div className="pano-zoom-wrap">
       {canvas}
       {/* Top-right of the panorama band: level indicator (only while zoomed
-          away from the default 1.0x) beside the + / - / reset buttons. */}
-      <div className="pano-zoom-controls">
-        {zoom.toFixed(1) !== "1.0" && (
-          <span className="pano-zoom-indicator" role="status" aria-label={`Zoom ${zoom.toFixed(1)}x`}>
-            {zoom.toFixed(1)}×
-          </span>
-        )}
-        <div className="pano-zoom-buttons">
-          <button
-            type="button"
-            className="pano-zoom-btn"
-            onClick={() => setZoom(zoom * BUTTON_ZOOM_FACTOR)}
-            disabled={zoom >= MAX_ZOOM}
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="pano-zoom-btn"
-            onClick={() => setZoom(zoom / BUTTON_ZOOM_FACTOR)}
-            disabled={zoom <= MIN_ZOOM}
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            className="pano-zoom-btn"
-            onClick={() => setZoom(1)}
-            disabled={zoom.toFixed(1) === "1.0"}
-            title="Reset zoom"
-            aria-label="Reset zoom"
-          >
-            ↺
-          </button>
+          away from the default 1.0x) beside the + / - / reset buttons. Hidden, like
+          the hotspot previews, while a menu/dialog is open over the panorama. */}
+      {!previewsHidden && (
+        <div className="pano-zoom-controls">
+          {zoom.toFixed(1) !== "1.0" && (
+            <span className="pano-zoom-indicator" role="status" aria-label={`Zoom ${zoom.toFixed(1)}x`}>
+              {zoom.toFixed(1)}×
+            </span>
+          )}
+          <div className="pano-zoom-buttons">
+            <button
+              type="button"
+              className="pano-zoom-btn"
+              onClick={() => setZoom(zoom * BUTTON_ZOOM_FACTOR)}
+              disabled={zoom >= MAX_ZOOM}
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="pano-zoom-btn"
+              onClick={() => setZoom(zoom / BUTTON_ZOOM_FACTOR)}
+              disabled={zoom <= MIN_ZOOM}
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="pano-zoom-btn"
+              onClick={() => setZoom(1)}
+              disabled={zoom.toFixed(1) === "1.0"}
+              title="Reset zoom"
+              aria-label="Reset zoom"
+            >
+              ↺
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

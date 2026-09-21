@@ -118,7 +118,7 @@ export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
     // resets the system (onFinished) when its countdown ends.
     if (submitted) return <KioskThanks onDone={onFinished ?? onClose} />;
     return (
-      <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" onClose={onClose}>
+      <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" keyboard="text" onClose={onClose}>
         <div className="feedback-body">{body}</div>
       </KioskDialog>
     );
