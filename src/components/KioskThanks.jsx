@@ -5,8 +5,7 @@ import CountdownRing from "./CountdownRing";
 export const KIOSK_THANKS_SECONDS = 5;
 
 // Shown on the kiosk after feedback is sent: a small card, centered
-// horizontally, whose vertical center sits at the middle of the panorama
-// band's second quarter. Counts down, then calls onDone (the system reset).
+// horizontally, whose vertical center sits at the middle of the dialog grid. Counts down, then calls onDone (the system reset).
 // A scrim over the band keeps stray taps off the panorama meanwhile.
 export default function KioskThanks({ onDone }) {
   const remaining = useCountdown(KIOSK_THANKS_SECONDS, onDone);

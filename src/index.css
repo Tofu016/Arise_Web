@@ -3465,6 +3465,15 @@ button.primary {
    its own content instead of leaving awkward empty space below a short
    one (e.g. the exit panel's lone "Get Directions" button used to sit
    in a fixed 62vh-tall sheet). ---------- */
+/* Small centered kiosk dialogs (account, idle prompt): the modal's own center
+   sits at --kiosk-card-center, whatever its height. */
+.kiosk-raised-overlay {
+  align-items: flex-start;
+}
+.kiosk-raised-overlay > .modal {
+  margin-top: var(--kiosk-card-center);
+  transform: translateY(-50%);
+}
 .mobile-account-modal {
   width: 320px;
   max-width: 92vw;

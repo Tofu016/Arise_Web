@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCountdown } from "../hooks/useCountdown";
 import CountdownRing from "./CountdownRing";
+import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
 export const IDLE_RESTART_SECONDS = 180;
 
@@ -37,7 +38,7 @@ function KioskIdlePrompt({ onContinue, onGiveFeedback, onStartOver }) {
   const remaining = useCountdown(IDLE_RESTART_SECONDS, onStartOver);
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE}>
       <div className="modal idle-prompt-modal idle-prompt-kiosk">
         <p className="idle-prompt-text">
           {confirming ? "Start over? You'll lose your place." : "Done exploring?"}

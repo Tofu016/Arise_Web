@@ -25,7 +25,7 @@ import { useDirections, useAutoWalk } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { prefetchPhoto } from "../utils/photoStore";
-import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
@@ -1021,7 +1021,7 @@ function MainPageContent({ onReset }) {
             )}
 
             {panelMode === "account" && user && (
-              <div className="modal-overlay" onClick={closePanel}>
+              <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE} onClick={closePanel}>
                 <div className="modal mobile-account-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="preview-header">
                     <h3>Account</h3>

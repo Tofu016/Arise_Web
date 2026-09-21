@@ -7,7 +7,12 @@ export const KIOSK_TOP_INSET = 0.075;
 export const KIOSK_BOTTOM_INSET = 0.175;
 export const KIOSK_PANORAMA_FRACTION = 1 - KIOSK_TOP_INSET - KIOSK_BOTTOM_INSET;
 
-// Vertical center (fraction of screen height) of the kiosk's small cards —
-// the middle of the panorama band's second quarter. Shared by the thank-you
-// card and the building selection screen.
-export const KIOSK_CARD_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.375;
+// Vertical center (fraction of screen height) of the kiosk's small dialogs —
+// the middle of the dialog grid, i.e. where its two rows of quadrants meet
+// (a quarter of the way down the panorama band). Shared by the thank-you card,
+// the idle prompt and the account and building dialogs.
+export const KIOSK_CARD_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.25;
+
+// Inline style for a .kiosk-raised-overlay (see index.css) that sets that
+// center as a CSS variable.
+export const KIOSK_RAISED_STYLE = { "--kiosk-card-center": `${KIOSK_CARD_CENTER * 100}vh` };
