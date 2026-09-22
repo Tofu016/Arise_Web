@@ -21,6 +21,9 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   overlayScale,
+  angleBetween,
+  isInViewport,
+  closestHotspotInView,
 } from "./panoramaMath";
 
 const close = (actual, expected) => actual.forEach((v, i) => expect(v).toBeCloseTo(expected[i], 6));
@@ -139,6 +142,86 @@ describe("isFacing and previewScale", () => {
   it("tolerates a dot product nudged past ±1 by rounding", () => {
     expect(previewScale(1.0000001)).toBeCloseTo(PREVIEW_MAX_SCALE);
     expect(previewScale(-1.0000001)).toBeCloseTo(PREVIEW_MIN_SCALE);
+  });
+});
+
+describe("angleBetween", () => {
+  it("is zero for the same direction", () => {
+    expect(angleBetween(30, 10, 30, 10)).toBeCloseTo(0, 6);
+  });
+  it("is 90 degrees for a right-angle turn", () => {
+    expect(angleBetween(0, 0, 90, 0)).toBeCloseTo(Math.PI / 2, 6);
+  });
+  it("is 180 degrees for the opposite direction", () => {
+    expect(angleBetween(0, 0, 180, 0)).toBeCloseTo(Math.PI, 6);
+  });
+});
+
+describe("isInViewport", () => {
+  it("is true dead ahead for any FOV", () => {
+    expect(isInViewport(0, 0, 0, 0, 50, 35)).toBe(true);
+  });
+
+  it("is false just past the horizontal edge", () => {
+    expect(isInViewport(0, 0, 51, 0, 50, 35)).toBe(false);
+  });
+
+  it("is true just inside the horizontal edge", () => {
+    expect(isInViewport(0, 0, 49, 0, 50, 35)).toBe(true);
+  });
+
+  it("is false just past the vertical edge", () => {
+    expect(isInViewport(0, 0, 0, 36, 50, 35)).toBe(false);
+  });
+
+  it("is false directly behind the camera, regardless of a wide FOV", () => {
+    expect(isInViewport(0, 0, 180, 0, 89, 89)).toBe(false);
+  });
+
+  it("is false off to the side even though it's less than 90 degrees away, once the FOV is narrow", () => {
+    // 80° off yaw is still technically "in front" (< 90°), but well outside a 50°-wide view.
+    expect(isInViewport(0, 0, 80, 0, 50, 35)).toBe(false);
+  });
+
+  it("follows a panned view, not just world-forward", () => {
+    expect(isInViewport(90, 0, 100, 0, 50, 35)).toBe(true);
+    expect(isInViewport(90, 0, 0, 0, 50, 35)).toBe(false);
+  });
+
+  it("handles looking straight up without degenerating", () => {
+    expect(isInViewport(0, 90, 0, 90, 50, 35)).toBe(true);
+  });
+});
+
+describe("closestHotspotInView", () => {
+  const hotspots = [
+    { id: "front", yaw: 10, pitch: 0 },
+    { id: "edge-of-frame", yaw: 40, pitch: 0 },
+    { id: "out-of-frame", yaw: 80, pitch: 0 },
+    { id: "behind", yaw: 170, pitch: 0 },
+  ];
+
+  it("picks whichever hotspot is nearest dead ahead, among those on screen", () => {
+    expect(closestHotspotInView(hotspots, 0, 0, 50, 35).id).toBe("front");
+  });
+
+  it("ignores a hotspot that's technically in front but off screen", () => {
+    const result = closestHotspotInView(hotspots, 0, 0, 50, 35);
+    expect(result.id).not.toBe("out-of-frame");
+  });
+
+  it("returns null when nothing on screen qualifies", () => {
+    expect(closestHotspotInView([{ id: "out-of-frame", yaw: 80, pitch: 0 }], 0, 0, 50, 35)).toBeNull();
+  });
+
+  it("returns null with no hotspots at all", () => {
+    expect(closestHotspotInView([], 0, 0, 50, 35)).toBeNull();
+  });
+
+  it("picks up a hotspot a wider FOV brings into frame", () => {
+    expect(closestHotspotInView(hotspots, 0, 0, 85, 60)?.id).toBe("front");
+    const wideResult = closestHotspotInView([{ id: "out-of-frame", yaw: 80, pitch: 0 }], 0, 0, 85, 60);
+    expect(wideResult?.id).toBe("out-of-frame");
   });
 });
 

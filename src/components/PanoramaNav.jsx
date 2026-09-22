@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { initialCameraPosition, zoomedFov } from "../utils/panoramaMath";
 import { PanoramaSphere, FadingSphere } from "./panorama/Spheres";
 import { CameraAim, AutoPan, FovController } from "./panorama/camera";
+import { KeyboardNav } from "./panorama/KeyboardNav";
 import { usePanoramaFov, TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panorama/cameraSettings";
 import { Hotspot } from "./panorama/Hotspot";
 import { Marker } from "./panorama/Marker";
@@ -11,6 +12,10 @@ import { ZoomControls } from "./panorama/ZoomControls";
 import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
+
+// How long the "No location in front." hint stays up after W/Up finds
+// nothing to walk to.
+const NOTHING_AHEAD_HINT_MS = 1800;
 
 // A camera icon in the brand's premium-accent gold: the Virtual Tour's
 // "equipment" marker type. Kept here rather than in constants.js's
@@ -38,6 +43,8 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
+ *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
+ *  - onBack: required when keyboardNav is true — called on S/Down
  */
 export default function PanoramaNav({
   url,
@@ -60,6 +67,8 @@ export default function PanoramaNav({
   previewsHidden = false,
   zoomable = false,
   autoPan = false,
+  keyboardNav = false,
+  onBack,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // The kiosk (zoomable) is always touch, even if the OS still reports a mouse.
@@ -82,6 +91,18 @@ export default function PanoramaNav({
   // scenes are aimed by CameraAim when they swap in.
   const [firstCameraPosition] = useState(() => initialCameraPosition(initialYaw, initialPitch));
 
+  // W/Up found nothing to walk to: a brief "No location in front." toast,
+  // auto-dismissed. Lives here (not in KeyboardNav) since it's DOM/CSS, not
+  // a scene object.
+  const [nothingAheadHint, setNothingAheadHint] = useState(false);
+  const nothingAheadTimer = useRef(null);
+  useEffect(() => () => clearTimeout(nothingAheadTimer.current), []);
+  const flashNothingAhead = () => {
+    setNothingAheadHint(true);
+    clearTimeout(nothingAheadTimer.current);
+    nothingAheadTimer.current = setTimeout(() => setNothingAheadHint(false), NOTHING_AHEAD_HINT_MS);
+  };
+
   const canvas = (
     <Canvas camera={{ position: firstCameraPosition, fov: baseFov }} style={{ cursor }}>
       {zoomable && <FovController fov={fov} />}
@@ -90,6 +111,15 @@ export default function PanoramaNav({
       {scene.holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
       {autoPan && !placing && highlightedHotspot && (
         <AutoPan target={highlightedHotspot} targetKey={`${scene.sceneKey}:${highlightedHotspot.id}`} />
+      )}
+      {keyboardNav && (
+        <KeyboardNav
+          hotspots={scene.hotspots}
+          active={!placing && live}
+          onNavigate={onNavigate}
+          onBack={onBack}
+          onNothingAhead={flashNothingAhead}
+        />
       )}
       {scene.hotspots.map((h) => (
         <Hotspot
@@ -130,12 +160,13 @@ export default function PanoramaNav({
     </Canvas>
   );
 
-  if (!zoomable) return canvas;
+  if (!zoomable && !keyboardNav) return canvas;
   return (
     <div className="pano-zoom-wrap">
       {canvas}
       {/* Hidden, like the hotspot previews, while a menu/dialog is open over the panorama. */}
-      {!previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
+      {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
+      {nothingAheadHint && <div className="pano-nothing-ahead-hint">No location in front.</div>}
     </div>
   );
 }

@@ -897,6 +897,8 @@ function MainPageContent({ onReset }) {
                 initialYaw={entryYaw}
                 highlightedId={nextStopId}
                 autoPan={!!nextStopId}
+                keyboardNav
+                onBack={goBack}
               />
 
               <div className="floating-title-wrap">

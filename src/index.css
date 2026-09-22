@@ -5029,6 +5029,23 @@ html.kiosk-mode body {
   height: 100%;
   touch-action: none;
 }
+/* Desktop WASD/arrow-key nav: W/Up found no hotspot ahead. */
+.pano-nothing-ahead-hint {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font-size: 14px;
+  z-index: 5;
+  pointer-events: none;
+  animation: photo-transition-indicator-in 0.2s ease both;
+}
 /* Top-right corner of the panorama band (under the header). */
 .pano-zoom-controls {
   position: absolute;
