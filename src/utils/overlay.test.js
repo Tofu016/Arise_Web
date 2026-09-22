@@ -83,11 +83,12 @@ describe("moves", () => {
 describe("blocksIdle", () => {
   const ctx = { flyover: null, awaitingStart: false };
   it("is false with nothing up", () => expect(blocksIdle(initialOverlay, ctx)).toBe(false));
-  it("is true for a panel, the dock, feedback, a 360° view, a flyover or the kiosk start screens", () => {
+  it("is true for a panel, the dock, feedback, a 360° view, help, a flyover or the kiosk start screens", () => {
     expect(blocksIdle(run({ type: "showPanel", mode: "search" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openDock" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openFeedback" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openRoom360" }), ctx)).toBe(true);
+    expect(blocksIdle(run({ type: "openHelp" }), ctx)).toBe(true);
     expect(blocksIdle(initialOverlay, { ...ctx, flyover: {} })).toBe(true);
     expect(blocksIdle(initialOverlay, { ...ctx, awaitingStart: true })).toBe(true);
   });
@@ -119,11 +120,31 @@ describe("coverage", () => {
     expect(coverage(run({ type: "showPanel", mode: "account" }), base).kioskDialogOpen).toBe(false);
   });
 
-  it("the building dialog, dock, 360° view and flyover cover the panorama", () => {
+  it("the building dialog, dock, 360° view, help and flyover cover the panorama", () => {
     expect(coverage({ ...initialOverlay, buildingMenu: true }, base).coversPanorama).toBe(true);
     expect(coverage(run({ type: "openDock" }), base).coversPanorama).toBe(true);
     expect(coverage(run({ type: "openRoom360" }), base).coversPanorama).toBe(true);
+    expect(coverage(run({ type: "openHelp" }), base).coversPanorama).toBe(true);
     expect(coverage(initialOverlay, { ...base, flyover: {} }).coversPanorama).toBe(true);
     expect(coverage(initialOverlay, base).coversPanorama).toBe(false);
+  });
+});
+
+describe("help", () => {
+  it("opens and closes independently of the exclusive panel", () => {
+    const opened = run({ type: "showPanel", mode: "search" }, { type: "openHelp" });
+    expect(opened.help).toBe(true);
+    expect(opened.panel).toBe("search");
+    expect(overlayReducer(opened, { type: "closeHelp" }).help).toBe(false);
+  });
+
+  it("closes the dock when opened from it", () => {
+    const opened = run({ type: "openDock" }, { type: "openHelp" });
+    expect(opened.dock).toBe(false);
+    expect(opened.help).toBe(true);
+  });
+
+  it("opens via openFromDock too", () => {
+    expect(run({ type: "openFromDock", target: "help" }).help).toBe(true);
   });
 });

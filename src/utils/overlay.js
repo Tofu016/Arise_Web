@@ -15,6 +15,7 @@ export const initialOverlay = {
   floorPick: null, // building whose floor list is expanded in the building dialog
   walkDialog: true, // kiosk: big directions dialog (true) vs compact walk bar (false)
   roomCard: null, // the room whose card the "room" panel shows; kept while its 360° view is open
+  help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
 };
 
 export function overlayReducer(state, action) {
@@ -43,6 +44,10 @@ export function overlayReducer(state, action) {
       return { ...state, room360: true };
     case "closeRoom360":
       return { ...state, room360: false };
+    case "openHelp":
+      return { ...state, dock: false, help: true };
+    case "closeHelp":
+      return { ...state, help: false };
     case "closeBuildingMenu":
       return { ...state, buildingMenu: false };
     case "setFloorPick":
@@ -84,6 +89,8 @@ function openTarget(state, target) {
       return { ...state, feedback: true };
     case "building":
       return { ...state, floorPick: null, buildingMenu: true };
+    case "help":
+      return { ...state, help: true };
     default:
       return state;
   }
@@ -94,7 +101,9 @@ function openTarget(state, target) {
 // screens are up too (`awaitingStart`): nobody is exploring yet. The building
 // dialog isn't counted; it has always been left out here.
 export function blocksIdle(state, { flyover, awaitingStart }) {
-  return !!state.panel || state.dock || state.feedback || state.room360 || !!flyover || !!awaitingStart;
+  return (
+    !!state.panel || state.dock || state.feedback || state.room360 || state.help || !!flyover || !!awaitingStart
+  );
 }
 
 // What the current overlays mean for the rest of the screen.
@@ -116,6 +125,7 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
     state.feedback ||
     state.buildingMenu ||
     state.room360 ||
+    state.help ||
     !!flyover;
   return { walkBarShown, kioskDialogOpen, coversPanorama };
 }

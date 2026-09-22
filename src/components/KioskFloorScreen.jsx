@@ -17,7 +17,20 @@ export default function KioskFloorScreen({ hidden, buildingLabel, floors, onPick
       style={KIOSK_RAISED_STYLE}
       aria-hidden={hidden}
     >
-      <button type="button" className="kiosk-back-btn" onClick={onBack} tabIndex={hidden ? -1 : 0}>
+      {/* Otherwise a pressed button here stays focused after the screen's
+          own aria-hidden flips true on the next render (or, for Back, the
+          building screen's does) — a focused element can't be hidden from
+          assistive tech, so the browser refuses and logs a console
+          warning about it. */}
+      <button
+        type="button"
+        className="kiosk-back-btn"
+        onClick={(e) => {
+          e.currentTarget.blur();
+          onBack();
+        }}
+        tabIndex={hidden ? -1 : 0}
+      >
         ← Back
       </button>
       <h2 className="kiosk-building-title">
@@ -25,7 +38,15 @@ export default function KioskFloorScreen({ hidden, buildingLabel, floors, onPick
       </h2>
       <div className="kiosk-floor-list">
         {floors.map((f) => (
-          <button key={f} type="button" className="kiosk-building-btn" onClick={() => onPick(f)}>
+          <button
+            key={f}
+            type="button"
+            className="kiosk-building-btn"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onPick(f);
+            }}
+          >
             {floorLabel(f)}
           </button>
         ))}

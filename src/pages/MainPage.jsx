@@ -16,7 +16,10 @@ import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
 import FeedbackPanel from "../components/FeedbackPanel";
 import IdlePrompt from "../components/IdlePrompt";
+import Coachmark from "../components/Coachmark";
+import HelpModal from "../components/HelpModal";
 import { useIdleDetector } from "../hooks/useIdleDetector";
+import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
 import { useKioskSession, useKioskZoomLock } from "../hooks/useKioskSession";
@@ -83,6 +86,43 @@ function MainPageContent({ onReset }) {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
 
+  // First-run coachmarks (see hooks/useOnboardingHints.js). Different
+  // sequence per layout since the controls differ (WASD only applies on
+  // desktop; the kiosk has one dock button instead of a separate menu and
+  // directions button) — the kiosk shows them one at a time (activeId),
+  // the desktop shows every remaining one at once (activeIds); see the
+  // render below.
+  const menuBtnRef = useRef(null);
+  const directionsBtnRef = useRef(null);
+  const kioskDockBtnRef = useRef(null);
+  const onboarding = useOnboardingHints(compact ? ["move", "dock"] : ["move", "menu", "directions"]);
+
+  // A dismissed hint fades out rather than vanishing — held mounted (with
+  // the CSS transition running) for FADE_MS before the real dismiss()
+  // actually drops it from the queue. A hint that stops matching WITHOUT
+  // going through here (its target got covered by other UI opening, e.g.
+  // the menu) just disappears instantly instead, by no longer being
+  // rendered at all — see the render below.
+  const FADE_MS = 250; // matches .coachmark-banner/.coachmark-pointer's CSS transition
+  const [closingHintIds, setClosingHintIds] = useState([]);
+  const fadeOutHint = (id) => {
+    setClosingHintIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setTimeout(() => {
+      onboarding.dismiss(id);
+      setClosingHintIds((prev) => prev.filter((x) => x !== id));
+    }, FADE_MS);
+  };
+
+  // Desktop only: hints left untouched for a full minute fade away on
+  // their own, rather than sitting there forever.
+  useEffect(() => {
+    if (compact || onboarding.activeIds.length === 0) return;
+    const ids = onboarding.activeIds;
+    const timer = setTimeout(() => ids.forEach(fadeOutHint), 60000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact, onboarding.activeIds.join(",")]);
+
   // What's on screen over the panorama — the floating panel, the mobile/kiosk
   // dock, feedback, a room's 360 view, the building dialog, the walk bar —
   // lives in one module; see utils/overlay.js. Blurring the search input
@@ -99,6 +139,20 @@ function MainPageContent({ onReset }) {
     floorPick: floorPickBuilding,
     roomCard: selectedRoomCard,
   } = overlay;
+
+  // A hint's own control being actually used is as good a "got it" as
+  // tapping the tooltip's button — dismiss it the moment that happens,
+  // rather than leaving it to reappear (once nothing else is covering the
+  // screen again) until it's explicitly dismissed.
+  useEffect(() => {
+    if (panelMode === "menu") onboarding.dismiss("menu");
+    else if (panelMode === "directions") onboarding.dismiss("directions");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelMode, onboarding.dismiss]);
+  useEffect(() => {
+    if (mobileDockOpen) onboarding.dismiss("dock");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobileDockOpen, onboarding.dismiss]);
 
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
@@ -204,8 +258,12 @@ function MainPageContent({ onReset }) {
   const goTo = (id, angle) => {
     const { outcome, action } = nav.walk(id, angle?.yaw);
     if (outcome === "ignored") return;
-    if (outcome === "moved") afterMove(action);
-    else overlay.heldForFlyover();
+    if (outcome === "moved") {
+      afterMove(action);
+      // Walking somewhere is the "move" coachmark's own instruction
+      // actually followed — fade it out rather than waiting for "Got it".
+      fadeOutHint("move");
+    } else overlay.heldForFlyover();
   };
 
   const goBack = () => {
@@ -377,6 +435,28 @@ function MainPageContent({ onReset }) {
   // The idle prompt covers the panorama too, so it hides the hotspot previews as well.
   const overlayOpen = coversPanorama || isIdle;
 
+  // Coachmarks only make sense once the visitor is actually looking at a
+  // photo with nothing else already open over it — and, on the kiosk, only
+  // once they're past the start/building/floor screens.
+  const hintsAllowed = initialLoadDone && !!current && !overlayOpen && !kiosk.awaitingStart;
+
+  // Text and target per hint id, shared by both layouts' render below.
+  const hintCoachmarkProps = {
+    move: {
+      raised: compact,
+      text: compact
+        ? "Touch and drag to look around. Tap a glowing arrow to walk that way."
+        : "Drag to look around. Use WASD or the arrow keys to walk and turn.",
+    },
+    menu: {
+      targetRef: menuBtnRef,
+      align: "left",
+      text: "Open the menu for buildings, entrances and more.",
+    },
+    directions: { targetRef: directionsBtnRef, text: "Tap here to get directions to any room." },
+    dock: { targetRef: kioskDockBtnRef, text: "Tap here for search, directions and more." },
+  };
+
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
   const displayName = profile?.name || user?.email || "";
@@ -415,6 +495,12 @@ function MainPageContent({ onReset }) {
       icon: "🏢",
       title: "Choose a building",
       onClick: () => overlay.openFromDock("building"),
+    },
+    {
+      key: "help",
+      icon: "❓",
+      title: "How to use this tour",
+      onClick: () => overlay.openFromDock("help"),
     },
     user && {
       key: "account",
@@ -646,6 +732,15 @@ function MainPageContent({ onReset }) {
           behavior for ordinary navigation; this is specifically a
           first-load-only splash. */}
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
+      {/* A solid backdrop behind the kiosk's whole start/building/floor
+          sequence. Each of those three screens fades in/out on its own
+          (0.6s), and a step change toggles two of them at once — without
+          this, the moment where both are still mid-fade (each only
+          partially opaque) let the panorama underneath show through.
+          This sits just below all three (fixed at z-index 585) and only
+          fades away once actually exploring, so that moment reveals solid
+          white instead. */}
+      {compact && <div className={"kiosk-sequence-backdrop" + (kiosk.awaitingStart ? "" : " kiosk-sequence-backdrop-hidden")} />}
       {compact && (
         <KioskBuildingScreen
           hidden={kiosk.stage !== "building"}
@@ -757,6 +852,7 @@ function MainPageContent({ onReset }) {
             {panelMode !== "room" && !kioskDialogOpen && (
               <div className="mobile-side-dock">
                 <button
+                  ref={kioskDockBtnRef}
                   type="button"
                   className="mobile-side-fab"
                   onClick={() => (mobileDockOpen ? overlay.dismiss() : overlay.openDock())}
@@ -954,7 +1050,7 @@ function MainPageContent({ onReset }) {
                   floating panel — all positioned over the panorama itself,
                   Maps-style, rather than pushing it aside. */}
               <div className="floating-rail">
-                <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
+                <button ref={menuBtnRef} className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
                 <div className="floating-rail-spacer" />
               </div>
 
@@ -965,6 +1061,7 @@ function MainPageContent({ onReset }) {
                   minimap is actually showing right now — a safety button
                   shouldn't jump around based on unrelated state. */}
               <button
+                ref={directionsBtnRef}
                 className="floating-rail-btn floating-exit-btn-stacked"
                 onClick={flow.open}
                 title="Get directions"
@@ -1069,6 +1166,10 @@ function MainPageContent({ onReset }) {
                             ))}
                           </div>
                         </div>
+
+                        <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
+                          ❓ How to use this tour
+                        </button>
                       </div>
                     )}
 
@@ -1108,6 +1209,33 @@ function MainPageContent({ onReset }) {
       {showFeedback && (
         <FeedbackPanel onClose={overlay.closeFeedback} onFinished={onReset} kiosk={compact} />
       )}
+
+      <HelpModal
+        open={overlay.help}
+        kiosk={compact}
+        onClose={overlay.closeHelp}
+        onReplay={() => {
+          onboarding.replay();
+          // Otherwise the coachmarks can't show at all until whatever
+          // panel Help itself was opened from (the desktop menu) is
+          // closed by hand too.
+          overlay.dismiss();
+        }}
+      />
+
+      {/* First-run coachmarks — see hooks/useOnboardingHints.js. Kiosk shows
+          one at a time (activeId); desktop shows every remaining one at
+          once (activeIds), since none of them dim the screen or otherwise
+          get in each other's way. */}
+      {hintsAllowed &&
+        (compact ? [onboarding.activeId].filter(Boolean) : onboarding.activeIds).map((id) => (
+          <Coachmark
+            key={id}
+            {...hintCoachmarkProps[id]}
+            closing={closingHintIds.includes(id)}
+            onDismiss={() => fadeOutHint(id)}
+          />
+        ))}
 
       {isIdle && (
         <IdlePrompt

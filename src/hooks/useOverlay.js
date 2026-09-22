@@ -24,6 +24,8 @@ export function useOverlay() {
       closeFeedback: send("closeFeedback"),
       openRoom360: send("openRoom360"),
       closeRoom360: send("closeRoom360"),
+      openHelp: send("openHelp"),
+      closeHelp: send("closeHelp"),
       closeBuildingMenu: send("closeBuildingMenu"),
       setFloorPick: (building) => dispatch({ type: "setFloorPick", building }),
       setWalkDialog: (open) => dispatch({ type: "setWalkDialog", open }),

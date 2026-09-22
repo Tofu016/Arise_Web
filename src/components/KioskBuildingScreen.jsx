@@ -22,7 +22,14 @@ export default function KioskBuildingScreen({ hidden, buildings, available, onPi
       type="button"
       className="kiosk-building-btn"
       disabled={!available.has(b.id)}
-      onClick={() => onPick(b.id)}
+      onClick={(e) => {
+        // Otherwise this button stays focused after the screen's own
+        // aria-hidden flips true on the next render — a focused element
+        // can't be hidden from assistive tech, so the browser refuses and
+        // logs a console warning about it.
+        e.currentTarget.blur();
+        onPick(b.id);
+      }}
     >
       {b.label}
     </button>

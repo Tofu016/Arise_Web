@@ -11,7 +11,14 @@ export default function KioskStartScreen({ hidden, onStart }) {
       type="button"
       className={"kiosk-start-screen" + (hidden ? " kiosk-start-screen-hidden" : "")}
       style={KIOSK_RAISED_STYLE}
-      onClick={onStart}
+      onClick={(e) => {
+        // Otherwise this button — the whole screen — stays focused after
+        // aria-hidden flips true on the next render, which the browser
+        // rightly refuses to apply (a focused element can't be hidden
+        // from assistive tech) and logs a console warning about.
+        e.currentTarget.blur();
+        onStart();
+      }}
       tabIndex={hidden ? -1 : 0}
       aria-hidden={hidden}
     >

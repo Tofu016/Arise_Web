@@ -1201,6 +1201,20 @@ button.primary {
 .sidebar-entrances .entrance-list {
   width: 100%;
 }
+.sidebar-help-btn {
+  margin-top: 16px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.sidebar-help-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
 .entrance-btn.active {
   border-color: var(--accent);
   background: var(--selected-bg);
@@ -1626,6 +1640,43 @@ button.primary {
   color: var(--text-muted);
   text-align: center;
   margin: 0 0 12px 0;
+}
+/* Help modal (HelpModal.jsx): the same tips the first-run coachmarks cover,
+   reachable at any time afterward from the menu/dock. */
+.help-modal {
+  width: 380px;
+  max-width: 92vw;
+}
+.help-tip-list {
+  list-style: none;
+  margin: 0 0 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.help-tip-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+.help-tip-icon {
+  flex: none;
+  width: 32px;
+  text-align: center;
+  font-size: 18px;
+}
+.help-replay-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent);
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
 }
 .preview-screen-empty {
   color: var(--text-muted);
@@ -4922,6 +4973,24 @@ button.primary {
   cursor: pointer;
 }
 
+/* A solid backdrop behind the kiosk's whole start/building/floor sequence
+   — see the comment where it's rendered, in MainPage.jsx. Sits just under
+   all three of those screens (590/600) but above the panorama, and only
+   fades away once actually exploring. */
+.kiosk-sequence-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 585;
+  background: #fff;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0s;
+}
+.kiosk-sequence-backdrop-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s ease, visibility 0s 0.6s;
+}
 /* Kiosk start screen (KioskStartScreen.jsx): full-viewport attract screen,
    above the loading screen (500) and every dialog. Same raised placement as
    .kiosk-building-screen below — see that rule's comment. */
@@ -5048,6 +5117,15 @@ button.primary {
   transform: none;
   opacity: 1;
 }
+/* Same reasoning, for the building/floor screens' own buttons: the global
+   button:active rule (@media hover:none, above) would otherwise dim and
+   shrink them too. Class doubled for the same specificity bump as above —
+   plain button:not(:disabled):active otherwise outranks a single class. */
+.kiosk-building-btn.kiosk-building-btn:active,
+.kiosk-back-btn.kiosk-back-btn:active {
+  transform: none;
+  opacity: 1;
+}
 /* Fades out, then goes inert (visibility flips only after the fade). */
 .kiosk-start-screen-hidden {
   opacity: 0;
@@ -5068,6 +5146,106 @@ html.kiosk-mode body {
   width: 100%;
   height: 100%;
   touch-action: none;
+}
+/* ---------- First-run coachmarks (Coachmark.jsx): a short queue of tips
+   shown the first time a visitor lands, above everything on the panorama
+   screen but below the kiosk's own pre-tour screens (590/600), which
+   already gate interaction on their own. Never dims the screen — whatever
+   a hint points at (or anything else) stays directly usable while it's up.
+   `.coachmark-closing` plays the fade-out the JS side holds it mounted
+   for; anything that disappears WITHOUT that class (a hint whose target
+   got covered by other UI, e.g. the menu opening) does so instantly, by
+   simply no longer being rendered at all — no transition to play. */
+.coachmark-banner,
+.coachmark-pointer {
+  transition: opacity 0.25s ease;
+}
+.coachmark-closing {
+  opacity: 0;
+  pointer-events: none;
+}
+.coachmark-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  z-index: 580;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(90vw, 420px);
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+  font-size: 15px;
+  pointer-events: auto;
+}
+/* Kiosk's "move" hint: raised to the same center its own dialogs use
+   (KIOSK_CARD_CENTER — where the dialog grid's two rows of quadrants
+   meet) instead of sitting near the bottom. `top` is set inline. */
+.coachmark-banner-raised {
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+/* A hint with a target (the hamburger, the desktop's menu/directions
+   buttons): a callout next to it, with a thin angled arrow connecting the
+   two — see .coachmark-pointer-arrow, a full-viewport SVG overlay that
+   draws the line in real screen coordinates (JS works out both ends).
+   Above the target by default; `-below` (JS decides, when there isn't
+   room above — e.g. the desktop menu button sits right at the top of the
+   screen) puts it below instead. Either way the callout itself shifts
+   sideways only as far as the screen edge forces it. */
+.coachmark-pointer {
+  position: fixed;
+  z-index: 580;
+  max-width: 260px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+  font-size: 15px;
+  text-align: center;
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+}
+.coachmark-pointer-below {
+  transform: translate(-50%, 0);
+}
+/* align="left" (Coachmark.jsx): pinned to a fixed left offset instead of
+   centered over its target, so no horizontal centering transform. */
+.coachmark-pointer-left {
+  transform: translate(0, -100%);
+}
+.coachmark-pointer-left.coachmark-pointer-below {
+  transform: translate(0, 0);
+}
+.coachmark-pointer-arrow {
+  position: fixed;
+  inset: 0;
+  z-index: 580;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.coachmark-got-it {
+  flex: none;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
 }
 /* Desktop WASD/arrow-key nav: W/Up found no hotspot ahead. */
 .pano-nothing-ahead-hint {
