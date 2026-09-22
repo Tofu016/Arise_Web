@@ -101,12 +101,16 @@ describe("stepping and auto-walk", () => {
   const hotspots = [{ id: "b", yaw: 90 }, { id: "e", yaw: 200 }];
 
   it("nextStep names the next stop and which way to face", () => {
-    expect(route.nextStep(withPath(0), hotspots)).toEqual({ id: "b", yaw: 90 });
+    expect(route.nextStep(withPath(0), hotspots)).toEqual({ id: "b", yaw: 90, defaultYaw: undefined, defaultPitch: undefined });
   });
   it("nextStep has no yaw when the hotspot isn't on this node, and is null at the end", () => {
-    expect(route.nextStep(withPath(1), hotspots)).toEqual({ id: "c", yaw: undefined });
+    expect(route.nextStep(withPath(1), hotspots)).toEqual({ id: "c", yaw: undefined, defaultYaw: undefined, defaultPitch: undefined });
     expect(route.nextStep(withPath(3), hotspots)).toBeNull();
     expect(route.nextStep(null, hotspots)).toBeNull();
+  });
+  it("nextStep carries the hotspot's own default arrival view through, when it has one", () => {
+    const withDefault = [{ id: "b", yaw: 90, defaultYaw: 10, defaultPitch: -3 }];
+    expect(route.nextStep(withPath(0), withDefault)).toMatchObject({ defaultYaw: 10, defaultPitch: -3 });
   });
 
   it("toggles auto-walk on and off", () => {

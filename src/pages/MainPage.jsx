@@ -170,7 +170,7 @@ function MainPageContent({ onReset }) {
   // Where the visitor is standing, their history, and any cross-campus
   // flyover in progress — see utils/navigation.js.
   const nav = useNavigation(nodes, byId);
-  const { currentId, history, entryYaw, flyover } = nav;
+  const { currentId, history, entryYaw, entryPitch, flyover } = nav;
 
   // Rooms with actual detail records (photo/description/department/use) —
   // built by matching each node's "Rooms served" entries against
@@ -256,7 +256,7 @@ function MainPageContent({ onReset }) {
 
   // Hotspot click, and "Walk to next stop" in directions.
   const goTo = (id, angle) => {
-    const { outcome, action } = nav.walk(id, angle?.yaw);
+    const { outcome, action } = nav.walk(id, angle);
     if (outcome === "ignored") return;
     if (outcome === "moved") {
       afterMove(action);
@@ -788,6 +788,7 @@ function MainPageContent({ onReset }) {
                 placing={false}
                 onPlaceAngle={() => {}}
                 initialYaw={entryYaw}
+                initialPitch={entryPitch}
                 highlightedId={nextStopId}
                 autoPan={!!nextStopId}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
@@ -1022,6 +1023,7 @@ function MainPageContent({ onReset }) {
                 placing={false}
                 onPlaceAngle={() => {}}
                 initialYaw={entryYaw}
+                initialPitch={entryPitch}
                 highlightedId={nextStopId}
                 autoPan={!!nextStopId}
                 keyboardNav

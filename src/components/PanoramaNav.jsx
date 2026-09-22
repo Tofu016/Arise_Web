@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { initialCameraPosition, zoomedFov } from "../utils/panoramaMath";
 import { PanoramaSphere, FadingSphere } from "./panorama/Spheres";
-import { CameraAim, AutoPan, FovController } from "./panorama/camera";
+import { CameraAim, AutoPan, FovController, CaptureAngle } from "./panorama/camera";
 import { KeyboardNav } from "./panorama/KeyboardNav";
 import { usePanoramaFov, TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panorama/cameraSettings";
 import { Hotspot } from "./panorama/Hotspot";
@@ -45,6 +45,8 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
  *  - onBack: required when keyboardNav is true — called on S/Down
+ *  - captureRequestId: optional — admin editors only. Bump this (any changing value) to capture the live camera's current yaw/pitch once, reported via onCaptureAngle; used to record a default/arrival view by orbiting to it and confirming, rather than clicking a point on the sphere
+ *  - onCaptureAngle({yaw, pitch}): required when captureRequestId is used
  */
 export default function PanoramaNav({
   url,
@@ -69,6 +71,8 @@ export default function PanoramaNav({
   autoPan = false,
   keyboardNav = false,
   onBack,
+  captureRequestId,
+  onCaptureAngle,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // The kiosk (zoomable) is always touch, even if the OS still reports a mouse.
@@ -109,6 +113,7 @@ export default function PanoramaNav({
       {visible && <PanoramaSphere texture={visible.texture} placing={placing} onSurfaceClick={onPlaceAngle} />}
       {leaving && <FadingSphere key={leaving.uuid} texture={leaving} onDone={scene.dismissLeaving} />}
       {scene.holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
+      {captureRequestId != null && <CaptureAngle requestId={captureRequestId} onCapture={onCaptureAngle} />}
       {autoPan && !placing && highlightedHotspot && (
         <AutoPan target={highlightedHotspot} targetKey={`${scene.sceneKey}:${highlightedHotspot.id}`} />
       )}
@@ -138,7 +143,10 @@ export default function PanoramaNav({
           // Also hidden while a move is loading: `!live` means the screen is
           // still showing the scene being left.
           previewHidden={previewsHidden || !live}
-          onClick={() => !placing && onNavigate(h.id, { yaw: h.yaw, pitch: h.pitch })}
+          onClick={() =>
+            !placing &&
+            onNavigate(h.id, { yaw: h.yaw, pitch: h.pitch, defaultYaw: h.defaultYaw, defaultPitch: h.defaultPitch })
+          }
         />
       ))}
       {scene.markers.map((m) => (

@@ -2,10 +2,11 @@
 // no React, no clock, no globals: `now` and the campus (`world`) are
 // passed in, so every rule here is testable by calling a function.
 //
-// State: { currentId, history, entryYaw, flyover, lastNavAt }
+// State: { currentId, history, entryYaw, entryPitch, flyover, lastNavAt }
 //   currentId   node the visitor is standing at (null until the tour lands)
 //   history     stack of previous node ids, for Back
 //   entryYaw    the yaw the visitor arrived facing
+//   entryPitch  the pitch the visitor arrived facing
 //   flyover     the cross-campus flyover in progress, or null; it carries
 //               the move it is holding back (`pending`)
 //   lastNavAt   timestamp of the last accepted move, for the debounce
@@ -28,7 +29,7 @@
 export const NAV_DEBOUNCE_MS = 500;
 
 export function initialNavigation() {
-  return { currentId: null, history: [], entryYaw: 0, flyover: null, lastNavAt: 0 };
+  return { currentId: null, history: [], entryYaw: 0, entryPitch: 0, flyover: null, lastNavAt: 0 };
 }
 
 // Deterministic "where do we start" pick: prefer an entrance, in building
@@ -88,11 +89,12 @@ export function pickBuildingStart(nodes, buildingId) {
 }
 
 // Land directly in the tour: once nodes exist and nowhere is chosen yet,
-// stand at the default node.
+// stand at the default node, facing its own starting view if it has one.
 export function landOnDefault(nav, nodes, buildings) {
   if (!nodes || nav.currentId !== null) return nav;
   const start = pickDefaultNode(nodes, buildings);
-  return start ? { ...nav, currentId: start.id } : nav;
+  if (!start) return nav;
+  return { ...nav, currentId: start.id, entryYaw: start.startingViewYaw ?? 0, entryPitch: start.startingViewPitch ?? 0 };
 }
 
 // The flyover descriptor for moving between two nodes, or null when it's
@@ -119,7 +121,7 @@ function applyMove(nav, action) {
     if (nav.history.length === 0) return nav;
     const history = [...nav.history];
     const currentId = history.pop();
-    return { ...nav, currentId, history, entryYaw: 0 };
+    return { ...nav, currentId, history, entryYaw: 0, entryPitch: 0 };
   }
   if (action.type === "walk") {
     return {
@@ -127,9 +129,13 @@ function applyMove(nav, action) {
       history: nav.currentId ? [...nav.history, nav.currentId] : nav.history,
       currentId: action.id,
       entryYaw: action.yaw ?? 0,
+      entryPitch: action.pitch ?? 0,
     };
   }
-  return { ...nav, history: [], currentId: action.id, entryYaw: 0 }; // jump
+  // jump: a fresh start, facing the destination's own starting view when
+  // it has one (e.g. landing on a floor's starting node from the
+  // floor/building picker), else dead ahead.
+  return { ...nav, history: [], currentId: action.id, entryYaw: action.yaw ?? 0, entryPitch: action.pitch ?? 0 };
 }
 
 function request(nav, world, action, now) {
@@ -146,11 +152,13 @@ function request(nav, world, action, now) {
   return { nav: applyMove(accepted, action), outcome: "moved", action };
 }
 
-// action: { id, yaw?, meta? }
+// action: { id, yaw?, pitch?, meta? }
 export function requestWalk(nav, world, action, now) {
   return request(nav, world, { ...action, type: "walk" }, now);
 }
 
+// action: { id, yaw?, pitch?, meta? } — yaw/pitch given for a jump onto a
+// node with its own starting view (see pickFloorStart's callers).
 export function requestJump(nav, world, action, now) {
   return request(nav, world, { ...action, type: "jump" }, now);
 }

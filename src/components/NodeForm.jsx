@@ -295,6 +295,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           {currentStart && currentStart.id !== draft.id
             ? ` — saving this replaces ${currentStart.id}.`
             : "."}
+          {" "}The camera view they land facing is set from the Virtual Map Navigation Editor, not here.
         </span>
       </div>
 

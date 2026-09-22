@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import PanoramaNav from "../../components/PanoramaNav";
 import NodeList from "../../components/NodeList";
@@ -31,7 +31,25 @@ const defaultFilters = {
 // the panorama) is shared with the tour editor — see useGraphEditor. What
 // is specific to nodes lives here: the typed markers, and the sidebar.
 export default function NavigationEditorPage() {
-  const { nodes, selectedNodeId, setSelectedNodeId, setNeighbors, setHotspot, setMarkers } = useOutletContext();
+  const {
+    nodes,
+    selectedNodeId,
+    setSelectedNodeId,
+    setNeighbors,
+    setHotspot,
+    setMarkers,
+    setDefaultView,
+    clearDefaultView,
+    updateNode,
+  } = useOutletContext();
+
+  // The starting node's own "default view" (shown when the kiosk drops a
+  // visitor here from the floor/building picker) isn't a per-edge thing
+  // like the hotspot default views useGraphEditor already owns, so it's
+  // captured through the same requestCapture() channel via onCaptureFallback:
+  // whichever capture isn't claimed by a pending hotspot default view falls
+  // through to here.
+  const [settingStartingView, setSettingStartingView] = useState(false);
 
   const editor = useGraphEditor({
     items: nodes,
@@ -40,13 +58,42 @@ export default function NavigationEditorPage() {
     setNeighbors,
     setHotspot,
     setMarkers,
+    setDefaultView,
+    clearDefaultView,
+    onCaptureFallback: (angle) => {
+      // The starting view is set without navigating away — the node
+      // selected when capture was started is still the current one.
+      if (!settingStartingView || !selectedNodeId) return;
+      updateNode(selectedNodeId, { startingViewYaw: angle.yaw, startingViewPitch: angle.pitch });
+      setSettingStartingView(false);
+    },
   });
-  const { current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history } = editor;
+  const {
+    current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history,
+    defaultViewTarget, entryPitch,
+  } = editor;
 
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerType, setNewMarkerType] = useState(MARKER_TYPES[0].id);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
   const [filters, setFilters] = useState(defaultFilters);
+
+  // Capturing the starting view requires staying put on this node — any
+  // navigation away (including a hotspot-default-view capture walking to a
+  // neighbor) invalidates a pending capture.
+  useEffect(() => {
+    setSettingStartingView(false);
+  }, [selectedNodeId]);
+
+  const startSetStartingView = () => {
+    setSettingStartingView(true);
+    editor.cancelSetDefaultView();
+  };
+  const cancelStartingView = () => setSettingStartingView(false);
+  const clearStartingView = () => {
+    if (!current) return;
+    updateNode(current.id, { startingViewYaw: null, startingViewPitch: null });
+  };
 
   const startAddMarker = () => {
     setAddingMarker(true);
@@ -105,6 +152,20 @@ export default function NavigationEditorPage() {
             <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
           </div>
         )}
+        {defaultViewTarget && (
+          <div className="placing-banner">
+            Drag to orbit to the view visitors should see on arrival here from "{defaultViewTarget.fromName}", then Save.
+            <button onClick={editor.requestCapture}>Save this view</button>
+            <button onClick={editor.cancelSetDefaultView}>Cancel</button>
+          </div>
+        )}
+        {settingStartingView && (
+          <div className="placing-banner">
+            Drag to orbit to the view visitors should land on when dropped here from the floor/building picker, then Save.
+            <button onClick={editor.requestCapture}>Save this view</button>
+            <button onClick={cancelStartingView}>Cancel</button>
+          </div>
+        )}
 
         <div className="preview-screen navigation-editor-screen">
           <PanoramaNav
@@ -117,6 +178,9 @@ export default function NavigationEditorPage() {
             placing={editor.placing}
             onPlaceAngle={editor.placeAngle}
             initialYaw={editor.entryYaw}
+            initialPitch={entryPitch}
+            captureRequestId={editor.captureRequestId}
+            onCaptureAngle={editor.handleCapturedAngle}
           />
         </div>
         {(!current.photo || photoMissing) && (
@@ -141,6 +205,23 @@ export default function NavigationEditorPage() {
           </p>
         </div>
 
+        <div className="link-row starting-view-row">
+          <span className="link-name">
+            Starting view (floor/building picker drop-in):{" "}
+            {current.startingViewYaw != null
+              ? `set (yaw ${Math.round(current.startingViewYaw)}°, pitch ${Math.round(current.startingViewPitch)}°)`
+              : "not set — falls back to the panorama's default facing"}
+          </span>
+          <div className="link-actions">
+            <button onClick={startSetStartingView} disabled={settingStartingView}>
+              {current.startingViewYaw != null ? "Reset" : "Set"} starting view
+            </button>
+            {current.startingViewYaw != null && (
+              <button className="danger" onClick={clearStartingView}>Clear</button>
+            )}
+          </div>
+        </div>
+
         <div className="navigation-editor-lists">
           <div className="navigation-editor-list-col">
             <h5>Links added ({hotspots.length})</h5>
@@ -148,9 +229,18 @@ export default function NavigationEditorPage() {
               {hotspots.length === 0 && <p className="empty-hint">No links yet.</p>}
               {hotspots.map((h) => (
                 <div key={h.id} className="link-row">
-                  <span className="link-name">{h.name}</span>
+                  <span className="link-name">
+                    {h.name}
+                    {h.defaultYaw != null && <span className="field-hint"> · default view set</span>}
+                  </span>
                   <div className="link-actions">
                     <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
+                    <button onClick={() => editor.startSetDefaultView(h.id)}>
+                      {h.defaultYaw != null ? "Reset" : "Set"} default view
+                    </button>
+                    {h.defaultYaw != null && (
+                      <button onClick={() => editor.clearDefaultView(h.id)}>Clear default view</button>
+                    )}
                     <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
                   </div>
                 </div>

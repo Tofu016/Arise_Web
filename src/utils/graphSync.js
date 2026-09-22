@@ -61,6 +61,29 @@ export function planHotspot(graph, id, neighborId, angle) {
   ];
 }
 
+// The arrival view for one edge (id -> neighborId) only — independent of
+// the arrow's own angle set by planHotspot.
+export function planDefaultView(graph, id, neighborId, angle) {
+  return [
+    call("PATCH", `${graph.api}/updateNeighborDefaultView`, {
+      [graph.ownerKey]: id,
+      neighbor_id: neighborId,
+      default_yaw: angle.yaw,
+      default_pitch: angle.pitch,
+    }),
+  ];
+}
+
+// Clears a previously set arrival view back to "no override".
+export function planClearDefaultView(graph, id, neighborId) {
+  return [
+    call("POST", `${graph.api}/clearNeighborDefaultView`, {
+      [graph.ownerKey]: id,
+      neighbor_id: neighborId,
+    }),
+  ];
+}
+
 // Three-way: an id only in the new list is an ADD (the backend generates
 // its own real id — a marker's client-side id only names its photos while
 // it's being picked, and is replaced by the backend's after the refresh),

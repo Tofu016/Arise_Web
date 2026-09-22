@@ -394,6 +394,14 @@ button.primary {
   font-family: var(--font-sans-display);
   font-size: 16px;
 }
+/* The starting node's own drop-in view, reusing .link-row's layout — its
+   text runs longer than a link name, so it wraps instead of ellipsizing. */
+.starting-view-row {
+  margin-bottom: 12px;
+}
+.starting-view-row .link-name {
+  white-space: normal;
+}
 /* Two independently-scrolling lists side by side — Links added and
    Markers added each get their own scroll region, not one shared scroll
    spanning both, confirmed against the redesign discussion. */

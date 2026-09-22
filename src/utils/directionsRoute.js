@@ -112,7 +112,7 @@ export function nextStep(d, hotspots) {
   const id = d?.path?.[d.stepIndex + 1];
   if (!id) return null;
   const hs = hotspots.find((h) => h.id === id);
-  return { id, yaw: hs?.yaw };
+  return { id, yaw: hs?.yaw, defaultYaw: hs?.defaultYaw, defaultPitch: hs?.defaultPitch };
 }
 
 export function toggleAutoWalk(d) {

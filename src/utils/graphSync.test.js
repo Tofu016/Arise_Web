@@ -3,7 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("./apiClient", () => ({ apiPost: vi.fn(), apiPatch: vi.fn(), apiDelete: vi.fn() }));
 
 import { apiPost, apiPatch, apiDelete } from "./apiClient";
-import { NODE_GRAPH, STOP_GRAPH, planNeighbors, planHotspot, planMarkers, runCalls } from "./graphSync";
+import {
+  NODE_GRAPH,
+  STOP_GRAPH,
+  planNeighbors,
+  planHotspot,
+  planDefaultView,
+  planClearDefaultView,
+  planMarkers,
+  runCalls,
+} from "./graphSync";
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -35,6 +44,22 @@ describe("planHotspot", () => {
   it("updates a link's angle", () => {
     expect(planHotspot(STOP_GRAPH, "s1", "s2", { yaw: 10, pitch: -4 })).toEqual([
       { method: "PATCH", path: "TourStops_API/updateNeighborAngle", body: { stop_id: "s1", neighbor_id: "s2", yaw: 10, pitch: -4 } },
+    ]);
+  });
+});
+
+describe("planDefaultView", () => {
+  it("updates a link's arrival view", () => {
+    expect(planDefaultView(NODE_GRAPH, "a", "b", { yaw: 12, pitch: -3 })).toEqual([
+      { method: "PATCH", path: "Nodes_API/updateNeighborDefaultView", body: { node_id: "a", neighbor_id: "b", default_yaw: 12, default_pitch: -3 } },
+    ]);
+  });
+});
+
+describe("planClearDefaultView", () => {
+  it("clears a link's arrival view", () => {
+    expect(planClearDefaultView(STOP_GRAPH, "s1", "s2")).toEqual([
+      { method: "POST", path: "TourStops_API/clearNeighborDefaultView", body: { stop_id: "s1", neighbor_id: "s2" } },
     ]);
   });
 });

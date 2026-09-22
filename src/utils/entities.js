@@ -9,10 +9,19 @@
 // empty optionals (`|| undefined`); patch bodies send exactly what was
 // given.
 
+// A hotspot's defaultYaw/defaultPitch are the arrival view for that one
+// edge — the camera orientation to land on when walking this specific
+// link, independent of the arrow's own yaw/pitch. Null (not set) means
+// "no override".
 function toEdges(neighborRows) {
   const hotspots = {};
   const neighbors = (neighborRows || []).map((n) => {
-    hotspots[n.neighbor_id] = { yaw: n.yaw, pitch: n.pitch };
+    hotspots[n.neighbor_id] = {
+      yaw: n.yaw,
+      pitch: n.pitch,
+      defaultYaw: n.default_yaw ?? null,
+      defaultPitch: n.default_pitch ?? null,
+    };
     return n.neighbor_id;
   });
   return { neighbors, hotspots };
@@ -43,6 +52,11 @@ export function toNode(row) {
     type: row.type,
     leadsToFloor: row.leads_to_floor ?? null,
     startingNode: Number(row.is_starting_node) === 1,
+    // The view to land on when a visitor is dropped onto this node from
+    // the floor/building picker (only meaningful while startingNode is
+    // true, but kept regardless in case a node becomes one later).
+    startingViewYaw: row.starting_view_yaw ?? null,
+    startingViewPitch: row.starting_view_pitch ?? null,
     photo: row.photo_path || "",
     rooms: (row.rooms || []).map((r) => r.room_name),
     ...toEdges(row.neighbors),
@@ -78,6 +92,8 @@ export function nodePatchBody(patch) {
     leadsToFloor: "leads_to_floor",
   });
   if (patch.startingNode !== undefined) body.is_starting_node = patch.startingNode ? 1 : 0;
+  if (patch.startingViewYaw !== undefined) body.starting_view_yaw = patch.startingViewYaw;
+  if (patch.startingViewPitch !== undefined) body.starting_view_pitch = patch.startingViewPitch;
   if (patch.flowchartPosition !== undefined) {
     body.flowchart_position_x = patch.flowchartPosition ? patch.flowchartPosition.x : null;
     body.flowchart_position_y = patch.flowchartPosition ? patch.flowchartPosition.y : null;

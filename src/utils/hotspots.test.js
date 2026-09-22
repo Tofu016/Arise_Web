@@ -12,6 +12,11 @@ describe("buildHotspots", () => {
     expect(buildHotspots(node, byId)).toEqual([{ id: "b", name: "Lobby", yaw: 90, pitch: 5 }]);
   });
 
+  it("carries a saved edge's default arrival view through onto the hotspot", () => {
+    const node = { neighbors: ["b"], hotspots: { b: { yaw: 90, pitch: 5, defaultYaw: 10, defaultPitch: -2 } } };
+    expect(buildHotspots(node, byId)[0]).toMatchObject({ defaultYaw: 10, defaultPitch: -2 });
+  });
+
   it("spreads links with no saved angle evenly around the circle", () => {
     const hs = buildHotspots({ neighbors: ["b", "c"] }, byId);
     expect(hs.map((h) => h.yaw)).toEqual([0, 180]);

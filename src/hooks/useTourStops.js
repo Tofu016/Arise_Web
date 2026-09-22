@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toStop, stopCreateBody, stopPatchBody } from "../utils/entities";
-import { STOP_GRAPH, planNeighbors, planHotspot, planMarkers, runCalls } from "../utils/graphSync";
+import { STOP_GRAPH, planNeighbors, planHotspot, planDefaultView, planClearDefaultView, planMarkers, runCalls } from "../utils/graphSync";
 import { useCollection } from "./useCollection";
 
 // Admin-side TourStops_API hook. Public interface (stops, loading,
@@ -77,6 +77,16 @@ export function useTourStops() {
     [mutate, stopById]
   );
 
+  const setDefaultView = useCallback(
+    (stopId, neighborId, angle) => mutate(() => runCalls(planDefaultView(STOP_GRAPH, stopId, neighborId, angle))),
+    [mutate]
+  );
+
+  const clearDefaultView = useCallback(
+    (stopId, neighborId) => mutate(() => runCalls(planClearDefaultView(STOP_GRAPH, stopId, neighborId))),
+    [mutate]
+  );
+
   return {
     stops,
     loading,
@@ -89,5 +99,7 @@ export function useTourStops() {
     setNeighbors,
     setHotspot,
     setMarkers,
+    setDefaultView,
+    clearDefaultView,
   };
 }

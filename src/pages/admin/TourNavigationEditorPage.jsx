@@ -28,7 +28,9 @@ import { useBlurReview } from "../../hooks/useBlurReview";
 // comment on this; still just these two Campus Tour admin pages, so
 // nothing to share the selection with outside this file yet either).
 export default function TourNavigationEditorPage() {
-  const { stops, selectedStopId, setSelectedStopId, setNeighbors, setHotspot, setMarkers } = useTourStops();
+  const {
+    stops, selectedStopId, setSelectedStopId, setNeighbors, setHotspot, setMarkers, setDefaultView, clearDefaultView,
+  } = useTourStops();
   const { sections } = useTourSections();
 
   const editor = useGraphEditor({
@@ -38,8 +40,13 @@ export default function TourNavigationEditorPage() {
     setNeighbors,
     setHotspot,
     setMarkers,
+    setDefaultView,
+    clearDefaultView,
   });
-  const { current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history } = editor;
+  const {
+    current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history,
+    defaultViewTarget, entryPitch,
+  } = editor;
 
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
@@ -162,6 +169,13 @@ export default function TourNavigationEditorPage() {
             <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
           </div>
         )}
+        {defaultViewTarget && (
+          <div className="placing-banner">
+            Drag to orbit to the view visitors should see on arrival here from "{defaultViewTarget.fromName}", then Save.
+            <button onClick={editor.requestCapture}>Save this view</button>
+            <button onClick={editor.cancelSetDefaultView}>Cancel</button>
+          </div>
+        )}
 
         <div className="preview-screen navigation-editor-screen">
           <PanoramaNav
@@ -174,6 +188,9 @@ export default function TourNavigationEditorPage() {
             placing={editor.placing}
             onPlaceAngle={editor.placeAngle}
             initialYaw={editor.entryYaw}
+            initialPitch={entryPitch}
+            captureRequestId={editor.captureRequestId}
+            onCaptureAngle={editor.handleCapturedAngle}
           />
         </div>
         {(!current.photo || photoMissing) && (
@@ -205,9 +222,18 @@ export default function TourNavigationEditorPage() {
               {hotspots.length === 0 && <p className="empty-hint">No links yet.</p>}
               {hotspots.map((h) => (
                 <div key={h.id} className="link-row">
-                  <span className="link-name">{h.name}</span>
+                  <span className="link-name">
+                    {h.name}
+                    {h.defaultYaw != null && <span className="field-hint"> · default view set</span>}
+                  </span>
                   <div className="link-actions">
                     <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
+                    <button onClick={() => editor.startSetDefaultView(h.id)}>
+                      {h.defaultYaw != null ? "Reset" : "Set"} default view
+                    </button>
+                    {h.defaultYaw != null && (
+                      <button onClick={() => editor.clearDefaultView(h.id)}>Clear default view</button>
+                    )}
                     <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
                   </div>
                 </div>

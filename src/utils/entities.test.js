@@ -52,10 +52,15 @@ describe("toNode", () => {
       type: "hallway",
       leadsToFloor: null,
       startingNode: false,
+      startingViewYaw: null,
+      startingViewPitch: null,
       photo: "panoramas/gd1/a.jpg",
       rooms: ["101", "102"],
       neighbors: ["n2", "n3"],
-      hotspots: { n2: { yaw: 90, pitch: -5 }, n3: { yaw: 180, pitch: 0 } },
+      hotspots: {
+        n2: { yaw: 90, pitch: -5, defaultYaw: null, defaultPitch: null },
+        n3: { yaw: 180, pitch: 0, defaultYaw: null, defaultPitch: null },
+      },
       markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2 }],
       flowchartPosition: { x: 12, y: 34 },
       createdAt: "c",
@@ -80,6 +85,18 @@ describe("toNode", () => {
 
   it("keeps a leads-to-floor of 0", () => {
     expect(toNode({ ...nodeRow, leads_to_floor: 0 }).leadsToFloor).toBe(0);
+  });
+
+  it("reads a set starting view, and each edge's own default view", () => {
+    const n = toNode({
+      ...nodeRow,
+      starting_view_yaw: 45,
+      starting_view_pitch: -8,
+      neighbors: [{ neighbor_id: "n2", yaw: 90, pitch: -5, default_yaw: 12, default_pitch: 3 }],
+    });
+    expect(n.startingViewYaw).toBe(45);
+    expect(n.startingViewPitch).toBe(-8);
+    expect(n.hotspots.n2).toEqual({ yaw: 90, pitch: -5, defaultYaw: 12, defaultPitch: 3 });
   });
 });
 
@@ -114,6 +131,17 @@ describe("node request bodies", () => {
   it("patch ignores rooms (synced separately)", () => {
     expect(nodePatchBody({ rooms: ["1"] })).toEqual({});
   });
+
+  it("patch sends the starting view, nulls to clear it", () => {
+    expect(nodePatchBody({ startingViewYaw: 45, startingViewPitch: -8 })).toEqual({
+      starting_view_yaw: 45,
+      starting_view_pitch: -8,
+    });
+    expect(nodePatchBody({ startingViewYaw: null, startingViewPitch: null })).toEqual({
+      starting_view_yaw: null,
+      starting_view_pitch: null,
+    });
+  });
 });
 
 describe("tour stops", () => {
@@ -137,7 +165,7 @@ describe("tour stops", () => {
       photo: "",
       description: "",
       neighbors: ["s2"],
-      hotspots: { s2: { yaw: 1, pitch: 2 } },
+      hotspots: { s2: { yaw: 1, pitch: 2, defaultYaw: null, defaultPitch: null } },
       markers: [{ id: 5, type: "info", label: "L", yaw: 3, pitch: 4, photos: ["a.jpg", "b.jpg"] }],
       createdAt: "c",
       updatedAt: "u",

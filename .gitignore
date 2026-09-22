@@ -29,3 +29,6 @@ dist-ssr
 
 .vercel
 .env*
+
+# Personal session-orientation notes for AI assistants (not for the team)
+SESSION.md

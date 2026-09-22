@@ -30,7 +30,7 @@ describe("newMarkerId", () => {
 
 describe("moving around", () => {
   it("starts idle", () => {
-    expect(initialSession()).toEqual({ history: [], placingFor: null, placingMarker: null, entryYaw: 0 });
+    expect(initialSession()).toEqual({ history: [], placingFor: null, placingMarker: null, entryYaw: 0, entryPitch: 0 });
     expect(isPlacing(initialSession())).toBe(false);
   });
 
@@ -40,17 +40,25 @@ describe("moving around", () => {
 
   it("walking records where you were, faces the way you went, and drops pending placement", () => {
     const busy = { ...startPlacingLink(initialSession(), "x"), placingMarker: { mode: "reposition", id: 1 } };
-    expect(walk(busy, "a", { yaw: 90 })).toEqual({ history: ["a"], placingFor: null, placingMarker: null, entryYaw: 90 });
+    expect(walk(busy, "a", { yaw: 90, pitch: 5 })).toEqual({
+      history: ["a"], placingFor: null, placingMarker: null, entryYaw: 90, entryPitch: 0,
+    });
+  });
+
+  it("walking prefers the edge's own default view over the arrow's angle", () => {
+    expect(walk(initialSession(), "a", { yaw: 90, pitch: 5, defaultYaw: 200, defaultPitch: -10 })).toMatchObject({
+      entryYaw: 200, entryPitch: -10,
+    });
   });
 
   it("walking from nowhere records nothing, and faces forward without an angle", () => {
-    expect(walk(initialSession(), null, undefined)).toMatchObject({ history: [], entryYaw: 0 });
+    expect(walk(initialSession(), null, undefined)).toMatchObject({ history: [], entryYaw: 0, entryPitch: 0 });
   });
 
   it("back returns the previous id and clears placement", () => {
     const s = { ...startPlacingLink(initialSession(), "x"), history: ["a", "b"], entryYaw: 30 };
     expect(back(s)).toEqual({
-      session: { history: ["a"], placingFor: null, placingMarker: null, entryYaw: 0 },
+      session: { history: ["a"], placingFor: null, placingMarker: null, entryYaw: 0, entryPitch: 0 },
       id: "b",
     });
   });

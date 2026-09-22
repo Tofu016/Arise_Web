@@ -57,6 +57,15 @@ describe("default landing", () => {
     expect(landOnDefault(at("b"), nodes, buildings).currentId).toBe("b");
     expect(landOnDefault(initialNavigation(), null, buildings).currentId).toBeNull();
   });
+
+  it("faces the default node's own starting view when it has one", () => {
+    const ns = [node("a", "gd1", { startingViewYaw: 45, startingViewPitch: -8 })];
+    expect(landOnDefault(initialNavigation(), ns, buildings)).toMatchObject({ entryYaw: 45, entryPitch: -8 });
+  });
+
+  it("faces forward when the default node has no starting view", () => {
+    expect(landOnDefault(initialNavigation(), nodes, buildings)).toMatchObject({ entryYaw: 0, entryPitch: 0 });
+  });
 });
 
 describe("walk, jump and back", () => {
@@ -73,10 +82,20 @@ describe("walk, jump and back", () => {
     expect(requestWalk(at("a"), world, { id: "b" }, tick()).nav.entryYaw).toBe(0);
   });
 
+  it("walk also records the pitch the visitor faced", () => {
+    const { nav } = requestWalk(at("a"), world, { id: "b", yaw: 90, pitch: -12 }, tick());
+    expect(nav).toMatchObject({ entryYaw: 90, entryPitch: -12 });
+  });
+
   it("jump is a fresh start: history cleared, facing forward", () => {
     const start = { ...at("b"), history: ["a"], entryYaw: 45 };
     const { nav } = requestJump(start, world, { id: "a" }, tick());
-    expect(nav).toMatchObject({ currentId: "a", history: [], entryYaw: 0 });
+    expect(nav).toMatchObject({ currentId: "a", history: [], entryYaw: 0, entryPitch: 0 });
+  });
+
+  it("jump can face a given view (e.g. a node's own starting view)", () => {
+    const { nav } = requestJump(at("b"), world, { id: "a", yaw: 45, pitch: -8 }, tick());
+    expect(nav).toMatchObject({ entryYaw: 45, entryPitch: -8 });
   });
 
   it("back pops history", () => {

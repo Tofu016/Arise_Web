@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { toPosition, initialCameraPosition, autoPanStep } from "../../utils/panoramaMath";
+import { toPosition, toAngles, initialCameraPosition, autoPanStep } from "../../utils/panoramaMath";
 
 // Aims the camera at the entry direction of a newly swapped-in scene. The
 // Canvas outlives moves, so this can't rely on the camera's initial position.
@@ -52,6 +52,23 @@ export function AutoPan({ target, targetKey }) {
     camera.position.applyAxisAngle(axis, step); // the camera sits opposite its view direction
     controls.update();
   });
+  return null;
+}
+
+// Captures the live camera's look direction as yaw/pitch on demand: bumping
+// `requestId` (any changing value) fires `onCapture({yaw, pitch})` once,
+// reading whatever the camera is aimed at right then — used by the admin
+// editors to record "this is the view I've orbited to" (a default/arrival
+// view), as opposed to CameraAim, which drives the camera the other way.
+export function CaptureAngle({ requestId, onCapture }) {
+  const camera = useThree((state) => state.camera);
+  const last = useRef(requestId);
+  useEffect(() => {
+    if (requestId == null || last.current === requestId) return;
+    last.current = requestId;
+    const direction = camera.getWorldDirection(new THREE.Vector3());
+    onCapture(toAngles(direction));
+  }, [requestId, camera, onCapture]);
   return null;
 }
 

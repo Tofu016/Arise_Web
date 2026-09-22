@@ -15,7 +15,7 @@ import { searchCampus } from "../utils/search";
 //
 // Collaborators are injected, so this knows nothing about navigation or the
 // overlay beyond these verbs:
-//   moves    { jump(id), walk(id, { yaw }) }
+//   moves    { jump(id), walk(id, { yaw, defaultYaw?, defaultPitch? }) }
 //   overlay  { openDirections(), closeDirections(), walkStarted() }
 //   clearSearch()
 //
@@ -84,7 +84,7 @@ export function useDirectionsFlow({
 
   const walkToNext = () => {
     const step = route.nextStep(directions, hotspots);
-    if (step) moves.walk(step.id, { yaw: step.yaw });
+    if (step) moves.walk(step.id, { yaw: step.yaw, defaultYaw: step.defaultYaw, defaultPitch: step.defaultPitch });
   };
   useAutoWalk(directions, setDirections, walkToNext);
 

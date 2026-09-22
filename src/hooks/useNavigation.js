@@ -41,9 +41,22 @@ export function useNavigation(nodes, byId) {
     currentId: nav.currentId,
     history: nav.history,
     entryYaw: nav.entryYaw,
+    entryPitch: nav.entryPitch,
     flyover: nav.flyover,
-    walk: (id, yaw, meta) => perform((n, world, now) => requestWalk(n, world, { id, yaw, meta }, now)),
-    jump: (id, meta) => perform((n, world, now) => requestJump(n, world, { id, meta }, now)),
+    // `angle` may carry a per-edge default arrival view (defaultYaw/
+    // defaultPitch), which wins over the arrow's own plain yaw/pitch —
+    // same preference placement.js's walk() applies in the editors.
+    walk: (id, angle, meta) =>
+      perform((n, world, now) =>
+        requestWalk(n, world, { id, yaw: angle?.defaultYaw ?? angle?.yaw, pitch: angle?.defaultPitch, meta }, now)
+      ),
+    // Jumping lands on a fresh node — if it has its own starting view
+    // (set for a floor/building picker drop-in), face that.
+    jump: (id, meta) =>
+      perform((n, world, now) => {
+        const node = world.byId[id];
+        return requestJump(n, world, { id, yaw: node?.startingViewYaw, pitch: node?.startingViewPitch, meta }, now);
+      }),
     back: () => perform(requestBack),
     completeFlyover: () => {
       const result = completeFlyover(navRef.current);

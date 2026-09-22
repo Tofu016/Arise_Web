@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toNode, nodeCreateBody, nodePatchBody } from "../utils/entities";
-import { NODE_GRAPH, planNeighbors, planHotspot, planMarkers, runCalls } from "../utils/graphSync";
+import { NODE_GRAPH, planNeighbors, planHotspot, planDefaultView, planClearDefaultView, planMarkers, runCalls } from "../utils/graphSync";
 import { useCollection } from "./useCollection";
 
 // Admin-side Nodes_API hook. Public interface (nodes, loading,
@@ -133,6 +133,16 @@ export function useNodes() {
     [mutate, nodeById]
   );
 
+  const setDefaultView = useCallback(
+    (nodeId, neighborId, angle) => mutate(() => runCalls(planDefaultView(NODE_GRAPH, nodeId, neighborId, angle))),
+    [mutate]
+  );
+
+  const clearDefaultView = useCallback(
+    (nodeId, neighborId) => mutate(() => runCalls(planClearDefaultView(NODE_GRAPH, nodeId, neighborId))),
+    [mutate]
+  );
+
   return {
     nodes,
     loading,
@@ -146,5 +156,7 @@ export function useNodes() {
     setNeighbors,
     setHotspot,
     setMarkers,
+    setDefaultView,
+    clearDefaultView,
   };
 }

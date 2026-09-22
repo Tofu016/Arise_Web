@@ -5,13 +5,14 @@
 // backend, it returns the change to make (an "action") and the caller
 // performs it.
 //
-// Session: { history, placingFor, placingMarker, entryYaw }
+// Session: { history, placingFor, placingMarker, entryYaw, entryPitch }
 //   history        ids walked through, for Back
 //   placingFor     neighbor id whose arrow is being positioned, or null
 //   placingMarker  { mode: "new", marker } — a marker (id, type, label, ...
 //                  whatever the domain adds, minus its angle) awaiting its
 //                  first placement — or { mode: "reposition", id }; or null
 //   entryYaw       the yaw the admin arrived facing
+//   entryPitch     the pitch the admin arrived facing
 // At most one of placingFor / placingMarker is meant to be active.
 
 import { fuzzyIncludes } from "./fuzzy";
@@ -21,7 +22,7 @@ export function newMarkerId() {
 }
 
 export function initialSession() {
-  return { history: [], placingFor: null, placingMarker: null, entryYaw: 0 };
+  return { history: [], placingFor: null, placingMarker: null, entryYaw: 0, entryPitch: 0 };
 }
 
 export const isPlacing = (s) => !!s.placingFor || !!s.placingMarker;
@@ -32,13 +33,16 @@ export function selectFresh() {
   return initialSession();
 }
 
-// Walking via a hotspot click while testing the link graph.
+// Walking via a hotspot click while testing the link graph. `angle`'s
+// defaultYaw/defaultPitch (the edge's own arrival-view override, if an
+// admin set one) win over its plain yaw/pitch (the arrow's own angle).
 export function walk(s, fromId, angle) {
   return {
     history: fromId ? [...s.history, fromId] : s.history,
     placingFor: null,
     placingMarker: null,
-    entryYaw: angle?.yaw ?? 0,
+    entryYaw: angle?.defaultYaw ?? angle?.yaw ?? 0,
+    entryPitch: angle?.defaultPitch ?? 0,
   };
 }
 
@@ -48,7 +52,7 @@ export function back(s) {
   if (s.history.length === 0) return null;
   const history = [...s.history];
   const id = history.pop();
-  return { session: { history, placingFor: null, placingMarker: null, entryYaw: 0 }, id };
+  return { session: { history, placingFor: null, placingMarker: null, entryYaw: 0, entryPitch: 0 }, id };
 }
 
 export const startPlacingLink = (s, neighborId) => ({ ...s, placingFor: neighborId });
