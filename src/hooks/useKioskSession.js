@@ -3,7 +3,7 @@ import { initialKioskSession, kioskSessionReducer, kioskStage } from "../utils/k
 
 // Where the visitor is in the Kiosk session (see utils/kioskSession.js):
 // { stage: "start" | "building" | "floor" | "exploring", building, awaitingStart,
-//   start(), chooseBuilding(id), chooseFloor() }.
+//   start(), chooseBuilding(id), chooseFloor(), backToBuilding() }.
 // `awaitingStart` is true while nobody is exploring yet, so "Done exploring?"
 // would make no sense.
 export function useKioskSession(compact) {
@@ -13,6 +13,7 @@ export function useKioskSession(compact) {
       start: () => dispatch({ type: "start" }),
       chooseBuilding: (building) => dispatch({ type: "chooseBuilding", building }),
       chooseFloor: () => dispatch({ type: "chooseFloor" }),
+      backToBuilding: () => dispatch({ type: "backToBuilding" }),
     }),
     []
   );

@@ -660,6 +660,7 @@ function MainPageContent({ onReset }) {
           buildingLabel={kiosk.building ? buildingLabel(kiosk.building) : null}
           floors={kioskFloors}
           onPick={handleKioskFloorPick}
+          onBack={kiosk.backToBuilding}
         />
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}

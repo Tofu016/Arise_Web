@@ -35,6 +35,11 @@ describe("kioskStage", () => {
     expect(kioskStage(s, true)).toBe("floor");
   });
 
+  it("returns to the building screen on backToBuilding", () => {
+    const s = run("start", { type: "chooseBuilding", building: "gd1" }, "backToBuilding");
+    expect(kioskStage(s, true)).toBe("building");
+  });
+
   it("is always exploring on desktop", () => {
     expect(kioskStage(run(), false)).toBe("exploring");
   });
@@ -50,5 +55,9 @@ describe("kioskStage", () => {
 describe("kioskSessionReducer", () => {
   it("records which building was chosen", () => {
     expect(run({ type: "chooseBuilding", building: "gd2" }).building).toBe("gd2");
+  });
+
+  it("clears the chosen building on backToBuilding", () => {
+    expect(run({ type: "chooseBuilding", building: "gd2" }, "backToBuilding").building).toBeNull();
   });
 });

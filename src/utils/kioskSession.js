@@ -20,6 +20,8 @@ export function kioskSessionReducer(state, action) {
       return { ...state, building: action.building, floorChosen: false };
     case "chooseFloor":
       return { ...state, floorChosen: true };
+    case "backToBuilding":
+      return { ...state, building: null };
     default:
       return state;
   }

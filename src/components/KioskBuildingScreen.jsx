@@ -1,4 +1,5 @@
 import { BUILDINGS } from "../utils/constants";
+import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
 const BUILT_IN_IDS = BUILDINGS.map((b) => b.id);
 
@@ -30,6 +31,7 @@ export default function KioskBuildingScreen({ hidden, buildings, available, onPi
   return (
     <div
       className={"kiosk-building-screen" + (hidden ? " kiosk-building-screen-hidden" : "")}
+      style={KIOSK_RAISED_STYLE}
       aria-hidden={hidden}
     >
       <h2 className="kiosk-building-title">Choose a building</h2>

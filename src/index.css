@@ -4923,7 +4923,8 @@ button.primary {
 }
 
 /* Kiosk start screen (KioskStartScreen.jsx): full-viewport attract screen,
-   above the loading screen (500) and every dialog. */
+   above the loading screen (500) and every dialog. Same raised placement as
+   .kiosk-building-screen below — see that rule's comment. */
 .kiosk-start-screen {
   position: fixed;
   inset: 0;
@@ -4932,6 +4933,7 @@ button.primary {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center));
   gap: 24px;
   width: 100%;
   border: 0;
@@ -4943,8 +4945,15 @@ button.primary {
   opacity: 1;
   transition: opacity 0.6s ease, visibility 0s;
 }
-/* Kiosk building selection screen (KioskBuildingScreen.jsx): sits just under
-   the start screen (600) so that one fades out onto it. */
+/* Kiosk building (KioskBuildingScreen.jsx) and floor (KioskFloorScreen.jsx)
+   selection screens: sit just under the start screen (600) so that one
+   fades out onto them.
+   Raised like the small kiosk dialogs (.kiosk-raised-overlay): the kiosk's
+   own bottom edge sits at shin height and its top runs out above head
+   height for a 165cm visitor, so true screen-center reads too low. Bottom
+   padding pulls the centered content's own center up to
+   --kiosk-card-center (set inline — see KIOSK_RAISED_STYLE in
+   utils/kioskLayout.js) instead of 50%. */
 .kiosk-building-screen {
   position: fixed;
   inset: 0;
@@ -4953,6 +4962,7 @@ button.primary {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center));
   gap: 40px;
   background: #fff;
   color: #000;
@@ -4986,6 +4996,23 @@ button.primary {
 .kiosk-building-column + .kiosk-building-column {
   padding-left: 48px;
   border-left: 2px solid var(--border);
+}
+/* Floor screen: back to the building screen. Fixed to the corner (not part
+   of the raised/centered content flow), clear of any notch. */
+.kiosk-back-btn {
+  position: absolute;
+  top: calc(24px + env(safe-area-inset-top));
+  left: calc(24px + env(safe-area-inset-left));
+  min-height: 64px;
+  padding: 0 28px;
+  font-size: 22px;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 /* Floor screen: a single centered column (floors don't split into two
    groups the way buildings do), scrollable if a building has a lot of them. */

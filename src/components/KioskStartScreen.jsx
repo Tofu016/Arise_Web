@@ -1,3 +1,5 @@
+import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+
 // The kiosk's attract screen: covers the whole viewport (header and bottom
 // whitespace included) until tapped, then fades out. Placeholder art — a
 // plain white screen with the name and prompt — until the real graphic
@@ -8,6 +10,7 @@ export default function KioskStartScreen({ hidden, onStart }) {
     <button
       type="button"
       className={"kiosk-start-screen" + (hidden ? " kiosk-start-screen-hidden" : "")}
+      style={KIOSK_RAISED_STYLE}
       onClick={onStart}
       tabIndex={hidden ? -1 : 0}
       aria-hidden={hidden}
