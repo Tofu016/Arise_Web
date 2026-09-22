@@ -9,6 +9,7 @@ import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
 import KioskBuildingScreen from "../components/KioskBuildingScreen";
+import KioskFloorScreen from "../components/KioskFloorScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
@@ -24,7 +25,7 @@ import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
-import { pickBuildingStart, pickFloorStart } from "../utils/navigation";
+import { pickBuildingStart, pickFloorStart, floorsForBuilding } from "../utils/navigation";
 import { useNavigation } from "../hooks/useNavigation";
 import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
 import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
@@ -147,6 +148,10 @@ function MainPageContent({ onReset }) {
       (n) => n.type === "entrance" && (buildingFilter === "all" || n.building === buildingFilter)
     );
   }, [nodes, buildingFilter]);
+
+  // The kiosk's after-building floor screen: every floor of whichever
+  // building the visitor just picked.
+  const kioskFloors = useMemo(() => floorsForBuilding(nodes, kiosk.building), [nodes, kiosk.building]);
 
   const current = currentId ? byId[currentId] : null;
 
@@ -308,6 +313,26 @@ function MainPageContent({ onReset }) {
     setBuildingFilter(buildingId);
     overlay.closeBuildingMenu();
     if (start && start.id !== currentId) jumpToSearchResult(start.id);
+  };
+
+  // Kiosk's initial building screen: record the pick and move on to the
+  // floor screen — unless that building doesn't actually offer a floor
+  // choice (one floor, or none), in which case there's nothing to ask, so
+  // land immediately and skip straight past it (see kioskStage).
+  const handleKioskBuildingPick = (b) => {
+    setBuildingFilter(b);
+    kiosk.chooseBuilding(b);
+    if (floorsForBuilding(nodes, b).length > 1) return;
+    kiosk.chooseFloor();
+    const start = pickBuildingStart(nodes, b);
+    if (start) jumpToSearchResult(start.id);
+  };
+
+  // Kiosk's floor screen: land on that floor's starting node.
+  const handleKioskFloorPick = (floor) => {
+    const start = pickFloorStart(nodes, kiosk.building, floor);
+    kiosk.chooseFloor();
+    if (start) jumpToSearchResult(start.id);
   };
 
   if (loadError) {
@@ -623,13 +648,18 @@ function MainPageContent({ onReset }) {
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
       {compact && (
         <KioskBuildingScreen
-          hidden={kiosk.stage === "exploring"}
+          hidden={kiosk.stage !== "building"}
           buildings={allBuildings()}
           available={new Set(nodes.map((n) => n.building))}
-          onPick={(b) => {
-            handleMobileBuildingPick(b);
-            kiosk.chooseBuilding();
-          }}
+          onPick={handleKioskBuildingPick}
+        />
+      )}
+      {compact && (
+        <KioskFloorScreen
+          hidden={kiosk.stage !== "floor"}
+          buildingLabel={kiosk.building ? buildingLabel(kiosk.building) : null}
+          floors={kioskFloors}
+          onPick={handleKioskFloorPick}
         />
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}

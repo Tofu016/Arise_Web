@@ -57,6 +57,16 @@ export function pickDefaultEntranceForBuilding(nodes, buildingId) {
   return [...inBuilding].sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0))[0];
 }
 
+// Every floor with at least one node in a building, low to high — used by
+// the floor pickers (the kiosk's after-building screen, and the mobile
+// dock's "change building" dialog).
+export function floorsForBuilding(nodes, buildingId) {
+  if (!nodes) return [];
+  return [...new Set(nodes.filter((n) => n.building === buildingId).map((n) => Number(n.floor)))].sort(
+    (a, b) => a - b
+  );
+}
+
 // Where a visitor lands on one floor of a building: the node an admin
 // flagged as that floor's starting node, else the floor's first entrance,
 // else its first node. Null if the floor has no nodes.

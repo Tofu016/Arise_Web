@@ -4987,6 +4987,19 @@ button.primary {
   padding-left: 48px;
   border-left: 2px solid var(--border);
 }
+/* Floor screen: a single centered column (floors don't split into two
+   groups the way buildings do), scrollable if a building has a lot of them. */
+.kiosk-floor-list {
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: 0 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
 .kiosk-building-btn {
   min-height: 140px;
   font-size: 40px;

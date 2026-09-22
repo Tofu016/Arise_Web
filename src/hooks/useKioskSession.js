@@ -2,7 +2,8 @@ import { useEffect, useMemo, useReducer } from "react";
 import { initialKioskSession, kioskSessionReducer, kioskStage } from "../utils/kioskSession";
 
 // Where the visitor is in the Kiosk session (see utils/kioskSession.js):
-// { stage: "start" | "building" | "exploring", awaitingStart, start(), chooseBuilding() }.
+// { stage: "start" | "building" | "floor" | "exploring", building, awaitingStart,
+//   start(), chooseBuilding(id), chooseFloor() }.
 // `awaitingStart` is true while nobody is exploring yet, so "Done exploring?"
 // would make no sense.
 export function useKioskSession(compact) {
@@ -10,12 +11,13 @@ export function useKioskSession(compact) {
   const verbs = useMemo(
     () => ({
       start: () => dispatch({ type: "start" }),
-      chooseBuilding: () => dispatch({ type: "chooseBuilding" }),
+      chooseBuilding: (building) => dispatch({ type: "chooseBuilding", building }),
+      chooseFloor: () => dispatch({ type: "chooseFloor" }),
     }),
     []
   );
   const stage = kioskStage(state, compact);
-  return { stage, awaitingStart: stage !== "exploring", ...verbs };
+  return { stage, building: state.building, awaitingStart: stage !== "exploring", ...verbs };
 }
 
 // On the Compact layout the panorama zooms only through its on-screen buttons.

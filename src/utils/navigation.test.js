@@ -6,6 +6,7 @@ import {
   pickDefaultEntranceForBuilding,
   pickFloorStart,
   pickBuildingStart,
+  floorsForBuilding,
   landOnDefault,
   findFlyover,
   requestWalk,
@@ -191,5 +192,23 @@ describe("floor and building starts", () => {
   it("falls back when a building only has underground nodes", () => {
     expect(pickBuildingStart([n("ug", -1)], "gd1").id).toBe("ug");
     expect(pickBuildingStart([n("ug", -1)], "gd2")).toBeNull();
+  });
+});
+
+describe("floorsForBuilding", () => {
+  const n = (id, building, floor) => ({ id, building, floor, type: "hallway" });
+
+  it("lists every distinct floor, low to high, for that building only", () => {
+    const ns = [n("a", "gd1", 2), n("b", "gd1", 1), n("c", "gd1", 1), n("d", "gd2", 3)];
+    expect(floorsForBuilding(ns, "gd1")).toEqual([1, 2]);
+  });
+
+  it("includes underground floors", () => {
+    expect(floorsForBuilding([n("ug", "gd1", -1), n("f1", "gd1", 1)], "gd1")).toEqual([-1, 1]);
+  });
+
+  it("is empty for a building with no nodes, or with no nodes at all", () => {
+    expect(floorsForBuilding([n("a", "gd1", 1)], "gd2")).toEqual([]);
+    expect(floorsForBuilding(null, "gd1")).toEqual([]);
   });
 });
