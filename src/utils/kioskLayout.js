@@ -7,6 +7,12 @@ export const KIOSK_TOP_INSET = 0.075;
 export const KIOSK_BOTTOM_INSET = 0.175;
 export const KIOSK_PANORAMA_FRACTION = 1 - KIOSK_TOP_INSET - KIOSK_BOTTOM_INSET;
 
+// Vertical center (fraction of screen height) of the panorama band itself —
+// the middle of what's actually visible between the header and bottom
+// whitespace, not the middle of the whole screen. Used to anchor the
+// middle-right FAB so it centers on the panorama rather than the viewport.
+export const KIOSK_PANORAMA_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.5;
+
 // Vertical center (fraction of screen height) of the kiosk's small dialogs —
 // the middle of the dialog grid, i.e. where its two rows of quadrants meet
 // (a quarter of the way down the panorama band). Shared by the thank-you card,

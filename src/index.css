@@ -3371,19 +3371,21 @@ button.primary {
 }
 /* ---------- Middle-right control dock: a single FAB, vertically centered
    on the right edge — reachable at arm's length by someone standing at a
-   wall-mounted kiosk. Tapping it fans out icon-only buttons around it,
-   clock-numbers style, swept across its left side only (nothing to its
-   right but the screen edge) — see .mobile-radial-menu/.mobile-radial-btn.
-   This box is sized to exactly match the FAB (56x56) so it can act as
-   the fan's own center point/anchor, regardless of how many icons are
-   actually shown. ---------- */
+   wall-mounted kiosk. Centered on the panorama band itself (top: inline
+   style, KIOSK_PANORAMA_CENTER in MainPage.jsx), not the whole screen, so
+   it ignores the header and bottom whitespace above/below the panorama.
+   Tapping it fans out icon-only buttons around it, clock-numbers style,
+   swept across its left side only (nothing to its right but the screen
+   edge) — see .mobile-radial-menu/.mobile-radial-btn. Closed, the FAB is
+   a large rounded rectangle flush against the screen's right edge (a
+   "tab" you can't miss); open, it becomes a large circular exit button
+   pulled slightly off the edge. The dock's own box is sized to match
+   whichever shape is currently showing (via the --closed/--open modifiers
+   below) so it can act as the fan's center point/anchor, regardless of
+   how many icons are actually shown. ---------- */
 .mobile-side-dock {
   position: absolute;
-  top: 50%;
-  right: calc(12px + env(safe-area-inset-right));
   transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
   /* Must outrank .mobile-panel-backdrop's z-index: 25 — this establishes
      its own stacking context (position + z-index together always do),
      so z-index values set on its children only matter INSIDE that local
@@ -3394,14 +3396,20 @@ button.primary {
      sliding side panel. */
   z-index: 26;
 }
+.mobile-side-dock--closed {
+  right: 0;
+  width: 72px;
+  height: 180px;
+}
+.mobile-side-dock--open {
+  right: calc(16px + env(safe-area-inset-right));
+  width: 92px;
+  height: 92px;
+}
 .mobile-side-fab {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
-  font-size: 22px;
   cursor: pointer;
   box-shadow: var(--shadow-2);
   transition: transform 0.08s ease, opacity 0.08s ease;
@@ -3409,6 +3417,18 @@ button.primary {
 .mobile-side-fab:active {
   transform: scale(0.94);
   opacity: 0.85;
+}
+.mobile-side-fab--closed {
+  width: 72px;
+  height: 180px;
+  border-radius: 24px 0 0 24px;
+  font-size: 36px;
+}
+.mobile-side-fab--open {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  font-size: 38px;
 }
 /* Zero-size anchor at the FAB's exact center — each .mobile-radial-btn
    is positioned from this same point via an inline transform (computed
@@ -3426,14 +3446,14 @@ button.primary {
   position: absolute;
   top: 0;
   left: 0;
-  width: 48px;
-  height: 48px;
-  margin: -24px 0 0 -24px; /* centers the 48px button on its own translate()-computed point */
+  width: 92px;
+  height: 92px;
+  margin: -46px 0 0 -46px; /* centers the 92px button on its own translate()-computed point */
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--accent);
-  font-size: 18px;
+  font-size: 44px;
   cursor: pointer;
   box-shadow: var(--shadow-2);
   transition: transform 0.08s ease, opacity 0.08s ease;
@@ -3447,7 +3467,7 @@ button.primary {
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 30px;
 }
 /* ---------- Mobile modals: search, directions/exit, account, Building
    picker — all reuse the shared .modal-overlay/.modal pattern

@@ -115,8 +115,9 @@ export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
 
   if (kiosk) {
     // Kiosk: a finished evaluation gets the small thank-you card, which
-    // resets the system (onFinished) when its countdown ends.
-    if (submitted) return <KioskThanks onDone={onFinished ?? onClose} />;
+    // resets the system (onFinished) when its countdown ends, unless the
+    // visitor taps "Keep exploring" (onClose) to cancel that first.
+    if (submitted) return <KioskThanks onDone={onFinished ?? onClose} onResume={onClose} />;
     return (
       <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" keyboard="text" onClose={onClose}>
         <div className="feedback-body">{body}</div>

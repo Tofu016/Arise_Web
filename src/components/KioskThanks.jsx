@@ -7,7 +7,9 @@ export const KIOSK_THANKS_SECONDS = 5;
 // Shown on the kiosk after feedback is sent: a small card, centered
 // horizontally, whose vertical center sits at the middle of the dialog grid. Counts down, then calls onDone (the system reset).
 // A scrim over the band keeps stray taps off the panorama meanwhile.
-export default function KioskThanks({ onDone }) {
+// onResume: stops the countdown and dismisses the card without resetting,
+// for a visitor who wants to keep exploring instead of starting over.
+export default function KioskThanks({ onDone, onResume }) {
   const remaining = useCountdown(KIOSK_THANKS_SECONDS, onDone);
 
   const centerVh = KIOSK_CARD_CENTER * 100;
@@ -24,6 +26,11 @@ export default function KioskThanks({ onDone }) {
           <span>Starting over in</span>
           <CountdownRing total={KIOSK_THANKS_SECONDS} remaining={remaining} />
         </div>
+        {onResume && (
+          <div className="form-actions">
+            <button type="button" onClick={onResume}>Keep exploring</button>
+          </div>
+        )}
       </div>
     </>
   );

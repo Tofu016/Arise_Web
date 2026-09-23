@@ -34,7 +34,7 @@ import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
 import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useNodePhoto } from "../hooks/useNodePhoto";
-import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_PANORAMA_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
 
@@ -46,8 +46,8 @@ import { useAuth } from "../context/useAuth";
 // more screen to its left. Kept as named constants since the actual
 // per-button placement (radialButtonTransform below) has to reproduce
 // this same geometry in JS, not just CSS.
-const RADIAL_RADIUS = 104;
-const RADIAL_SPREAD_DEG = 150;
+const RADIAL_RADIUS = 170;
+const RADIAL_SPREAD_DEG = 170;
 
 // Returns the CSS transform that places one radial icon's CENTER at the
 // correct point on the arc, given its position (index) among however
@@ -507,10 +507,10 @@ function MainPageContent({ onReset }) {
   const radialItems = [
     history.length > 0 && { key: "back", icon: "←", title: "Back", onClick: goBack },
     {
-      key: "search",
-      icon: "🔍",
-      title: "Search",
-      onClick: () => overlay.openFromDock("search"),
+      key: "feedback",
+      icon: "💬",
+      title: "Give feedback",
+      onClick: () => overlay.openFromDock("feedback"),
     },
     {
       key: "exit",
@@ -519,10 +519,10 @@ function MainPageContent({ onReset }) {
       onClick: flow.open, // also collapses the dock
     },
     {
-      key: "feedback",
-      icon: "💬",
-      title: "Give feedback",
-      onClick: () => overlay.openFromDock("feedback"),
+      key: "search",
+      icon: "🔍",
+      title: "Search",
+      onClick: () => overlay.openFromDock("search"),
     },
     {
       key: "building",
@@ -888,11 +888,14 @@ function MainPageContent({ onReset }) {
                 Hidden entirely while the room sheet already has the
                 visitor's attention. ---------- */}
             {panelMode !== "room" && !kioskDialogOpen && (
-              <div className="mobile-side-dock">
+              <div
+                className={"mobile-side-dock" + (mobileDockOpen ? " mobile-side-dock--open" : " mobile-side-dock--closed")}
+                style={{ top: `${KIOSK_PANORAMA_CENTER * 100}%` }}
+              >
                 <button
                   ref={kioskDockBtnRef}
                   type="button"
-                  className="mobile-side-fab"
+                  className={"mobile-side-fab" + (mobileDockOpen ? " mobile-side-fab--open" : " mobile-side-fab--closed")}
                   onClick={() => (mobileDockOpen ? overlay.dismiss() : overlay.openDock())}
                   aria-label={mobileDockOpen ? "Close menu" : "Open menu"}
                   aria-expanded={mobileDockOpen}
@@ -1001,13 +1004,6 @@ function MainPageContent({ onReset }) {
                     <button className="close-btn" onClick={overlay.closeBuildingMenu}>✕</button>
                   </div>
                   <div className="mobile-building-list">
-                    <button
-                      type="button"
-                      className={"mobile-building-option" + (buildingFilter === "all" ? " mobile-building-option-active" : "")}
-                      onClick={() => handleMobileBuildingPick("all")}
-                    >
-                      All Buildings
-                    </button>
                     {allBuildings().map((b) => {
                       const floors = [...new Set(nodes.filter((n) => n.building === b.id).map((n) => Number(n.floor)))].sort(
                         (x, y) => x - y
@@ -1171,7 +1167,6 @@ function MainPageContent({ onReset }) {
                         <label className="sidebar-field-label">
                           Building
                           <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
-                            <option value="all">All Buildings</option>
                             {allBuildings().map((b) => (
                               <option key={b.id} value={b.id}>{b.label}</option>
                             ))}
