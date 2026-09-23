@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { apiPost } from "../utils/apiClient";
+import { playSfx } from "../utils/sfx";
+import starSelectSfx from "../assets/sounds/star-sfx-CREATIVE-COMMONS-ZERO.wav";
 import KioskDialog from "./KioskDialog";
 import KioskThanks from "./KioskThanks";
 
@@ -26,6 +28,7 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const draggingRef = useRef(false);
+  const lastStarRef = useRef(0);
 
   // Lets a visitor drag/slide across the row to pick a rating instead of
   // requiring a precise tap on one star — friendlier on the kiosk touchscreen.
@@ -41,6 +44,7 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
     if (star) {
       setRating(star);
       setHoverRating(star);
+      lastStarRef.current = star;
     }
   };
 
@@ -50,10 +54,16 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
     if (star) {
       setRating(star);
       setHoverRating(star);
+      lastStarRef.current = star;
     }
   };
 
+  // Only pop the SFX once the slide/tap ends — not on every star it passes
+  // through — so it plays for the star the visitor actually settles on.
   const endStarDrag = () => {
+    if (draggingRef.current && lastStarRef.current) {
+      playSfx(starSelectSfx, { volume: 0.4 });
+    }
     draggingRef.current = false;
     setHoverRating(0);
   };

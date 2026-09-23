@@ -34,6 +34,7 @@ be usable by any walk-up visitor, the same way the Virtual Campus Tour
 - [User guide (`/`)](#user-guide-)
 - [Data model reference](#data-model-reference)
 - [Known limitations / not yet built](#known-limitations--not-yet-built)
+- [Third-party assets](#third-party-assets)
 - [Brand & design system](BRAND.md)
 
 ---
@@ -492,3 +493,13 @@ Custom buildings: `{ id, label, floors }`, from the `buildings` table.
 - See [Known, still-open security gaps](#known-still-open-security-gaps)
   above for what's outstanding before this could reasonably go live to real
   users on a real domain.
+
+---
+
+## Third-party assets
+
+- `src/assets/sounds/star-sfx-CREATIVE-COMMONS-ZERO.wav` — the feedback
+  star-rating sound effect (played from `FeedbackPanel.jsx` when a visitor
+  finishes picking a star). Licensed **CC0** (public domain, no attribution
+  required). The filename keeps "CREATIVE-COMMONS-ZERO" in it on purpose so
+  the license is obvious at a glance — don't rename it away from that.
