@@ -26,6 +26,8 @@
 // coordinates is a cross-campus teleport and gets a flyover — GD1/GD2/GD3
 // share coordinates (one physical cluster), so moves between them don't.
 
+import { hotspotAngle } from "./hotspots";
+
 export const NAV_DEBOUNCE_MS = 500;
 
 export function initialNavigation() {
@@ -142,7 +144,7 @@ function applyMove(nav, action) {
     if (nav.history.length === 0) return nav;
     const history = [...nav.history];
     const currentId = history.pop();
-    return { ...nav, currentId, history, entryYaw: 0, entryPitch: 0 };
+    return { ...nav, currentId, history, entryYaw: action.yaw ?? 0, entryPitch: action.pitch ?? 0 };
   }
   if (action.type === "walk") {
     return {
@@ -166,11 +168,18 @@ function request(nav, world, action, now) {
   const accepted = { ...nav, lastNavAt: now };
 
   const targetId = action.type === "back" ? nav.history[nav.history.length - 1] : action.id;
+  // Facing back the way you came: land on the hotspot in the returning-to
+  // node that points at the node you're leaving, so it's centered on arrival
+  // instead of resetting to dead ahead.
+  const backAction =
+    action.type === "back"
+      ? { ...action, ...(hotspotAngle(world.byId[targetId], nav.currentId) || {}) }
+      : action;
   const flyover = findFlyover(world.byId[nav.currentId], world.byId[targetId], world.buildings);
   if (flyover) {
-    return { nav: { ...accepted, flyover: { ...flyover, pending: action } }, outcome: "flyover" };
+    return { nav: { ...accepted, flyover: { ...flyover, pending: backAction } }, outcome: "flyover" };
   }
-  return { nav: applyMove(accepted, action), outcome: "moved", action };
+  return { nav: applyMove(accepted, backAction), outcome: "moved", action: backAction };
 }
 
 // action: { id, yaw?, pitch?, meta? }

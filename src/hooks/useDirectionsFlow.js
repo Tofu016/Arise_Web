@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useDirections, useAutoWalk } from "./useDirections";
 import * as route from "../utils/directionsRoute";
 import { searchCampus } from "../utils/search";
+import { speak } from "../utils/tts";
 
 // The Directions flow ("just like Street View"): the from/to panel and the
 // Route it computes, followed one stop at a time. Wraps the pure transitions
@@ -74,6 +75,7 @@ export function useDirectionsFlow({
     moves.jump(d.path[0]);
     setDirections(route.restartRoute);
     overlay.walkStarted();
+    if (d.toQuery) speak(`Walking to: ${d.toQuery}`);
   };
 
   const get = () => {

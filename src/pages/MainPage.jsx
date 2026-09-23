@@ -520,12 +520,12 @@ function MainPageContent({ onReset }) {
 
   // Mobile/kiosk radial menu items — icon-only, fanned out around the
   // FAB (see .mobile-radial-menu). Each opens its own centered modal,
-  // same pattern as FeedbackPanel, except Back, which is an immediate
-  // action with nothing to show. Every handler collapses the radial menu
-  // itself first (openFromDock) so only the modal (or,
-  // for Back, the panorama) is left showing, not both stacked at once.
+  // same pattern as FeedbackPanel. Back lives as its own stacked button
+  // (kiosk-dock-back-btn, above the dock) rather than a radial item, so it's
+  // reachable without opening the menu first. Every handler collapses the
+  // radial menu itself first (openFromDock) so only the modal is left
+  // showing, not both stacked at once.
   const radialItems = [
-    history.length > 0 && { key: "back", icon: "←", title: "Back", onClick: goBack },
     {
       key: "feedback",
       icon: "💬",
@@ -904,9 +904,8 @@ function MainPageContent({ onReset }) {
                 out around it, clock-numbers style, swept across its right
                 side (see radialButtonTransform); tapping it again (or the
                 backdrop, or Escape) collapses it. Every icon opens its own
-                centered modal below except Back, an immediate action.
-                Hidden entirely while the room sheet already has the
-                visitor's attention. ---------- */}
+                centered modal below. Hidden entirely while the room sheet
+                already has the visitor's attention. ---------- */}
             {panelMode !== "room" && !kioskDialogOpen && (
               <div
                 className={"mobile-side-dock" + (mobileDockOpen ? " mobile-side-dock--open" : " mobile-side-dock--closed")}
@@ -944,12 +943,31 @@ function MainPageContent({ onReset }) {
               </div>
             )}
 
-            {/* ---------- End Session: stacked directly above the FAB dock
-                (same convention as the desktop rail's stacked buttons —
-                same right offset, positioned just above the element below
-                it), reachable at arm's length without opening the dock.
-                A visitor who hasn't given feedback yet this session goes
-                straight to the feedback dialog, same as the dock's own
+            {/* ---------- Back: stacked directly above the FAB dock (same
+                convention as the desktop rail's stacked buttons — same
+                right offset, positioned just above the element below it),
+                reachable at arm's length without opening the dock. An
+                immediate action, not a modal — same as it was as a radial
+                item before moving here. Hidden alongside the dock while
+                nobody is exploring yet, and with nothing to go back to. ---------- */}
+            {panelMode !== "room" && !kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && history.length > 0 && (
+              <button
+                type="button"
+                className="kiosk-dock-back-btn"
+                style={{ top: `calc(${KIOSK_PANORAMA_CENTER * 100}% - 162px)` }}
+                onClick={goBack}
+                title="Back"
+                aria-label="Back"
+              >
+                ←
+              </button>
+            )}
+
+            {/* ---------- End Session: stacked directly below the FAB dock
+                (mirrors Back's placement above it — same right offset,
+                same gap), reachable at arm's length without opening the
+                dock. A visitor who hasn't given feedback yet this session
+                goes straight to the feedback dialog, same as the dock's own
                 "Give feedback" item; one who already has skips straight to
                 the thank-you card and system restart. Hidden alongside the
                 dock while nobody is exploring yet — "end session" makes no
@@ -958,7 +976,7 @@ function MainPageContent({ onReset }) {
               <button
                 type="button"
                 className="kiosk-end-session-btn"
-                style={{ top: `calc(${KIOSK_PANORAMA_CENTER * 100}% - 162px)` }}
+                style={{ top: `calc(${KIOSK_PANORAMA_CENTER * 100}% + 106px)` }}
                 onClick={handleEndSession}
                 title="End session"
                 aria-label="End session"

@@ -3441,10 +3441,12 @@ button.primary {
   border-radius: 50%;
   font-size: 38px;
 }
-/* Stacked above the closed dock (own `top`, set in MainPage.jsx from
-   KIOSK_PANORAMA_CENTER, clears the closed dock's 180px height plus a
-   16px gap) at the same right offset as the dock's open state, so it lines
-   up with the FAB in both of the dock's states. */
+/* Stacked above (Back) or below (End Session) the closed dock (own `top`,
+   set in MainPage.jsx from KIOSK_PANORAMA_CENTER, clears the closed dock's
+   180px height plus a 16px gap on whichever side) at the same right offset
+   as the dock's open state, so both line up with the FAB in either of the
+   dock's states. */
+.kiosk-dock-back-btn,
 .kiosk-end-session-btn {
   position: absolute;
   right: calc(16px + env(safe-area-inset-right));
@@ -3463,6 +3465,7 @@ button.primary {
   box-shadow: var(--shadow-2);
   transition: transform 0.08s ease, opacity 0.08s ease;
 }
+.kiosk-dock-back-btn:active,
 .kiosk-end-session-btn:active {
   transform: scale(0.94);
   opacity: 0.85;

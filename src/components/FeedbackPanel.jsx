@@ -62,7 +62,7 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
   // through — so it plays for the star the visitor actually settles on.
   const endStarDrag = () => {
     if (draggingRef.current && lastStarRef.current) {
-      playSfx(starSelectSfx, { volume: 0.4 });
+      playSfx(starSelectSfx, { volume: 0.05 });
     }
     draggingRef.current = false;
     setHoverRating(0);

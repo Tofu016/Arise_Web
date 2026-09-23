@@ -112,6 +112,25 @@ describe("walk, jump and back", () => {
     expect(nav.currentId).toBe("a");
   });
 
+  it("back faces the hotspot in the returning-to node that leads to where you came from", () => {
+    const withHotspot = {
+      ...world,
+      byId: {
+        ...byId,
+        a: { ...byId.a, neighbors: ["b"], hotspots: { b: { yaw: 200, pitch: -15 } } },
+      },
+    };
+    const start = { ...at("b"), history: ["a"], entryYaw: 45 };
+    const { nav } = requestBack(start, withHotspot, tick());
+    expect(nav).toMatchObject({ currentId: "a", entryYaw: 200, entryPitch: -15 });
+  });
+
+  it("back faces forward when the returning-to node has no hotspot for where you came from", () => {
+    const start = { ...at("b"), history: ["a"], entryYaw: 45 };
+    const { nav } = requestBack(start, world, tick());
+    expect(nav).toMatchObject({ currentId: "a", entryYaw: 0, entryPitch: 0 });
+  });
+
   it("carries the move's meta through untouched", () => {
     const { action } = requestJump(at("a"), world, { id: "b", meta: { room: "203" } }, tick());
     expect(action.meta).toEqual({ room: "203" });
