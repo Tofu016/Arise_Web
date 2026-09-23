@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiPost } from "../utils/apiClient";
 import KioskDialog from "./KioskDialog";
 import KioskThanks from "./KioskThanks";
@@ -22,6 +22,38 @@ export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const draggingRef = useRef(false);
+
+  // Lets a visitor drag/slide across the row to pick a rating instead of
+  // requiring a precise tap on one star — friendlier on the kiosk touchscreen.
+  const starAtPoint = (clientX, clientY) => {
+    const el = document.elementFromPoint(clientX, clientY)?.closest("[data-star]");
+    return el ? Number(el.dataset.star) : null;
+  };
+
+  const handleStarPointerDown = (e) => {
+    draggingRef.current = true;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const star = starAtPoint(e.clientX, e.clientY);
+    if (star) {
+      setRating(star);
+      setHoverRating(star);
+    }
+  };
+
+  const handleStarPointerMove = (e) => {
+    if (!draggingRef.current) return;
+    const star = starAtPoint(e.clientX, e.clientY);
+    if (star) {
+      setRating(star);
+      setHoverRating(star);
+    }
+  };
+
+  const endStarDrag = () => {
+    draggingRef.current = false;
+    setHoverRating(0);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,12 +87,21 @@ export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
     </p>
   ) : (
     <form onSubmit={handleSubmit}>
-      <div className="feedback-star-row" role="radiogroup" aria-label="Rating">
+      <div
+        className="feedback-star-row"
+        role="radiogroup"
+        aria-label="Rating"
+        onPointerDown={handleStarPointerDown}
+        onPointerMove={handleStarPointerMove}
+        onPointerUp={endStarDrag}
+        onPointerCancel={endStarDrag}
+      >
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             className="feedback-star"
+            data-star={star}
             onClick={() => setRating(star)}
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}

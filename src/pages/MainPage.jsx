@@ -1009,29 +1009,38 @@ function MainPageContent({ onReset }) {
                         (x, y) => x - y
                       );
                       const expanded = floorPickBuilding === b.id;
+                      const isHere = b.id === current?.building;
                       return (
                         <div key={b.id}>
                           <button
                             type="button"
-                            className={"mobile-building-option" + (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "")}
+                            className={
+                              "mobile-building-option" +
+                              (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "") +
+                              (isHere ? " mobile-building-option-here" : "")
+                            }
                             disabled={floors.length === 0}
                             aria-expanded={expanded}
                             onClick={() => overlay.setFloorPick(expanded ? null : b.id)}
                           >
                             {b.label}
+                            {isHere && <span className="mobile-building-here-badge">You are here</span>}
                           </button>
                           {expanded && (
                             <div className="mobile-floor-grid">
-                              {floors.map((f) => (
-                                <button
-                                  key={f}
-                                  type="button"
-                                  className="mobile-floor-btn"
-                                  onClick={() => handleMobileFloorPick(b.id, f)}
-                                >
-                                  {floorLabel(f)}
-                                </button>
-                              ))}
+                              {floors.map((f) => {
+                                const isCurrentFloor = isHere && f === Number(current?.floor);
+                                return (
+                                  <button
+                                    key={f}
+                                    type="button"
+                                    className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
+                                    onClick={() => handleMobileFloorPick(b.id, f)}
+                                  >
+                                    {floorLabel(f)}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -1168,7 +1177,9 @@ function MainPageContent({ onReset }) {
                           Building
                           <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
                             {allBuildings().map((b) => (
-                              <option key={b.id} value={b.id}>{b.label}</option>
+                              <option key={b.id} value={b.id}>
+                                {b.label}{b.id === current?.building ? " — you are here" : ""}
+                              </option>
                             ))}
                           </select>
                         </label>
@@ -1228,7 +1239,7 @@ function MainPageContent({ onReset }) {
       )}
 
       {flyover && (
-        <FlyoverPanel flyover={flyover} onComplete={completeFlyover} onCancel={cancelFlyover} />
+        <FlyoverPanel flyover={flyover} kiosk={compact} onComplete={completeFlyover} onCancel={cancelFlyover} />
       )}
 
       {showFeedback && (

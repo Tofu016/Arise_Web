@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map, Marker, Source, Layer, useMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { osmRasterStyle } from "../utils/osmMapStyle";
+import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
 const AUTO_PROCEED_MS = 4000;
 
@@ -37,7 +38,7 @@ function FitToRoute({ fromLat, fromLng, toLat, toLng }) {
 // MainPage.jsx) — auto-proceeds after a few seconds, but can be skipped
 // immediately or cancelled outright, since a mandatory, un-skippable wait
 // would be bad UX regardless of how apt the cinematic reference is.
-export default function FlyoverPanel({ flyover, onComplete, onCancel }) {
+export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
   const { fromLat, fromLng, fromLabel, toLat, toLng, toLabel } = flyover;
   const [routeCoords, setRouteCoords] = useState(null);
   const [routeError, setRouteError] = useState(false);
@@ -103,7 +104,10 @@ export default function FlyoverPanel({ flyover, onComplete, onCancel }) {
   };
 
   return (
-    <div className="flyover-overlay">
+    <div
+      className={"flyover-overlay" + (kiosk ? " kiosk-raised-overlay" : "")}
+      style={kiosk ? KIOSK_RAISED_STYLE : undefined}
+    >
       <div className="flyover-panel">
         <div className="flyover-header">
           <span>{fromLabel} → {toLabel}</span>
