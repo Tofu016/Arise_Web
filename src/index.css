@@ -3637,7 +3637,6 @@ button.primary {
   transform: scale(0.98);
 }
 .mobile-building-option-active {
-  color: var(--accent);
   font-weight: 700;
 }
 .mobile-building-option-here {
