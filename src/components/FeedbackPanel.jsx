@@ -11,8 +11,11 @@ import KioskThanks from "./KioskThanks";
 //
 // kiosk: render in the kiosk view's dialog (with its keyboard, and the
 // OS keyboard suppressed) instead of a centered modal. onFinished (kiosk)
-// runs when the post-submit thank-you countdown ends.
-export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
+// runs when the post-submit thank-you countdown ends. onSubmitted fires
+// right when the rating is accepted by the server, ahead of that countdown
+// — the kiosk's End Session button uses it to know feedback is already in
+// for this session, even if the visitor then taps "Keep exploring".
+export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk = false }) {
   const inputMode = kiosk ? "none" : undefined;
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -71,6 +74,7 @@ export default function FeedbackPanel({ onClose, onFinished, kiosk = false }) {
         email: email.trim() || undefined,
       });
       setSubmitted(true);
+      onSubmitted?.();
     } catch (err) {
       setError(err.message || "Couldn't submit feedback. Please try again.");
     } finally {

@@ -15,6 +15,7 @@ import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
 import FeedbackPanel from "../components/FeedbackPanel";
+import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
 import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
@@ -97,6 +98,16 @@ function MainPageContent({ onReset }) {
   const directionsBtnRef = useRef(null);
   const kioskDockBtnRef = useRef(null);
   const onboarding = useOnboardingHints(compact ? ["move", "dock"] : ["move", "menu", "directions"]);
+
+  // Kiosk End Session button: whether feedback was already sent this
+  // session, regardless of how the feedback dialog was reached (the FAB's
+  // "Give feedback" item or End Session itself). Resets with the rest of
+  // the session's state since MainPageContent remounts fresh on onReset.
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const handleEndSession = () => {
+    if (feedbackGiven) overlay.openEndSessionThanks();
+    else overlay.openFromDock("feedback");
+  };
 
   // A dismissed hint fades out rather than vanishing — held mounted (with
   // the CSS transition running) for FADE_MS before the real dismiss()
@@ -375,6 +386,15 @@ function MainPageContent({ onReset }) {
     setBuildingFilter(buildingId);
     overlay.closeBuildingMenu();
     if (start && start.id !== currentId) jumpToSearchResult(start.id);
+  };
+
+  // Building dialog, entrance shortcut: same as picking a floor, but lands
+  // directly on that building's or campus's flagged entrance node instead
+  // of a floor's default starting node.
+  const handleMobileEntrancePick = (buildingId, nodeId) => {
+    setBuildingFilter(buildingId);
+    overlay.closeBuildingMenu();
+    if (nodeId && nodeId !== currentId) jumpToSearchResult(nodeId);
   };
 
   // Kiosk's campus screen: record the pick. Main Campus moves on to the
@@ -924,6 +944,29 @@ function MainPageContent({ onReset }) {
               </div>
             )}
 
+            {/* ---------- End Session: stacked directly above the FAB dock
+                (same convention as the desktop rail's stacked buttons —
+                same right offset, positioned just above the element below
+                it), reachable at arm's length without opening the dock.
+                A visitor who hasn't given feedback yet this session goes
+                straight to the feedback dialog, same as the dock's own
+                "Give feedback" item; one who already has skips straight to
+                the thank-you card and system restart. Hidden alongside the
+                dock while nobody is exploring yet — "end session" makes no
+                sense before the visitor has started. ---------- */}
+            {panelMode !== "room" && !kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && (
+              <button
+                type="button"
+                className="kiosk-end-session-btn"
+                style={{ top: `calc(${KIOSK_PANORAMA_CENTER * 100}% - 162px)` }}
+                onClick={handleEndSession}
+                title="End session"
+                aria-label="End session"
+              >
+                ⏻
+              </button>
+            )}
+
             {/* ---------- Mobile dialogs. Search and directions/exit (and
                 feedback, below) are the keyboard modules: they share the
                 KioskDialog grid. Account and the Building picker have no
@@ -1004,12 +1047,31 @@ function MainPageContent({ onReset }) {
                     <button className="close-btn" onClick={overlay.closeBuildingMenu}>✕</button>
                   </div>
                   <div className="mobile-building-list">
+                    {mainCampusEntrance && (
+                      <div className="mobile-entrance-shortcuts mobile-entrance-shortcuts-top">
+                        <button
+                          type="button"
+                          className="mobile-entrance-btn"
+                          onClick={() => handleMobileEntrancePick(mainCampusEntrance.building, mainCampusEntrance.id)}
+                        >
+                          Main Campus Entrance
+                        </button>
+                      </div>
+                    )}
                     {allBuildings().map((b) => {
                       const floors = [...new Set(nodes.filter((n) => n.building === b.id).map((n) => Number(n.floor)))].sort(
                         (x, y) => x - y
                       );
                       const expanded = floorPickBuilding === b.id;
                       const isHere = b.id === current?.building;
+                      // Main Campus's shared entrance already has its own entry above the
+                      // building list (mainCampusEntrance) — showing it again per-building
+                      // here would repeat the same node three times (GD1/GD2/GD3). A
+                      // single-building campus (e.g. Digital Campus) has no such top-level
+                      // entry to fall back on, so its own campus entrance stays here.
+                      const entranceShortcuts = findKioskEntranceShortcuts(nodes, b.id, campusForBuilding).filter(
+                        (s) => !(s.key === "campus" && campusForBuilding(b.id) === "main")
+                      );
                       return (
                         <div key={b.id}>
                           <button
@@ -1027,21 +1089,37 @@ function MainPageContent({ onReset }) {
                             {isHere && <span className="mobile-building-here-badge">You are here</span>}
                           </button>
                           {expanded && (
-                            <div className="mobile-floor-grid">
-                              {floors.map((f) => {
-                                const isCurrentFloor = isHere && f === Number(current?.floor);
-                                return (
-                                  <button
-                                    key={f}
-                                    type="button"
-                                    className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
-                                    onClick={() => handleMobileFloorPick(b.id, f)}
-                                  >
-                                    {floorLabel(f)}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                            <>
+                              {entranceShortcuts.length > 0 && (
+                                <div className="mobile-entrance-shortcuts">
+                                  {entranceShortcuts.map((s) => (
+                                    <button
+                                      key={s.key}
+                                      type="button"
+                                      className="mobile-entrance-btn"
+                                      onClick={() => handleMobileEntrancePick(b.id, s.nodeId)}
+                                    >
+                                      {s.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="mobile-floor-grid">
+                                {floors.map((f) => {
+                                  const isCurrentFloor = isHere && f === Number(current?.floor);
+                                  return (
+                                    <button
+                                      key={f}
+                                      type="button"
+                                      className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
+                                      onClick={() => handleMobileFloorPick(b.id, f)}
+                                    >
+                                      {floorLabel(f)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
                           )}
                         </div>
                       );
@@ -1197,6 +1275,10 @@ function MainPageContent({ onReset }) {
                                 onClick={() => jumpToSearchResult(e.id)}
                               >
                                 {e.name}
+                                {e.campusEntrance && <span className="entrance-btn-tag">Campus Entrance</span>}
+                                {!e.campusEntrance && e.buildingEntrance && (
+                                  <span className="entrance-btn-tag">Building Entrance</span>
+                                )}
                                 <span className="entrance-btn-sub">{buildingLabel(e.building)} · {floorLabel(e.floor)}</span>
                               </button>
                             ))}
@@ -1243,7 +1325,19 @@ function MainPageContent({ onReset }) {
       )}
 
       {showFeedback && (
-        <FeedbackPanel onClose={overlay.closeFeedback} onFinished={onReset} kiosk={compact} />
+        <FeedbackPanel
+          onClose={overlay.closeFeedback}
+          onFinished={onReset}
+          onSubmitted={() => setFeedbackGiven(true)}
+          kiosk={compact}
+        />
+      )}
+
+      {/* End Session, feedback already given: straight to the same
+          thank-you card/countdown/"Keep exploring" cancel FeedbackPanel
+          shows after a fresh submission, without re-asking for a rating. */}
+      {overlay.endSessionThanks && (
+        <KioskThanks onDone={onReset} onResume={overlay.closeEndSessionThanks} />
       )}
 
       <HelpModal

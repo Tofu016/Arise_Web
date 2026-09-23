@@ -16,6 +16,7 @@ export const initialOverlay = {
   walkDialog: true, // kiosk: big directions dialog (true) vs compact walk bar (false)
   roomCard: null, // the room whose card the "room" panel shows; kept while its 360° view is open
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
+  endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
 };
 
 export function overlayReducer(state, action) {
@@ -40,6 +41,10 @@ export function overlayReducer(state, action) {
       return { ...state, feedback: true };
     case "closeFeedback":
       return { ...state, feedback: false };
+    case "openEndSessionThanks":
+      return { ...state, endSessionThanks: true };
+    case "closeEndSessionThanks":
+      return { ...state, endSessionThanks: false };
     case "openRoom360":
       return { ...state, room360: true };
     case "closeRoom360":
@@ -102,7 +107,14 @@ function openTarget(state, target) {
 // dialog isn't counted; it has always been left out here.
 export function blocksIdle(state, { flyover, awaitingStart }) {
   return (
-    !!state.panel || state.dock || state.feedback || state.room360 || state.help || !!flyover || !!awaitingStart
+    !!state.panel ||
+    state.dock ||
+    state.feedback ||
+    state.endSessionThanks ||
+    state.room360 ||
+    state.help ||
+    !!flyover ||
+    !!awaitingStart
   );
 }
 
@@ -118,11 +130,13 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
     !!compact &&
     (state.panel === "search" ||
       (state.panel === "directions" && !!directions && !arrived && !walkBarShown) ||
-      state.feedback);
+      state.feedback ||
+      state.endSessionThanks);
   const coversPanorama =
     (!!state.panel && !walkBarShown) ||
     state.dock ||
     state.feedback ||
+    state.endSessionThanks ||
     state.buildingMenu ||
     state.room360 ||
     state.help ||

@@ -22,6 +22,8 @@ export function useOverlay() {
       openFromDock: (target) => dispatch({ type: "openFromDock", target }),
       openFeedback: send("openFeedback"),
       closeFeedback: send("closeFeedback"),
+      openEndSessionThanks: send("openEndSessionThanks"),
+      closeEndSessionThanks: send("closeEndSessionThanks"),
       openRoom360: send("openRoom360"),
       closeRoom360: send("closeRoom360"),
       openHelp: send("openHelp"),

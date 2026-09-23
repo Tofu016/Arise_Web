@@ -1369,6 +1369,17 @@ button.primary {
   font-size: 11px;
   color: var(--text-muted);
 }
+.entrance-btn-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 .main-page-viewer {
   height: 100vh;
   width: 100vw;
@@ -3430,6 +3441,32 @@ button.primary {
   border-radius: 50%;
   font-size: 38px;
 }
+/* Stacked above the closed dock (own `top`, set in MainPage.jsx from
+   KIOSK_PANORAMA_CENTER, clears the closed dock's 180px height plus a
+   16px gap) at the same right offset as the dock's open state, so it lines
+   up with the FAB in both of the dock's states. */
+.kiosk-end-session-btn {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right));
+  z-index: 26;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.08s ease, opacity 0.08s ease;
+}
+.kiosk-end-session-btn:active {
+  transform: scale(0.94);
+  opacity: 0.85;
+}
 /* Zero-size anchor at the FAB's exact center — each .mobile-radial-btn
    is positioned from this same point via an inline transform (computed
    in MainPage.jsx from the icon's clock-angle and a fixed radius), so
@@ -3582,6 +3619,37 @@ button.primary {
    building's floors grows it downward instead of shifting it. */
 .mobile-building-overlay {
   align-items: flex-start;
+}
+/* Building/campus entrance shortcuts — sit above the floor grid on the same
+   expanded building row, outlined rather than filled so they read as a
+   different kind of action from "pick a floor", same reasoning as the
+   kiosk floor screen's own .kiosk-entrance-btn. */
+.mobile-entrance-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 12px 8px;
+}
+/* The Main Campus entrance sits above the building list itself, not inside
+   any one building's expanded row — a divider keeps it from reading as
+   though it belongs to whichever building happens to render first. */
+.mobile-entrance-shortcuts-top {
+  padding: 8px 12px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.mobile-entrance-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .mobile-floor-grid {
   display: grid;
