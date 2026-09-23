@@ -7,6 +7,7 @@ import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { useBlurReview } from "../../hooks/useBlurReview";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
+import { useToast } from "../../context/ToastContext";
 
 const defaultFilters = {
   building: "all",
@@ -49,6 +50,7 @@ function isRoomNameTaken(newName, nodes, currentNodeId, currentRoomName) {
 export default function RoomEditorPage() {
   const { nodes, selectedNodeId, setSelectedNodeId, updateNode } = useOutletContext();
   const { getForRoom, saveRoomDialog } = usePlacardDialogs();
+  const toast = useToast();
 
   const node = nodes.find((n) => n.id === selectedNodeId) || null;
   const rooms = node?.rooms || [];
@@ -120,8 +122,9 @@ export default function RoomEditorPage() {
       if (!saved) return;
       setPath(saved.path);
       setVersion((v) => v + 1);
+      toast.success("Blur regions updated.");
     } catch (err) {
-      alert(err.message || "Couldn't update the photo.");
+      toast.error(err.message || "Couldn't update the photo.");
     }
   };
 
@@ -139,8 +142,9 @@ export default function RoomEditorPage() {
       setPhotoPath(path);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch {
+    } catch (err) {
       setUploadState("error");
+      toast.error(err.message || "Couldn't upload the room photo.");
     }
   };
 
@@ -158,8 +162,9 @@ export default function RoomEditorPage() {
       setPhoto360Path(path);
       setUpload360State("done");
       setTimeout(() => setUpload360State((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch {
+    } catch (err) {
       setUpload360State("error");
+      toast.error(err.message || "Couldn't upload the 360° room photo.");
     }
   };
 
@@ -216,8 +221,9 @@ export default function RoomEditorPage() {
 
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
+      toast.success(`Room "${trimmedTitle}" saved.`);
     } catch (err) {
-      alert(err.message || "Couldn't save room details.");
+      toast.error(err.message || "Couldn't save room details.");
     } finally {
       setSaving(false);
     }

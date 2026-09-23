@@ -4,6 +4,7 @@ import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useAutoId } from "../hooks/useAutoId";
 import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
+import { useToast } from "../context/ToastContext";
 
 const emptyDraft = () => ({
   id: "",
@@ -27,6 +28,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
   const { requestBlur, reblurStored, blurDialog } = useBlurReview();
+  const toast = useToast();
 
   // "Edit blur regions" on the stop's already-uploaded panorama. Saves over
   // it; if that lands on a different path (old .jpg re-saved as .webp) the
@@ -38,8 +40,9 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
       setDraft((d) => ({ ...d, photo: saved.path }));
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+      toast.success("Blur regions updated.");
     } catch (err) {
-      alert(err.message || "Couldn't update the photo.");
+      toast.error(err.message || "Couldn't update the photo.");
     }
   };
 
@@ -124,8 +127,9 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
       setDraft((d) => ({ ...d, photo: path }));
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch {
+    } catch (err) {
       setUploadState("error");
+      toast.error(err.message || "Couldn't upload the panorama.");
     }
   };
 

@@ -15,23 +15,34 @@ export function useTourSections() {
   const { items: sections, loading, mutate } = useCollection(loadAll);
 
   const addSection = useCallback(
-    (item) => mutate(() => apiPost("TourSections_API/create", sectionCreateBody(item))),
+    (item) =>
+      mutate(() => apiPost("TourSections_API/create", sectionCreateBody(item)), {
+        success: `Section "${item.label}" created.`,
+        errorPrefix: "Couldn't create section",
+      }),
     [mutate]
   );
 
   const updateSection = useCallback(
     (id, patch) =>
-      mutate(async () => {
-        const body = sectionPatchBody(patch);
-        if (Object.keys(body).length > 0) {
-          await apiPatch(`TourSections_API/update/${id}`, body);
-        }
-      }),
+      mutate(
+        async () => {
+          const body = sectionPatchBody(patch);
+          if (Object.keys(body).length > 0) {
+            await apiPatch(`TourSections_API/update/${id}`, body);
+          }
+        },
+        { success: "Section saved.", errorPrefix: "Couldn't save section" }
+      ),
     [mutate]
   );
 
   const deleteSection = useCallback(
-    (id) => mutate(() => apiDelete(`TourSections_API/delete/${id}`)),
+    (id) =>
+      mutate(() => apiDelete(`TourSections_API/delete/${id}`), {
+        success: "Section deleted.",
+        errorPrefix: "Couldn't delete section",
+      }),
     [mutate]
   );
 

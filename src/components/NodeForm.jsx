@@ -6,6 +6,7 @@ import { useAutoId } from "../hooks/useAutoId";
 import FaceReviewPanel from "./FaceReviewPanel";
 import { photoFilename } from "../utils/photoStore";
 import { startReview, reviewExisting, confirmReview, cancelReview } from "../utils/panoramaReview";
+import { useToast } from "../context/ToastContext";
 
 const emptyDraft = () => ({
   id: "",
@@ -24,6 +25,7 @@ const emptyDraft = () => ({
 
 export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete }) {
   useCustomBuildingsVersion(); // re-render when an admin-created building is added
+  const toast = useToast();
 
   const [draft, setDraft] = useState(() =>
     mode === "edit" ? { ...node, rooms: node.rooms || [] } : emptyDraft()
@@ -151,8 +153,9 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       setPreviewUrl(URL.createObjectURL(nextReview.imageBlob));
       setCopyState("idle");
       setReview(nextReview);
-    } catch {
+    } catch (err) {
       setCopyState("error");
+      toast.error(err.message || "Couldn't upload the photo for review.");
     }
   };
 
@@ -162,7 +165,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     try {
       setReview(await reviewExisting(draft.photo));
     } catch (err) {
-      alert(err.message || "Couldn't load the existing photo.");
+      toast.error(err.message || "Couldn't load the existing photo.");
     } finally {
       setRescanning(false);
     }
@@ -177,8 +180,10 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       if (isNew) setDraft((d) => ({ ...d, photo: path }));
       setCopyState("copied");
       setTimeout(() => setCopyState((s) => (s === "copied" ? "idle" : s)), 2500);
-    } catch {
+      toast.success("Panorama published.");
+    } catch (err) {
       setCopyState("error");
+      toast.error(err.message || "Couldn't publish the panorama.");
     }
   };
 

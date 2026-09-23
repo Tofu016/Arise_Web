@@ -8,6 +8,7 @@ import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
 import { useBlurReview } from "../../hooks/useBlurReview";
+import { useToast } from "../../context/ToastContext";
 
 // Campus Tour equivalent of Virtual Map Navigation Editor — the same
 // walking/linking/placing mechanic (stop-to-stop hotspots), shared through
@@ -55,6 +56,7 @@ export default function TourNavigationEditorPage() {
   const [markerUploadState, setMarkerUploadState] = useState("idle");
   const [sectionFilter, setSectionFilter] = useState("all");
   const { requestBlur, blurDialog } = useBlurReview();
+  const toast = useToast();
 
   const startAddMarker = () => {
     setAddingMarker(true);
@@ -93,10 +95,11 @@ export default function TourNavigationEditorPage() {
       } else {
         setMarkerUploadState("idle"); // every review was cancelled
       }
-    } catch {
+    } catch (err) {
       // Keep the ones that did upload before the failure.
       if (uploaded.length > 0) setNewMarkerPhotos((prev) => [...prev, ...uploaded]);
       setMarkerUploadState("error");
+      toast.error(err.message || "Couldn't upload one of the marker photos.");
     }
   };
 

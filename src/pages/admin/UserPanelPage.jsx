@@ -103,8 +103,8 @@ export default function UserPanelPage() {
     setDeletingUid(u.uid);
     try {
       await deleteUserAccount(u.uid);
-    } catch (err) {
-      alert(err.message || "Couldn't delete that account.");
+    } catch {
+      // deleteUserAccount's own mutate() already reports this via toast.
     } finally {
       setDeletingUid(null);
     }

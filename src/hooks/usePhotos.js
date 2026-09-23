@@ -14,7 +14,11 @@ export function usePhotos() {
   const { items: photos, loading, error, mutate } = useCollection(loadAll);
 
   const deletePhoto = useCallback(
-    (path) => mutate(() => apiDelete("Photos_API/delete", { path }, "Couldn't delete this photo.")),
+    (path) =>
+      mutate(() => apiDelete("Photos_API/delete", { path }, "Couldn't delete this photo."), {
+        success: "Photo deleted.",
+        errorPrefix: "Couldn't delete photo",
+      }),
     [mutate]
   );
 

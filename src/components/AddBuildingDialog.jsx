@@ -5,6 +5,7 @@ import { osmRasterStyle } from "../utils/osmMapStyle";
 import { allBuildings, BUILDINGS, buildingLabel, floorsForBuilding } from "../utils/constants";
 import { planBuildingMove } from "../utils/buildingMove";
 import { addCustomBuilding, deleteCustomBuilding, getServerBuildingNames, updateBuilding, useCustomBuildingsVersion } from "../utils/buildingStore";
+import { useToast } from "../context/ToastContext";
 
 // No real campus coordinates were known at the time this was built — a
 // generic, low-zoom world view until real coordinates make a better
@@ -14,6 +15,7 @@ const DEFAULT_MAP_ZOOM = 2;
 
 export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) {
   useCustomBuildingsVersion(); // keep the "existing buildings" list below in sync as they're added/deleted
+  const toast = useToast();
 
   const [name, setName] = useState("");
   const [floorCount, setFloorCount] = useState("");
@@ -46,9 +48,12 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
       setName("");
       setFloorCount("");
       setLocation(null);
+      toast.success(`Building "${building.label}" created.`);
       onClose(building);
     } catch (err) {
-      setError(err.message || "Couldn't create the building.");
+      const message = err.message || "Couldn't create the building.";
+      setError(message);
+      toast.error(message);
     } finally {
       setCreating(false);
     }
@@ -62,9 +67,12 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
     if (!confirm(warning)) return;
     try {
       await deleteCustomBuilding(building.id);
+      toast.success(`Building "${building.label}" deleted.`);
       onClose({ deletedId: building.id });
     } catch (err) {
-      setError(err.message || "Couldn't delete the building.");
+      const message = err.message || "Couldn't delete the building.";
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -86,8 +94,11 @@ Reduce the floor count anyway?`)) {
     try {
       await updateBuilding(building.id, edit);
       setEditingId(null);
+      toast.success(`Building "${building.label}" saved.`);
     } catch (err) {
-      setError(err.message || "Couldn't save the building.");
+      const message = err.message || "Couldn't save the building.";
+      setError(message);
+      toast.error(message);
     }
   };
 

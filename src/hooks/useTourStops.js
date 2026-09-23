@@ -27,63 +27,94 @@ export function useTourStops() {
   // Client provides the id (TourStopForm.jsx already suggested/validated
   // one) — the backend accepts it directly rather than generating its own.
   const addStop = useCallback(
-    (item) => mutate(() => apiPost("TourStops_API/create", stopCreateBody(item))),
+    (item) =>
+      mutate(() => apiPost("TourStops_API/create", stopCreateBody(item)), {
+        success: `Tour stop "${item.id}" created.`,
+        errorPrefix: "Couldn't create tour stop",
+      }),
     [mutate]
   );
 
   const updateStop = useCallback(
     (id, patch) =>
-      mutate(async () => {
-        const body = stopPatchBody(patch);
-        if (Object.keys(body).length > 0) {
-          await apiPatch(`TourStops_API/update/${id}`, body);
-        }
-      }),
+      mutate(
+        async () => {
+          const body = stopPatchBody(patch);
+          if (Object.keys(body).length > 0) {
+            await apiPatch(`TourStops_API/update/${id}`, body);
+          }
+        },
+        { success: `Tour stop "${id}" saved.`, errorPrefix: "Couldn't save tour stop" }
+      ),
     [mutate]
   );
 
   const renameStopId = useCallback(
     (oldId, newId) =>
-      mutate(async () => {
-        await apiPatch(`TourStops_API/rename/${oldId}`, { new_id: newId });
-        setSelectedStopId((cur) => (cur === oldId ? newId : cur));
-      }),
+      mutate(
+        async () => {
+          await apiPatch(`TourStops_API/rename/${oldId}`, { new_id: newId });
+          setSelectedStopId((cur) => (cur === oldId ? newId : cur));
+        },
+        { success: `Tour stop renamed to "${newId}".`, errorPrefix: "Couldn't rename tour stop" }
+      ),
     [mutate]
   );
 
   const deleteStop = useCallback(
     (id) =>
-      mutate(async () => {
-        await apiDelete(`TourStops_API/delete/${id}`);
-        setSelectedStopId((cur) => (cur === id ? null : cur));
-      }),
+      mutate(
+        async () => {
+          await apiDelete(`TourStops_API/delete/${id}`);
+          setSelectedStopId((cur) => (cur === id ? null : cur));
+        },
+        { success: `Tour stop "${id}" deleted.`, errorPrefix: "Couldn't delete tour stop" }
+      ),
     [mutate]
   );
 
   const setNeighbors = useCallback(
     (id, neighborIds) =>
-      mutate(() => runCalls(planNeighbors(STOP_GRAPH, id, stopById(id)?.neighbors ?? [], neighborIds))),
+      mutate(() => runCalls(planNeighbors(STOP_GRAPH, id, stopById(id)?.neighbors ?? [], neighborIds)), {
+        success: "Tour stop links updated.",
+        errorPrefix: "Couldn't update tour stop links",
+      }),
     [mutate, stopById]
   );
 
   const setHotspot = useCallback(
-    (stopId, neighborId, angle) => mutate(() => runCalls(planHotspot(STOP_GRAPH, stopId, neighborId, angle))),
+    (stopId, neighborId, angle) =>
+      mutate(() => runCalls(planHotspot(STOP_GRAPH, stopId, neighborId, angle)), {
+        success: "Hotspot position saved.",
+        errorPrefix: "Couldn't save hotspot position",
+      }),
     [mutate]
   );
 
   const setMarkers = useCallback(
     (stopId, newMarkers) =>
-      mutate(() => runCalls(planMarkers(STOP_GRAPH, stopId, stopById(stopId)?.markers ?? [], newMarkers))),
+      mutate(() => runCalls(planMarkers(STOP_GRAPH, stopId, stopById(stopId)?.markers ?? [], newMarkers)), {
+        success: "Markers updated.",
+        errorPrefix: "Couldn't update markers",
+      }),
     [mutate, stopById]
   );
 
   const setDefaultView = useCallback(
-    (stopId, neighborId, angle) => mutate(() => runCalls(planDefaultView(STOP_GRAPH, stopId, neighborId, angle))),
+    (stopId, neighborId, angle) =>
+      mutate(() => runCalls(planDefaultView(STOP_GRAPH, stopId, neighborId, angle)), {
+        success: "Default arrival view captured.",
+        errorPrefix: "Couldn't save the default view",
+      }),
     [mutate]
   );
 
   const clearDefaultView = useCallback(
-    (stopId, neighborId) => mutate(() => runCalls(planClearDefaultView(STOP_GRAPH, stopId, neighborId))),
+    (stopId, neighborId) =>
+      mutate(() => runCalls(planClearDefaultView(STOP_GRAPH, stopId, neighborId)), {
+        success: "Default arrival view cleared.",
+        errorPrefix: "Couldn't clear the default view",
+      }),
     [mutate]
   );
 

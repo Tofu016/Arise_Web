@@ -5582,3 +5582,110 @@ html.kiosk-mode body {
 @media (prefers-reduced-motion: reduce) {
   .arrival-notice { animation: none; }
 }
+
+/* --- Toasts --- */
+/* Above every modal (.modal-overlay tops out at z-index: 600) — a toast
+   reporting the result of an action started behind an open modal (e.g. a
+   mutation that resolves after the admin has already moved on) must still
+   be visible. */
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 700;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 40px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-sans-body);
+  font-size: 0.9rem;
+  color: var(--text-body);
+  pointer-events: auto;
+  animation: toast-slide-in 0.18s ease-out;
+}
+.toast-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--white);
+}
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.toast-close:hover {
+  color: var(--text-body);
+}
+.toast-success {
+  border-left: 3px solid var(--success);
+}
+.toast-success .toast-icon {
+  background: var(--success);
+}
+.toast-error {
+  border-left: 3px solid var(--danger);
+}
+.toast-error .toast-icon {
+  background: var(--danger);
+}
+.toast-warning {
+  border-left: 3px solid var(--warning);
+}
+.toast-warning .toast-icon {
+  background: var(--warning);
+}
+.toast-info {
+  border-left: 3px solid var(--info);
+}
+.toast-info .toast-icon {
+  background: var(--info);
+}
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+@media (max-width: 640px) {
+  .toast-stack {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+}

@@ -15,7 +15,11 @@ export function useFeedback() {
   const { items: feedback, loading, error, mutate } = useCollection(loadAll);
 
   const markReviewed = useCallback(
-    (id) => mutate(() => apiPatch(`Feedback_API/markReviewed/${id}`, {})),
+    (id) =>
+      mutate(() => apiPatch(`Feedback_API/markReviewed/${id}`, {}), {
+        success: "Feedback marked reviewed.",
+        errorPrefix: "Couldn't mark feedback reviewed",
+      }),
     [mutate]
   );
 

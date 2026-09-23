@@ -58,45 +58,54 @@ export function useNodes() {
 
   const addNode = useCallback(
     (item) =>
-      mutate(async () => {
-        await apiPost("Nodes_API/create", nodeCreateBody(item));
-        await syncRooms(item.id, item.rooms || []); // a new node has no rooms yet, so all are added
-        // startingNode/campusEntrance/buildingEntrance aren't part of
-        // create's own body (see nodeCreateBody) since they're
-        // uniqueness-scoped flags the model clears elsewhere on write —
-        // sent as a follow-up patch instead, one call covering all three
-        // when any is set.
-        const flagPatch = {};
-        if (item.startingNode) flagPatch.is_starting_node = 1;
-        if (item.campusEntrance) flagPatch.is_campus_entrance = 1;
-        if (item.buildingEntrance) flagPatch.is_building_entrance = 1;
-        if (Object.keys(flagPatch).length > 0) {
-          await apiPatch(`Nodes_API/update/${item.id}`, flagPatch);
-        }
-      }),
+      mutate(
+        async () => {
+          await apiPost("Nodes_API/create", nodeCreateBody(item));
+          await syncRooms(item.id, item.rooms || []); // a new node has no rooms yet, so all are added
+          // startingNode/campusEntrance/buildingEntrance aren't part of
+          // create's own body (see nodeCreateBody) since they're
+          // uniqueness-scoped flags the model clears elsewhere on write —
+          // sent as a follow-up patch instead, one call covering all three
+          // when any is set.
+          const flagPatch = {};
+          if (item.startingNode) flagPatch.is_starting_node = 1;
+          if (item.campusEntrance) flagPatch.is_campus_entrance = 1;
+          if (item.buildingEntrance) flagPatch.is_building_entrance = 1;
+          if (Object.keys(flagPatch).length > 0) {
+            await apiPatch(`Nodes_API/update/${item.id}`, flagPatch);
+          }
+        },
+        { success: `Node "${item.id}" created.`, errorPrefix: "Couldn't create node" }
+      ),
     [mutate, syncRooms]
   );
 
   const updateNode = useCallback(
     (id, patch) =>
-      mutate(async () => {
-        const body = nodePatchBody(patch);
-        if (Object.keys(body).length > 0) {
-          await apiPatch(`Nodes_API/update/${id}`, body);
-        }
-        if (patch.rooms !== undefined) {
-          await syncRooms(id, patch.rooms);
-        }
-      }),
+      mutate(
+        async () => {
+          const body = nodePatchBody(patch);
+          if (Object.keys(body).length > 0) {
+            await apiPatch(`Nodes_API/update/${id}`, body);
+          }
+          if (patch.rooms !== undefined) {
+            await syncRooms(id, patch.rooms);
+          }
+        },
+        { success: `Node "${id}" saved.`, errorPrefix: "Couldn't save node" }
+      ),
     [mutate, syncRooms]
   );
 
   const renameNodeId = useCallback(
     (oldId, newId) =>
-      mutate(async () => {
-        await apiPatch(`Nodes_API/rename/${oldId}`, { new_id: newId });
-        setSelectedNodeId((cur) => (cur === oldId ? newId : cur));
-      }),
+      mutate(
+        async () => {
+          await apiPatch(`Nodes_API/rename/${oldId}`, { new_id: newId });
+          setSelectedNodeId((cur) => (cur === oldId ? newId : cur));
+        },
+        { success: `Node renamed to "${newId}".`, errorPrefix: "Couldn't rename node" }
+      ),
     [mutate]
   );
 
@@ -105,50 +114,77 @@ export function useNodes() {
   // rooms). One refetch at the end.
   const moveNodesToBuilding = useCallback(
     (moves, toBuilding) =>
-      mutate(async () => {
-        for (const { id, newId } of moves) {
-          await apiPatch(`Nodes_API/update/${id}`, { building: toBuilding });
-          if (newId !== id) {
-            await apiPatch(`Nodes_API/rename/${id}`, { new_id: newId });
+      mutate(
+        async () => {
+          for (const { id, newId } of moves) {
+            await apiPatch(`Nodes_API/update/${id}`, { building: toBuilding });
+            if (newId !== id) {
+              await apiPatch(`Nodes_API/rename/${id}`, { new_id: newId });
+            }
           }
+        },
+        {
+          success: `${moves.length} node(s) moved to ${toBuilding.toUpperCase()}.`,
+          errorPrefix: "Couldn't move nodes to that building",
         }
-      }),
+      ),
     [mutate]
   );
 
   const deleteNode = useCallback(
     (id) =>
-      mutate(async () => {
-        await apiDelete(`Nodes_API/delete/${id}`);
-        setSelectedNodeId((cur) => (cur === id ? null : cur));
-      }),
+      mutate(
+        async () => {
+          await apiDelete(`Nodes_API/delete/${id}`);
+          setSelectedNodeId((cur) => (cur === id ? null : cur));
+        },
+        { success: `Node "${id}" deleted.`, errorPrefix: "Couldn't delete node" }
+      ),
     [mutate]
   );
 
   const setNeighbors = useCallback(
     (id, neighborIds) =>
-      mutate(() => runCalls(planNeighbors(NODE_GRAPH, id, nodeById(id)?.neighbors ?? [], neighborIds))),
+      mutate(() => runCalls(planNeighbors(NODE_GRAPH, id, nodeById(id)?.neighbors ?? [], neighborIds)), {
+        success: "Node links updated.",
+        errorPrefix: "Couldn't update node links",
+      }),
     [mutate, nodeById]
   );
 
   const setHotspot = useCallback(
-    (nodeId, neighborId, angle) => mutate(() => runCalls(planHotspot(NODE_GRAPH, nodeId, neighborId, angle))),
+    (nodeId, neighborId, angle) =>
+      mutate(() => runCalls(planHotspot(NODE_GRAPH, nodeId, neighborId, angle)), {
+        success: "Hotspot position saved.",
+        errorPrefix: "Couldn't save hotspot position",
+      }),
     [mutate]
   );
 
   const setMarkers = useCallback(
     (nodeId, newMarkers) =>
-      mutate(() => runCalls(planMarkers(NODE_GRAPH, nodeId, nodeById(nodeId)?.markers ?? [], newMarkers))),
+      mutate(() => runCalls(planMarkers(NODE_GRAPH, nodeId, nodeById(nodeId)?.markers ?? [], newMarkers)), {
+        success: "Markers updated.",
+        errorPrefix: "Couldn't update markers",
+      }),
     [mutate, nodeById]
   );
 
   const setDefaultView = useCallback(
-    (nodeId, neighborId, angle) => mutate(() => runCalls(planDefaultView(NODE_GRAPH, nodeId, neighborId, angle))),
+    (nodeId, neighborId, angle) =>
+      mutate(() => runCalls(planDefaultView(NODE_GRAPH, nodeId, neighborId, angle)), {
+        success: "Default arrival view captured.",
+        errorPrefix: "Couldn't save the default view",
+      }),
     [mutate]
   );
 
   const clearDefaultView = useCallback(
-    (nodeId, neighborId) => mutate(() => runCalls(planClearDefaultView(NODE_GRAPH, nodeId, neighborId))),
+    (nodeId, neighborId) =>
+      mutate(() => runCalls(planClearDefaultView(NODE_GRAPH, nodeId, neighborId)), {
+        success: "Default arrival view cleared.",
+        errorPrefix: "Couldn't clear the default view",
+      }),
     [mutate]
   );
 

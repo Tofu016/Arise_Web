@@ -16,12 +16,20 @@ export function useUsers() {
   const { items: users, loading, error, mutate } = useCollection(loadAll);
 
   const updateUserRole = useCallback(
-    (uid, role) => mutate(() => apiPatch(`Users_API/updateRole/${uid}`, { role })),
+    (uid, role) =>
+      mutate(() => apiPatch(`Users_API/updateRole/${uid}`, { role }), {
+        success: `Role updated to "${role}".`,
+        errorPrefix: "Couldn't update role",
+      }),
     [mutate]
   );
 
   const deleteUserAccount = useCallback(
-    (uid) => mutate(() => apiDelete(`Users_API/delete/${uid}`)),
+    (uid) =>
+      mutate(() => apiDelete(`Users_API/delete/${uid}`), {
+        success: "Account deleted.",
+        errorPrefix: "Couldn't delete account",
+      }),
     [mutate]
   );
 
