@@ -33,6 +33,15 @@ Moving anywhere else (search result, entrance, room card, start of a route) as a
 **Flyover**:
 The map animation shown before any move between two places with different real coordinates (a cross-campus move). GD1/GD2/GD3 share coordinates, so moves between them never fly over.
 
+**Campus**:
+A cluster of one or more buildings that are physically one place. GD1, GD2, and GD3 are separate buildings but one campus (interconnected, walkable between them, never a Flyover); Digital Campus is a separate building and its own, separate campus.
+
+**Campus entrance**:
+The single Node, per campus, an admin flags as representing that whole campus — a node-level setting (`campusEntrance`), restricted to `entrance`-type nodes, with only one true per campus at a time (saving a second one on the same campus replaces the first). Drives the cross-campus minimap widget and a Kiosk floor-screen shortcut.
+
+**Building entrance**:
+The single Node, per building, an admin flags as representing that one building — a node-level setting (`buildingEntrance`), restricted to `entrance`-type nodes, with only one true per building at a time. Independent of Campus entrance: a node can be both, either, or neither (GD1's building entrance and Main Campus's campus entrance are often the same node, but don't have to be). Offered as a Kiosk floor-screen shortcut; when it's the same node as the campus entrance, only the campus entrance button is shown.
+
 **Route**:
 The shortest walkable sequence of Nodes between two points, followed one stop at a time (optionally hands-free, as auto-walk).
 

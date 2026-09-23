@@ -61,8 +61,17 @@ export function useNodes() {
       mutate(async () => {
         await apiPost("Nodes_API/create", nodeCreateBody(item));
         await syncRooms(item.id, item.rooms || []); // a new node has no rooms yet, so all are added
-        if (item.startingNode) {
-          await apiPatch(`Nodes_API/update/${item.id}`, { is_starting_node: 1 });
+        // startingNode/campusEntrance/buildingEntrance aren't part of
+        // create's own body (see nodeCreateBody) since they're
+        // uniqueness-scoped flags the model clears elsewhere on write —
+        // sent as a follow-up patch instead, one call covering all three
+        // when any is set.
+        const flagPatch = {};
+        if (item.startingNode) flagPatch.is_starting_node = 1;
+        if (item.campusEntrance) flagPatch.is_campus_entrance = 1;
+        if (item.buildingEntrance) flagPatch.is_building_entrance = 1;
+        if (Object.keys(flagPatch).length > 0) {
+          await apiPatch(`Nodes_API/update/${item.id}`, flagPatch);
         }
       }),
     [mutate, syncRooms]

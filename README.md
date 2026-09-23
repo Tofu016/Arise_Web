@@ -265,6 +265,16 @@ Not read by the app.
      transition exit (fire stairs), open area (parking), or portal
      (GD2 ↔ GD3 crossing).
    - **Leads to floor** — only shown for transition types.
+   - **Building entrance** — only shown for entrance-type nodes. The single
+     node representing this one building, offered as a Kiosk floor-screen
+     shortcut. Only one per building — saving a second one on the same
+     building replaces the first. Independent of Campus entrance below — a
+     node can be both, either, or neither.
+   - **Campus entrance** — only shown for entrance-type nodes. The single
+     node representing this node's whole campus (GD1/GD2/GD3 share one;
+     Digital Campus has its own), driving the cross-campus minimap and a
+     Kiosk floor-screen shortcut. Only one per campus — saving a second one
+     on the same campus replaces the first.
    - **Rooms served** — type a room number/name and hit Enter or click Add.
      A room can only be attached to one node campus-wide.
    - **360° photo filename** / **Choose 360° photo file** — see below.

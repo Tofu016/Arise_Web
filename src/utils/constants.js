@@ -15,6 +15,16 @@ export const BUILDINGS = [
   { id: "gd3", label: "GD3", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG },
 ];
 
+// GD1/GD2/GD3 are separate buildings but one physical campus, so they share
+// a single campus entrance setting (see NODE_TYPES' "entrance" and the
+// node-level `campusEntrance` flag) — any other building (e.g. Digital
+// Campus) is its own campus with its own separate entrance.
+export const MAIN_CAMPUS_BUILDING_IDS = ["gd1", "gd2", "gd3"];
+
+export function campusForBuilding(buildingId) {
+  return MAIN_CAMPUS_BUILDING_IDS.includes(buildingId) ? "main" : buildingId;
+}
+
 // Matches the actual Unity node-name vocabulary from the source model.
 // Colours keep their wayfinding hue (blue hallway, green entrance, red
 // fire-exit, \u2026) but are darkened/desaturated to read on the light,

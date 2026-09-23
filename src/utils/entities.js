@@ -57,6 +57,15 @@ export function toNode(row) {
     // true, but kept regardless in case a node becomes one later).
     startingViewYaw: row.starting_view_yaw ?? null,
     startingViewPitch: row.starting_view_pitch ?? null,
+    // The single node representing this node's whole campus (GD1/GD2/GD3
+    // share one, Digital Campus has its own) — drives the cross-campus
+    // minimap. At most one true per campus, enforced server-side.
+    campusEntrance: Number(row.is_campus_entrance) === 1,
+    // The single node representing this node's own building — narrower
+    // than campusEntrance (which can span GD1/GD2/GD3). Independent flag:
+    // a node can be both, either, or neither. At most one true per
+    // building, enforced server-side.
+    buildingEntrance: Number(row.is_building_entrance) === 1,
     photo: row.photo_path || "",
     rooms: (row.rooms || []).map((r) => r.room_name),
     ...toEdges(row.neighbors),
@@ -94,6 +103,8 @@ export function nodePatchBody(patch) {
   if (patch.startingNode !== undefined) body.is_starting_node = patch.startingNode ? 1 : 0;
   if (patch.startingViewYaw !== undefined) body.starting_view_yaw = patch.startingViewYaw;
   if (patch.startingViewPitch !== undefined) body.starting_view_pitch = patch.startingViewPitch;
+  if (patch.campusEntrance !== undefined) body.is_campus_entrance = patch.campusEntrance ? 1 : 0;
+  if (patch.buildingEntrance !== undefined) body.is_building_entrance = patch.buildingEntrance ? 1 : 0;
   if (patch.flowchartPosition !== undefined) {
     body.flowchart_position_x = patch.flowchartPosition ? patch.flowchartPosition.x : null;
     body.flowchart_position_y = patch.flowchartPosition ? patch.flowchartPosition.y : null;

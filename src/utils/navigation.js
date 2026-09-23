@@ -68,6 +68,27 @@ export function floorsForBuilding(nodes, buildingId) {
   );
 }
 
+// The kiosk floor screen's entrance shortcuts for one building: whichever
+// node an admin flagged as that building's own Building entrance, and
+// whichever node is the Campus entrance for the campus it belongs to (which
+// may be a different GD1/GD2/GD3 building — see campusForBuilding). When
+// both land on the very same node, it's offered once, as the campus
+// entrance (the broader of the two labels covers the narrower one).
+export function findKioskEntranceShortcuts(nodes, buildingId, campusForBuilding) {
+  if (!nodes || !buildingId) return [];
+  const buildingEntrance = nodes.find((n) => n.building === buildingId && n.buildingEntrance);
+  const campusEntrance = nodes.find(
+    (n) => n.campusEntrance && campusForBuilding(n.building) === campusForBuilding(buildingId)
+  );
+  if (buildingEntrance && campusEntrance && buildingEntrance.id === campusEntrance.id) {
+    return [{ key: "campus", label: "Campus Entrance", nodeId: campusEntrance.id }];
+  }
+  const shortcuts = [];
+  if (buildingEntrance) shortcuts.push({ key: "building", label: "Building Entrance", nodeId: buildingEntrance.id });
+  if (campusEntrance) shortcuts.push({ key: "campus", label: "Campus Entrance", nodeId: campusEntrance.id });
+  return shortcuts;
+}
+
 // Where a visitor lands on one floor of a building: the node an admin
 // flagged as that floor's starting node, else the floor's first entrance,
 // else its first node. Null if the floor has no nodes.

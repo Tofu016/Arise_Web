@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NODE_TYPES, TRANSITION_TYPES, allBuildings, floorLabel, floorsForBuilding, suggestNodeId, suggestedPhotoFilename } from "../utils/constants";
+import { NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId, suggestedPhotoFilename } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
 import { useAutoId } from "../hooks/useAutoId";
@@ -15,6 +15,8 @@ const emptyDraft = () => ({
   type: "hallway",
   leadsToFloor: "",
   startingNode: false,
+  campusEntrance: false,
+  buildingEntrance: false,
   photo: "",
   rooms: [],
   neighbors: [],
@@ -80,6 +82,14 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           next.floor = validFloors[0];
         }
         next.leadsToFloor = "";
+      }
+
+      // Campus/building entrance only make sense for entrance-type nodes —
+      // clear them silently if the type changes away, same as leadsToFloor
+      // above.
+      if (key === "type" && value !== "entrance") {
+        next.campusEntrance = false;
+        next.buildingEntrance = false;
       }
 
       // New nodes only: keep the ID in sync with Building/Floor/Type until the
@@ -216,6 +226,12 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   const currentStart = nodes.find(
     (n) => n.startingNode && n.building === draft.building && Number(n.floor) === Number(draft.floor)
   );
+  const currentCampusEntrance = nodes.find(
+    (n) => n.campusEntrance && campusForBuilding(n.building) === campusForBuilding(draft.building)
+  );
+  const currentBuildingEntrance = nodes.find(
+    (n) => n.buildingEntrance && n.building === draft.building
+  );
 
   return (
     <div className="panel node-form">
@@ -298,6 +314,48 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           {" "}The camera view they land facing is set from the Virtual Map Navigation Editor, not here.
         </span>
       </div>
+
+      {draft.type === "entrance" && (
+        <div className="entrance-flag-field">
+          <label className="entrance-flag-toggle">
+            <input
+              type="checkbox"
+              checked={!!draft.buildingEntrance}
+              onChange={(e) => field("buildingEntrance")(e.target.checked)}
+            />
+            <span>Building entrance</span>
+          </label>
+          <span className="field-hint">
+            The one node that represents this specific building. Independent of Campus entrance below
+            — a node can be both, either, or neither. Offered as a Kiosk floor-screen shortcut. Only one
+            per building
+            {currentBuildingEntrance && currentBuildingEntrance.id !== draft.id
+              ? ` — saving this replaces ${currentBuildingEntrance.id}.`
+              : "."}
+          </span>
+        </div>
+      )}
+
+      {draft.type === "entrance" && (
+        <div className="entrance-flag-field">
+          <label className="entrance-flag-toggle">
+            <input
+              type="checkbox"
+              checked={!!draft.campusEntrance}
+              onChange={(e) => field("campusEntrance")(e.target.checked)}
+            />
+            <span>Campus entrance</span>
+          </label>
+          <span className="field-hint">
+            The one node that represents this whole campus (GD1/GD2/GD3 share a single campus entrance;
+            Digital Campus has its own). Powers the cross-campus minimap and a Kiosk floor-screen
+            shortcut. Only one per campus
+            {currentCampusEntrance && currentCampusEntrance.id !== draft.id
+              ? ` — saving this replaces ${currentCampusEntrance.id}.`
+              : "."}
+          </span>
+        </div>
+      )}
 
       <div className="rooms-field">
         <label>Rooms served (optional)</label>

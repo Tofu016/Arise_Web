@@ -9,11 +9,16 @@ import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 //
 // floors: every floor number the building has (low to high, underground
 // included) — see utils/navigation.js's floorsForBuilding.
+// entranceShortcuts: [{ key, label, nodeId }], from
+// utils/navigation.js's findKioskEntranceShortcuts — the flagged Building
+// entrance and/or Campus entrance for this building, collapsed to one
+// "Campus entrance" button when they're the same node. Shown above the
+// floor list as direct-jump buttons, not floor picks.
 // onBack: retreats to the building screen, clearing the building choice.
-export default function KioskFloorScreen({ hidden, buildingLabel, floors, onPick, onBack }) {
+export default function KioskFloorScreen({ hidden, buildingLabel, floors, entranceShortcuts, onPick, onPickEntrance, onBack }) {
   return (
     <div
-      className={"kiosk-building-screen" + (hidden ? " kiosk-building-screen-hidden" : "")}
+      className={"kiosk-building-screen kiosk-floor-screen" + (hidden ? " kiosk-building-screen-hidden" : "")}
       style={KIOSK_RAISED_STYLE}
       aria-hidden={hidden}
     >
@@ -34,9 +39,22 @@ export default function KioskFloorScreen({ hidden, buildingLabel, floors, onPick
         ← Back
       </button>
       <h2 className="kiosk-building-title">
-        Choose a floor{buildingLabel ? ` — ${buildingLabel}` : ""}
+        Choose a starting point{buildingLabel ? ` in ${buildingLabel}` : ""}.
       </h2>
       <div className="kiosk-floor-list">
+        {(entranceShortcuts || []).map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            className="kiosk-building-btn kiosk-entrance-btn"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onPickEntrance(s.nodeId);
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
         {floors.map((f) => (
           <button
             key={f}

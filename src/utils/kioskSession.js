@@ -6,9 +6,10 @@
 // visitor view, which starts a fresh one.)
 //
 // The floor screen is a real stage in this state machine, but MainPage can
-// (and does, for a building with only one floor to land on) dispatch
-// "chooseFloor" in the very same handler as "chooseBuilding" — the visitor
-// then never actually sees it, since both land before the next render.
+// (and does, for a building with only one floor and no Building/Campus
+// entrance shortcuts to offer either) dispatch "chooseFloor" in the very
+// same handler as "chooseBuilding" — the visitor then never actually sees
+// it, since both land before the next render.
 
 export const initialKioskSession = { started: false, building: null, floorChosen: false };
 

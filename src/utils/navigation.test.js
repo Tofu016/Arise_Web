@@ -7,6 +7,7 @@ import {
   pickFloorStart,
   pickBuildingStart,
   floorsForBuilding,
+  findKioskEntranceShortcuts,
   landOnDefault,
   findFlyover,
   requestWalk,
@@ -229,5 +230,44 @@ describe("floorsForBuilding", () => {
   it("is empty for a building with no nodes, or with no nodes at all", () => {
     expect(floorsForBuilding([n("a", "gd1", 1)], "gd2")).toEqual([]);
     expect(floorsForBuilding(null, "gd1")).toEqual([]);
+  });
+});
+
+describe("findKioskEntranceShortcuts", () => {
+  const n = (id, building, extra = {}) => ({ id, building, floor: 1, type: "entrance", ...extra });
+  const campus = (id) => (id === "gd2" ? "main" : id === "gd1" ? "main" : id); // gd1/gd2 = one campus
+
+  it("returns both, separately, when the building and campus entrances differ", () => {
+    const ns = [n("be", "gd1", { buildingEntrance: true }), n("ce", "gd2", { campusEntrance: true })];
+    expect(findKioskEntranceShortcuts(ns, "gd1", campus)).toEqual([
+      { key: "building", label: "Building Entrance", nodeId: "be" },
+      { key: "campus", label: "Campus Entrance", nodeId: "ce" },
+    ]);
+  });
+
+  it("collapses to one Campus Entrance button when they're the same node", () => {
+    const ns = [n("both", "gd1", { buildingEntrance: true, campusEntrance: true })];
+    expect(findKioskEntranceShortcuts(ns, "gd1", campus)).toEqual([
+      { key: "campus", label: "Campus Entrance", nodeId: "both" },
+    ]);
+  });
+
+  it("finds the campus entrance across buildings in the same campus", () => {
+    const ns = [n("ce", "gd1", { campusEntrance: true })];
+    expect(findKioskEntranceShortcuts(ns, "gd2", campus)).toEqual([
+      { key: "campus", label: "Campus Entrance", nodeId: "ce" },
+    ]);
+  });
+
+  it("omits whichever shortcut has no flagged node", () => {
+    expect(findKioskEntranceShortcuts([n("be", "gd1", { buildingEntrance: true })], "gd1", campus)).toEqual([
+      { key: "building", label: "Building Entrance", nodeId: "be" },
+    ]);
+    expect(findKioskEntranceShortcuts([], "gd1", campus)).toEqual([]);
+  });
+
+  it("is empty with no nodes or no building", () => {
+    expect(findKioskEntranceShortcuts(null, "gd1", campus)).toEqual([]);
+    expect(findKioskEntranceShortcuts([n("be", "gd1", { buildingEntrance: true })], null, campus)).toEqual([]);
   });
 });

@@ -42,6 +42,24 @@ describe("starting node", () => {
   });
 });
 
+describe("campus entrance", () => {
+  it("reads is_campus_entrance and writes it as 1/0", () => {
+    expect(toNode({ id: "x", name: "X", is_campus_entrance: "1" }).campusEntrance).toBe(true);
+    expect(nodePatchBody({ campusEntrance: true }).is_campus_entrance).toBe(1);
+    expect(nodePatchBody({ campusEntrance: false }).is_campus_entrance).toBe(0);
+    expect("is_campus_entrance" in nodePatchBody({ name: "n" })).toBe(false);
+  });
+});
+
+describe("building entrance", () => {
+  it("reads is_building_entrance and writes it as 1/0", () => {
+    expect(toNode({ id: "x", name: "X", is_building_entrance: "1" }).buildingEntrance).toBe(true);
+    expect(nodePatchBody({ buildingEntrance: true }).is_building_entrance).toBe(1);
+    expect(nodePatchBody({ buildingEntrance: false }).is_building_entrance).toBe(0);
+    expect("is_building_entrance" in nodePatchBody({ name: "n" })).toBe(false);
+  });
+});
+
 describe("toNode", () => {
   it("maps a full row to the app's camelCase node", () => {
     expect(toNode(nodeRow)).toEqual({
@@ -54,6 +72,8 @@ describe("toNode", () => {
       startingNode: false,
       startingViewYaw: null,
       startingViewPitch: null,
+      campusEntrance: false,
+      buildingEntrance: false,
       photo: "panoramas/gd1/a.jpg",
       rooms: ["101", "102"],
       neighbors: ["n2", "n3"],

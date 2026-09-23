@@ -3031,79 +3031,6 @@ button.primary {
   z-index: 28;
   pointer-events: none;
 }
-/* ---------- Cross-campus minimap widget ---------- */
-/* Same fixed position works for both the desktop and mobile render paths
-   — they're mutually exclusive (never both mounted at once, per this
-   app's existing JS-viewport-detection pattern), so no media query
-   differentiation needed. 70px clears the mobile top bar's own buttons
-   comfortably; on desktop there's no in-screen top bar to clear at all,
-   so this just reads as a reasonable top offset either way. */
-/* Bottom-left, sitting just to the right of the vertical rail (which is
-   only 48px wide, too narrow to hold the minimap's own 130px directly) —
-   bottom-aligned with the rail so it reads as part of the same
-   bottom-left cluster as the emergency exit button, which is now the
-   rail's own last/lowest item. 76px matches the same "clear of the rail"
-   left offset already used elsewhere in this file (.floating-search-wrap,
-   .floating-panel). Same fixed position still works for both desktop and
-   mobile — they're mutually exclusive render paths. */
-/* Base styling only — size, border, look. Position is intentionally
-   split into two separate modifier classes below, NOT a single shared
-   position — mobile and desktop genuinely need different placement here,
-   unlike other floating UI in this file. Mobile's bottom area is already
-   occupied by the persistent building selector bar (full width,
-   left:12px to right:12px), and mobile has no equivalent to desktop's
-   left-side vertical rail at all — "below the emergency button" is a
-   desktop-specific concept, since mobile's emergency button lives in the
-   top bar instead. */
-.minimap-widget {
-  width: 130px;
-  height: 130px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-1);
-  z-index: 27;
-  background: var(--surface);
-}
-/* Desktop — bottom-left, flush with the rail's own left edge (16px). The
-   exit button that used to be the rail's own last item has since moved
-   out entirely, stacked directly above this instead (see
-   .floating-exit-btn-stacked) — so both now share this same left offset,
-   reading as one clean, aligned column at the bottom-left corner. */
-.minimap-widget-desktop {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-}
-/* Mobile/kiosk — top-right, clear of the (now much shorter, read-only)
-   title pill above and the bottom-anchored control cluster below.
-   Safe-area padded for a kiosk bezel/notch. */
-.minimap-widget-mobile {
-  position: absolute;
-  top: calc(56px + env(safe-area-inset-top));
-  right: calc(16px + env(safe-area-inset-right));
-}
-/* Deliberately kept dark/hardcoded rather than tokenized — this label
-   sits directly on top of OpenStreetMap tile imagery, not app chrome, so
-   it needs to stay legible against uncontrolled, varied map colors
-   regardless of whether the app itself is in a light or dark theme.
-   Matches how most map UIs (Google Maps included) treat overlay labels
-   as a fixed exception to their own surrounding theme. */
-.minimap-widget-label {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 3px 6px;
-  font-size: 10px;
-  color: #e6e6e6;
-  background: rgba(15, 17, 21, 0.8);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
 /* ---------- Cross-campus flyover panel ---------- */
 .flyover-overlay {
   position: fixed;
@@ -3888,7 +3815,7 @@ button.primary {
    imagery), not the usual white/maroon app chrome. Colors here are
    mostly hardcoded rather than tokenized, matching this file's own
    existing precedent for anything that sits on top of photo/map content
-   rather than app chrome (.minimap-widget-label, .pano-marker-label) —
+   rather than app chrome (.pano-marker-label) —
    a fixed dark treatment stays legible against uncontrolled, varied
    panorama imagery regardless of the app's own light theme.
    ===================================================================== */
@@ -5054,7 +4981,7 @@ button.primary {
 }
 .kiosk-building-title {
   margin: 0;
-  font-size: 48px;
+  font-size: 36px;
 }
 .kiosk-building-columns {
   width: 100%;
@@ -5091,17 +5018,40 @@ button.primary {
   cursor: pointer;
   touch-action: manipulation;
 }
-/* Floor screen: a single centered column (floors don't split into two
-   groups the way buildings do), scrollable if a building has a lot of them. */
+/* Floor screen only: with the entrance shortcuts added alongside floors,
+   this screen's content can run taller than the building screen ever does.
+   .kiosk-building-screen normally centers on --kiosk-card-center (raised
+   very high, near the top, for the small kiosk dialogs) — fine for a short
+   building list, but tall floor content centered in that same large box
+   grows upward straight into the fixed Back button's corner and paints
+   over it (it's later in the DOM). Top-anchored instead of centered: a
+   fixed, modest clearance below Back, so the heading always starts at
+   roughly the same height as "Choose a building"'s own does — centering
+   within a big box pushes a short floor list down toward true screen
+   middle, which reads noticeably lower than the building screen for any
+   building with just a few floors. */
+.kiosk-floor-screen {
+  justify-content: flex-start;
+  padding-top: calc(112px + env(safe-area-inset-top));
+  padding-bottom: calc(17.5vh + env(safe-area-inset-bottom));
+}
+/* Two columns instead of one long column — halves the row count for the
+   same button count, buying back the vertical space the entrance
+   shortcuts added. align-content: start keeps rows sized to their own
+   buttons (see .kiosk-floor-list .kiosk-building-btn) instead of the grid's
+   default stretching them to fill whatever leftover height happens to be
+   available — otherwise a building with only a couple of floors ends up
+   with a couple of oversized buttons instead of compact ones. */
 .kiosk-floor-list {
   width: 100%;
-  max-width: 420px;
+  max-width: 640px;
   box-sizing: border-box;
   padding: 0 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  max-height: 70vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 20px 24px;
+  max-height: 62vh;
   overflow-y: auto;
 }
 .kiosk-building-btn {
@@ -5118,6 +5068,22 @@ button.primary {
 .kiosk-building-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+/* Floor screen's own buttons sit two to a row (.kiosk-floor-list, above)
+   instead of one — noticeably narrower than the building screen's, and the
+   entrance shortcuts' labels ("Building Entrance") are long enough to need
+   the smaller size to read as one line rather than wrapping. */
+.kiosk-floor-list .kiosk-building-btn {
+  min-height: 108px;
+  font-size: 28px;
+  padding: 0 12px;
+}
+/* Entrance shortcuts (Building entrance / Campus entrance) sit above the
+   floor list on the same screen — outlined rather than filled so they read
+   as a different kind of action from "pick a floor", not just another one. */
+.kiosk-entrance-btn {
+  background: #fff;
+  color: var(--accent);
 }
 /* No press feedback: the global button:active rule shrinks it, exposing
    whatever is behind its corners. Beats that rule on specificity. */
@@ -5411,15 +5377,19 @@ html.kiosk-mode body {
 }
 
 /* Checkbox row: .node-form's blanket input rule (block, full width, padded)
-   would stretch a bare checkbox, so it's reset here. */
-.node-form .starting-node-field {
+   would stretch a bare checkbox, so it's reset here. Shared by the starting
+   node, building entrance, and campus entrance toggles — same look,
+   different scope. */
+.node-form .starting-node-field,
+.node-form .entrance-flag-field {
   margin-bottom: 10px;
   padding: 10px 12px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
-.node-form .starting-node-toggle {
+.node-form .starting-node-toggle,
+.node-form .entrance-flag-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -5429,7 +5399,8 @@ html.kiosk-mode body {
   color: var(--text);
   cursor: pointer;
 }
-.node-form .starting-node-toggle input {
+.node-form .starting-node-toggle input,
+.node-form .entrance-flag-toggle input {
   display: inline-block;
   flex-shrink: 0;
   width: 16px;
@@ -5438,7 +5409,8 @@ html.kiosk-mode body {
   padding: 0;
   accent-color: var(--accent);
 }
-.node-form .starting-node-field .field-hint {
+.node-form .starting-node-field .field-hint,
+.node-form .entrance-flag-field .field-hint {
   display: block;
   margin-top: 6px;
 }

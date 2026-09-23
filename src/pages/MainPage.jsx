@@ -4,7 +4,6 @@ import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
 import RoomCard from "../components/RoomCard";
 import Room360Modal from "../components/Room360Modal";
-import CrossCampusMinimap from "../components/CrossCampusMinimap";
 import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
@@ -24,11 +23,11 @@ import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
 import { useKioskSession, useKioskZoomLock } from "../hooks/useKioskSession";
 import { blocksIdle, coverage } from "../utils/overlay";
-import { allBuildings, buildingLabel, floorLabel } from "../utils/constants";
+import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
-import { pickBuildingStart, pickFloorStart, floorsForBuilding } from "../utils/navigation";
+import { pickBuildingStart, pickFloorStart, floorsForBuilding, findKioskEntranceShortcuts } from "../utils/navigation";
 import { useNavigation } from "../hooks/useNavigation";
 import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
 import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
@@ -207,22 +206,16 @@ function MainPageContent({ onReset }) {
   // building the visitor just picked.
   const kioskFloors = useMemo(() => floorsForBuilding(nodes, kiosk.building), [nodes, kiosk.building]);
 
-  const current = currentId ? byId[currentId] : null;
+  // Same screen's entrance shortcuts — the building entrance and campus
+  // entrance an admin flagged for whichever building was just picked (see
+  // NodeForm's "Building entrance"/"Campus entrance" toggles and
+  // findKioskEntranceShortcuts's own reasoning).
+  const kioskEntranceShortcuts = useMemo(
+    () => findKioskEntranceShortcuts(nodes, kiosk.building, campusForBuilding),
+    [nodes, kiosk.building]
+  );
 
-  // Cross-campus minimap eligibility — only entrance-type nodes, excluding
-  // GD2/GD3 specifically since they're part of the same physically
-  // interconnected cluster as GD1 (which already represents the whole
-  // cluster on its own — no need for every building in it to carry its
-  // own copy of the widget). Only actually renders once the building also
-  // has real coordinates set, since not every building has this yet
-  // (Digital Campus doesn't, as of writing this).
-  const currentBuildingMeta = current ? allBuildings().find((b) => b.id === current.building) : null;
-  const showMinimap =
-    current?.type === "entrance" &&
-    current.building !== "gd2" &&
-    current.building !== "gd3" &&
-    currentBuildingMeta?.lat != null &&
-    currentBuildingMeta?.lng != null;
+  const current = currentId ? byId[currentId] : null;
 
   // A single named constant, easy to retune. Suppressed entirely (enabled: false, no
   // timer even running) whenever any other overlay is already open, so
@@ -374,13 +367,16 @@ function MainPageContent({ onReset }) {
   };
 
   // Kiosk's initial building screen: record the pick and move on to the
-  // floor screen — unless that building doesn't actually offer a floor
-  // choice (one floor, or none), in which case there's nothing to ask, so
-  // land immediately and skip straight past it (see kioskStage).
+  // floor screen — unless that building doesn't actually offer a real
+  // choice (one floor and no entrance shortcuts to offer either), in which
+  // case there's nothing to ask, so land immediately and skip straight past
+  // it (see kioskStage).
   const handleKioskBuildingPick = (b) => {
     setBuildingFilter(b);
     kiosk.chooseBuilding(b);
-    if (floorsForBuilding(nodes, b).length > 1) return;
+    const hasChoice =
+      floorsForBuilding(nodes, b).length > 1 || findKioskEntranceShortcuts(nodes, b, campusForBuilding).length > 0;
+    if (hasChoice) return;
     kiosk.chooseFloor();
     const start = pickBuildingStart(nodes, b);
     if (start) jumpToSearchResult(start.id);
@@ -391,6 +387,12 @@ function MainPageContent({ onReset }) {
     const start = pickFloorStart(nodes, kiosk.building, floor);
     kiosk.chooseFloor();
     if (start) jumpToSearchResult(start.id);
+  };
+
+  // Same screen's entrance shortcuts: land directly on the flagged node.
+  const handleKioskEntrancePick = (nodeId) => {
+    kiosk.chooseFloor();
+    if (nodeId) jumpToSearchResult(nodeId);
   };
 
   if (loadError) {
@@ -754,7 +756,9 @@ function MainPageContent({ onReset }) {
           hidden={kiosk.stage !== "floor"}
           buildingLabel={kiosk.building ? buildingLabel(kiosk.building) : null}
           floors={kioskFloors}
+          entranceShortcuts={kioskEntranceShortcuts}
           onPick={handleKioskFloorPick}
+          onPickEntrance={handleKioskEntrancePick}
           onBack={kiosk.backToBuilding}
         />
       )}
@@ -814,15 +818,6 @@ function MainPageContent({ onReset }) {
                 <span>{current.name}</span>
               </div>
             </div>
-            )}
-
-            {showMinimap && (
-              <CrossCampusMinimap
-                lat={currentBuildingMeta.lat}
-                lng={currentBuildingMeta.lng}
-                label={buildingLabel(current.building)}
-                className="minimap-widget-mobile"
-              />
             )}
 
             {mobileDockOpen && (
@@ -1038,15 +1033,6 @@ function MainPageContent({ onReset }) {
                   <span>{current.name}</span>
                 </div>
               </div>
-
-              {showMinimap && (
-                <CrossCampusMinimap
-                  lat={currentBuildingMeta.lat}
-                  lng={currentBuildingMeta.lng}
-                  label={buildingLabel(current.building)}
-                  className="minimap-widget-desktop"
-                />
-              )}
 
               {/* Floating overlay UI — rail, search bar, and the single
                   floating panel — all positioned over the panorama itself,
