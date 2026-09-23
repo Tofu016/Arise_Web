@@ -7,6 +7,7 @@ import Room360Modal from "../components/Room360Modal";
 import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
+import KioskCampusScreen from "../components/KioskCampusScreen";
 import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskFloorScreen from "../components/KioskFloorScreen";
 import KioskDialog from "../components/KioskDialog";
@@ -74,8 +75,9 @@ function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, profile, role, signOut } = useAuth();
   const compact = useCompactLayout();
-  // Kiosk session: the attract screen, then the building screen, then
-  // exploring — see utils/kioskSession.js. Desktop skips straight to exploring.
+  // Kiosk session: the attract screen, then the campus screen, then (Main
+  // Campus only) the building screen, then the floor screen, then exploring
+  // — see utils/kioskSession.js. Desktop skips straight to exploring.
   const kiosk = useKioskSession(compact);
   useKioskZoomLock(compact);
 
@@ -206,13 +208,22 @@ function MainPageContent({ onReset }) {
   // building the visitor just picked.
   const kioskFloors = useMemo(() => floorsForBuilding(nodes, kiosk.building), [nodes, kiosk.building]);
 
-  // Same screen's entrance shortcuts — the building entrance and campus
-  // entrance an admin flagged for whichever building was just picked (see
-  // NodeForm's "Building entrance"/"Campus entrance" toggles and
-  // findKioskEntranceShortcuts's own reasoning).
-  const kioskEntranceShortcuts = useMemo(
-    () => findKioskEntranceShortcuts(nodes, kiosk.building, campusForBuilding),
-    [nodes, kiosk.building]
+  // Same screen's entrance shortcuts — only offered for a single-building
+  // campus (e.g. Digital Campus), which has no earlier building screen to
+  // offer its Campus entrance on instead. Main Campus offers its shared
+  // Campus Entrance as its own entry on the building screen (see
+  // mainCampusEntranceId below), so it never needs one here.
+  const kioskEntranceShortcuts = useMemo(() => {
+    if (kiosk.campus === "main") return [];
+    return findKioskEntranceShortcuts(nodes, kiosk.building, campusForBuilding);
+  }, [nodes, kiosk.building, kiosk.campus]);
+
+  // The kiosk building screen's "Campus Entrance" entry: the one node an
+  // admin flagged as the shared entrance for the whole Main Campus cluster
+  // (see NodeForm's "Campus entrance" toggle).
+  const mainCampusEntrance = useMemo(
+    () => (nodes || []).find((n) => n.campusEntrance && campusForBuilding(n.building) === "main"),
+    [nodes]
   );
 
   const current = currentId ? byId[currentId] : null;
@@ -366,20 +377,31 @@ function MainPageContent({ onReset }) {
     if (start && start.id !== currentId) jumpToSearchResult(start.id);
   };
 
-  // Kiosk's initial building screen: record the pick and move on to the
-  // floor screen — unless that building doesn't actually offer a real
-  // choice (one floor and no entrance shortcuts to offer either), in which
-  // case there's nothing to ask, so land immediately and skip straight past
-  // it (see kioskStage).
+  // Kiosk's campus screen: record the pick. Main Campus moves on to the
+  // building screen; any other campus is always a single building (see
+  // campusForBuilding), so land on its floor screen instead — unless that
+  // building doesn't actually offer a real choice (one floor and no
+  // entrance shortcut to offer either), in which case there's nothing to
+  // ask, so land immediately and skip straight past it (see kioskStage).
+  const handleKioskCampusPick = (campusId) => {
+    kiosk.chooseCampus(campusId);
+    if (campusId === "main") return;
+    setBuildingFilter(campusId);
+    const hasChoice =
+      floorsForBuilding(nodes, campusId).length > 1 ||
+      findKioskEntranceShortcuts(nodes, campusId, campusForBuilding).length > 0;
+    if (hasChoice) return;
+    kiosk.chooseFloor();
+    const start = pickBuildingStart(nodes, campusId);
+    if (start) jumpToSearchResult(start.id);
+  };
+
+  // Kiosk's building screen (Main Campus only): record the pick and always
+  // move on to the floor screen — the only way to skip it is the Campus
+  // Entrance entry on this same screen (see handleKioskCampusEntrancePick).
   const handleKioskBuildingPick = (b) => {
     setBuildingFilter(b);
     kiosk.chooseBuilding(b);
-    const hasChoice =
-      floorsForBuilding(nodes, b).length > 1 || findKioskEntranceShortcuts(nodes, b, campusForBuilding).length > 0;
-    if (hasChoice) return;
-    kiosk.chooseFloor();
-    const start = pickBuildingStart(nodes, b);
-    if (start) jumpToSearchResult(start.id);
   };
 
   // Kiosk's floor screen: land on that floor's starting node.
@@ -389,8 +411,18 @@ function MainPageContent({ onReset }) {
     if (start) jumpToSearchResult(start.id);
   };
 
-  // Same screen's entrance shortcuts: land directly on the flagged node.
+  // Same screen's entrance shortcuts (single-building campuses only): land
+  // directly on the flagged node.
   const handleKioskEntrancePick = (nodeId) => {
+    kiosk.chooseFloor();
+    if (nodeId) jumpToSearchResult(nodeId);
+  };
+
+  // Building screen's "Campus Entrance" entry (Main Campus only): land
+  // directly on the flagged node, skipping the floor screen entirely.
+  const handleKioskCampusEntrancePick = (nodeId) => {
+    const node = nodeId ? byId[nodeId] : null;
+    kiosk.chooseBuilding(node ? node.building : "gd1");
     kiosk.chooseFloor();
     if (nodeId) jumpToSearchResult(nodeId);
   };
@@ -734,21 +766,31 @@ function MainPageContent({ onReset }) {
           behavior for ordinary navigation; this is specifically a
           first-load-only splash. */}
       <LoadingScreen show={!initialLoadDone} label="Loading campus…" />
-      {/* A solid backdrop behind the kiosk's whole start/building/floor
-          sequence. Each of those three screens fades in/out on its own
-          (0.6s), and a step change toggles two of them at once — without
-          this, the moment where both are still mid-fade (each only
-          partially opaque) let the panorama underneath show through.
-          This sits just below all three (fixed at z-index 585) and only
-          fades away once actually exploring, so that moment reveals solid
-          white instead. */}
+      {/* A solid backdrop behind the kiosk's whole start/campus/building/floor
+          sequence. Each of those screens fades in/out on its own (0.6s), and
+          a step change toggles two of them at once — without this, the
+          moment where both are still mid-fade (each only partially opaque)
+          let the panorama underneath show through. This sits just below all
+          of them (fixed at z-index 585) and only fades away once actually
+          exploring, so that moment reveals solid white instead. */}
       {compact && <div className={"kiosk-sequence-backdrop" + (kiosk.awaitingStart ? "" : " kiosk-sequence-backdrop-hidden")} />}
+      {compact && (
+        <KioskCampusScreen
+          hidden={kiosk.stage !== "campus"}
+          buildings={allBuildings()}
+          available={new Set(nodes.map((n) => n.building))}
+          onPick={handleKioskCampusPick}
+        />
+      )}
       {compact && (
         <KioskBuildingScreen
           hidden={kiosk.stage !== "building"}
           buildings={allBuildings()}
           available={new Set(nodes.map((n) => n.building))}
+          campusEntranceNodeId={mainCampusEntrance ? mainCampusEntrance.id : null}
           onPick={handleKioskBuildingPick}
+          onPickEntrance={handleKioskCampusEntrancePick}
+          onBack={kiosk.backToCampus}
         />
       )}
       {compact && (
@@ -759,7 +801,7 @@ function MainPageContent({ onReset }) {
           entranceShortcuts={kioskEntranceShortcuts}
           onPick={handleKioskFloorPick}
           onPickEntrance={handleKioskEntrancePick}
-          onBack={kiosk.backToBuilding}
+          onBack={kiosk.campus === "main" ? kiosk.backToBuilding : kiosk.backToCampus}
         />
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}

@@ -1,20 +1,25 @@
 import { floorLabel } from "../utils/constants";
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
-// The kiosk's floor selection screen, shown after a building is picked and
-// covering the whole viewport like the screens before it. MainPage never
-// puts the session in this stage for a building with only one floor to
-// land on, so it's skipped without ever appearing in that case — see
-// utils/kioskSession.js.
+// The kiosk's starting-point selection screen, shown after a building is
+// picked on Main Campus, or a single-building campus is picked directly
+// (e.g. Digital Campus — see KioskCampusScreen), and covering the whole
+// viewport like the screens before it. Always shown for a Main Campus
+// building pick (the only way to skip it is the building screen's own
+// Campus Entrance entry); for a single-building campus, MainPage skips it
+// when that building has only one floor and no entrance shortcut to land
+// on instead — see utils/kioskSession.js.
 //
 // floors: every floor number the building has (low to high, underground
 // included) — see utils/navigation.js's floorsForBuilding.
 // entranceShortcuts: [{ key, label, nodeId }], from
-// utils/navigation.js's findKioskEntranceShortcuts — the flagged Building
-// entrance and/or Campus entrance for this building, collapsed to one
-// "Campus entrance" button when they're the same node. Shown above the
-// floor list as direct-jump buttons, not floor picks.
-// onBack: retreats to the building screen, clearing the building choice.
+// utils/navigation.js's findKioskEntranceShortcuts — only passed for a
+// single-building campus, which has no earlier building screen to offer its
+// Campus entrance on instead. Shown above the floor list as direct-jump
+// buttons, not floor picks.
+// onBack: retreats to the building screen (Main Campus) or the campus
+// screen (a single-building campus), clearing the building choice either
+// way.
 export default function KioskFloorScreen({ hidden, buildingLabel, floors, entranceShortcuts, onPick, onPickEntrance, onBack }) {
   return (
     <div
@@ -39,7 +44,7 @@ export default function KioskFloorScreen({ hidden, buildingLabel, floors, entran
         ← Back
       </button>
       <h2 className="kiosk-building-title">
-        Choose a starting point{buildingLabel ? ` in ${buildingLabel}` : ""}.
+        Select a Starting Point{buildingLabel ? ` in ${buildingLabel}` : ""}
       </h2>
       <div className="kiosk-floor-list">
         {(entranceShortcuts || []).map((s) => (
