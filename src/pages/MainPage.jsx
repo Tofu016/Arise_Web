@@ -29,8 +29,9 @@ import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../u
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
-import { pickBuildingStart, pickFloorStart, floorsForBuilding, findKioskEntranceShortcuts } from "../utils/navigation";
+import { floorsForBuilding, findKioskEntranceShortcuts, findMainCampusEntrance } from "../utils/navigation";
 import { useNavigation } from "../hooks/useNavigation";
+import { useKioskPicks } from "../hooks/useKioskPicks";
 import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
 import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
@@ -232,10 +233,7 @@ function MainPageContent({ onReset }) {
   // The kiosk building screen's "Campus Entrance" entry: the one node an
   // admin flagged as the shared entrance for the whole Main Campus cluster
   // (see NodeForm's "Campus entrance" toggle).
-  const mainCampusEntrance = useMemo(
-    () => (nodes || []).find((n) => n.campusEntrance && campusForBuilding(n.building) === "main"),
-    [nodes]
-  );
+  const mainCampusEntrance = useMemo(() => findMainCampusEntrance(nodes, campusForBuilding), [nodes]);
 
   const current = currentId ? byId[currentId] : null;
 
@@ -369,83 +367,25 @@ function MainPageContent({ onReset }) {
     overlay.openRoom360();
   };
 
-  // Mobile-only: the bottom Building selector doubles as direct navigation
-  // (there's no separate entrances list to browse on mobile) — picking a
-  // building jumps straight to its first entrance.
-  const handleMobileBuildingPick = (b) => {
-    setBuildingFilter(b);
-    overlay.closeBuildingMenu();
-    if (b === "all") return;
-    const start = pickBuildingStart(nodes, b);
-    if (start) jumpToSearchResult(start.id);
-  };
-
-  // Building dialog, floor step: land on that floor's starting node.
-  const handleMobileFloorPick = (buildingId, floor) => {
-    const start = pickFloorStart(nodes, buildingId, floor);
-    setBuildingFilter(buildingId);
-    overlay.closeBuildingMenu();
-    if (start && start.id !== currentId) jumpToSearchResult(start.id);
-  };
-
-  // Building dialog, entrance shortcut: same as picking a floor, but lands
-  // directly on that building's or campus's flagged entrance node instead
-  // of a floor's default starting node.
-  const handleMobileEntrancePick = (buildingId, nodeId) => {
-    setBuildingFilter(buildingId);
-    overlay.closeBuildingMenu();
-    if (nodeId && nodeId !== currentId) jumpToSearchResult(nodeId);
-  };
-
-  // Kiosk's campus screen: record the pick. Main Campus moves on to the
-  // building screen; any other campus is always a single building (see
-  // campusForBuilding), so land on its floor screen instead — unless that
-  // building doesn't actually offer a real choice (one floor and no
-  // entrance shortcut to offer either), in which case there's nothing to
-  // ask, so land immediately and skip straight past it (see kioskStage).
-  const handleKioskCampusPick = (campusId) => {
-    kiosk.chooseCampus(campusId);
-    if (campusId === "main") return;
-    setBuildingFilter(campusId);
-    const hasChoice =
-      floorsForBuilding(nodes, campusId).length > 1 ||
-      findKioskEntranceShortcuts(nodes, campusId, campusForBuilding).length > 0;
-    if (hasChoice) return;
-    kiosk.chooseFloor();
-    const start = pickBuildingStart(nodes, campusId);
-    if (start) jumpToSearchResult(start.id);
-  };
-
-  // Kiosk's building screen (Main Campus only): record the pick and always
-  // move on to the floor screen — the only way to skip it is the Campus
-  // Entrance entry on this same screen (see handleKioskCampusEntrancePick).
-  const handleKioskBuildingPick = (b) => {
-    setBuildingFilter(b);
-    kiosk.chooseBuilding(b);
-  };
-
-  // Kiosk's floor screen: land on that floor's starting node.
-  const handleKioskFloorPick = (floor) => {
-    const start = pickFloorStart(nodes, kiosk.building, floor);
-    kiosk.chooseFloor();
-    if (start) jumpToSearchResult(start.id);
-  };
-
-  // Same screen's entrance shortcuts (single-building campuses only): land
-  // directly on the flagged node.
-  const handleKioskEntrancePick = (nodeId) => {
-    kiosk.chooseFloor();
-    if (nodeId) jumpToSearchResult(nodeId);
-  };
-
-  // Building screen's "Campus Entrance" entry (Main Campus only): land
-  // directly on the flagged node, skipping the floor screen entirely.
-  const handleKioskCampusEntrancePick = (nodeId) => {
-    const node = nodeId ? byId[nodeId] : null;
-    kiosk.chooseBuilding(node ? node.building : "gd1");
-    kiosk.chooseFloor();
-    if (nodeId) jumpToSearchResult(nodeId);
-  };
+  // Every mobile Building dialog / kiosk campus-building-floor screen pick —
+  // see hooks/useKioskPicks.js. Every pick here is a fresh start (jump).
+  const {
+    handleMobileFloorPick,
+    handleMobileEntrancePick,
+    handleKioskCampusPick,
+    handleKioskBuildingPick,
+    handleKioskFloorPick,
+    handleKioskEntrancePick,
+    handleKioskCampusEntrancePick,
+  } = useKioskPicks({
+    nodes,
+    byId,
+    kiosk,
+    setBuildingFilter,
+    closeBuildingMenu: overlay.closeBuildingMenu,
+    currentId,
+    jump: jumpToSearchResult,
+  });
 
   if (loadError) {
     return (

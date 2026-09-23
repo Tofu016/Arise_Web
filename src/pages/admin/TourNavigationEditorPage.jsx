@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTourStops } from "../../hooks/useTourStops";
 import { useTourSections } from "../../hooks/useTourSections";
-import PanoramaNav from "../../components/PanoramaNav";
 import TourStopList from "../../components/TourStopList";
+import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "../../components/GraphEditorControls";
 import FilePickerButton from "../../components/FilePickerButton";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { newMarkerId } from "../../utils/placement";
@@ -11,9 +11,10 @@ import { useBlurReview } from "../../hooks/useBlurReview";
 import { useToast } from "../../context/ToastContext";
 
 // Campus Tour equivalent of Virtual Map Navigation Editor — the same
-// walking/linking/placing mechanic (stop-to-stop hotspots), shared through
-// useGraphEditor, and it reuses PanoramaNav.jsx directly. The marker
-// system here is genuinely different from the indoor side's: instead of
+// walking/linking/placing mechanic (stop-to-stop hotspots) and the same
+// banners/preview/link-list/add-link shell, shared through useGraphEditor
+// and GraphEditorControls. The marker system here is genuinely different
+// from the indoor side's: instead of
 // picking a type (room/facility/exit/hydrant) and a plain text label, an
 // equipment marker is a label plus a set of photos that open in a carousel
 // on the public page ("Click to view photos") — there's no type picker at
@@ -44,10 +45,7 @@ export default function TourNavigationEditorPage() {
     setDefaultView,
     clearDefaultView,
   });
-  const {
-    current, hotspots, markers, byId, placingFor, placingMarker, photoUrl, photoMissing, history,
-    defaultViewTarget, entryPitch,
-  } = editor;
+  const { current, markers } = editor;
 
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
@@ -159,57 +157,9 @@ export default function TourNavigationEditorPage() {
       <div className="navigation-editor-main">
         <h2 className="admin-page-heading">Campus Tour Navigation Editor</h2>
 
-        {placingFor && (
-          <div className="placing-banner">
-            Click on the panorama to place the arrow toward "{byId[placingFor]?.name || placingFor}"
-            <button onClick={editor.cancelLinkPlacement}>Cancel</button>
-          </div>
-        )}
-        {placingMarker && (
-          <div className="placing-banner">
-            Click on the panorama to place the marker
-            {placingMarker.mode === "new" ? ` "${placingMarker.marker.label}"` : ""}
-            <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
-          </div>
-        )}
-        {defaultViewTarget && (
-          <div className="placing-banner">
-            Drag to orbit to the view visitors should see on arrival here from "{defaultViewTarget.fromName}", then Save.
-            <button onClick={editor.requestCapture}>Save this view</button>
-            <button onClick={editor.cancelSetDefaultView}>Cancel</button>
-          </div>
-        )}
+        <GraphEditorBanners editor={editor} />
 
-        <div className="preview-screen navigation-editor-screen">
-          <PanoramaNav
-            key={current.id}
-            url={photoUrl || ""}
-            hotspots={hotspots}
-            markers={markers}
-            onNavigate={editor.goTo}
-            onError={() => editor.setPhotoMissing(true)}
-            placing={editor.placing}
-            onPlaceAngle={editor.placeAngle}
-            initialYaw={editor.entryYaw}
-            initialPitch={entryPitch}
-            captureRequestId={editor.captureRequestId}
-            onCaptureAngle={editor.handleCapturedAngle}
-          />
-        </div>
-        {(!current.photo || photoMissing) && (
-          <p className="photo-missing-note">
-            No photo loaded for this stop yet — hotspots still work for testing the link graph.
-          </p>
-        )}
-        {current.photo && !photoUrl && !photoMissing && (
-          <p className="photo-missing-note">Loading photo…</p>
-        )}
-        <p className="preview-hint">
-          Left-click and drag to look around · click a link to teleport
-          {history.length > 0 && (
-            <button className="back-btn" onClick={editor.goBack}>← Back</button>
-          )}
-        </p>
+        <GraphEditorPreview editor={editor} itemNoun="stop" />
 
         <div className="navigation-editor-title-row">
           <h3>{current.name}</h3>
@@ -219,30 +169,7 @@ export default function TourNavigationEditorPage() {
         </div>
 
         <div className="navigation-editor-lists">
-          <div className="navigation-editor-list-col">
-            <h5>Links added ({hotspots.length})</h5>
-            <div className="link-list navigation-editor-scroll-list">
-              {hotspots.length === 0 && <p className="empty-hint">No links yet.</p>}
-              {hotspots.map((h) => (
-                <div key={h.id} className="link-row">
-                  <span className="link-name">
-                    {h.name}
-                    {h.defaultYaw != null && <span className="field-hint"> · default view set</span>}
-                  </span>
-                  <div className="link-actions">
-                    <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
-                    <button onClick={() => editor.startSetDefaultView(h.id)}>
-                      {h.defaultYaw != null ? "Reset" : "Set"} default view
-                    </button>
-                    {h.defaultYaw != null && (
-                      <button onClick={() => editor.clearDefaultView(h.id)}>Clear default view</button>
-                    )}
-                    <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LinkList editor={editor} />
 
           <div className="navigation-editor-list-col">
             <h5>Markers added ({markers.length})</h5>
@@ -262,33 +189,7 @@ export default function TourNavigationEditorPage() {
         </div>
 
         <div className="navigation-editor-add-row">
-          <div className="navigation-editor-add-col">
-            <h5>Links</h5>
-            {!editor.adding ? (
-              <button className="add-link-btn" onClick={() => editor.setAdding(true)}>+ Add Links</button>
-            ) : (
-              <div className="add-link-box">
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Search stop by name or ID..."
-                  value={editor.addSearch}
-                  onChange={(e) => editor.setAddSearch(e.target.value)}
-                />
-                <div className="add-link-results">
-                  {editor.candidates.map((s) => (
-                    <div key={s.id} className="add-link-result" onClick={() => editor.addLink(s.id)}>
-                      {s.name} <span className="neighbor-id">{s.id}</span>
-                    </div>
-                  ))}
-                  {editor.addSearch && editor.candidates.length === 0 && (
-                    <p className="empty-hint">No matches.</p>
-                  )}
-                </div>
-                <button onClick={editor.cancelAddingLink}>Cancel</button>
-              </div>
-            )}
-          </div>
+          <AddLinkBox editor={editor} itemNoun="stop" />
 
           <div className="navigation-editor-add-col">
             <h5>Markers</h5>

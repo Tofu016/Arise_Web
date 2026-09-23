@@ -91,6 +91,23 @@ export function findKioskEntranceShortcuts(nodes, buildingId, campusForBuilding)
   return shortcuts;
 }
 
+// The kiosk building screen's "Campus Entrance" entry: the one node an
+// admin flagged as the shared entrance for the whole Main Campus cluster.
+export function findMainCampusEntrance(nodes, campusForBuilding) {
+  return (nodes || []).find((n) => n.campusEntrance && campusForBuilding(n.building) === "main") || null;
+}
+
+// Whether a single-building campus's kiosk building screen actually has
+// something worth stopping for: more than one floor, or an entrance
+// shortcut to offer. When neither, the floor screen has nothing meaningful
+// to ask, so the kiosk skips straight past it.
+export function kioskBuildingHasChoice(nodes, buildingId, campusForBuilding) {
+  return (
+    floorsForBuilding(nodes, buildingId).length > 1 ||
+    findKioskEntranceShortcuts(nodes, buildingId, campusForBuilding).length > 0
+  );
+}
+
 // Where a visitor lands on one floor of a building: the node an admin
 // flagged as that floor's starting node, else the floor's first entrance,
 // else its first node. Null if the floor has no nodes.

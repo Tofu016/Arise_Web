@@ -8,6 +8,8 @@ import {
   pickBuildingStart,
   floorsForBuilding,
   findKioskEntranceShortcuts,
+  findMainCampusEntrance,
+  kioskBuildingHasChoice,
   landOnDefault,
   findFlyover,
   requestWalk,
@@ -288,5 +290,45 @@ describe("findKioskEntranceShortcuts", () => {
   it("is empty with no nodes or no building", () => {
     expect(findKioskEntranceShortcuts(null, "gd1", campus)).toEqual([]);
     expect(findKioskEntranceShortcuts([n("be", "gd1", { buildingEntrance: true })], null, campus)).toEqual([]);
+  });
+});
+
+describe("findMainCampusEntrance", () => {
+  const n = (id, building, extra = {}) => ({ id, building, floor: 1, type: "entrance", ...extra });
+  const campus = (id) => (id === "gd1" || id === "gd2" ? "main" : id);
+
+  it("finds the node flagged as the Main Campus entrance", () => {
+    const ns = [n("ce", "gd2", { campusEntrance: true })];
+    expect(findMainCampusEntrance(ns, campus)).toBe(ns[0]);
+  });
+
+  it("ignores a campus entrance flagged on a different campus", () => {
+    const ns = [n("ce", "digital", { campusEntrance: true })];
+    expect(findMainCampusEntrance(ns, campus)).toBe(null);
+  });
+
+  it("is null with nothing flagged", () => {
+    expect(findMainCampusEntrance([n("a", "gd1")], campus)).toBe(null);
+    expect(findMainCampusEntrance(null, campus)).toBe(null);
+  });
+});
+
+describe("kioskBuildingHasChoice", () => {
+  const n = (id, building, extra = {}) => ({ id, building, floor: 1, ...extra });
+  const campus = (id) => id; // each building its own campus here
+
+  it("is true with more than one floor", () => {
+    const ns = [n("a", "gd3", { floor: 1 }), n("b", "gd3", { floor: 2 })];
+    expect(kioskBuildingHasChoice(ns, "gd3", campus)).toBe(true);
+  });
+
+  it("is true with an entrance shortcut even on a single floor", () => {
+    const ns = [n("a", "gd3", { type: "entrance", buildingEntrance: true })];
+    expect(kioskBuildingHasChoice(ns, "gd3", campus)).toBe(true);
+  });
+
+  it("is false with one floor and no entrance shortcut", () => {
+    const ns = [n("a", "gd3"), n("b", "gd3")];
+    expect(kioskBuildingHasChoice(ns, "gd3", campus)).toBe(false);
   });
 });

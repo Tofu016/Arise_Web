@@ -1,7 +1,4 @@
-import { useRef, useState } from "react";
-import { apiPost } from "../utils/apiClient";
-import { playSfx } from "../utils/sfx";
-import starSelectSfx from "../assets/sounds/star-sfx-CREATIVE-COMMONS-ZERO.wav";
+import { useFeedbackForm } from "../hooks/useFeedbackForm";
 import KioskDialog from "./KioskDialog";
 import KioskThanks from "./KioskThanks";
 
@@ -19,96 +16,25 @@ import KioskThanks from "./KioskThanks";
 // for this session, even if the visitor then taps "Keep exploring".
 export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk = false }) {
   const inputMode = kiosk ? "none" : undefined;
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
-  const draggingRef = useRef(false);
-  const lastStarRef = useRef(0);
+  const f = useFeedbackForm({ onSubmitted });
 
-  // Lets a visitor drag/slide across the row to pick a rating instead of
-  // requiring a precise tap on one star — friendlier on the kiosk touchscreen.
-  const starAtPoint = (clientX, clientY) => {
-    const el = document.elementFromPoint(clientX, clientY)?.closest("[data-star]");
-    return el ? Number(el.dataset.star) : null;
-  };
+  const displayRating = f.displayRating;
+  const title = f.submitted ? "Thank you!" : "How was your experience?";
 
-  const handleStarPointerDown = (e) => {
-    draggingRef.current = true;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    const star = starAtPoint(e.clientX, e.clientY);
-    if (star) {
-      setRating(star);
-      setHoverRating(star);
-      lastStarRef.current = star;
-    }
-  };
-
-  const handleStarPointerMove = (e) => {
-    if (!draggingRef.current) return;
-    const star = starAtPoint(e.clientX, e.clientY);
-    if (star) {
-      setRating(star);
-      setHoverRating(star);
-      lastStarRef.current = star;
-    }
-  };
-
-  // Only pop the SFX once the slide/tap ends — not on every star it passes
-  // through — so it plays for the star the visitor actually settles on.
-  const endStarDrag = () => {
-    if (draggingRef.current && lastStarRef.current) {
-      playSfx(starSelectSfx, { volume: 0.05 });
-    }
-    draggingRef.current = false;
-    setHoverRating(0);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (rating < 1) {
-      setError("Please select a rating.");
-      return;
-    }
-    setError("");
-    setSubmitting(true);
-    try {
-      await apiPost("Feedback_API/submit", {
-        rating,
-        comment: comment.trim() || undefined,
-        name: name.trim() || undefined,
-        email: email.trim() || undefined,
-      });
-      setSubmitted(true);
-      onSubmitted?.();
-    } catch (err) {
-      setError(err.message || "Couldn't submit feedback. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const displayRating = hoverRating || rating;
-  const title = submitted ? "Thank you!" : "How was your experience?";
-
-  const body = submitted ? (
+  const body = f.submitted ? (
     <p className="feedback-panel-thanks">
       Your feedback helps us improve ARISE — thanks for taking the time to share it.
     </p>
   ) : (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={f.submit}>
       <div
         className="feedback-star-row"
         role="radiogroup"
         aria-label="Rating"
-        onPointerDown={handleStarPointerDown}
-        onPointerMove={handleStarPointerMove}
-        onPointerUp={endStarDrag}
-        onPointerCancel={endStarDrag}
+        onPointerDown={f.handleStarPointerDown}
+        onPointerMove={f.handleStarPointerMove}
+        onPointerUp={f.endStarDrag}
+        onPointerCancel={f.endStarDrag}
       >
         {[1, 2, 3, 4, 5].map((star) => (
           <button
@@ -116,11 +42,11 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
             type="button"
             className="feedback-star"
             data-star={star}
-            onClick={() => setRating(star)}
-            onMouseEnter={() => setHoverRating(star)}
-            onMouseLeave={() => setHoverRating(0)}
+            onClick={() => f.selectStar(star)}
+            onMouseEnter={() => f.hoverStar(star)}
+            onMouseLeave={f.clearHover}
             aria-label={`${star} star${star === 1 ? "" : "s"}`}
-            aria-checked={rating === star}
+            aria-checked={f.rating === star}
             role="radio"
           >
             {star <= displayRating ? "★" : "☆"}
@@ -132,8 +58,8 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
         <label>
           Comments (optional)
           <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            value={f.comment}
+            onChange={(e) => f.editField("comment", e.target.value)}
             placeholder="What worked well, or what could be better?"
             rows={3}
             inputMode={inputMode}
@@ -143,24 +69,24 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
         <div className="feedback-row">
           <label>
             Name (optional)
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} inputMode={inputMode} />
+            <input type="text" value={f.name} onChange={(e) => f.editField("name", e.target.value)} inputMode={inputMode} />
           </label>
 
           <label>
             Email (optional)
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} inputMode={inputMode} />
+            <input type="email" value={f.email} onChange={(e) => f.editField("email", e.target.value)} inputMode={inputMode} />
           </label>
         </div>
 
-        {error && (
+        {f.error && (
           <div className="error-box">
-            <p>{error}</p>
+            <p>{f.error}</p>
           </div>
         )}
 
         <div className="form-actions">
-          <button type="submit" className="primary" disabled={submitting}>
-            {submitting ? "Sending…" : "Send Feedback"}
+          <button type="submit" className="primary" disabled={f.submitting}>
+            {f.submitting ? "Sending…" : "Send Feedback"}
           </button>
           {!kiosk && <button type="button" onClick={onClose}>Cancel</button>}
         </div>
@@ -172,7 +98,7 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
     // Kiosk: a finished evaluation gets the small thank-you card, which
     // resets the system (onFinished) when its countdown ends, unless the
     // visitor taps "Keep exploring" (onClose) to cancel that first.
-    if (submitted) return <KioskThanks onDone={onFinished ?? onClose} onResume={onClose} />;
+    if (f.submitted) return <KioskThanks onDone={onFinished ?? onClose} onResume={onClose} />;
     return (
       <KioskDialog title={title} titleClassName="kiosk-dialog-title-prompt" keyboard="text" onClose={onClose}>
         <div className="feedback-body">{body}</div>
