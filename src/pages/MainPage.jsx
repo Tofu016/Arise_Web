@@ -39,7 +39,11 @@ import {
   findMainCampusEntrance,
   findCampusEntrance,
   buildingsForCampus,
+  kioskBuildingHasChoice,
+  pickBuildingStart,
+  pickFloorStart,
 } from "../utils/navigation";
+import { prefetchPhoto } from "../utils/photoStore";
 import { useNavigation } from "../hooks/useNavigation";
 import { useKioskPicks } from "../hooks/useKioskPicks";
 import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
@@ -259,6 +263,37 @@ function MainPageContent({ onReset }) {
     [nodes, kiosk.campus]
   );
 
+  // Kiosk: warm the photo of every node the visitor could land on with
+  // their very next tap, while they're still reading the screen that offers
+  // it — a picker tap is always a jump (see lastMoveType above), so it never
+  // gets the walk/back crossfade either way; the least it can do is not also
+  // cost a fresh fetch. A solo-building, no-choice campus lands straight
+  // from the CAMPUS screen itself (see handleKioskCampusPick), skipping the
+  // building/floor screens entirely, so it's warmed here instead of waiting
+  // for a screen that will never show.
+  useEffect(() => {
+    if (!compact || !nodes) return;
+    const targets = [];
+    if (kiosk.stage === "campus") {
+      const campusIds = new Set(allBuildings().map((b) => campusForBuilding(b.id)));
+      for (const campusId of campusIds) {
+        const members = buildingsForCampus(allBuildings(), campusId, campusForBuilding);
+        if (members.length !== 1) continue; // multi-building: warmed once its building screen shows instead
+        const soleBuildingId = members[0]?.id ?? campusId;
+        if (kioskBuildingHasChoice(nodes, soleBuildingId, campusForBuilding)) continue; // lands via its own floor screen
+        targets.push(pickBuildingStart(nodes, soleBuildingId));
+      }
+    } else if (kiosk.stage === "building") {
+      targets.push(kioskCampusEntrance);
+    } else if (kiosk.stage === "floor") {
+      for (const floor of kioskFloors) targets.push(pickFloorStart(nodes, kiosk.building, floor));
+      for (const shortcut of kioskEntranceShortcuts) targets.push(byId[shortcut.nodeId]);
+    }
+    for (const node of targets) {
+      if (node?.photo) prefetchPhoto(node.photo);
+    }
+  }, [compact, nodes, byId, kiosk.stage, kiosk.campus, kiosk.building, kioskFloors, kioskEntranceShortcuts, kioskCampusEntrance]);
+
   // The mobile Building dialog's fixed top shortcut is Main Campus's
   // entrance specifically, regardless of what the (separate) kiosk session
   // state currently has picked.
@@ -297,10 +332,21 @@ function MainPageContent({ onReset }) {
 
   const markers = current?.markers || [];
 
+  // Kiosk: which kind of move is loading right now — "walk"/"back" (a step
+  // to a node the visitor was already looking at through a hotspot, or
+  // straight back the way they came) cross-fades into it like the desktop
+  // viewer; "jump" (search, a room card, an elevator, or any kiosk picker
+  // tap) can land somewhere with no relation to the current view, so it
+  // keeps the opaque loading cover instead — see kiosk-loading-overlay
+  // below. `null` before any move (the initial kiosk landing), which the
+  // cover's other condition (!kioskRevealed) already covers on its own.
+  const [lastMoveType, setLastMoveType] = useState(null);
+
   // What follows a move that actually happened — everything the navigation
   // module deliberately knows nothing about: the search box (the overlay
   // module handles the panel, dock and room card).
   const afterMove = (action) => {
+    setLastMoveType(action.type);
     overlay.moved({ type: action.type, room: action.meta?.room });
     if (action.type !== "back") setSearchQuery("");
   };
@@ -951,8 +997,14 @@ function MainPageContent({ onReset }) {
             >
               {/* Kiosk: a full opaque cover over the panorama band (header and
                   bottom whitespace excluded) until the destination is actually
-                  on screen — see sceneLive above for why this isn't photoReady. */}
-              {initialLoadDone && !sceneLive && (
+                  on screen — see sceneLive above for why this isn't photoReady.
+                  Only for the kinds of move that can land somewhere unrelated
+                  to what's currently on screen (a jump, or still mid-reveal
+                  from the campus/building/floor sequence — see lastMoveType
+                  above): a walk or back step crosses fades instead, same as
+                  the desktop viewer, since there IS a real spatial relation
+                  to show. */}
+              {initialLoadDone && !sceneLive && (!kioskRevealed || lastMoveType === "jump") && (
                 <div className="kiosk-loading-overlay" role="status" aria-label="Loading">
                   <div className="loading-spinner" />
                 </div>
