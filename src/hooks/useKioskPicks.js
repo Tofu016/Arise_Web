@@ -1,18 +1,18 @@
 import { campusForBuilding } from "../utils/constants";
-import { pickBuildingStart, pickFloorStart, kioskBuildingHasChoice } from "../utils/navigation";
+import { pickBuildingStart, pickFloorStart, kioskBuildingHasChoice, buildingsForCampus } from "../utils/navigation";
 
 // Every "kiosk verb + Jump" composition off the mobile Building dialog and
 // the Kiosk session's campus/building/floor screens — see
 // hooks/useKioskSession.js for the stages themselves and utils/navigation.js
 // for the pure picks (pickBuildingStart, pickFloorStart,
-// kioskBuildingHasChoice) these just sequence.
+// kioskBuildingHasChoice, buildingsForCampus) these just sequence.
 //
 // `jump` is jumpToSearchResult from useNavigation — every pick here is a
 // fresh start, never a walk. `land` is the kiosk-only variant that skips the
 // flyover check: the campus/building/floor screens are choosing where the
 // visitor starts, not moving them away from somewhere they'd actually stood,
 // so their first pick shouldn't play a cross-campus flyover.
-export function useKioskPicks({ nodes, byId, kiosk, setBuildingFilter, closeBuildingMenu, currentId, jump, land }) {
+export function useKioskPicks({ nodes, byId, buildings, kiosk, setBuildingFilter, closeBuildingMenu, currentId, jump, land }) {
   // Building dialog, floor step: land on that floor's starting node.
   const handleMobileFloorPick = (buildingId, floor) => {
     const start = pickFloorStart(nodes, buildingId, floor);
@@ -30,24 +30,33 @@ export function useKioskPicks({ nodes, byId, kiosk, setBuildingFilter, closeBuil
     if (nodeId && nodeId !== currentId) jump(nodeId);
   };
 
-  // Kiosk's campus screen: record the pick. Main Campus moves on to the
-  // building screen; any other campus is always a single building (see
-  // campusForBuilding), so land on its floor screen instead — unless that
-  // building doesn't actually offer a real choice, in which case there's
-  // nothing to ask, so land immediately and skip straight past it.
+  // Kiosk's campus screen: record the pick. Which campuses have more than
+  // one building is data, not a fixed id — buildingsForCampus (backed by
+  // campusForBuilding, itself reading buildings.campus_id) decides it fresh
+  // each time, so any campus an admin groups multiple buildings under gets
+  // a building screen the same way Main Campus does today. A solo-building
+  // campus lands on its own floor screen instead — unless that building
+  // doesn't actually offer a real choice, in which case there's nothing to
+  // ask, so land immediately and skip straight past it.
   const handleKioskCampusPick = (campusId) => {
-    kiosk.chooseCampus(campusId);
-    if (campusId === "main") return;
-    setBuildingFilter(campusId);
-    if (kioskBuildingHasChoice(nodes, campusId, campusForBuilding)) return;
+    const members = buildingsForCampus(buildings, campusId, campusForBuilding);
+    if (members.length > 1) {
+      kiosk.chooseCampus(campusId, null);
+      return;
+    }
+    const soleBuildingId = members[0]?.id ?? campusId;
+    kiosk.chooseCampus(campusId, soleBuildingId);
+    setBuildingFilter(soleBuildingId);
+    if (kioskBuildingHasChoice(nodes, soleBuildingId, campusForBuilding)) return;
     kiosk.chooseFloor();
-    const start = pickBuildingStart(nodes, campusId);
+    const start = pickBuildingStart(nodes, soleBuildingId);
     if (start) land(start.id);
   };
 
-  // Kiosk's building screen (Main Campus only): record the pick and always
-  // move on to the floor screen — the only way to skip it is the Campus
-  // Entrance entry on this same screen (see handleKioskCampusEntrancePick).
+  // Kiosk's building screen (shown only for a multi-building campus): record
+  // the pick and always move on to the floor screen — the only way to skip
+  // it is the Campus Entrance entry on this same screen (see
+  // handleKioskCampusEntrancePick).
   const handleKioskBuildingPick = (b) => {
     setBuildingFilter(b);
     kiosk.chooseBuilding(b);
@@ -60,20 +69,22 @@ export function useKioskPicks({ nodes, byId, kiosk, setBuildingFilter, closeBuil
     if (start) land(start.id);
   };
 
-  // Same screen's entrance shortcuts (single-building campuses only): land
+  // Same screen's entrance shortcuts (solo-building campuses only): land
   // directly on the flagged node.
   const handleKioskEntrancePick = (nodeId) => {
     kiosk.chooseFloor();
     if (nodeId) land(nodeId);
   };
 
-  // Building screen's "Campus Entrance" entry (Main Campus only): land
-  // directly on the flagged node, skipping the floor screen entirely.
+  // Building screen's "Campus Entrance" entry (multi-building campuses
+  // only): land directly on the flagged node, skipping the floor screen
+  // entirely. The button that calls this is disabled whenever no entrance
+  // node is flagged, so nodeId is always real here.
   const handleKioskCampusEntrancePick = (nodeId) => {
-    const node = nodeId ? byId[nodeId] : null;
-    kiosk.chooseBuilding(node ? node.building : "gd1");
+    if (!nodeId) return;
+    kiosk.chooseBuilding(byId[nodeId].building);
     kiosk.chooseFloor();
-    if (nodeId) land(nodeId);
+    land(nodeId);
   };
 
   return {

@@ -8,13 +8,17 @@ const run = (...actions) =>
   );
 
 describe("kioskStage", () => {
-  it("goes start → campus → building → floor → exploring for Main Campus", () => {
+  it("goes start → campus → building → floor → exploring for a multi-building campus", () => {
     expect(kioskStage(run(), true)).toBe("start");
     expect(kioskStage(run("start"), true)).toBe("campus");
-    expect(kioskStage(run("start", { type: "chooseCampus", campus: "main" }), true)).toBe("building");
+    expect(kioskStage(run("start", { type: "chooseCampus", campus: "main", building: null }), true)).toBe("building");
     expect(
       kioskStage(
-        run("start", { type: "chooseCampus", campus: "main" }, { type: "chooseBuilding", building: "gd1" }),
+        run(
+          "start",
+          { type: "chooseCampus", campus: "main", building: null },
+          { type: "chooseBuilding", building: "gd1" }
+        ),
         true
       )
     ).toBe("floor");
@@ -22,7 +26,7 @@ describe("kioskStage", () => {
       kioskStage(
         run(
           "start",
-          { type: "chooseCampus", campus: "main" },
+          { type: "chooseCampus", campus: "main", building: null },
           { type: "chooseBuilding", building: "gd1" },
           "chooseFloor"
         ),
@@ -32,26 +36,28 @@ describe("kioskStage", () => {
   });
 
   it("skips the building screen for a single-building campus", () => {
-    const s = run("start", { type: "chooseCampus", campus: "digital" });
+    const s = run("start", { type: "chooseCampus", campus: "digital", building: "digital" });
     expect(kioskStage(s, true)).toBe("floor");
   });
 
   it("never leaves the start screen before it is tapped", () => {
-    expect(kioskStage(run({ type: "chooseCampus", campus: "main" }), true)).toBe("start");
+    expect(kioskStage(run({ type: "chooseCampus", campus: "main", building: null }), true)).toBe("start");
   });
 
   it("never reaches the building screen before a campus is chosen", () => {
     expect(kioskStage(run("start", { type: "chooseBuilding", building: "gd1" }), true)).toBe("campus");
   });
 
-  it("never reaches the floor screen before a building is chosen on Main Campus", () => {
-    expect(kioskStage(run("start", { type: "chooseCampus", campus: "main" }, "chooseFloor"), true)).toBe("building");
+  it("never reaches the floor screen before a building is chosen on a multi-building campus", () => {
+    expect(
+      kioskStage(run("start", { type: "chooseCampus", campus: "main", building: null }, "chooseFloor"), true)
+    ).toBe("building");
   });
 
   it("re-requires a floor pick after a second building is chosen", () => {
     const s = run(
       "start",
-      { type: "chooseCampus", campus: "main" },
+      { type: "chooseCampus", campus: "main", building: null },
       { type: "chooseBuilding", building: "gd1" },
       "chooseFloor",
       { type: "chooseBuilding", building: "gd2" }
@@ -62,7 +68,7 @@ describe("kioskStage", () => {
   it("returns to the building screen on backToBuilding", () => {
     const s = run(
       "start",
-      { type: "chooseCampus", campus: "main" },
+      { type: "chooseCampus", campus: "main", building: null },
       { type: "chooseBuilding", building: "gd1" },
       "backToBuilding"
     );
@@ -70,7 +76,12 @@ describe("kioskStage", () => {
   });
 
   it("returns to the campus screen on backToCampus", () => {
-    const s = run("start", { type: "chooseCampus", campus: "main" }, { type: "chooseBuilding", building: "gd1" }, "backToCampus");
+    const s = run(
+      "start",
+      { type: "chooseCampus", campus: "main", building: null },
+      { type: "chooseBuilding", building: "gd1" },
+      "backToCampus"
+    );
     expect(kioskStage(s, true)).toBe("campus");
   });
 
@@ -87,9 +98,9 @@ describe("kioskStage", () => {
 });
 
 describe("kioskSessionReducer", () => {
-  it("records which campus was chosen, and sets the building for a single-building campus", () => {
-    expect(run({ type: "chooseCampus", campus: "main" }).building).toBeNull();
-    expect(run({ type: "chooseCampus", campus: "digital" }).building).toBe("digital");
+  it("records which campus was chosen, trusting the caller's building call (null for multi-building, the sole id otherwise)", () => {
+    expect(run({ type: "chooseCampus", campus: "main", building: null }).building).toBeNull();
+    expect(run({ type: "chooseCampus", campus: "digital", building: "digital" }).building).toBe("digital");
   });
 
   it("records which building was chosen", () => {
@@ -101,7 +112,11 @@ describe("kioskSessionReducer", () => {
   });
 
   it("clears the campus and building on backToCampus", () => {
-    const s = run({ type: "chooseCampus", campus: "main" }, { type: "chooseBuilding", building: "gd2" }, "backToCampus");
+    const s = run(
+      { type: "chooseCampus", campus: "main", building: null },
+      { type: "chooseBuilding", building: "gd2" },
+      "backToCampus"
+    );
     expect(s.campus).toBeNull();
     expect(s.building).toBeNull();
   });

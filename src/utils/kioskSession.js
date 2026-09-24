@@ -1,11 +1,15 @@
 // The Kiosk session: the flow a visitor goes through on the Compact layout —
-// the attract screen until it's tapped, then the campus screen, then (Main
-// Campus only — see MAIN_CAMPUS_BUILDING_IDS) the building screen, then the
-// floor screen, then exploring. A campus other than Main Campus is always a
-// single building (see campusForBuilding), so picking it sets `building`
-// immediately and skips the building screen entirely. Desktop skips the
-// whole thing. Pure: the hook in hooks/useKioskSession.js wraps it. (A
-// session ends by remounting the visitor view, which starts a fresh one.)
+// the attract screen until it's tapped, then the campus screen, then (only
+// when the picked campus has more than one building — see
+// utils/navigation.js's buildingsForCampus) the building screen, then the
+// floor screen, then exploring. A solo-building campus sets `building`
+// immediately when it's picked and skips the building screen entirely; this
+// reducer doesn't decide which case it is itself — "chooseCampus" is always
+// told the building explicitly (null for "show the building screen"), by
+// whichever caller already knows the campus's membership (see
+// hooks/useKioskPicks.js's handleKioskCampusPick). Desktop skips the whole
+// thing. Pure: the hook in hooks/useKioskSession.js wraps it. (A session
+// ends by remounting the visitor view, which starts a fresh one.)
 //
 // The floor screen is a real stage in this state machine, but MainPage can
 // (and does) dispatch "chooseFloor" in the very same handler as
@@ -25,7 +29,7 @@ export function kioskSessionReducer(state, action) {
       return {
         ...state,
         campus: action.campus,
-        building: action.campus === "main" ? null : action.campus,
+        building: action.building ?? null,
         floorChosen: false,
       };
     case "chooseBuilding":

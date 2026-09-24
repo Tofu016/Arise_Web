@@ -1,24 +1,25 @@
-import { BUILDINGS } from "../utils/constants";
+import { campusForBuilding } from "../utils/constants";
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
-const BUILT_IN_IDS = BUILDINGS.map((b) => b.id);
-
-// The kiosk's building selection screen, shown after Main Campus is picked
-// on the campus screen (see KioskCampusScreen) and covering the whole
-// viewport like it — every other campus is a single building and skips this
-// screen entirely. Lists the built-in GD1/GD2/GD3 (physically
-// interconnected), plus Campus Entrance as its own first entry — the one
-// node an admin flagged as the shared entrance for the whole Main Campus
-// cluster (see NodeForm's "Campus entrance" toggle), landing directly
-// without a floor to pick. Picking a building instead moves on to its own
-// floor screen. Stays mounted so the fade can play and CSS makes it inert
-// afterwards.
+// The kiosk's building selection screen, shown after a multi-building
+// campus is picked on the campus screen (see KioskCampusScreen) and
+// covering the whole viewport like it — a solo-building campus skips this
+// screen entirely. Lists every building sharing the picked campusId
+// (resolved dynamically via utils/constants.js's campusForBuilding, not a
+// hardcoded id — today that's GD1/GD2/GD3 under "main", but any campus an
+// admin groups multiple buildings under works the same way), plus Campus
+// Entrance as its own first entry — the one node an admin flagged as the
+// shared entrance for that whole campus cluster (see NodeForm's "Campus
+// entrance" toggle), landing directly without a floor to pick. Picking a
+// building instead moves on to its own floor screen. Stays mounted so the
+// fade can play and CSS makes it inert afterwards.
 //
 // buildings: [{ id, label }]; available: ids that have nodes to land on.
-// campusEntranceNodeId: the Main Campus entrance node, or null if none is
+// campusId: the campus this screen is listing buildings for.
+// campusEntranceNodeId: that campus's entrance node, or null if none is
 // flagged yet.
-export default function KioskBuildingScreen({ hidden, buildings, available, campusEntranceNodeId, onPick, onPickEntrance, onBack }) {
-  const mainCampusBuildings = buildings.filter((b) => BUILT_IN_IDS.includes(b.id));
+export default function KioskBuildingScreen({ hidden, buildings, available, campusId, campusEntranceNodeId, onPick, onPickEntrance, onBack }) {
+  const campusBuildings = buildings.filter((b) => campusForBuilding(b.id) === campusId);
 
   const renderButton = (b) => (
     <button
@@ -75,7 +76,7 @@ export default function KioskBuildingScreen({ hidden, buildings, available, camp
             Campus Entrance
           </button>
         </div>
-        <div className="kiosk-building-column">{mainCampusBuildings.map(renderButton)}</div>
+        <div className="kiosk-building-column">{campusBuildings.map(renderButton)}</div>
       </div>
     </div>
   );

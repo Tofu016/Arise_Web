@@ -3,8 +3,10 @@ import { initialKioskSession, kioskSessionReducer, kioskStage } from "../utils/k
 
 // Where the visitor is in the Kiosk session (see utils/kioskSession.js):
 // { stage: "start" | "campus" | "building" | "floor" | "exploring", campus,
-//   building, awaitingStart, start(), chooseCampus(id), chooseBuilding(id),
-//   chooseFloor(), backToCampus(), backToBuilding() }.
+//   building, awaitingStart, start(), chooseCampus(campusId, buildingId),
+//   chooseBuilding(id), chooseFloor(), backToCampus(), backToBuilding() }.
+// chooseCampus's buildingId is null when that campus has more than one
+// building (the caller must know which — see useKioskPicks.js).
 // `awaitingStart` is true while nobody is exploring yet, so "Done exploring?"
 // would make no sense.
 export function useKioskSession(compact) {
@@ -12,7 +14,7 @@ export function useKioskSession(compact) {
   const verbs = useMemo(
     () => ({
       start: () => dispatch({ type: "start" }),
-      chooseCampus: (campus) => dispatch({ type: "chooseCampus", campus }),
+      chooseCampus: (campus, building) => dispatch({ type: "chooseCampus", campus, building }),
       chooseBuilding: (building) => dispatch({ type: "chooseBuilding", building }),
       chooseFloor: () => dispatch({ type: "chooseFloor" }),
       backToCampus: () => dispatch({ type: "backToCampus" }),

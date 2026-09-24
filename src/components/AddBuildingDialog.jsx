@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Map, Marker } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { osmRasterStyle } from "../utils/osmMapStyle";
-import { allBuildings, BUILDINGS, buildingLabel, floorsForBuilding } from "../utils/constants";
+import { allBuildings, allCampuses, BUILDINGS, buildingLabel, floorsForBuilding } from "../utils/constants";
 import { planBuildingMove } from "../utils/buildingMove";
 import { addCustomBuilding, deleteCustomBuilding, getServerBuildingNames, updateBuilding, useCustomBuildingsVersion } from "../utils/buildingStore";
 import { useToast } from "../context/ToastContext";
@@ -22,12 +22,16 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
   // Optional — only buildings on a physically separate campus need this at
   // all, to power the cross-campus minimap flyover.
   const [location, setLocation] = useState(null);
+  // "" = its own separate campus (default), or an existing building/campus's
+  // id to join its group.
+  const [campusChoice, setCampusChoice] = useState("");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   // Which existing building is being edited, and its draft name/floors.
   const [editingId, setEditingId] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
   const [floorsDraft, setFloorsDraft] = useState("");
+  const [campusDraft, setCampusDraft] = useState("");
   // Which building's nodes are being moved elsewhere, and where to.
   const [movingId, setMovingId] = useState(null);
   const [moveTarget, setMoveTarget] = useState("");
@@ -44,10 +48,12 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
         reservedIds,
         lat: location?.lat,
         lng: location?.lng,
+        campusId: campusChoice,
       });
       setName("");
       setFloorCount("");
       setLocation(null);
+      setCampusChoice("");
       toast.success(`Building "${building.label}" created.`);
       onClose(building);
     } catch (err) {
@@ -78,7 +84,7 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
 
   const handleSaveEdit = async (building) => {
     setError("");
-    const edit = { name: nameDraft };
+    const edit = { name: nameDraft, campusId: campusDraft };
     // Built-in floors come from verified constants, so only admin-created
     // buildings have an editable floor count.
     if (!building.builtIn) {
@@ -120,6 +126,7 @@ Reduce the floor count anyway?`)) {
     }
   };
 
+  const campuses = allCampuses();
   const builtInIds = BUILDINGS.map((b) => b.id);
   const serverNames = getServerBuildingNames();
   // Built-ins can be edited only once they have a backend row.
@@ -166,6 +173,19 @@ Reduce the floor count anyway?`)) {
               />
               <span className="field-hint">
                 Floors will be numbered 1 through the count you enter — you can rename/relabel individual floors later if needed.
+              </span>
+            </label>
+
+            <label>
+              Campus
+              <select value={campusChoice} onChange={(e) => setCampusChoice(e.target.value)}>
+                <option value="">Its own separate campus</option>
+                {campuses.map((c) => (
+                  <option key={c.id} value={c.id}>Join {c.label}&apos;s campus</option>
+                ))}
+              </select>
+              <span className="field-hint">
+                Group this building with others that share a physical campus. Any building can be joined this way — there's no separate "campus" to create first.
               </span>
             </label>
 
@@ -233,6 +253,17 @@ Reduce the floor count anyway?`)) {
                           }}
                         />
                       </label>
+                      <label>
+                        Campus
+                        <select value={campusDraft} onChange={(e) => setCampusDraft(e.target.value)}>
+                          <option value="">Its own separate campus</option>
+                          {campuses
+                            .filter((c) => !(c.buildingIds.length === 1 && c.buildingIds[0] === b.id))
+                            .map((c) => (
+                              <option key={c.id} value={c.id}>Join {c.label}&apos;s campus</option>
+                            ))}
+                        </select>
+                      </label>
                       <div className="custom-building-edit-actions">
                         <button type="button" className="primary" onClick={() => handleSaveEdit(b)}>Save</button>
                         <button type="button" onClick={() => setEditingId(null)}>Cancel</button>
@@ -253,6 +284,7 @@ Reduce the floor count anyway?`)) {
                           setEditingId(b.id);
                           setNameDraft(b.label);
                           setFloorsDraft(String(floorsForBuilding(b.id).length));
+                          setCampusDraft(b.campus && b.campus !== b.id ? b.campus : "");
                         }}
                       >
                         Edit

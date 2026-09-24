@@ -97,6 +97,19 @@ export function findMainCampusEntrance(nodes, campusForBuilding) {
   return (nodes || []).find((n) => n.campusEntrance && campusForBuilding(n.building) === "main") || null;
 }
 
+// Same lookup, generalized to any campus — used by the kiosk building
+// screen for whichever campus is currently selected, not just Main Campus.
+export function findCampusEntrance(nodes, campusId, campusForBuilding) {
+  return (nodes || []).find((n) => n.campusEntrance && campusForBuilding(n.building) === campusId) || null;
+}
+
+// Every building belonging to one campus (id resolved via campusForBuilding).
+// Used to decide whether picking a campus should stop at a building screen
+// (more than one member) or land straight on that solo building.
+export function buildingsForCampus(buildings, campusId, campusForBuilding) {
+  return (buildings || []).filter((b) => campusForBuilding(b.id) === campusId);
+}
+
 // Whether a single-building campus's kiosk building screen actually has
 // something worth stopping for: more than one floor, or an entrance
 // shortcut to offer. When neither, the floor screen has nothing meaningful

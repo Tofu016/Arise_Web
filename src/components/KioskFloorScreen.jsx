@@ -2,24 +2,24 @@ import { floorLabel } from "../utils/constants";
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 
 // The kiosk's starting-point selection screen, shown after a building is
-// picked on Main Campus, or a single-building campus is picked directly
-// (e.g. Digital Campus — see KioskCampusScreen), and covering the whole
-// viewport like the screens before it. Always shown for a Main Campus
-// building pick (the only way to skip it is the building screen's own
-// Campus Entrance entry); for a single-building campus, MainPage skips it
-// when that building has only one floor and no entrance shortcut to land
-// on instead — see utils/kioskSession.js.
+// picked on a multi-building campus, or a solo-building campus is picked
+// directly (e.g. Digital Campus — see KioskCampusScreen), and covering the
+// whole viewport like the screens before it. Always shown for a
+// multi-building campus's building pick (the only way to skip it is the
+// building screen's own Campus Entrance entry); for a solo-building campus,
+// MainPage skips it when that building has only one floor and no entrance
+// shortcut to land on instead — see utils/kioskSession.js.
 //
 // floors: every floor number the building has (low to high, underground
 // included) — see utils/navigation.js's floorsForBuilding.
 // entranceShortcuts: [{ key, label, nodeId }], from
 // utils/navigation.js's findKioskEntranceShortcuts — only passed for a
-// single-building campus, which has no earlier building screen to offer its
+// solo-building campus, which has no earlier building screen to offer its
 // Campus entrance on instead. Shown above the floor list as direct-jump
 // buttons, not floor picks.
-// onBack: retreats to the building screen (Main Campus) or the campus
-// screen (a single-building campus), clearing the building choice either
-// way.
+// onBack: retreats to the building screen (multi-building campus) or the
+// campus screen (a solo-building campus), clearing the building choice
+// either way.
 export default function KioskFloorScreen({ hidden, buildingLabel, floors, entranceShortcuts, onPick, onPickEntrance, onBack }) {
   return (
     <div

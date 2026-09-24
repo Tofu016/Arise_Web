@@ -10,19 +10,52 @@ const MAIN_CAMPUS_LAT = 14.45890388620473;
 const MAIN_CAMPUS_LNG = 120.95932439713594;
 
 export const BUILDINGS = [
-  { id: "gd1", label: "GD1", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG },
-  { id: "gd2", label: "GD2", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG },
-  { id: "gd3", label: "GD3", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG },
+  { id: "gd1", label: "GD1", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG, campus: "main" },
+  { id: "gd2", label: "GD2", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG, campus: "main" },
+  { id: "gd3", label: "GD3", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG, campus: "main" },
 ];
 
-// GD1/GD2/GD3 are separate buildings but one physical campus, so they share
-// a single campus entrance setting (see NODE_TYPES' "entrance" and the
-// node-level `campusEntrance` flag) — any other building (e.g. Digital
-// Campus) is its own campus with its own separate entrance.
-export const MAIN_CAMPUS_BUILDING_IDS = ["gd1", "gd2", "gd3"];
-
+// Campus grouping now lives on the building row itself (backend's
+// buildings.campus_id, COALESCE'd to the building's own id when unset — see
+// Buildings_Model::selectWithCampus() in Arise_API). GD1/GD2/GD3 share
+// campus_id "main" (one physical campus, already interconnected via the
+// node graph, and sharing a single campus entrance setting — see
+// NODE_TYPES' "entrance" and the node-level `campusEntrance` flag); any
+// other building defaults to being its own solo campus until an admin
+// explicitly groups it with another via that column. Reads through
+// allBuildings() so admin-created buildings' groupings take effect without
+// any code change here.
 export function campusForBuilding(buildingId) {
-  return MAIN_CAMPUS_BUILDING_IDS.includes(buildingId) ? "main" : buildingId;
+  return allBuildings().find((b) => b.id === buildingId)?.campus ?? buildingId;
+}
+
+// Distinct campus groupings across every current building (built-in and
+// admin-created) — the same grouping KioskCampusScreen computes inline for
+// its own campus-select screen, exposed here so admin UI (AddBuildingDialog's
+// campus field) can offer "join an existing campus" without recomputing it.
+// Includes solo buildings (a group of one) too — there's no separate
+// "campus" entity in the data model, just buildings sharing a campus_id, so
+// joining a solo building's campus (i.e. taking on its own id as your
+// campus_id) is exactly as valid a grouping move as joining an
+// already-multi-building one. Callers that only want to offer already-formed
+// groups can filter on buildingIds.length > 1 themselves.
+export function allCampuses() {
+  const groups = new Map(); // campusId -> { id, labels, buildingIds }
+  for (const b of allBuildings()) {
+    const campusId = campusForBuilding(b.id);
+    const group = groups.get(campusId);
+    if (group) {
+      group.buildingIds.push(b.id);
+      group.labels.push(b.label);
+    } else {
+      groups.set(campusId, { id: campusId, labels: [b.label], buildingIds: [b.id] });
+    }
+  }
+  return [...groups.values()].map((g) => ({
+    id: g.id,
+    label: g.id === "main" ? "Main Campus" : g.labels.join(" / "),
+    buildingIds: g.buildingIds,
+  }));
 }
 
 // Matches the actual Unity node-name vocabulary from the source model.

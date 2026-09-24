@@ -41,6 +41,9 @@ function toFrontendBuilding(row) {
     label: row.name,
     floors: Array.from({ length: row.floor_count }, (_, i) => i + 1),
     ...(row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : {}),
+    // Backend already resolves this via COALESCE(campus_id, id) — an
+    // untouched row is its own solo campus, so this is never null.
+    campus: row.campus_id,
   };
 }
 
@@ -84,7 +87,7 @@ export function useCustomBuildingsVersion() {
 // nothing left for a client-side slug computation to do. Kept in the
 // signature purely so AddBuildingDialog.jsx's existing call site needs
 // no changes at all.
-export async function addCustomBuilding({ name, floorCount, reservedIds: _reservedIds, lat, lng }) {
+export async function addCustomBuilding({ name, floorCount, reservedIds: _reservedIds, lat, lng, campusId }) {
   const trimmedName = (name || "").trim();
   if (!trimmedName) {
     throw new Error("Building name is required.");
@@ -103,6 +106,10 @@ export async function addCustomBuilding({ name, floorCount, reservedIds: _reserv
     body.lat = lat;
     body.lng = lng;
   }
+  const trimmedCampusId = (campusId || "").trim();
+  if (trimmedCampusId) {
+    body.campus_id = trimmedCampusId;
+  }
 
   const data = await apiPost("Buildings_API/create", body);
   await refresh();
@@ -116,7 +123,7 @@ export async function deleteCustomBuilding(id) {
 
 // Edits a building that has a backend row (built-in ones included). Pass
 // only what changes: name and/or floorCount.
-export async function updateBuilding(id, { name, floorCount }) {
+export async function updateBuilding(id, { name, floorCount, campusId }) {
   if (!(id in serverNames)) {
     throw new Error("This building has no backend record to edit.");
   }
@@ -133,6 +140,12 @@ export async function updateBuilding(id, { name, floorCount }) {
     }
     if (count > 100) throw new Error("Floor count seems too high — double check it.");
     patch.floor_count = count;
+  }
+  // Empty string is meaningful here, not "unset" — it tells the backend to
+  // write SQL NULL for campus_id (un-groups the building), distinct from
+  // campusId being undefined (this edit doesn't touch campus grouping at all).
+  if (campusId !== undefined) {
+    patch.campus_id = campusId.trim();
   }
   await apiPatch(`Buildings_API/update/${id}`, patch);
   await refresh();

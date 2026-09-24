@@ -29,7 +29,13 @@ import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../u
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
-import { floorsForBuilding, findKioskEntranceShortcuts, findMainCampusEntrance } from "../utils/navigation";
+import {
+  floorsForBuilding,
+  findKioskEntranceShortcuts,
+  findMainCampusEntrance,
+  findCampusEntrance,
+  buildingsForCampus,
+} from "../utils/navigation";
 import { useNavigation } from "../hooks/useNavigation";
 import { useKioskPicks } from "../hooks/useKioskPicks";
 import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
@@ -77,8 +83,9 @@ function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, profile, role, signOut } = useAuth();
   const compact = useCompactLayout();
-  // Kiosk session: the attract screen, then the campus screen, then (Main
-  // Campus only) the building screen, then the floor screen, then exploring
+  // Kiosk session: the attract screen, then the campus screen, then (only
+  // for a multi-building campus) the building screen, then the floor
+  // screen, then exploring
   // — see utils/kioskSession.js. Desktop skips straight to exploring.
   const kiosk = useKioskSession(compact);
   useKioskZoomLock(compact);
@@ -220,19 +227,37 @@ function MainPageContent({ onReset }) {
   // building the visitor just picked.
   const kioskFloors = useMemo(() => floorsForBuilding(nodes, kiosk.building), [nodes, kiosk.building]);
 
-  // Same screen's entrance shortcuts — only offered for a single-building
+  // Whether the picked campus has a building screen at all (more than one
+  // member building) — drives both the entrance-shortcuts split below and
+  // the floor screen's back target. Data-driven via buildingsForCampus, not
+  // hardcoded to "main", so any admin-grouped multi-building campus behaves
+  // the same way Main Campus does today.
+  const kioskCampusIsMultiBuilding = useMemo(
+    () => buildingsForCampus(allBuildings(), kiosk.campus, campusForBuilding).length > 1,
+    [kiosk.campus]
+  );
+
+  // Same screen's entrance shortcuts — only offered for a solo-building
   // campus (e.g. Digital Campus), which has no earlier building screen to
-  // offer its Campus entrance on instead. Main Campus offers its shared
-  // Campus Entrance as its own entry on the building screen (see
-  // mainCampusEntranceId below), so it never needs one here.
+  // offer its Campus entrance on instead. A multi-building campus offers
+  // its shared Campus Entrance as its own entry on the building screen (see
+  // kioskCampusEntrance below), so it never needs one here.
   const kioskEntranceShortcuts = useMemo(() => {
-    if (kiosk.campus === "main") return [];
+    if (kioskCampusIsMultiBuilding) return [];
     return findKioskEntranceShortcuts(nodes, kiosk.building, campusForBuilding);
-  }, [nodes, kiosk.building, kiosk.campus]);
+  }, [nodes, kiosk.building, kioskCampusIsMultiBuilding]);
 
   // The kiosk building screen's "Campus Entrance" entry: the one node an
-  // admin flagged as the shared entrance for the whole Main Campus cluster
-  // (see NodeForm's "Campus entrance" toggle).
+  // admin flagged as the shared entrance for whichever campus is currently
+  // picked (see NodeForm's "Campus entrance" toggle).
+  const kioskCampusEntrance = useMemo(
+    () => findCampusEntrance(nodes, kiosk.campus, campusForBuilding),
+    [nodes, kiosk.campus]
+  );
+
+  // The mobile Building dialog's fixed top shortcut is Main Campus's
+  // entrance specifically, regardless of what the (separate) kiosk session
+  // state currently has picked.
   const mainCampusEntrance = useMemo(() => findMainCampusEntrance(nodes, campusForBuilding), [nodes]);
 
   const current = currentId ? byId[currentId] : null;
@@ -387,6 +412,7 @@ function MainPageContent({ onReset }) {
   } = useKioskPicks({
     nodes,
     byId,
+    buildings: allBuildings(),
     kiosk,
     setBuildingFilter,
     closeBuildingMenu: overlay.closeBuildingMenu,
@@ -755,7 +781,8 @@ function MainPageContent({ onReset }) {
           hidden={kiosk.stage !== "building"}
           buildings={allBuildings()}
           available={new Set(nodes.map((n) => n.building))}
-          campusEntranceNodeId={mainCampusEntrance ? mainCampusEntrance.id : null}
+          campusId={kiosk.campus}
+          campusEntranceNodeId={kioskCampusEntrance ? kioskCampusEntrance.id : null}
           onPick={handleKioskBuildingPick}
           onPickEntrance={handleKioskCampusEntrancePick}
           onBack={kiosk.backToCampus}
@@ -769,7 +796,7 @@ function MainPageContent({ onReset }) {
           entranceShortcuts={kioskEntranceShortcuts}
           onPick={handleKioskFloorPick}
           onPickEntrance={handleKioskEntrancePick}
-          onBack={kiosk.campus === "main" ? kiosk.backToBuilding : kiosk.backToCampus}
+          onBack={kioskCampusIsMultiBuilding ? kiosk.backToBuilding : kiosk.backToCampus}
         />
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
