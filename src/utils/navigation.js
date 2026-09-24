@@ -199,6 +199,18 @@ function request(nav, world, action, now) {
   return { nav: applyMove(accepted, backAction), outcome: "moved", action: backAction };
 }
 
+// Landing directly on a node, bypassing the flyover check entirely — for the
+// kiosk's own campus/building/floor sequence, which picks where the visitor
+// starts. That start is coming from nowhere the visitor ever actually stood
+// (the placeholder default node from landOnDefault, never shown on screen),
+// so it isn't a building "transition" and shouldn't get a flyover.
+export function requestLand(nav, world, action, now) {
+  if (now - nav.lastNavAt < NAV_DEBOUNCE_MS) return { nav, outcome: "ignored" };
+  const accepted = { ...nav, lastNavAt: now };
+  const landAction = { ...action, type: "jump" };
+  return { nav: applyMove(accepted, landAction), outcome: "moved", action: landAction };
+}
+
 // action: { id, yaw?, pitch?, meta? }
 export function requestWalk(nav, world, action, now) {
   return request(nav, world, { ...action, type: "walk" }, now);

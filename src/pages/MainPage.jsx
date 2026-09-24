@@ -298,6 +298,13 @@ function MainPageContent({ onReset }) {
     else overlay.heldForFlyover({ closePanel: true }); // the hop itself is deferred, the panel is not
   };
 
+  // The kiosk's own campus/building/floor sequence's initial pick: lands on
+  // the node directly, no flyover — see nav.land.
+  const landAtKioskStart = (id, meta) => {
+    const { outcome, action } = nav.land(id, meta);
+    if (outcome === "moved") afterMove(action);
+  };
+
   // Called once the flyover sequence finishes (auto-proceed or Skip).
   const completeFlyover = () => {
     const { action } = nav.completeFlyover();
@@ -385,6 +392,7 @@ function MainPageContent({ onReset }) {
     closeBuildingMenu: overlay.closeBuildingMenu,
     currentId,
     jump: jumpToSearchResult,
+    land: landAtKioskStart,
   });
 
   if (loadError) {

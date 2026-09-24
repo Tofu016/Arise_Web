@@ -14,6 +14,7 @@ import {
   findFlyover,
   requestWalk,
   requestJump,
+  requestLand,
   requestBack,
   completeFlyover,
   cancelFlyover,
@@ -212,6 +213,13 @@ describe("cross-campus flyover", () => {
 
   it("never flies over from nowhere (before the tour has landed)", () => {
     expect(requestJump(initialNavigation(), world, { id: "f" }, tick()).outcome).toBe("moved");
+  });
+
+  it("requestLand skips the flyover even across campus (the kiosk's own first pick)", () => {
+    const { nav, outcome, action } = requestLand(at("a"), world, { id: "f" }, tick());
+    expect(outcome).toBe("moved");
+    expect(action.type).toBe("jump");
+    expect(nav).toMatchObject({ currentId: "f", flyover: null });
   });
 });
 

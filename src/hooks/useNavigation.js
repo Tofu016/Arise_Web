@@ -5,6 +5,7 @@ import {
   landOnDefault,
   requestWalk,
   requestJump,
+  requestLand,
   requestBack,
   completeFlyover,
   cancelFlyover,
@@ -56,6 +57,13 @@ export function useNavigation(nodes, byId) {
       perform((n, world, now) => {
         const node = world.byId[id];
         return requestJump(n, world, { id, yaw: node?.startingViewYaw, pitch: node?.startingViewPitch, meta }, now);
+      }),
+    // The kiosk's own campus/building/floor sequence's initial pick — lands
+    // on the node directly, no flyover. See requestLand.
+    land: (id, meta) =>
+      perform((n, world, now) => {
+        const node = world.byId[id];
+        return requestLand(n, world, { id, yaw: node?.startingViewYaw, pitch: node?.startingViewPitch, meta }, now);
       }),
     back: () => perform(requestBack),
     completeFlyover: () => {
