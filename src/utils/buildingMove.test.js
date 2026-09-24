@@ -17,14 +17,20 @@ describe("planBuildingMove", () => {
     expect(problems).toHaveLength(1);
   });
 
-  it("reports floors and leadsToFloor the target lacks", () => {
-    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "transition", leadsToFloor: 6 })];
+  it("reports floors and leadsToFloors the target lacks", () => {
+    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "transition", leadsToFloors: [6] })];
     const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
     expect(problems).toHaveLength(2);
   });
 
-  it("ignores a stray leadsToFloor on non-transition nodes", () => {
-    const nodes = [node("gd1_f1_hallway04", "gd1", 1, { type: "hallway", leadsToFloor: 0 })];
+  it("reports every declared floor the target lacks, not just one", () => {
+    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "transition", leadsToFloors: [6, 7] })];
+    const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
+    expect(problems.find((p) => p.includes("leads to"))).toContain("6, 7");
+  });
+
+  it("ignores a stray leadsToFloors on non-transition nodes", () => {
+    const nodes = [node("gd1_f1_hallway04", "gd1", 1, { type: "hallway", leadsToFloors: [0] })];
     expect(planBuildingMove(nodes, "gd1", "gd12", [1]).problems).toEqual([]);
   });
 

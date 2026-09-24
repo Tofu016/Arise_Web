@@ -29,10 +29,13 @@ export function planBuildingMove(nodes, fromId, toId, targetFloors) {
     if (!targetFloors.includes(Number(n.floor))) {
       problems.push(`"${n.id}" is on floor ${n.floor}, which the target building doesn't have.`);
     }
-    // Only stairs/fire exits use leadsToFloor; other types can carry a stray
-    // value (e.g. 0) that means nothing.
-    if (TRANSITION_TYPES.includes(n.type) && n.leadsToFloor != null && n.leadsToFloor !== "" && !targetFloors.includes(Number(n.leadsToFloor))) {
-      problems.push(`"${n.id}" leads to floor ${n.leadsToFloor}, which the target building doesn't have.`);
+    // Only stairs/fire exits use leadsToFloors; other types can carry a
+    // stray value that means nothing.
+    if (TRANSITION_TYPES.includes(n.type)) {
+      const missing = (n.leadsToFloors || []).map(Number).filter((f) => !targetFloors.includes(f));
+      if (missing.length > 0) {
+        problems.push(`"${n.id}" leads to floor(s) ${missing.join(", ")}, which the target building doesn't have.`);
+      }
     }
 
     moves.push({ id: n.id, newId });

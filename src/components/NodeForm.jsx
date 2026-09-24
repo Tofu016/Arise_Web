@@ -14,7 +14,7 @@ const emptyDraft = () => ({
   building: "gd1",
   floor: 1,
   type: "hallway",
-  leadsToFloor: "",
+  leadsToFloors: [],
   startingNode: false,
   campusEntrance: false,
   buildingEntrance: false,
@@ -83,11 +83,11 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         if (!validFloors.includes(Number(d.floor))) {
           next.floor = validFloors[0];
         }
-        next.leadsToFloor = "";
+        next.leadsToFloors = [];
       }
 
       // Campus/building entrance only make sense for entrance-type nodes —
-      // clear them silently if the type changes away, same as leadsToFloor
+      // clear them silently if the type changes away, same as leadsToFloors
       // above.
       if (key === "type" && value !== "entrance") {
         next.campusEntrance = false;
@@ -209,6 +209,15 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     setDraft((d) => ({ ...d, rooms: (d.rooms || []).filter((r) => r !== room) }));
   };
 
+  const toggleLeadsToFloor = (floor) => {
+    setDraft((d) => ({
+      ...d,
+      leadsToFloors: (d.leadsToFloors || []).includes(floor)
+        ? d.leadsToFloors.filter((f) => f !== floor)
+        : [...(d.leadsToFloors || []), floor].sort((a, b) => a - b),
+    }));
+  };
+
   const handleSave = () => {
     if (copyState === "copying") {
       setErrors(["The photo is still uploading — wait for it to finish before saving."]);
@@ -217,7 +226,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     const normalized = {
       ...draft,
       floor: Number(draft.floor),
-      leadsToFloor: draft.leadsToFloor === "" ? null : Number(draft.leadsToFloor),
+      leadsToFloors: (draft.leadsToFloors || []).map(Number).sort((a, b) => a - b),
     };
     const validationErrors = validateNode(normalized, nodes, mode === "edit" ? node.id : null);
     if (validationErrors.length > 0) {
@@ -228,6 +237,25 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   };
 
   const isTransitionType = TRANSITION_TYPES.includes(draft.type);
+
+  // What this node's actual wiring says it leads to, independent of what's
+  // declared above — neighbor links are only ever edited from Navigation
+  // Editor (see the removed-neighbor-linking note below), so this can
+  // legitimately be empty on a brand-new node or disagree with the
+  // declared floors if the graph was wired up differently. Surfaced as a
+  // non-blocking hint rather than a validation error for that reason.
+  const neighborFloors = isTransitionType
+    ? [...new Set(
+        (draft.neighbors || [])
+          .map((id) => nodes.find((n) => n.id === id)?.floor)
+          .filter((f) => f !== undefined && Number(f) !== Number(draft.floor))
+          .map(Number)
+      )].sort((a, b) => a - b)
+    : [];
+  const declaredFloors = (draft.leadsToFloors || []).map(Number);
+  const undeclaredNeighborFloors = neighborFloors.filter((f) => !declaredFloors.includes(f));
+  const unwiredDeclaredFloors = declaredFloors.filter((f) => !neighborFloors.includes(f));
+
   const currentStart = nodes.find(
     (n) => n.startingNode && n.building === draft.building && Number(n.floor) === Number(draft.floor)
   );
@@ -291,15 +319,38 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       </label>
 
       {isTransitionType && (
-        <label>
-          Leads to floor
-          <select value={draft.leadsToFloor} onChange={field("leadsToFloor")}>
-            <option value="">Select floor...</option>
+        <div className="leads-to-floors-field">
+          <label>Leads to floor(s)</label>
+          <div className="elevator-floor-checkboxes">
             {floorsForBuilding(draft.building).filter((f) => f !== Number(draft.floor)).map((f) => (
-              <option key={f} value={f}>{floorLabel(f)}</option>
+              <label key={f} className="elevator-floor-checkbox">
+                <input
+                  type="checkbox"
+                  checked={declaredFloors.includes(f)}
+                  onChange={() => toggleLeadsToFloor(f)}
+                />
+                {floorLabel(f)}
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+          <span className="field-hint">
+            Stairs and fire exits often connect both up and down — pick every floor this node actually reaches.
+          </span>
+          {unwiredDeclaredFloors.length > 0 && (
+            <p className="directions-error">
+              ⚠ Declared as leading to {unwiredDeclaredFloors.map(floorLabel).join(", ")}, but no neighbor link of
+              this node actually reaches {unwiredDeclaredFloors.length === 1 ? "that floor" : "those floors"} yet —
+              wire it up in Navigation Editor, or it isn't really routable.
+            </p>
+          )}
+          {undeclaredNeighborFloors.length > 0 && (
+            <p className="directions-error">
+              ⚠ This node's neighbor links already reach {undeclaredNeighborFloors.map(floorLabel).join(", ")}, but
+              that's not checked above — add {undeclaredNeighborFloors.length === 1 ? "it" : "them"} so this field
+              matches the actual graph.
+            </p>
+          )}
+        </div>
       )}
 
       <div className="starting-node-field">

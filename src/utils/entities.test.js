@@ -22,7 +22,7 @@ const nodeRow = {
   building: "gd1",
   floor: 1,
   type: "hallway",
-  leads_to_floor: null,
+  leads_to_floors: [],
   photo_path: "panoramas/gd1/a.jpg",
   rooms: [{ id: 7, room_name: "101" }, { id: 8, room_name: "102" }],
   neighbors: [{ neighbor_id: "n2", yaw: 90, pitch: -5 }, { neighbor_id: "n3", yaw: 180, pitch: 0 }],
@@ -68,7 +68,7 @@ describe("toNode", () => {
       building: "gd1",
       floor: 1,
       type: "hallway",
-      leadsToFloor: null,
+      leadsToFloors: [],
       startingNode: false,
       startingViewYaw: null,
       startingViewPitch: null,
@@ -91,7 +91,7 @@ describe("toNode", () => {
   it("uses safe empties for a bare row", () => {
     const n = toNode({ id: "x", name: "X" });
     expect(n).toMatchObject({ photo: "", rooms: [], neighbors: [], hotspots: {}, markers: [] });
-    expect(n.leadsToFloor).toBeNull();
+    expect(n.leadsToFloors).toEqual([]);
     expect(n.flowchartPosition).toBeNull();
   });
 
@@ -103,8 +103,9 @@ describe("toNode", () => {
     });
   });
 
-  it("keeps a leads-to-floor of 0", () => {
-    expect(toNode({ ...nodeRow, leads_to_floor: 0 }).leadsToFloor).toBe(0);
+  it("keeps a leads-to-floor of 0, and reads multiple floors", () => {
+    expect(toNode({ ...nodeRow, leads_to_floors: [0] }).leadsToFloors).toEqual([0]);
+    expect(toNode({ ...nodeRow, leads_to_floors: [-1, 0, 2] }).leadsToFloors).toEqual([-1, 0, 2]);
   });
 
   it("reads a set starting view, and each edge's own default view", () => {
@@ -122,17 +123,17 @@ describe("toNode", () => {
 
 describe("node request bodies", () => {
   it("create drops empty optionals", () => {
-    const body = nodeCreateBody({ id: "a", name: "A", building: "gd1", floor: 1, type: "hallway", photo: "", leadsToFloor: null });
+    const body = nodeCreateBody({ id: "a", name: "A", building: "gd1", floor: 1, type: "hallway", photo: "", leadsToFloors: [] });
     expect(body.photo_path).toBeUndefined();
-    expect(body.leads_to_floor).toBeUndefined();
-    expect(nodeCreateBody({ id: "a", leadsToFloor: 0, photo: "p" })).toMatchObject({ leads_to_floor: 0, photo_path: "p" });
+    expect(body.leads_to_floors).toBeUndefined();
+    expect(nodeCreateBody({ id: "a", leadsToFloors: [0, 2], photo: "p" })).toMatchObject({ leads_to_floors: [0, 2], photo_path: "p" });
   });
 
   it("patch sends only the fields given, under wire names", () => {
-    expect(nodePatchBody({ name: "N", photo: "", leadsToFloor: null })).toEqual({
+    expect(nodePatchBody({ name: "N", photo: "", leadsToFloors: [] })).toEqual({
       name: "N",
       photo_path: "",
-      leads_to_floor: null,
+      leads_to_floors: [],
     });
     expect(nodePatchBody({})).toEqual({});
   });

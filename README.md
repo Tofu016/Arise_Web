@@ -265,7 +265,12 @@ Not read by the app.
    - **Type** — hallway, lobby, entrance, transition (main stairs),
      transition exit (fire stairs), open area (parking), or portal
      (GD2 ↔ GD3 crossing).
-   - **Leads to floor** — only shown for transition types.
+   - **Leads to floor(s)** — only shown for transition types. Multi-select,
+     since a stairs/fire-exit node can connect both up and down (e.g. a
+     mid-building stairwell). Checked against the node's own neighbor
+     links (managed in Navigation Editor) and flags a warning — not a
+     blocking error, since a brand-new node has no links yet — if the two
+     disagree.
    - **Building entrance** — only shown for entrance-type nodes. The single
      node representing this one building, offered as a Kiosk floor-screen
      shortcut. Only one per building — saving a second one on the same
@@ -505,7 +510,7 @@ directly — this is the shape the frontend actually works with after
   building: "gd1",                   // gd1 | gd2 | gd3 | any admin-created building id
   floor: 2,                          // -1 = UG, 1 = Ground, 2, 3, ...
   type: "hallway",
-  leadsToFloor: null,                // set only for transition / transitionExit types
+  leadsToFloors: [],                 // set only for transition / transitionExit types
   photo: "panoramas/gd1/gd1_f2_hallway01.webp",  // a path, not a public URL — resolved through
                                                    // the protected-photo endpoint at view time
   rooms: ["203", "204"],

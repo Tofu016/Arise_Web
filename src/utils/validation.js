@@ -103,8 +103,8 @@ export function validateNode(node, existingNodes, editingId = null) {
   }
 
   if ((node.type === "transition" || node.type === "transitionExit") &&
-      (node.leadsToFloor === undefined || node.leadsToFloor === null || node.leadsToFloor === "")) {
-    errors.push("Stairs and Fire Exit nodes must specify which floor they lead to.");
+      (!Array.isArray(node.leadsToFloors) || node.leadsToFloors.length === 0)) {
+    errors.push("Stairs and Fire Exit nodes must specify at least one floor they lead to.");
   }
 
   return errors;

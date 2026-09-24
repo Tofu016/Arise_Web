@@ -63,7 +63,7 @@ export function toNode(row) {
     building: row.building,
     floor: row.floor,
     type: row.type,
-    leadsToFloor: row.leads_to_floor ?? null,
+    leadsToFloors: (row.leads_to_floors || []).map(Number),
     startingNode: Number(row.is_starting_node) === 1,
     // The view to land on when a visitor is dropped onto this node from
     // the floor/building picker (only meaningful while startingNode is
@@ -100,7 +100,7 @@ export function nodeCreateBody(item) {
     floor: item.floor,
     type: item.type,
     photo_path: item.photo || undefined,
-    leads_to_floor: item.leadsToFloor ?? undefined,
+    leads_to_floors: item.leadsToFloors?.length ? item.leadsToFloors : undefined,
   };
 }
 
@@ -111,7 +111,7 @@ export function nodePatchBody(patch) {
     floor: "floor",
     type: "type",
     photo: "photo_path",
-    leadsToFloor: "leads_to_floor",
+    leadsToFloors: "leads_to_floors",
   });
   if (patch.startingNode !== undefined) body.is_starting_node = patch.startingNode ? 1 : 0;
   if (patch.startingViewYaw !== undefined) body.starting_view_yaw = patch.startingViewYaw;
