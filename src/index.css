@@ -185,6 +185,77 @@ button.primary {
   background: var(--surface-hover);
   border-color: var(--border);
 }
+/* Highlights the rail icon for whichever admin section is currently open —
+   a group icon (Virtual Map, Campus Tour) lights up when the current page
+   is any one of its sub-items, a standalone icon when it's the current
+   page itself. */
+.admin-sidebar-icon-btn-active {
+  background: var(--selected-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Positioning wrapper for one rail icon + its hover preview — see
+   .admin-sidebar-icon-preview below. */
+.admin-sidebar-rail-item {
+  position: relative;
+}
+/* Hover/focus preview: the section's name, and — for a group icon — the
+   sub-items its flyout would open into, so hovering answers "what's in
+   here" without actually opening it. Positioned off the rail's right
+   edge; hidden via opacity+visibility (not display) so it can transition,
+   and pointer-events stays off so it never itself intercepts the hover
+   that shows it. */
+.admin-sidebar-icon-preview {
+  position: absolute;
+  left: calc(100% + 10px);
+  /* Anchored to the icon's own top edge rather than vertically centred —
+     centring would push a tall group preview (the sub-item list) above
+     y=0 and off-screen for the top icon in the rail, since there's no
+     room above it to center into. */
+  top: -1px;
+  transform: translateX(-6px);
+  min-width: 190px;
+  max-width: 260px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  padding: 10px 12px;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+.admin-sidebar-rail-item:hover .admin-sidebar-icon-preview,
+.admin-sidebar-rail-item:focus-within .admin-sidebar-icon-preview {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+.admin-sidebar-icon-preview-title {
+  font-family: var(--font-sans-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.admin-sidebar-icon-preview-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-sidebar-icon-preview-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 .admin-sidebar-backdrop {
   position: absolute;
   inset: 0;

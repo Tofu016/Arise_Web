@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useNodes } from "../hooks/useNodes";
 import { useElevators } from "../hooks/useElevators";
 import { useAuth } from "../context/useAuth";
@@ -38,10 +38,18 @@ const GROUPS = [
   },
 ];
 
+// Standalone rail icons — each a direct link with no sub-items, so
+// (unlike GROUPS) clicking navigates immediately with no flyout step.
+// User Panel: user management doesn't belong to either tour.
+// Feedback: general app feedback, same reasoning.
+// Photo Coverage: covers both nodes (Virtual Map) and tour stops (Campus
+// Tour) together, so it doesn't belong to either single group either.
+// Photos: covers every photo type, not tied to one group.
 const USER_PANEL = { path: "users", icon: "👤", label: "User Panel" };
 const FEEDBACK = { path: "feedback", icon: "💬", label: "Feedback" };
 const PHOTO_COVERAGE = { path: "photo-coverage", icon: "📊", label: "Photo Coverage" };
 const PHOTOS = { path: "photos", icon: "🖼️", label: "Photos" };
+const STANDALONE_ITEMS = [USER_PANEL, FEEDBACK, PHOTO_COVERAGE, PHOTOS];
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,
@@ -69,6 +77,7 @@ const PHOTOS = { path: "photos", icon: "🖼️", label: "Photos" };
 // only option" step would just be a needless click with no benefit.
 export default function AdminLayout() {
   const { user, profile, signOut } = useAuth();
+  const { pathname } = useLocation();
   const nodesState = useNodes();
   // Elevators are their own small collection (see useElevators.js) rather
   // than folded into a node's own patch — one elevators row can be pointed
@@ -79,6 +88,11 @@ export default function AdminLayout() {
   // Which group's flyout is open, if any — null, or a GROUPS[].id.
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const expandedGroup = GROUPS.find((g) => g.id === expandedGroupId) || null;
+  // Whether the currently viewed admin page is at this sub-path — drives
+  // the active highlight on both a standalone rail icon and (via .some()
+  // over its items) a group's own rail icon, since a group's icon has no
+  // route of its own to match directly.
+  const isActivePath = (path) => pathname === `/admin/${path}` || pathname.startsWith(`/admin/${path}/`);
 
   const displayName = profile?.name || user?.email || "";
   const initials = displayName
@@ -109,52 +123,51 @@ export default function AdminLayout() {
 
       <div className="admin-layout-body">
         <div className="admin-sidebar-rail">
-          {GROUPS.map((g) => (
-            <button
-              key={g.id}
-              className="admin-sidebar-icon-btn"
-              onClick={() => setExpandedGroupId(g.id)}
-              title={g.label}
-            >
-              {g.icon}
-            </button>
+          {/* Each icon sits in its own positioning wrapper so its hover
+              preview (name, and a group's own sub-items) can be absolutely
+              positioned off the icon without the rail's own flex layout
+              interfering — see .admin-sidebar-icon-preview. */}
+          {GROUPS.map((g) => {
+            const active = g.items.some((s) => isActivePath(s.path));
+            return (
+              <div key={g.id} className="admin-sidebar-rail-item">
+                <button
+                  className={"admin-sidebar-icon-btn" + (active ? " admin-sidebar-icon-btn-active" : "")}
+                  onClick={() => setExpandedGroupId(g.id)}
+                  aria-label={g.label}
+                >
+                  {g.icon}
+                </button>
+                <div className="admin-sidebar-icon-preview" role="tooltip">
+                  <div className="admin-sidebar-icon-preview-title">{g.label}</div>
+                  <ul className="admin-sidebar-icon-preview-list">
+                    {g.items.map((s) => (
+                      <li key={s.path}>
+                        <span>{s.icon}</span>
+                        <span>{s.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
+          {STANDALONE_ITEMS.map((entry) => (
+            <div key={entry.path} className="admin-sidebar-rail-item">
+              <Link
+                to={`/admin/${entry.path}`}
+                className={"admin-sidebar-icon-btn" + (isActivePath(entry.path) ? " admin-sidebar-icon-btn-active" : "")}
+                aria-label={entry.label}
+              >
+                {entry.icon}
+              </Link>
+              {/* No sub-item list — a standalone entry's "contents" is
+                  just itself, so the preview is name-only. */}
+              <div className="admin-sidebar-icon-preview" role="tooltip">
+                <div className="admin-sidebar-icon-preview-title">{entry.label}</div>
+              </div>
+            </div>
           ))}
-          <Link
-            to={`/admin/${USER_PANEL.path}`}
-            className="admin-sidebar-icon-btn"
-            title={USER_PANEL.label}
-          >
-            {USER_PANEL.icon}
-          </Link>
-          {/* Standalone, no sub-items — same reasoning as User Panel
-              above: general app feedback genuinely doesn't belong to
-              either the Virtual Map or Campus Tour group. */}
-          <Link
-            to={`/admin/${FEEDBACK.path}`}
-            className="admin-sidebar-icon-btn"
-            title={FEEDBACK.label}
-          >
-            {FEEDBACK.icon}
-          </Link>
-          {/* Also standalone — covers both nodes (Virtual Map) and tour
-              stops (Campus Tour) together, so it genuinely doesn't
-              belong to either single group either. */}
-          <Link
-            to={`/admin/${PHOTO_COVERAGE.path}`}
-            className="admin-sidebar-icon-btn"
-            title={PHOTO_COVERAGE.label}
-          >
-            {PHOTO_COVERAGE.icon}
-          </Link>
-          {/* Standalone too, same reasoning as Photo Coverage above —
-              covers every photo type, not tied to one group. */}
-          <Link
-            to={`/admin/${PHOTOS.path}`}
-            className="admin-sidebar-icon-btn"
-            title={PHOTOS.label}
-          >
-            {PHOTOS.icon}
-          </Link>
         </div>
 
         {expandedGroup && (
