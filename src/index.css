@@ -32,6 +32,18 @@ h1, h2, h3, h4, h5, h6 {
   height: 100%;
 }
 
+/* Shared hover/active easing for every "*-btn" element across the app
+   (admin toolbar, sidebar, forms, room cards, elevator picker, directions,
+   etc.) so a background/border-color change on hover eases in instead of
+   cutting instantly. A handful of buttons (kiosk dock, mobile radial menu)
+   already declare their own `transition` for press feedback — those list
+   background/border-color alongside it directly rather than relying on
+   this rule, since a same-specificity rule can only be fully overridden,
+   never merged. */
+[class*="-btn"] {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
 /* Primary call-to-action treatment — guide: Montserrat 700, uppercase,
    wide tracking. Colour comes from the scoped rules further down. */
 .primary,
@@ -178,6 +190,7 @@ button.primary {
   inset: 0;
   background: var(--scrim);
   z-index: 40;
+  animation: admin-sidebar-backdrop-in 0.15s ease;
 }
 .admin-sidebar-flyout {
   position: absolute;
@@ -193,6 +206,21 @@ button.primary {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: admin-sidebar-flyout-in 0.18s ease-out;
+}
+@keyframes admin-sidebar-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes admin-sidebar-flyout-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar-backdrop,
+  .admin-sidebar-flyout {
+    animation: none;
+  }
 }
 .admin-sidebar-close {
   align-self: flex-end;
@@ -700,6 +728,7 @@ button.primary {
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid transparent;
+  transition: background 0.15s ease;
 }
 .node-row:hover {
   background: var(--surface-hover);
@@ -913,6 +942,14 @@ button.primary {
   border-radius: var(--radius-sm);
   padding: 8px;
   margin-bottom: 10px;
+  animation: error-box-in 0.15s ease-out;
+}
+@keyframes error-box-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .error-box { animation: none; }
 }
 .error-box p {
   margin: 2px 0;
@@ -1621,6 +1658,27 @@ button.primary {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  animation: modal-overlay-in 0.15s ease;
+}
+/* The overlay's direct child is always the dialog box itself — `.modal`
+   in most call sites, but a couple (e.g. the tour carousel) use their own
+   class instead, so this targets the position rather than a class name. */
+.modal-overlay > * {
+  animation: modal-pop-in 0.18s ease-out;
+}
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-overlay > * {
+    animation: none;
+  }
 }
 .modal {
   background: var(--surface);
@@ -2813,6 +2871,19 @@ button.primary {
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: room-card-in 0.18s ease-out;
+}
+.room-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+@keyframes room-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-card { animation: none; }
 }
 .room-card-photo-wrap {
   position: relative;
@@ -3246,6 +3317,18 @@ button.primary {
   box-shadow: var(--shadow-2);
   user-select: none;
   transform-origin: 50% 100%; /* scaled by look direction (PanoramaNav) from its bottom centre */
+  /* Fades in on mount only — `transform` is left untouched here since it's
+     driven imperatively every frame (see Hotspot.jsx's useFrame), and a
+     CSS animation on the same property would fight that per-frame write
+     for the animation's duration. */
+  animation: pano-hotspot-preview-in 0.15s ease-out;
+}
+@keyframes pano-hotspot-preview-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pano-hotspot-preview { animation: none; }
 }
 .pano-hotspot-preview-thumb {
   width: 100%;
@@ -3538,11 +3621,16 @@ button.primary {
   gap: 8px;
   padding: 4px 4px;
   border: none;
+  border-radius: 6px;
   background: none;
   font: inherit;
   color: #fff;
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.nearby-rooms-item:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 .nearby-rooms-item:active {
   opacity: 0.6;
@@ -3671,7 +3759,7 @@ button.primary {
   justify-content: center;
   cursor: pointer;
   box-shadow: var(--shadow-2);
-  transition: transform 0.08s ease, opacity 0.08s ease;
+  transition: transform 0.08s ease, opacity 0.08s ease, background 0.15s ease, border-color 0.15s ease;
 }
 .kiosk-dock-back-btn:active,
 .kiosk-end-session-btn:active {
@@ -3704,10 +3792,45 @@ button.primary {
   font-size: 44px;
   cursor: pointer;
   box-shadow: var(--shadow-2);
-  transition: transform 0.08s ease, opacity 0.08s ease;
+  transition: transform 0.08s ease, opacity 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+  /* Bounces out from the FAB when the dock opens. Animates the standalone
+     `scale` property, not `transform` — `transform` here is the inline
+     translate() that places this button on the arc (radialButtonTransform
+     in MainPage.jsx), and inline style always wins over a stylesheet rule,
+     so animating `transform` itself would never visibly move the button.
+     `scale` composes with it independently instead (same trick as
+     .arrival-notice's pulse, see its own comment further down). */
+  animation: radial-btn-bounce-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+/* Staggered per icon (in DOM/arc order) so they pop out one beat after
+   another instead of all at once. Covers more items than the dock ever
+   actually shows. */
+.mobile-radial-btn:nth-child(1) { animation-delay: 0s; }
+.mobile-radial-btn:nth-child(2) { animation-delay: 0.03s; }
+.mobile-radial-btn:nth-child(3) { animation-delay: 0.06s; }
+.mobile-radial-btn:nth-child(4) { animation-delay: 0.09s; }
+.mobile-radial-btn:nth-child(5) { animation-delay: 0.12s; }
+.mobile-radial-btn:nth-child(6) { animation-delay: 0.15s; }
+.mobile-radial-btn:nth-child(7) { animation-delay: 0.18s; }
+.mobile-radial-btn:nth-child(8) { animation-delay: 0.21s; }
+@keyframes radial-btn-bounce-in {
+  from {
+    scale: 0;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-radial-btn { animation: none; }
 }
 .mobile-radial-btn:active {
-  transform: scale(0.9);
+  /* `scale`, not `transform` — see the comment on the base rule above;
+     this was dead before (silently beaten by the inline translate()) since
+     both landed on the same `transform` property. */
+  scale: 0.9;
   opacity: 0.85;
 }
 .mobile-radial-btn.mobile-account-btn {
@@ -4571,6 +4694,10 @@ button.primary {
   color: var(--gold);
   cursor: pointer;
   padding: 2px;
+  transition: transform 0.1s ease;
+}
+.feedback-star:hover {
+  transform: scale(1.15);
 }
 .feedback-panel-thanks {
   margin: 12px 0 4px 0;
