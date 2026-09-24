@@ -9,7 +9,7 @@ import { planPrefetch, nextFirstLoadDone } from "../utils/photoPipeline";
 // see only what to show and when it is safe to show it.
 
 // The photo of the node the visitor is standing on.
-//   url            the displayable URL ("" until resolved)
+//   url            the displayable URL ("" until resolved, or if there is none)
 //   ready          its bytes are decoded and paintable (true when the node has
 //                  no photo, or it failed to load, so nothing waits forever)
 //   firstLoadDone  latches true the first time nodes are in and `ready` — for
@@ -18,9 +18,13 @@ import { planPrefetch, nextFirstLoadDone } from "../utils/photoPipeline";
 // (never crowding out a photo the visitor tapped), `priorityId` first — see
 // planPrefetch. Call it before any early return; it is a hook.
 export function useNodePhoto(node, { neighbors = [], priorityId, nodesLoaded = true } = {}) {
-  const { url } = useSecurePhotoUrl(node?.photo, { cached: true });
+  const { url, error } = useSecurePhotoUrl(node?.photo, { cached: true });
   const decoded = useImagePreloaded(url);
-  const ready = !node?.photo || decoded;
+  // `error` covers the fetch itself failing (missing file, auth/network
+  // error) — without it, `url` stays null and `decoded` (which needs a url
+  // to even start) never resolves, leaving the visitor stuck on the loading
+  // screen forever instead of landing on the "no image" state.
+  const ready = !node?.photo || decoded || !!error;
 
   // Latched during render (React's derive-state-from-props pattern), so the
   // splash never gets an extra frame after the photo is ready.

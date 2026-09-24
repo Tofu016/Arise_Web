@@ -5235,6 +5235,15 @@ html.kiosk-mode body {
   height: 100%;
   touch-action: none;
 }
+.pano-no-image span {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  color: var(--text-muted);
+  font-size: 14px;
+}
 /* ---------- First-run coachmarks (Coachmark.jsx): a short queue of tips
    shown the first time a visitor lands, above everything on the panorama
    screen but below the kiosk's own pre-tour screens (590/600), which

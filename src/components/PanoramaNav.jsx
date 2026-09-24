@@ -12,6 +12,7 @@ import { ZoomControls } from "./panorama/ZoomControls";
 import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
+import noImagePanorama from "../assets/images/no-image.jpg";
 
 // How long the "No location in front." hint stays up after W/Up finds
 // nothing to walk to.
@@ -86,8 +87,35 @@ export default function PanoramaNav({
   const { zoom, setZoom } = useZoom();
   const fov = zoomable ? zoomedFov(baseFov, zoom) : baseFov;
 
+  // Which url the texture load most recently failed for (a bad/corrupt file
+  // — distinct from `url` never resolving, e.g. no photo assigned or the
+  // fetch failing upstream). Comparing against the current `url` rather than
+  // latching a plain boolean means a later move to a url that DOES load
+  // clears it for free, with no separate reset effect needed.
+  const [failedUrl, setFailedUrl] = useState(null);
+  const photoFailed = !!url && failedUrl === url;
+  // The node's real photo, or the bundled "NO IMAGE" panorama in its place —
+  // the sphere always has something to paint, so the visitor can still pan
+  // around and use hotspots exactly as with a real photo; only the wallpaper
+  // is different.
+  const sceneUrl = photoFailed || !url ? noImagePanorama : url;
+
   // What's actually on screen: see usePanoramaScene.
-  const scene = usePanoramaScene({ url, sceneKey, hotspots, markers, initialYaw, initialPitch, onError });
+  const scene = usePanoramaScene({
+    url: sceneUrl,
+    sceneKey,
+    hotspots,
+    markers,
+    initialYaw,
+    initialPitch,
+    onError: () => {
+      // Only the real photo failing is a failure to remember — if the
+      // bundled placeholder itself somehow failed to load there would be
+      // nothing left to fall back to, so don't loop back onto it.
+      if (url) setFailedUrl(url);
+      onError?.();
+    },
+  });
   const { shown, visible, leaving, live } = scene;
   const highlightedHotspot = scene.hotspots.find((h) => h.id === highlightedId) || null;
 
@@ -168,7 +196,6 @@ export default function PanoramaNav({
     </Canvas>
   );
 
-  if (!zoomable && !keyboardNav) return canvas;
   return (
     <div className="pano-zoom-wrap">
       {canvas}
