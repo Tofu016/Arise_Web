@@ -13,12 +13,20 @@ import { acquirePhoto, loadPhoto } from "../utils/photoStore";
 // reload, and public photos get a cache-busting query so the browser doesn't
 // keep showing the old file.
 export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
-  const [url, setUrl] = useState(null);
-  const [error, setError] = useState(null);
+  // Keyed on the (photo, cached, version) it was resolved for, and reset
+  // during render (not only in the effect below) the instant that key
+  // changes. An effect-based reset alone only runs AFTER the render where
+  // `photo` already moved on to a new node — for that one render tick this
+  // would otherwise still return the PREVIOUS node's resolved url, paired
+  // with a caller's already-updated sceneKey for the new node. PanoramaNav
+  // takes that pairing as "the new scene has finished loading" and reveals
+  // it — the previous node's photo flashes as if it belonged to the node
+  // just navigated to. See useImagePreloaded's identical pattern.
+  const key = `${photo ?? ""}|${cached}|${version}`;
+  const [state, setState] = useState({ key, url: null, error: null });
+  if (state.key !== key) setState({ key, url: null, error: null });
 
   useEffect(() => {
-    setUrl(null);
-    setError(null);
     if (!photo) return;
 
     let cancelled = false;
@@ -31,17 +39,19 @@ export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
           return;
         }
         release = loaded.release;
-        setUrl(version && !loaded.url.startsWith("blob:") ? `${loaded.url}?v=${version}` : loaded.url);
+        const url = version && !loaded.url.startsWith("blob:") ? `${loaded.url}?v=${version}` : loaded.url;
+        setState({ key, url, error: null });
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message);
+        if (!cancelled) setState({ key, url: null, error: err.message });
       });
 
     return () => {
       cancelled = true;
       if (release) release();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo, cached, version]);
 
-  return { url, error };
+  return state.key === key ? { url: state.url, error: state.error } : { url: null, error: null };
 }

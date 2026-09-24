@@ -16,7 +16,13 @@ import { apiDelete, apiPatch, apiPost } from "./apiClient";
 export const NODE_GRAPH = {
   api: "Nodes_API",
   ownerKey: "node_id",
-  newMarkerBody: (m) => ({ type: m.type, label: m.label, yaw: m.yaw, pitch: m.pitch }),
+  newMarkerBody: (m) => ({
+    type: m.type,
+    label: m.label,
+    yaw: m.yaw,
+    pitch: m.pitch,
+    ...(m.type === "elevator" ? { elevator_group_id: m.elevatorGroupId, accessible_floors: m.accessibleFloors } : {}),
+  }),
 };
 
 export const STOP_GRAPH = {
@@ -87,13 +93,14 @@ export function planClearDefaultView(graph, id, neighborId) {
 // Three-way: an id only in the new list is an ADD (the backend generates
 // its own real id — a marker's client-side id only names its photos while
 // it's being picked, and is replaced by the backend's after the refresh),
-// an id in both with a different yaw/pitch is a REPOSITION, and an id
+// an id in both with a different yaw/pitch (or, for an elevator marker,
+// a different elevatorGroupId/accessibleFloors) is an UPDATE, and an id
 // missing from the new list is a REMOVE.
 //
-// Known limit: only position is compared, so an edit to an existing
-// marker's label (or a stop marker's photos) is never sent. Whether
-// those should be editable in place is a product question, not
-// something this diff decides.
+// Known limit: a plain label edit (or a stop marker's photos) is still
+// never sent — only position, plus an elevator's own navigation data,
+// are compared. Whether labels should be editable in place is a product
+// question, not something this diff decides.
 export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const currentIds = currentMarkers.map((m) => m.id);
   const nextIds = nextMarkers.map((m) => m.id);
@@ -102,12 +109,26 @@ export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const removed = currentMarkers.filter((m) => !nextIds.includes(m.id));
   const changed = nextMarkers.filter((m) => {
     const before = currentMarkers.find((cm) => cm.id === m.id);
-    return before && (before.yaw !== m.yaw || before.pitch !== m.pitch);
+    if (!before) return false;
+    if (before.yaw !== m.yaw || before.pitch !== m.pitch) return true;
+    if (m.type !== "elevator") return false;
+    return (
+      before.elevatorGroupId !== m.elevatorGroupId ||
+      JSON.stringify(before.accessibleFloors) !== JSON.stringify(m.accessibleFloors)
+    );
   });
 
   return [
     ...added.map((m) => call("POST", `${graph.api}/addMarker`, { [graph.ownerKey]: id, ...graph.newMarkerBody(m) })),
-    ...changed.map((m) => call("PATCH", `${graph.api}/updateMarker/${m.id}`, { yaw: m.yaw, pitch: m.pitch })),
+    ...changed.map((m) =>
+      call("PATCH", `${graph.api}/updateMarker/${m.id}`, {
+        yaw: m.yaw,
+        pitch: m.pitch,
+        ...(m.type === "elevator"
+          ? { elevator_group_id: m.elevatorGroupId, accessible_floors: m.accessibleFloors }
+          : {}),
+      })
+    ),
     ...removed.map((m) => call("DELETE", `${graph.api}/deleteMarker/${m.id}`)),
   ];
 }

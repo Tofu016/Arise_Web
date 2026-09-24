@@ -81,6 +81,15 @@ export function useDirectionsFlow({
   const get = () => {
     const next = route.getDirections(directions, nodes, searchableRooms);
     setDirections(next);
+    // A pending stairs/elevator choice holds off the auto-walk-on-get
+    // behavior — the panel asks first (see the "pendingModeChoice" render
+    // branch); chooseMode below starts the walk once one is picked.
+    if (next.path) startWalking(next);
+  };
+
+  const chooseMode = (mode) => {
+    const next = route.chooseTransportMode(directions, mode);
+    setDirections(next);
     if (next.path) startWalking(next);
   };
 
@@ -98,6 +107,7 @@ export function useDirectionsFlow({
     openTo,
     close,
     get,
+    chooseMode,
     startWalking,
     walkToNext,
     toggleAutoWalk: () => setDirections(route.toggleAutoWalk),

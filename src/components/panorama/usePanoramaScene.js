@@ -7,17 +7,19 @@ import { resolveScene } from "../../utils/panoramaScene";
 //   shown / visible   the last loaded scene, and the part of it to draw
 //   leaving           the texture being replaced, mid cross-fade
 //   dismissLeaving()  called when that fade is done
+// `crossFade: false` swaps the new texture in outright instead — for a scene
+// arriving behind a cover, where fading from the old one would only expose it.
 // Owns the GPU memory of every texture it loaded.
-export function usePanoramaScene({ url, sceneKey, hotspots, markers, initialYaw, initialPitch, onError }) {
+export function usePanoramaScene({ url, sceneKey, hotspots, markers, initialYaw, initialPitch, crossFade = true, onError }) {
   const holdsScene = sceneKey !== undefined;
   const key = sceneKey ?? url;
   const [shown, setShown] = useState(null);
   const [leaving, setLeaving] = useState(null);
   const shownRef = useRef(null);
   const leavingRef = useRef(null);
-  const latest = useRef({ hotspots, markers, initialYaw, initialPitch, onError });
+  const latest = useRef({ hotspots, markers, initialYaw, initialPitch, crossFade, onError });
   useEffect(() => {
-    latest.current = { hotspots, markers, initialYaw, initialPitch, onError };
+    latest.current = { hotspots, markers, initialYaw, initialPitch, crossFade, onError };
   });
 
   useEffect(() => {
@@ -31,12 +33,13 @@ export function usePanoramaScene({ url, sceneKey, hotspots, markers, initialYaw,
           return;
         }
         tex.colorSpace = THREE.SRGBColorSpace;
-        const { hotspots: hs, markers: ms, initialYaw: yaw, initialPitch: pitch } = latest.current;
+        const { hotspots: hs, markers: ms, initialYaw: yaw, initialPitch: pitch, crossFade: fade } = latest.current;
         const previous = shownRef.current;
         shownRef.current = { key, texture: tex, hotspots: hs, markers: ms, yaw, pitch };
         leavingRef.current?.dispose(); // a fade still running when another move lands
-        leavingRef.current = holdsScene ? previous?.texture ?? null : null;
-        if (!holdsScene) previous?.texture.dispose();
+        const keepsPrevious = holdsScene && fade;
+        leavingRef.current = keepsPrevious ? previous?.texture ?? null : null;
+        if (!keepsPrevious) previous?.texture.dispose();
         setLeaving(leavingRef.current);
         setShown(shownRef.current);
       },

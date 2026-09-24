@@ -330,17 +330,39 @@ needing to re-upload from scratch.
 - **Renaming a node's ID** automatically updates every other node's neighbor
   list to match.
 
-### Point-of-interest markers (rooms, facilities, exits, hydrants)
+### Point-of-interest markers (rooms, facilities, exits, hydrants, elevators)
 
-Fixed labels that stay put in the panorama rather than navigating anywhere
-when clicked — 🚪 Room, 📍 Facility, 🚨 Emergency Exit, 🧯 Fire
-Hydrant/Extinguisher.
+Fixed labels that stay put in the panorama — 🚪 Room, 📍 Facility, 🚨
+Emergency Exit, 🧯 Fire Hydrant/Extinguisher. These four are purely
+informational: nothing happens when a visitor clicks one.
 
-Placed the same way as hotspots, inside **🧭 Test navigation**:
-1. In the sidebar's **Markers** section, click **+ Add marker**, pick a type
-   and label.
+**🛗 Elevator** is the one exception. Instead of a plain label, it carries
+an **Elevator ID** (a string an admin picks) and a set of **Accessible
+floors**. Every elevator landing marker sharing the same Elevator ID —
+placed on the floor's own node, one per floor the elevator serves — is
+treated as the same physical elevator car. In the public viewer, clicking
+one actually moves the visitor: straight to the other landing when there's
+only one, or a small floor picker when the elevator serves more than two
+floors. This is different from every other marker type (which never
+navigate anywhere) and from a hotspot arrow (which only ever links nodes an
+admin manually drew a line between) — see "Getting directions" below for
+how this feeds into stairs-vs-elevator routing.
+
+Placed the same way as the other marker types, inside **🧭 Test
+navigation**:
+1. In the sidebar's **Markers** section, click **+ Add marker**, pick a
+   type and label (for an elevator: an Elevator ID — reuse the exact same
+   ID on every floor this elevator serves — and the floors it's accessible
+   from).
 2. Click **Place on panorama**, click where it should sit.
 3. **Reposition**/**Remove** work the same as for links.
+
+**Known limitation**: accessible floors are stored per landing marker, not
+on one shared elevator record — nothing keeps two landings of the same
+elevator in sync if their floor lists are edited separately and drift
+apart. A mismatched pair simply stops counting as connected for
+pathfinding (each side's own list has to agree) rather than producing a
+broken one-directional route.
 
 ### Managing buildings & floors
 
@@ -430,12 +452,37 @@ The public page — no login, no account, no editing controls, just the tour.
 1. Search for a room or place.
 2. Click **➜ Directions** next to the result.
 3. A **Directions** panel opens with editable **From**/**To** fields.
-4. Click **Get directions**.
+4. Click **Get directions**. If the destination is on a different floor
+   AND both a stairs-only and an elevator-only route exist (and actually
+   differ), the panel asks **🪜 Take the stairs** or **🛗 Take the
+   elevator** before computing the route — pick one to continue. When only
+   one of the two is possible (no elevator connects those floors, or the
+   floors are the same), there's nothing to ask and the route starts right
+   away, same as before elevators existed.
 5. Click **Start walking** or **Walk to `<next stop>` →** to advance one
-   step at a time — the matching arrow also glows green.
+   step at a time — the matching arrow also glows green (an elevator step
+   has no arrow of its own to glow; instead click straight through it the
+   same way — see the note below).
 6. Progress tracks ("Stop 2 of 5") with an arrival message at the end. Going
-   off-route recalculates automatically from wherever you ended up.
+   off-route recalculates automatically from wherever you ended up, using
+   whichever of stairs/elevator is available — it does not re-ask.
 7. **✕** cancels guidance at any time.
+
+**How stairs vs. elevator routing actually works, and its real limit**: the
+node graph has no per-edge "this is a stairs connection" flag — an edge is
+just two linked node ids. So "stairs mode" excludes only floor-changing
+edges where one side is a Stairs/Fire Exit-type node (the existing
+transition-type convention), and "elevator mode" additionally adds
+elevator-marker connections. A floor-changing edge an admin drew between
+two plain nodes without using the Stairs/Fire Exit type won't be correctly
+excluded from elevator mode — this only works as well as that node-type
+convention is followed when authoring the graph. Also, since directions
+walk a precomputed list of stops one hotspot-arrow-click at a time, an
+elevator-based stop is still just a **Walk to `<floor>` →** button click
+like any other step — there's no glowing arrow for it in the panorama,
+since it isn't a real hotspot (this is the same button, just not
+highlighting anything, when the walk-through step happens to be a ride
+rather than a step through a doorway).
 
 ---
 
@@ -461,7 +508,11 @@ directly — this is the shape the frontend actually works with after
     "gd1_f2_hallway02": { yaw: 45, pitch: -10 }
   },
   markers: [
-    { id: 123, type: "room", label: "Room 203", yaw: 12, pitch: -5 }
+    { id: 123, type: "room", label: "Room 203", yaw: 12, pitch: -5 },
+    // elevatorGroupId/accessibleFloors are only ever non-empty for
+    // type: "elevator" — see "Point-of-interest markers" above.
+    { id: 124, type: "elevator", label: "Elevator A", yaw: 200, pitch: 0,
+      elevatorGroupId: "gd1-elevator-a", accessibleFloors: [-1, 1, 2, 3] }
   ],
   createdAt, updatedAt
 }
@@ -481,6 +532,15 @@ Custom buildings: `{ id, label, floors }`, from the `buildings` table.
   tag, not a full connectivity check.
 - **Room-level destinations** route to the *node* serving a room, not a
   precise in-room point.
+- **Stairs-vs-elevator mode is inferred, not tagged** — a graph edge has no
+  "kind" of its own, so excluding stairs-only edges for elevator mode
+  relies entirely on the Stairs/Fire Exit node-type convention being
+  followed when the graph is authored. See "Getting directions to a room"
+  above.
+- **Elevator accessible-floor lists can drift** — each landing marker of
+  the same elevator stores its own copy of "floors this elevator serves";
+  nothing keeps two landings in sync if they're edited separately (see
+  "Point-of-interest markers" above).
 - **Email isn't actually delivering yet** — registration and password reset
   correctly queue an email, but SMTP credentials are still placeholder
   values, pending a decision on using SendGrid vs. the institution's own

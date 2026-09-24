@@ -27,6 +27,11 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
 /**
  * Props:
  *  - url: panorama image URL for the current node
+ *  - ready: optional — false while `url` is only transiently empty (the node changed and its
+ *    real photo hasn't resolved yet). While false, the sphere holds whatever scene is already
+ *    on screen instead of swapping to the "no image" placeholder, so a node with a real photo
+ *    never flashes the placeholder on its way in. Defaults to true (url treated as final) for
+ *    callers that don't have a separate loading state to report
  *  - hotspots: [{ id, name, yaw, pitch, photo }] — clickable arrows toward linked nodes; photo (optional) powers the hover sneak-peek
  *  - markers: [{ id, label, type, yaw, pitch }] — fixed point-of-interest labels, non-navigating
  *  - onNavigate(id): called when a hotspot is clicked
@@ -44,19 +49,29 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
+ *  - onElevatorMarkerClick(marker): optional — called when a type:"elevator" marker is clicked (public viewer only; independent of the props above — moves the visitor, unlike every other marker type, which is purely informational)
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
  *  - onBack: required when keyboardNav is true — called on S/Down
+ *  - onLiveChange(live): optional — called whenever the target scene (sceneKey) finishes loading and
+ *    actually becomes what's on screen (true), or a new move leaves it stale again (false). The
+ *    authoritative "is the destination the only thing visible right now" signal — see `ready` above
+ *    for the earlier, decode-only signal this follows
+ *  - crossFade: bool (default true) — false swaps each newly loaded scene in outright instead of
+ *    cross-fading from the previous one; for a scene arriving behind a full cover, where the fade
+ *    would only expose the outgoing panorama
  *  - captureRequestId: optional — admin editors only. Bump this (any changing value) to capture the live camera's current yaw/pitch once, reported via onCaptureAngle; used to record a default/arrival view by orbiting to it and confirming, rather than clicking a point on the sphere
  *  - onCaptureAngle({yaw, pitch}): required when captureRequestId is used
  */
 export default function PanoramaNav({
   url,
+  ready = true,
   hotspots,
   markers = [],
   onNavigate,
   onMarkerClick,
   onRoomMarkerClick,
   onEquipmentMarkerClick,
+  onElevatorMarkerClick,
   onError,
   placing,
   onPlaceAngle,
@@ -74,6 +89,8 @@ export default function PanoramaNav({
   onBack,
   captureRequestId,
   onCaptureAngle,
+  onLiveChange,
+  crossFade = true,
 }) {
   const cursor = placing ? "crosshair" : "grab";
   // The kiosk (zoomable) is always touch, even if the OS still reports a mouse.
@@ -97,8 +114,12 @@ export default function PanoramaNav({
   // The node's real photo, or the bundled "NO IMAGE" panorama in its place —
   // the sphere always has something to paint, so the visitor can still pan
   // around and use hotspots exactly as with a real photo; only the wallpaper
-  // is different.
-  const sceneUrl = photoFailed || !url ? noImagePanorama : url;
+  // is different. While `ready` is false, `url` being empty just means the
+  // real photo hasn't resolved YET, not that there is no photo — passing
+  // null keeps usePanoramaScene on whatever it's already showing (see its
+  // `if (!url) return` bail) instead of swapping to the placeholder for one
+  // node only to swap again to the real photo a moment later.
+  const sceneUrl = !ready ? null : photoFailed || !url ? noImagePanorama : url;
 
   // What's actually on screen: see usePanoramaScene.
   const scene = usePanoramaScene({
@@ -108,6 +129,7 @@ export default function PanoramaNav({
     markers,
     initialYaw,
     initialPitch,
+    crossFade,
     onError: () => {
       // Only the real photo failing is a failure to remember — if the
       // bundled placeholder itself somehow failed to load there would be
@@ -117,6 +139,24 @@ export default function PanoramaNav({
     },
   });
   const { shown, visible, leaving, live } = scene;
+
+  // Reports the moment the target scene actually becomes what's on screen —
+  // not when its bytes are merely decoded (that's `ready`/`url`, upstream),
+  // but when usePanoramaScene's own texture load for THIS sceneKey has
+  // finished and `shown` has caught up to it. A caller gating a full-cover
+  // loading overlay on `ready` instead of this would hide the overlay the
+  // instant the photo decodes, while the sphere is still mid-load on its
+  // own separate GPU upload — exposing the outgoing node for that gap.
+  const onLiveChangeRef = useRef(onLiveChange);
+  useEffect(() => {
+    onLiveChangeRef.current = onLiveChange;
+  });
+  // Re-reported on a scene change too, not just a `live` flip: a move made
+  // before any scene has loaded stays live throughout (nothing to hold), and
+  // the caller still needs to hear which scene that now means.
+  useEffect(() => {
+    onLiveChangeRef.current?.(live);
+  }, [live, scene.sceneKey]);
   const highlightedHotspot = scene.hotspots.find((h) => h.id === highlightedId) || null;
 
   // The Canvas is created once with the first scene's entry angle; later
@@ -190,6 +230,7 @@ export default function PanoramaNav({
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
           onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}
+          onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}
         />
       ))}
       <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-(touchInput ? TOUCH_ROTATE_SPEED : MOUSE_ROTATE_SPEED)} target={[0, 0, 0]} />

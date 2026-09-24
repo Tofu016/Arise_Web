@@ -35,12 +35,14 @@ export function useOverlay() {
       closeDirections: send("closeDirections"),
       walkStarted: send("walkStarted"),
       closeRoomCard: send("closeRoomCard"),
+      openElevatorPicker: (destinations) => dispatch({ type: "openElevatorPicker", destinations }),
+      closeElevatorPicker: send("closeElevatorPicker"),
       moved: (move) => dispatch({ type: "moved", move }),
       heldForFlyover: ({ closePanel = false } = {}) => dispatch({ type: "heldForFlyover", closePanel }),
     };
   }, []);
 
-  const escapable = !!state.panel || state.dock;
+  const escapable = !!state.panel || state.dock || !!state.elevatorPicker;
   useEffect(() => {
     if (!escapable) return;
     const onKeyDown = (e) => {

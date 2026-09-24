@@ -45,6 +45,9 @@ The single Node, per building, an admin flags as representing that one building 
 **Route**:
 The shortest walkable sequence of Nodes between two points, followed one stop at a time (optionally hands-free, as auto-walk).
 
+**Elevator marker**:
+The one point-of-interest marker type that navigates: it carries an Elevator ID (shared by every landing of that same physical elevator, one per floor it serves) and that elevator's Accessible floors. Clicking one in the public viewer Jumps to another floor's landing directly, or opens a floor picker when it serves more than two. Getting directions across floors asks Stairs or Elevator when both are actually possible and different; only one option skips the question.
+
 **Entity mapping**:
 Translating between a backend row (snake_case) and the app's object (camelCase), and back into request bodies. Kept in one place per entity; empty-value conventions (e.g. a photo is "" when empty, but a section cover is null) are part of the backend contract.
 

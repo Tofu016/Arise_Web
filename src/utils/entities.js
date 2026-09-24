@@ -31,6 +31,17 @@ function toMarker(m) {
   return { id: m.id, type: m.type, label: m.label, yaw: m.yaw, pitch: m.pitch };
 }
 
+// Elevator markers are a Node-only concept (see utils/elevators.js) — tour
+// stops have no floors at all, so elevator_group_id/accessible_floors never
+// apply there and toStop() below deliberately doesn't call this.
+function toNodeMarker(m) {
+  return {
+    ...toMarker(m),
+    elevatorGroupId: m.elevator_group_id ?? null,
+    accessibleFloors: (m.accessible_floors || []).map(Number),
+  };
+}
+
 // Only the fields present in `patch`, under their wire names. `fields`
 // maps patch key -> wire key.
 function pick(patch, fields) {
@@ -69,7 +80,7 @@ export function toNode(row) {
     photo: row.photo_path || "",
     rooms: (row.rooms || []).map((r) => r.room_name),
     ...toEdges(row.neighbors),
-    markers: (row.markers || []).map(toMarker),
+    markers: (row.markers || []).map(toNodeMarker),
     flowchartPosition:
       row.flowchart_position_x != null && row.flowchart_position_y != null
         ? { x: row.flowchart_position_x, y: row.flowchart_position_y }

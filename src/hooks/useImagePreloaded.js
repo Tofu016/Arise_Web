@@ -16,23 +16,31 @@ import { useEffect, useState } from "react";
 // to let the page reveal itself and show its own "no photo" state than
 // hang indefinitely waiting for an image that will never load.
 export function useImagePreloaded(url) {
-  const [loaded, setLoaded] = useState(false);
+  // Keyed on the url it was measured for, and reset during render (not in an
+  // effect) the instant `url` changes — an effect-based reset only runs
+  // AFTER the render where `url` already moved on, so for one render tick
+  // this would otherwise still report the OLD url's `loaded: true`, telling
+  // a caller like useNodePhoto the new photo is ready when it hasn't even
+  // started loading.
+  const [state, setState] = useState({ url, loaded: false });
+  if (state.url !== url) setState({ url, loaded: false });
 
   useEffect(() => {
-    if (!url) {
-      setLoaded(false);
-      return;
-    }
-    setLoaded(false);
+    if (!url) return;
+    let cancelled = false;
     const img = new Image();
-    img.onload = () => setLoaded(true);
-    img.onerror = () => setLoaded(true);
+    const settle = () => {
+      if (!cancelled) setState({ url, loaded: true });
+    };
+    img.onload = settle;
+    img.onerror = settle;
     img.src = url;
     return () => {
+      cancelled = true;
       img.onload = null;
       img.onerror = null;
     };
   }, [url]);
 
-  return loaded;
+  return state.url === url && state.loaded;
 }

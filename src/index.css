@@ -1297,6 +1297,11 @@ button.primary {
   flex-direction: column;
   gap: 8px;
 }
+.directions-mode-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .directions-progress-text {
   font-size: 13px;
   color: var(--text);
@@ -1456,21 +1461,25 @@ button.primary {
   to { opacity: 1; }
 }
 /* Kiosk photo-load overlay: fills the panorama frame (so it stops at the
-   header and the bottom whitespace), dims it and centers a spinner. Same
-   short delay as the indicator above, so a fast move never flashes it.
-   Blocks touches while it's up, so a second move can't start mid-load. */
+   header and the bottom whitespace) with a fully OPAQUE cover and centers a
+   spinner. Opaque, and shown with no delay, on purpose — a jump/land can
+   land somewhere with no relation to wherever the panorama was last
+   pointed (e.g. a campus-entrance pick from the kiosk picker), so the
+   outgoing node must never be visible, even dimmed, while the incoming
+   one's photo is still loading; only ever one real node on screen at a
+   time. Blocks touches while it's up, so a second move can't start
+   mid-load. */
 .kiosk-loading-overlay {
   position: absolute;
   inset: 0;
-  z-index: 6; /* above the zoom controls (5), which it dims too */
+  z-index: 6; /* above the zoom controls (5), which it covers too */
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  animation: photo-transition-indicator-in 0.2s ease 0.4s both;
+  background: var(--app-bg);
 }
 /* The one shared spinner (gray ring, red arc — see .loading-spinner), just
-   larger here and on a white disc so it reads against the dimmed panorama. */
+   larger here. */
 .kiosk-loading-overlay .loading-spinner {
   width: 72px;
   height: 72px;
@@ -1617,6 +1626,62 @@ button.primary {
 .preview-modal {
   width: 820px;
   max-width: 92vw;
+}
+.elevator-picker {
+  position: relative;
+  width: 320px;
+  max-width: 90vw;
+}
+.elevator-picker h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.elevator-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.elevator-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  cursor: pointer;
+  text-align: left;
+  font-weight: 600;
+}
+.elevator-picker-option:hover {
+  border-color: var(--accent);
+}
+.elevator-picker-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.elevator-picker-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+.elevator-floor-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.elevator-floor-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
 }
 .preview-header {
   display: flex;
@@ -3366,6 +3431,105 @@ button.primary {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* ---------- Nearby rooms: sits in the left gutter .mobile-title-wrap
+   already reserves (140px, for symmetry with the right side) so it never
+   overlaps the centered title pill, positioned via inline `top` (see
+   MainPage.jsx) to sit just under the header band rather than in it —
+   same offset the title pill itself uses.
+   Dark and translucent (not the light --surface glass the title pill
+   uses), no backdrop blur — whatever's behind shows through sharp, not
+   softened — so the background alpha is pushed up close to opaque (0.88)
+   to keep text legible over it. Text is pinned to a light color
+   regardless of theme so it stays readable against whatever's behind it
+   rather than following the page's light/dark text token.
+   ---- SIZE KNOBS ----
+   --nearby-rooms-width: overall panel width (currently 2x the original
+     128px). Note it now exceeds the 140px gutter .mobile-title-wrap
+     reserves for it — widen that gutter's `left` too (its `right` stays
+     140px for its own centering) if the title pill and this panel start
+     visibly colliding on a given screen.
+   --nearby-rooms-row-gap and --nearby-rooms-padding-block: vertical
+     breathing room (currently 3x the original) — the two knobs that make
+     the 5-row list actually tall, since height itself isn't a fixed
+     number, it falls out of padding + gaps + row heights. Bump
+     --nearby-rooms-padding-block, --nearby-rooms-row-gap, and/or the
+     block padding on .nearby-rooms-item to grow it further. ---------- */
+.nearby-rooms-panel {
+  --nearby-rooms-width: 256px;
+  --nearby-rooms-row-gap: 24px;
+  --nearby-rooms-padding-block: 42px;
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left));
+  width: var(--nearby-rooms-width);
+  box-sizing: border-box;
+  padding: var(--nearby-rooms-padding-block) 20px;
+  border-radius: 14px;
+  background: rgba(8, 8, 10, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-1);
+  z-index: 20;
+}
+.nearby-rooms-title {
+  margin: 0 0 24px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+.nearby-rooms-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nearby-rooms-row-gap);
+}
+.nearby-rooms-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.nearby-rooms-item:active {
+  opacity: 0.6;
+}
+/* Up to 2 lines before ellipsis-truncating, instead of one — a longer room
+   name (e.g. "Room 204 - Science Laboratory") gets a real chance to show
+   instead of cutting off after a few characters. min-width: 0 is required
+   for a flex child to actually wrap/ellipsize instead of just stretching
+   the row. */
+.nearby-rooms-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Fixed-width, right-aligned so "Here"/"2 hops"/"Fl. 3" all land in the
+   same column instead of each sitting wherever its own text width puts
+   it — a ragged-left column reads as more "unaligned" than the varying
+   text lengths actually warrant. */
+.nearby-rooms-meta {
+  flex-shrink: 0;
+  width: 48px;
+  text-align: right;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
 }
 /* ---------- Radial menu backdrop — full-screen, dims the panorama while
    the middle-right dock is fanned open; tapping it collapses everything

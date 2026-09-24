@@ -20,7 +20,7 @@ import { toPosition } from "../../utils/panoramaMath";
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, dimmed, selected }) {
+export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, onElevatorClick, dimmed, selected }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
@@ -48,13 +48,20 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
   // rather than one prop silently meaning two different things.
   const isRoomClickable = type === "room" && !!onRoomClick;
   const isEquipmentClickable = type === "equipment" && !!onEquipmentClick;
+  // Elevator markers are the one type that's clickable in the public
+  // viewer without being a "room"/"equipment" special case — see
+  // MainPage.jsx's handleElevatorMarkerClick: unlike every other marker,
+  // clicking one actually moves the visitor (a Jump to another floor).
+  const isElevatorClickable = type === "elevator" && !!onElevatorClick;
   const clickHandler = onClick
     ? (e) => { e.stopPropagation(); onClick(); }
     : isRoomClickable
       ? (e) => { e.stopPropagation(); onRoomClick(); }
       : isEquipmentClickable
         ? (e) => { e.stopPropagation(); onEquipmentClick(); }
-        : undefined;
+        : isElevatorClickable
+          ? (e) => { e.stopPropagation(); onElevatorClick(); }
+          : undefined;
   const isClickable = !!clickHandler;
 
   const baseSize = Math.round(48 * uiScale);

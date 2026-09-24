@@ -17,6 +17,7 @@ export const initialOverlay = {
   roomCard: null, // the room whose card the "room" panel shows; kept while its 360° view is open
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
   endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
+  elevatorPicker: null, // { destinations } — an elevator marker was clicked with more than one reachable floor; null once one is picked (or there was only one destination, which just jumps straight there without ever opening this)
 };
 
 export function overlayReducer(state, action) {
@@ -34,7 +35,7 @@ export function overlayReducer(state, action) {
     case "closeDock":
       return { ...state, dock: false };
     case "dismiss": // the FAB, the backdrop, Escape: collapse the dock and its panel
-      return { ...state, panel: null, dock: false };
+      return { ...state, panel: null, dock: false, elevatorPicker: null };
     case "openFromDock": // a radial item: collapse the dock, then open its target
       return openTarget({ ...state, dock: false }, action.target);
     case "openFeedback":
@@ -68,6 +69,10 @@ export function overlayReducer(state, action) {
       return { ...state, walkDialog: false, panel: "directions" };
     case "closeRoomCard":
       return { ...state, roomCard: null, panel: null };
+    case "openElevatorPicker":
+      return { ...state, elevatorPicker: { destinations: action.destinations } };
+    case "closeElevatorPicker":
+      return { ...state, elevatorPicker: null };
     // A move that happened: back and walk leave the panel as it was; a jump
     // opens the room card it came from, or closes the panel.
     case "moved": {
@@ -113,6 +118,7 @@ export function blocksIdle(state, { flyover, awaitingStart }) {
     state.endSessionThanks ||
     state.room360 ||
     state.help ||
+    !!state.elevatorPicker ||
     !!flyover ||
     !!awaitingStart
   );
@@ -140,6 +146,7 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
     state.buildingMenu ||
     state.room360 ||
     state.help ||
+    !!state.elevatorPicker ||
     !!flyover;
   return { walkBarShown, kioskDialogOpen, coversPanorama };
 }

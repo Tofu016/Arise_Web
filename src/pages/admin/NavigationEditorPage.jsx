@@ -3,9 +3,10 @@ import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import FilterPanel from "../../components/FilterPanel";
 import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "../../components/GraphEditorControls";
-import { floorLabel, buildingLabel, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
+import { floorLabel, buildingLabel, floorsForBuilding, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
+import { validateElevatorMarker, groupElevatorLandings } from "../../utils/elevators";
 
 const defaultFilters = {
   building: "all",
@@ -73,7 +74,19 @@ export default function NavigationEditorPage() {
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerType, setNewMarkerType] = useState(MARKER_TYPES[0].id);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
+  const [newMarkerElevatorGroupId, setNewMarkerElevatorGroupId] = useState("");
+  const [newMarkerAccessibleFloors, setNewMarkerAccessibleFloors] = useState([]);
   const [filters, setFilters] = useState(defaultFilters);
+
+  // Every elevatorGroupId already used anywhere in the building — offered
+  // as a datalist so adding this same elevator's next landing is picking
+  // an existing ID, not retyping it (a typo here would silently create a
+  // second, disconnected "elevator" instead of extending this one).
+  const existingElevatorGroupIds = current
+    ? [...groupElevatorLandings(nodes).keys()].filter((groupId) =>
+        nodes.some((n) => n.building === current.building && (n.markers || []).some((m) => m.elevatorGroupId === groupId))
+      )
+    : [];
 
   // Capturing the starting view requires staying put on this node — any
   // navigation away (including a hotspot-default-view capture walking to a
@@ -96,11 +109,39 @@ export default function NavigationEditorPage() {
     setAddingMarker(true);
     setNewMarkerType(MARKER_TYPES[0].id);
     setNewMarkerLabel("");
+    setNewMarkerElevatorGroupId("");
+    setNewMarkerAccessibleFloors(current ? [current.floor] : []);
+  };
+
+  const isElevator = newMarkerType === "elevator";
+  const elevatorErrors = isElevator && current
+    ? validateElevatorMarker(
+        { elevatorGroupId: newMarkerElevatorGroupId, accessibleFloors: newMarkerAccessibleFloors, floor: current.floor },
+        floorsForBuilding(current.building)
+      )
+    : [];
+  const canConfirmMarker = isElevator
+    ? elevatorErrors.length === 0
+    : !!newMarkerLabel.trim();
+
+  const toggleAccessibleFloor = (floor) => {
+    setNewMarkerAccessibleFloors((floors) =>
+      floors.includes(floor) ? floors.filter((f) => f !== floor) : [...floors, floor].sort((a, b) => a - b)
+    );
   };
 
   const confirmStartPlacingNewMarker = () => {
-    if (!newMarkerLabel.trim()) return;
-    editor.startPlacingMarker({ id: newMarkerId(), type: newMarkerType, label: newMarkerLabel.trim() });
+    if (!canConfirmMarker) return;
+    const label = isElevator ? `Elevator ${newMarkerElevatorGroupId.trim()}` : newMarkerLabel.trim();
+    const marker = {
+      id: newMarkerId(),
+      type: newMarkerType,
+      label,
+      ...(isElevator
+        ? { elevatorGroupId: newMarkerElevatorGroupId.trim(), accessibleFloors: newMarkerAccessibleFloors }
+        : {}),
+    };
+    editor.startPlacingMarker(marker);
     setAddingMarker(false);
   };
 
@@ -183,7 +224,14 @@ export default function NavigationEditorPage() {
                 const info = markerTypeInfo(m.type);
                 return (
                   <div key={m.id} className="link-row">
-                    <span className="link-name">{info.icon} {m.label}</span>
+                    <span className="link-name">
+                      {info.icon} {m.label}
+                      {m.type === "elevator" && (
+                        <span className="portal-tag">
+                          {m.elevatorGroupId} · floors: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
+                        </span>
+                      )}
+                    </span>
                     <div className="link-actions">
                       <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
                       <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
@@ -228,6 +276,39 @@ export default function NavigationEditorPage() {
                       This node has no "Rooms served" yet — add one via Node Editor first.
                     </p>
                   )
+                ) : isElevator ? (
+                  <>
+                    <input
+                      type="text"
+                      autoFocus
+                      list="elevator-group-ids"
+                      placeholder="Elevator ID, e.g. GD1-Main"
+                      value={newMarkerElevatorGroupId}
+                      onChange={(e) => setNewMarkerElevatorGroupId(e.target.value)}
+                    />
+                    <datalist id="elevator-group-ids">
+                      {existingElevatorGroupIds.map((id) => <option key={id} value={id} />)}
+                    </datalist>
+                    <p className="field-hint">
+                      Use the SAME Elevator ID on every floor this elevator serves — that's how the
+                      system knows they're the same physical elevator.
+                    </p>
+                    <div className="elevator-floor-checkboxes">
+                      {floorsForBuilding(current.building).map((f) => (
+                        <label key={f} className="elevator-floor-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={newMarkerAccessibleFloors.includes(f)}
+                            onChange={() => toggleAccessibleFloor(f)}
+                          />
+                          {floorLabel(f)}
+                        </label>
+                      ))}
+                    </div>
+                    {elevatorErrors.map((err) => (
+                      <p key={err} className="directions-error">{err}</p>
+                    ))}
+                  </>
                 ) : (
                   <input
                     type="text"
@@ -238,7 +319,7 @@ export default function NavigationEditorPage() {
                     onKeyDown={(e) => e.key === "Enter" && confirmStartPlacingNewMarker()}
                   />
                 )}
-                <button onClick={confirmStartPlacingNewMarker} disabled={!newMarkerLabel.trim()}>
+                <button onClick={confirmStartPlacingNewMarker} disabled={!canConfirmMarker}>
                   Place on panorama
                 </button>
                 <button onClick={() => setAddingMarker(false)}>Cancel</button>

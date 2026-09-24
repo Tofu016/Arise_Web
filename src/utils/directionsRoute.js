@@ -5,10 +5,17 @@ import { resolveExactNodeMatch } from "./search";
 // no timers. `null` means no directions are open.
 //
 // State: { fromQuery, fromId, toQuery, toId, path, stepIndex, error,
-//          editingField, kind, autoWalking }
-//   kind         "point" (always — the visitor picks the destination)
-//   autoWalking  stepping through `path` hands-free; lives here so it can
-//                never outlive the route it walks
+//          editingField, kind, autoWalking, pendingModeChoice }
+//   kind              "point" (always — the visitor picks the destination)
+//   autoWalking       stepping through `path` hands-free; lives here so it
+//                      can never outlive the route it walks
+//   pendingModeChoice { stairsPath, elevatorPath } when the route requires
+//                      a floor change AND both a stairs-only and an
+//                      elevator-only route exist and actually differ — the
+//                      panel asks "Stairs or elevator?" instead of picking
+//                      for the visitor. null the rest of the time, including
+//                      when only one of the two is even possible (nothing to
+//                      ask about) — see chooseTransportMode.
 //
 // Every function returns the next state and returns the same object when
 // nothing changed, so a caller can skip a re-render by identity.
@@ -25,8 +32,11 @@ function blank(current, kind) {
     editingField: null,
     kind,
     autoWalking: false,
+    pendingModeChoice: null,
   };
 }
+
+const samePath = (a, b) => !!a && !!b && a.length === b.length && a.every((id, i) => id === b[i]);
 
 export function openDirectionsTo(current, node) {
   return { ...blank(current, "point"), toQuery: node.name, toId: node.id };
@@ -73,6 +83,14 @@ export function activeQuery(d) {
 // without clicking a suggestion), then computes the route. The resolved
 // ids are persisted, not just the path — starting the walk reads the
 // path's first stop.
+//
+// When the destination is on a different floor, both a stairs-only and an
+// elevator-only route are computed (see pathfinding.js's mode argument).
+// If both exist and actually take a different route, the visitor is asked
+// which to use (pendingModeChoice) rather than silently picking one — see
+// chooseTransportMode. If the floor doesn't change, or only one of the two
+// is possible, there's nothing to ask: whichever route exists is used
+// directly, same as before this mode split existed.
 export function getDirections(d, nodes, searchableRooms) {
   let fromId = d.fromId;
   let toId = d.toId;
@@ -82,9 +100,32 @@ export function getDirections(d, nodes, searchableRooms) {
   if (!fromId || !toId) {
     return { ...d, error: "Pick both a starting point and a destination from the suggestions, or type the exact name." };
   }
-  const path = findPath(nodes, fromId, toId);
+
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const sameFloor = byId[fromId] && byId[toId] && byId[fromId].floor === byId[toId].floor;
+
+  if (sameFloor) {
+    const path = findPath(nodes, fromId, toId, "stairs");
+    if (!path) return { ...d, path: null, error: "No walkable route found between these two points yet." };
+    return { ...d, fromId, toId, path, stepIndex: 0, error: "", pendingModeChoice: null };
+  }
+
+  const stairsPath = findPath(nodes, fromId, toId, "stairs");
+  const elevatorPath = findPath(nodes, fromId, toId, "elevator");
+
+  if (stairsPath && elevatorPath && !samePath(stairsPath, elevatorPath)) {
+    return { ...d, fromId, toId, path: null, error: "", pendingModeChoice: { stairsPath, elevatorPath } };
+  }
+  const path = stairsPath || elevatorPath || findPath(nodes, fromId, toId, "any");
   if (!path) return { ...d, path: null, error: "No walkable route found between these two points yet." };
-  return { ...d, fromId, toId, path, stepIndex: 0, error: "" };
+  return { ...d, fromId, toId, path, stepIndex: 0, error: "", pendingModeChoice: null };
+}
+
+// The visitor picked "stairs" or "elevator" from pendingModeChoice.
+export function chooseTransportMode(d, mode) {
+  if (!d?.pendingModeChoice) return d;
+  const path = mode === "elevator" ? d.pendingModeChoice.elevatorPath : d.pendingModeChoice.stairsPath;
+  return { ...d, path, stepIndex: 0, error: "", pendingModeChoice: null };
 }
 
 export function restartRoute(d) {

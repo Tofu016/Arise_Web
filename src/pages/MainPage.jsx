@@ -19,6 +19,7 @@ import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
 import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
+import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
@@ -29,6 +30,8 @@ import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../u
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
+import { findNearbyRooms } from "../utils/nearbyRooms";
+import { elevatorDestinationsFrom } from "../utils/elevators";
 import {
   floorsForBuilding,
   findKioskEntranceShortcuts,
@@ -262,6 +265,15 @@ function MainPageContent({ onReset }) {
 
   const current = currentId ? byId[currentId] : null;
 
+  // Kiosk-only "Nearby" panel (see NearbyRoomsPanel): the 5 closest rooms
+  // to wherever the visitor currently is, capped at 8 hops so a same-floor
+  // room clear across campus doesn't still count as "nearby" just because
+  // there's no cross-floor jump in the way.
+  const nearbyRooms = useMemo(
+    () => (current ? findNearbyRooms(nodes, current.id, { maxHops: 8, limit: 5 }) : []),
+    [nodes, current]
+  );
+
   // A single named constant, easy to retune. Suppressed entirely (enabled: false, no
   // timer even running) whenever any other overlay is already open, so
   // this can never appear stacked on top of the search panel, the
@@ -371,11 +383,48 @@ function MainPageContent({ onReset }) {
     nodesLoaded: !!nodes,
   });
 
+  // Whether the node PanoramaNav is now actually SHOWING is the current one
+  // — distinct from `photoReady` above, which only means its bytes have
+  // decoded. There's a further gap after that: PanoramaNav's own texture
+  // upload for the new scene. Gating the loading overlays on `photoReady`
+  // instead of this let them disappear while the outgoing node's panorama
+  // was still on screen, mid-upload — see PanoramaNav's `onLiveChange` doc.
+  // Starts true so the very first node isn't treated as "outgoing" before
+  // PanoramaNav has ever reported in.
+  const [sceneLive, setSceneLive] = useState(true);
+  // Which node that `sceneLive` report was for. `sceneLive` alone arrives a
+  // render late (PanoramaNav reports from an effect), so right after a move
+  // it can still say true about the node being left.
+  const [liveSceneId, setLiveSceneId] = useState(null);
+  const handleLiveChange = (live) => {
+    setSceneLive(live);
+    setLiveSceneId(live ? current?.id ?? null : null);
+  };
+
+  // Kiosk: whether the panorama has been revealed since the campus/building/
+  // floor sequence ended. The sequence runs over the default node (whatever
+  // landOnDefault picked), so its pick moves AWAY from a node the visitor
+  // never chose — the backdrop stays up until the picked node is actually on
+  // screen, instead of fading out over the default one mid-load. Latches, so
+  // later ordinary moves never bring the backdrop back; resets whenever the
+  // sequence starts over.
+  const [kioskRevealed, setKioskRevealed] = useState(false);
+  if (kiosk.awaitingStart && kioskRevealed) setKioskRevealed(false);
+  if (!kiosk.awaitingStart && !kioskRevealed && (!current || liveSceneId === current.id)) setKioskRevealed(true);
+
   // Selecting a room from search moves the viewer to its attached node (a
   // jump, so it flies over a campus boundary like any other) and opens its
   // info card once it lands. "Get Directions"/"360° View" on the card itself
   // are the explicit actions that go further.
   const openRoomCard = (room) => jumpToSearchResult(room.node.id, { room });
+
+  // Tapping a result in the Nearby panel: same behavior as picking it from
+  // search — opens the room card if it has one, otherwise just jumps there.
+  const selectNearbyRoom = (entry) => {
+    const match = searchableRooms.find((r) => r.roomName.toLowerCase() === entry.room.toLowerCase());
+    if (match) openRoomCard(match);
+    else jumpToSearchResult(entry.nodeId);
+  };
 
   // Clicking a "room" type marker in the panorama itself. If no saved room
   // details exist for that label, nothing happens — same "only rooms an admin
@@ -384,6 +433,28 @@ function MainPageContent({ onReset }) {
   const handleRoomMarkerClick = (marker) => {
     const match = findRoomForMarker(marker, searchableRooms);
     if (match) openRoomCard(match);
+  };
+
+  // Clicking an elevator marker: unlike every other marker type, this
+  // actually moves the visitor — a Jump (fresh start, history cleared),
+  // same as any other teleport-style move, since riding an elevator isn't
+  // a continuous walk through connected panoramas the way a hotspot is.
+  // One reachable floor jumps straight there; more than one opens a small
+  // picker so the visitor chooses which floor to ride to.
+  const handleElevatorMarkerClick = (marker) => {
+    if (!current) return;
+    const destinations = elevatorDestinationsFrom(nodes, current.id, marker.elevatorGroupId);
+    if (destinations.length === 0) return;
+    if (destinations.length === 1) {
+      jumpToSearchResult(destinations[0].id);
+      return;
+    }
+    overlay.openElevatorPicker(destinations);
+  };
+
+  const rideElevatorTo = (nodeId) => {
+    overlay.closeElevatorPicker();
+    jumpToSearchResult(nodeId);
   };
 
   const handleRoomGetDirections = () => {
@@ -700,7 +771,15 @@ function MainPageContent({ onReset }) {
 
       {directions.error && <p className="directions-error">{directions.error}</p>}
 
-      {!directions.path && (
+      {directions.pendingModeChoice && (
+        <div className="directions-mode-choice">
+          <p className="field-hint">This route changes floors — how do you want to get there?</p>
+          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("stairs")}>🪜 Take the stairs</button>
+          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("elevator")}>🛗 Take the elevator</button>
+        </div>
+      )}
+
+      {!directions.path && !directions.pendingModeChoice && (
         <button className="primary directions-go-btn" onClick={flow.get}>Get directions</button>
       )}
 
@@ -748,6 +827,22 @@ function MainPageContent({ onReset }) {
   return (
     <div className="main-page-layout">
       {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={flow.close} />}
+      {overlay.elevatorPicker && (
+        <div className="modal-overlay elevator-picker-overlay" onClick={overlay.closeElevatorPicker}>
+          <div className="modal elevator-picker" role="dialog" aria-label="Choose a floor" onClick={(e) => e.stopPropagation()}>
+            <h3>Ride to which floor?</h3>
+            <div className="elevator-picker-list">
+              {overlay.elevatorPicker.destinations.map((dest) => (
+                <button key={dest.id} className="elevator-picker-option" onClick={() => rideElevatorTo(dest.id)}>
+                  {floorLabel(dest.floor)}
+                  <span className="elevator-picker-sub">{buildingLabel(dest.building)} · {dest.name}</span>
+                </button>
+              ))}
+            </div>
+            <button className="close-btn elevator-picker-close" onClick={overlay.closeElevatorPicker}>✕</button>
+          </div>
+        </div>
+      )}
       {/* Overlays everything below until the current node's photo has
           actually finished decoding, not just until nodes data has
           loaded — matches how the !nodes early-return above already
@@ -766,8 +861,10 @@ function MainPageContent({ onReset }) {
           moment where both are still mid-fade (each only partially opaque)
           let the panorama underneath show through. This sits just below all
           of them (fixed at z-index 585) and only fades away once actually
-          exploring, so that moment reveals solid white instead. */}
-      {compact && <div className={"kiosk-sequence-backdrop" + (kiosk.awaitingStart ? "" : " kiosk-sequence-backdrop-hidden")} />}
+          exploring AND the picked node is on screen (see kioskRevealed), so
+          that moment reveals solid white instead, and the default node the
+          sequence ran over is never glimpsed on the way in. */}
+      {compact && <div className={"kiosk-sequence-backdrop" + (kioskRevealed ? " kiosk-sequence-backdrop-hidden" : "")} />}
       {compact && (
         <KioskCampusScreen
           hidden={kiosk.stage !== "campus"}
@@ -811,9 +908,10 @@ function MainPageContent({ onReset }) {
               className="mobile-panorama-frame"
               style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
             >
-              {/* Kiosk: a spinner in the middle of the panorama band, with the band dimmed
-                  around it; the header and bottom whitespace aren't covered. */}
-              {initialLoadDone && !photoReady && (
+              {/* Kiosk: a full opaque cover over the panorama band (header and
+                  bottom whitespace excluded) until the destination is actually
+                  on screen — see sceneLive above for why this isn't photoReady. */}
+              {initialLoadDone && !sceneLive && (
                 <div className="kiosk-loading-overlay" role="status" aria-label="Loading">
                   <div className="loading-spinner" />
                 </div>
@@ -821,10 +919,14 @@ function MainPageContent({ onReset }) {
               <PanoramaNav
                 sceneKey={current.id}
                 url={photoUrl}
+                ready={photoReady}
+                onLiveChange={handleLiveChange}
+                crossFade={kioskRevealed}
                 hotspots={hotspots}
                 markers={markers}
                 onNavigate={goTo}
                 onRoomMarkerClick={handleRoomMarkerClick}
+                onElevatorMarkerClick={handleElevatorMarkerClick}
                 onError={() => {}}
                 placing={false}
                 onPlaceAngle={() => {}}
@@ -855,6 +957,15 @@ function MainPageContent({ onReset }) {
                 <span>{current.name}</span>
               </div>
             </div>
+            )}
+
+            {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (
+              <NearbyRoomsPanel
+                rooms={nearbyRooms}
+                currentFloor={current.floor}
+                onSelect={selectNearbyRoom}
+                style={{ top: `calc(${KIOSK_TOP_INSET * 100}% + 12px)` }}
+              />
             )}
 
             {mobileDockOpen && (
@@ -1124,14 +1235,17 @@ function MainPageContent({ onReset }) {
           </div>
         ) : (
           <div className="main-page-screen">
-              {initialLoadDone && !photoReady && <div className="photo-transition-indicator">Loading…</div>}
+              {initialLoadDone && !sceneLive && <div className="photo-transition-indicator">Loading…</div>}
               <PanoramaNav
                 sceneKey={current.id}
                 url={photoUrl}
+                ready={photoReady}
+                onLiveChange={handleLiveChange}
                 hotspots={hotspots}
                 markers={markers}
                 onNavigate={goTo}
                 onRoomMarkerClick={handleRoomMarkerClick}
+                onElevatorMarkerClick={handleElevatorMarkerClick}
                 onError={() => {}}
                 placing={false}
                 onPlaceAngle={() => {}}
