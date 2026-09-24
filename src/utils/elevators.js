@@ -1,69 +1,47 @@
 import { MIN_ELEVATOR_FLOORS } from "./constants";
 
-// An elevator marker is unlike every other marker type: instead of just
-// labeling something visible from where you're standing, it carries the
-// data needed to treat two DIFFERENT nodes (on different floors, maybe
-// different buildings) as connected — the same physical elevator, riding
-// on a shared `elevatorGroupId` string every one of its landing markers
-// repeats, plus each marker's own `accessibleFloors` (the floors that car
-// actually stops at; real elevators skip restricted floors, so this is
-// deliberately not "every floor in the building").
+// An elevator is one `elevators` row (id, label, building, accessibleFloors
+// — the floors the car actually stops at; restricted floors are left out)
+// plus one landing marker per floor, placed on the node where that floor's
+// elevator doors are. A landing marker only stores which elevator it
+// belongs to (`elevatorId`); the floor list and label it carries on the
+// client are read-time copies joined from that one row by the backend, so
+// two landings of the same elevator can never disagree.
 //
-// There's no separate "elevators" table backing this — elevatorGroupId and
-// accessibleFloors are just columns on each node_markers row (see
-// entities.js's toMarker), duplicated across every landing of the same
-// elevator. Nothing keeps those copies in sync with each other if an admin
-// edits one landing's floor list and not its siblings — see
-// elevatorGroupWarnings below, which surfaces exactly that drift rather
-// than silently trusting one copy.
+// Landings of the same elevator are connected to each other for routing
+// (see pathfinding.js), and clicking one in the viewer rides to another.
 
-// Every elevator marker in the graph, as { groupId, nodeId, floor, marker }.
-function allElevatorLandings(nodes) {
-  const landings = [];
-  for (const node of nodes) {
-    for (const marker of node.markers || []) {
-      if (marker.type !== "elevator" || !marker.elevatorGroupId) continue;
-      landings.push({ groupId: marker.elevatorGroupId, nodeId: node.id, floor: node.floor, marker });
-    }
-  }
-  return landings;
-}
-
-// groupId -> every landing that claims to belong to it.
-export function groupElevatorLandings(nodes) {
+// elevatorId -> every landing of it, as { nodeId, floor, marker }.
+export function landingsByElevator(nodes) {
   const groups = new Map();
-  for (const landing of allElevatorLandings(nodes)) {
-    if (!groups.has(landing.groupId)) groups.set(landing.groupId, []);
-    groups.get(landing.groupId).push(landing);
+  for (const node of nodes || []) {
+    for (const marker of node.markers || []) {
+      if (marker.type !== "elevator" || !marker.elevatorId) continue;
+      if (!groups.has(marker.elevatorId)) groups.set(marker.elevatorId, []);
+      groups.get(marker.elevatorId).push({ nodeId: node.id, floor: Number(node.floor), marker });
+    }
   }
   return groups;
 }
 
-// The bidirectional "you can ride this elevator between these two nodes"
-// edges: every distinct pair of landings sharing a groupId, where EACH
-// side's own accessibleFloors actually lists the other side's floor.
-// Checking both directions (rather than trusting one shared list) means a
-// drifted pair of landings — see the module comment — degrades to "no
-// connection" instead of a connection only one side agreed to.
+// Every pair of landings of the same elevator, both on floors the elevator
+// serves. The accessibility check is defensive only — the backend refuses
+// a landing on a floor the elevator doesn't serve, and refuses dropping a
+// floor that still has one.
 export function elevatorEdges(nodes) {
-  const groups = groupElevatorLandings(nodes);
   const edges = [];
-  for (const landings of groups.values()) {
-    for (let i = 0; i < landings.length; i++) {
-      for (let j = i + 1; j < landings.length; j++) {
-        const a = landings[i];
-        const b = landings[j];
-        if (a.nodeId === b.nodeId) continue;
-        if (a.marker.accessibleFloors.includes(b.floor) && b.marker.accessibleFloors.includes(a.floor)) {
-          edges.push({ a: a.nodeId, b: b.nodeId, groupId: a.groupId });
-        }
+  for (const [elevatorId, landings] of landingsByElevator(nodes)) {
+    const served = landings.filter((l) => l.marker.accessibleFloors.includes(l.floor));
+    for (let i = 0; i < served.length; i++) {
+      for (let j = i + 1; j < served.length; j++) {
+        if (served[i].nodeId === served[j].nodeId || served[i].floor === served[j].floor) continue;
+        edges.push({ a: served[i].nodeId, b: served[j].nodeId, elevatorId });
       }
     }
   }
   return edges;
 }
 
-// Adjacency map built from elevatorEdges, for pathfinding.js.
 export function elevatorAdjacency(nodes) {
   const adjacency = new Map();
   for (const { a, b } of elevatorEdges(nodes)) {
@@ -75,57 +53,81 @@ export function elevatorAdjacency(nodes) {
   return adjacency;
 }
 
-// Where riding the elevator FROM this one node can actually take you —
-// used by the public viewer when an elevator marker is clicked: one result
-// means "just go", more than one means "ask which floor". Scoped to a
-// single groupId when given (a node could in principle host more than one
-// distinct elevator's landing), otherwise every elevator reachable from
-// this node.
-export function elevatorDestinationsFrom(nodes, nodeId, groupId = null) {
-  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  const edges = elevatorEdges(nodes).filter(
-    (e) => (e.a === nodeId || e.b === nodeId) && (!groupId || e.groupId === groupId)
+// The landings reachable by riding elevator `elevatorId` from `nodeId`,
+// lowest floor first: [{ node, floor, marker }]. `marker` is the landing
+// marker on the destination node.
+export function elevatorDestinationsFrom(nodes, nodeId, elevatorId) {
+  const byId = Object.fromEntries((nodes || []).map((n) => [n.id, n]));
+  const landings = landingsByElevator(nodes).get(elevatorId) || [];
+  if (!landings.some((l) => l.nodeId === nodeId)) return [];
+  return elevatorEdges(nodes)
+    .filter((e) => e.elevatorId === elevatorId && (e.a === nodeId || e.b === nodeId))
+    .map((e) => (e.a === nodeId ? e.b : e.a))
+    .map((id) => landings.find((l) => l.nodeId === id))
+    .filter((l) => l && byId[l.nodeId])
+    .map((l) => ({ node: byId[l.nodeId], floor: l.floor, marker: l.marker }))
+    .sort((a, b) => a.floor - b.floor);
+}
+
+// If moving fromId -> toId is an elevator ride, the landing marker to use
+// on each end; otherwise null. Used to turn a route step into "take the
+// elevator" instead of "walk through this hotspot".
+export function elevatorRideBetween(nodes, fromId, toId) {
+  const edge = elevatorEdges(nodes).find(
+    (e) => (e.a === fromId && e.b === toId) || (e.a === toId && e.b === fromId)
   );
-  const destIds = new Set(edges.map((e) => (e.a === nodeId ? e.b : e.a)));
-  return [...destIds].map((id) => byId[id]).filter(Boolean);
+  if (!edge) return null;
+  const landings = landingsByElevator(nodes).get(edge.elevatorId);
+  const from = landings.find((l) => l.nodeId === fromId);
+  const to = landings.find((l) => l.nodeId === toId);
+  return { elevatorId: edge.elevatorId, fromMarker: from.marker, toMarker: to.marker, toFloor: to.floor };
 }
 
-// Data-quality check, surfaced in the admin UI rather than pathfinding:
-// every landing in a group should agree on which floors the elevator
-// serves (it's the same physical car) — flags a group where they don't,
-// since silently trusting whichever landing you're editing would let two
-// landings quietly disagree about a floor without either admin noticing.
-export function elevatorGroupWarnings(nodes) {
-  const groups = groupElevatorLandings(nodes);
-  const warnings = [];
-  for (const [groupId, landings] of groups) {
-    const signatures = new Set(landings.map((l) => [...l.marker.accessibleFloors].sort((a, b) => a - b).join(",")));
-    if (signatures.size > 1) {
-      warnings.push({ groupId, nodeIds: landings.map((l) => l.nodeId) });
-    }
-  }
-  return warnings;
+// Stepping out of the car: arrive facing away from the destination
+// landing's doors (its marker), toward the floor itself.
+export function arrivalYawFromLanding(marker) {
+  return ((Number(marker.yaw) || 0) + 180) % 360;
 }
 
-// Admin-form validation for an elevator marker draft, before it's saved.
-// `floorsForThisBuilding` is the building's real floor list (BUILDING_FLOORS
-// et al in constants.js) — accessibleFloors can't name a floor the building
-// doesn't have.
-export function validateElevatorMarker({ elevatorGroupId, accessibleFloors, floor }, floorsForThisBuilding) {
+// Admin validation for creating or editing the elevator record itself.
+export function validateElevator({ id, label, building, accessibleFloors }, { buildingFloors, existingIds = [], isNew }) {
   const errors = [];
-  if (!elevatorGroupId || !elevatorGroupId.trim()) {
-    errors.push("Elevator ID is required — use the same ID on every floor this elevator serves.");
+  if (isNew) {
+    if (!id?.trim()) errors.push("Elevator ID is required.");
+    else if (existingIds.includes(id.trim())) errors.push(`Elevator ID "${id.trim()}" is already used.`);
   }
+  if (!label?.trim()) errors.push("A label is required, e.g. \"Elevator A\".");
+  if (!building) errors.push("Pick a building.");
   const floors = accessibleFloors || [];
   if (floors.length < MIN_ELEVATOR_FLOORS) {
-    errors.push(`Pick at least ${MIN_ELEVATOR_FLOORS} accessible floors — a single-floor elevator can't connect anywhere.`);
+    errors.push(`Pick at least ${MIN_ELEVATOR_FLOORS} floors — a single-floor elevator can't take anyone anywhere.`);
   }
-  if (!floors.includes(floor)) {
-    errors.push("Accessible floors must include this node's own floor — otherwise this landing can never be ridden away from.");
+  const invalid = floors.filter((f) => !buildingFloors.includes(f));
+  if (invalid.length > 0) errors.push(`This building doesn't have floor(s): ${invalid.join(", ")}.`);
+  return errors;
+}
+
+// Floors an elevator edit would drop while a landing still sits there —
+// the backend refuses those, so the form says why before sending.
+export function floorsWithLandingsDropped(elevator, nextFloors) {
+  return (elevator.landings || []).filter((l) => !nextFloors.includes(l.floor));
+}
+
+// Admin validation for placing a landing of `elevator` on `node`.
+export function validateElevatorLanding(elevator, node) {
+  if (!elevator) return ["Pick an elevator."];
+  const errors = [];
+  if (elevator.building !== node.building) errors.push("That elevator belongs to a different building.");
+  if (!elevator.accessibleFloors.includes(Number(node.floor))) {
+    errors.push("That elevator doesn't stop on this node's floor — add the floor to the elevator first.");
   }
-  const invalid = floors.filter((f) => !floorsForThisBuilding.includes(f));
-  if (invalid.length > 0) {
-    errors.push(`This building doesn't have floor(s): ${invalid.join(", ")}.`);
+  const clash = (elevator.landings || []).find((l) => l.floor === Number(node.floor));
+  if (clash) {
+    errors.push(
+      clash.nodeId === node.id
+        ? "This node already has a landing for that elevator."
+        : `That elevator already has a landing on this floor (node "${clash.nodeId}").`
+    );
   }
   return errors;
 }

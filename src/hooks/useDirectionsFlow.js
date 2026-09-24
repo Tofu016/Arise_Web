@@ -3,6 +3,7 @@ import { useDirections, useAutoWalk } from "./useDirections";
 import * as route from "../utils/directionsRoute";
 import { searchCampus } from "../utils/search";
 import { speak } from "../utils/tts";
+import { floorLabel } from "../utils/constants";
 
 // The Directions flow ("just like Street View"): the from/to panel and the
 // Route it computes, followed one stop at a time. Wraps the pure transitions
@@ -40,7 +41,7 @@ export function useDirectionsFlow({
   const [directions, setDirections] = useDirections(nodes, currentId);
 
   const progress = {
-    ...route.routeProgress(directions, { byId, hotspots, entryYaw }),
+    ...route.routeProgress(directions, { byId, hotspots, entryYaw, nodes }),
     walkStarted: route.hasStartedWalking(directions, currentId),
   };
 
@@ -93,9 +94,15 @@ export function useDirectionsFlow({
     if (next.path) startWalking(next);
   };
 
+  // An elevator step rides straight to the route's floor: the panel's
+  // button (and auto-walk) already know the floor, so there's no floor
+  // picker in the way. The picker only appears when the visitor taps the
+  // landing marker itself (see MainPage's handleElevatorMarkerClick).
   const walkToNext = () => {
-    const step = route.nextStep(directions, hotspots);
-    if (step) moves.walk(step.id, { yaw: step.yaw, defaultYaw: step.defaultYaw, defaultPitch: step.defaultPitch });
+    const step = route.nextStep(directions, hotspots, nodes);
+    if (!step) return;
+    if (step.kind === "elevator") speak(`Taking the elevator to ${floorLabel(step.ride.toFloor)}`);
+    moves.walk(step.id, { yaw: step.yaw, defaultYaw: step.defaultYaw, defaultPitch: step.defaultPitch });
   };
   useAutoWalk(directions, setDirections, walkToNext);
 

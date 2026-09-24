@@ -15,7 +15,8 @@ import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 // (kioskLayout.js), so it follows the dialog's geometry if those change.
 export default function KioskWalkBar({
   progressText,
-  nextStopName,
+  nextStopAction,
+  isElevator,
   autoWalking,
   stepIndex,
   onWalk,
@@ -29,10 +30,14 @@ export default function KioskWalkBar({
   return (
     <div className="kiosk-walkbar" style={{ bottom }} role="region" aria-label="Walking controls">
       <p className="kiosk-walkbar-progress">{progressText}</p>
-      <p className="kiosk-walkbar-hint">Follow the green hotspot — it marks the correct path to your destination.</p>
+      <p className="kiosk-walkbar-hint">
+        {isElevator
+          ? "The elevator is glowing in the photo — tap it, or use the button below."
+          : "Follow the green hotspot — it marks the correct path to your destination."}
+      </p>
 
       <button type="button" className="primary kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
-        Walk to {nextStopName} →
+        {nextStopAction} →
       </button>
 
       <div className="kiosk-walkbar-row">

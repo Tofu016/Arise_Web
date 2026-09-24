@@ -35,7 +35,7 @@ export function useOverlay() {
       closeDirections: send("closeDirections"),
       walkStarted: send("walkStarted"),
       closeRoomCard: send("closeRoomCard"),
-      openElevatorPicker: (destinations) => dispatch({ type: "openElevatorPicker", destinations }),
+      openElevatorPicker: (picker) => dispatch({ type: "openElevatorPicker", picker }),
       closeElevatorPicker: send("closeElevatorPicker"),
       moved: (move) => dispatch({ type: "moved", move }),
       heldForFlyover: ({ closePanel = false } = {}) => dispatch({ type: "heldForFlyover", closePanel }),

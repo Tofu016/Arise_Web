@@ -1,36 +1,34 @@
-import { TRANSITION_TYPES } from "./constants";
 import { elevatorAdjacency } from "./elevators";
 
-// A neighbor edge that changes floor through a transition/transitionExit
-// node (stairs, fire exit) — the ONLY signal available for "this edge is a
-// stairs edge", since node_neighbors carries no traversal-kind column of
-// its own (an edge is just two ids). This is a real limitation, not just an
-// implementation shortcut: a floor-changing edge an admin drew between two
-// plain hallway nodes (skipping the transition-type convention) can't be
-// told apart from one that's supposed to be elevator-only, and will still
-// be offered under "stairs". See SESSION.md / README's transition-type
-// convention — this only works as well as that convention is followed.
+// Fire exits (transitionExit) are for emergencies only, so ordinary routing
+// never passes THROUGH one. It can still start or end on one: a visitor
+// standing at a fire exit has to be able to route away from it. Emergency
+// routing, which would use them, isn't built yet.
+const EMERGENCY_ONLY_TYPES = ["transitionExit"];
+
+// A neighbor edge that changes floor through a Stairs (transition) node.
+// This is the only signal for "this edge is a stairs edge", because
+// node_neighbors has no traversal-kind column (an edge is just two ids). A
+// floor-changing edge an admin drew between two plain hallway nodes,
+// skipping the Stairs type, can't be recognized and will still be allowed
+// in elevator mode. This only works as well as that convention is followed.
 function isStairsEdge(byId, a, b) {
   const nodeA = byId[a];
   const nodeB = byId[b];
   if (!nodeA || !nodeB || nodeA.floor === nodeB.floor) return false;
-  return TRANSITION_TYPES.includes(nodeA.type) || TRANSITION_TYPES.includes(nodeB.type);
+  return nodeA.type === "transition" || nodeB.type === "transition";
 }
 
-// Shortest path over the walkable graph, optionally restricted by how a
-// floor change is allowed to happen:
-//   "any"      every neighbor edge plus every elevator connection — the
-//              widest possible route, used to check reachability at all
-//   "stairs"   neighbor edges only (today's behavior, unchanged) — an
-//              elevator connection is never a literal hotspot arrow, so it
-//              can't be walked as a stairs-mode step
-//   "elevator" neighbor edges MINUS stairs-type floor changes, PLUS every
-//              elevator connection — forces a floor change through an
-//              elevator marker instead of a transition node, wherever one
-//              exists
-// A same-floor edge is never excluded by mode — only a FLOOR CHANGE is
-// mode-sensitive, so "elevator" mode still uses ordinary hallway walking to
-// actually reach the elevator's landing marker.
+// Shortest path over the walkable graph, restricted by how a floor change
+// may happen:
+//   "any"      neighbor edges plus elevator rides: the widest route, used
+//              when there's no preference or as the last-resort fallback
+//   "stairs"   neighbor edges only; never rides an elevator
+//   "elevator" neighbor edges MINUS floor changes through a Stairs node,
+//              PLUS elevator rides, so the only way between floors is the
+//              elevator (step-free, as far as the graph's typing allows)
+// Same-floor edges are never excluded by mode; only floor changes are
+// mode-sensitive. In every mode, fire exits are never passed through.
 export function findPath(nodes, fromId, toId, mode = "any") {
   if (!fromId || !toId) return null;
   if (fromId === toId) return [fromId];
@@ -39,9 +37,11 @@ export function findPath(nodes, fromId, toId, mode = "any") {
   if (!byId[fromId] || !byId[toId]) return null;
 
   const elevatorAdj = mode === "stairs" ? null : elevatorAdjacency(nodes);
+  const emergencyOnly = (id) => id !== toId && EMERGENCY_ONLY_TYPES.includes(byId[id]?.type);
 
   const edgesFrom = (id) => {
     const walkable = (byId[id]?.neighbors || []).filter((nb) => {
+      if (emergencyOnly(nb)) return false;
       if (mode !== "elevator") return true;
       return !isStairsEdge(byId, id, nb);
     });

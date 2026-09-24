@@ -1,21 +1,24 @@
 import { findPath, getTurnInstruction } from "./pathfinding";
 import { resolveExactNodeMatch } from "./search";
+import { elevatorRideBetween, arrivalYawFromLanding } from "./elevators";
 
 // Point-to-point directions, as plain state plus transitions — no React,
 // no timers. `null` means no directions are open.
 //
 // State: { fromQuery, fromId, toQuery, toId, path, stepIndex, error,
-//          editingField, kind, autoWalking, pendingModeChoice }
+//          editingField, kind, autoWalking, pendingModeChoice, transportMode }
 //   kind              "point" (always — the visitor picks the destination)
 //   autoWalking       stepping through `path` hands-free; lives here so it
 //                      can never outlive the route it walks
-//   pendingModeChoice { stairsPath, elevatorPath } when the route requires
-//                      a floor change AND both a stairs-only and an
-//                      elevator-only route exist and actually differ — the
-//                      panel asks "Stairs or elevator?" instead of picking
-//                      for the visitor. null the rest of the time, including
-//                      when only one of the two is even possible (nothing to
-//                      ask about) — see chooseTransportMode.
+//   pendingModeChoice { stairsPath, elevatorPath } when the route changes
+//                      floor AND a stairs-only and an elevator-only route
+//                      both exist and differ, so the panel asks which. null
+//                      otherwise, including when only one is possible
+//                      (nothing to ask) — see chooseTransportMode.
+//   transportMode     "stairs" | "elevator" once chosen (or implied by the
+//                      only route available), null for a same-floor route.
+//                      Kept so an off-route reroute honors it instead of
+//                      quietly swapping an elevator route for stairs.
 //
 // Every function returns the next state and returns the same object when
 // nothing changed, so a caller can skip a re-render by identity.
@@ -33,6 +36,7 @@ function blank(current, kind) {
     kind,
     autoWalking: false,
     pendingModeChoice: null,
+    transportMode: null,
   };
 }
 
@@ -104,10 +108,14 @@ export function getDirections(d, nodes, searchableRooms) {
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
   const sameFloor = byId[fromId] && byId[toId] && byId[fromId].floor === byId[toId].floor;
 
+  const noRoute = { ...d, path: null, pendingModeChoice: null, error: "No walkable route found between these two points yet." };
+  const found = (path, transportMode) => ({
+    ...d, fromId, toId, path, stepIndex: 0, error: "", pendingModeChoice: null, transportMode,
+  });
+
   if (sameFloor) {
-    const path = findPath(nodes, fromId, toId, "stairs");
-    if (!path) return { ...d, path: null, error: "No walkable route found between these two points yet." };
-    return { ...d, fromId, toId, path, stepIndex: 0, error: "", pendingModeChoice: null };
+    const path = findPath(nodes, fromId, toId, "any");
+    return path ? found(path, null) : noRoute;
   }
 
   const stairsPath = findPath(nodes, fromId, toId, "stairs");
@@ -116,16 +124,26 @@ export function getDirections(d, nodes, searchableRooms) {
   if (stairsPath && elevatorPath && !samePath(stairsPath, elevatorPath)) {
     return { ...d, fromId, toId, path: null, error: "", pendingModeChoice: { stairsPath, elevatorPath } };
   }
-  const path = stairsPath || elevatorPath || findPath(nodes, fromId, toId, "any");
-  if (!path) return { ...d, path: null, error: "No walkable route found between these two points yet." };
-  return { ...d, fromId, toId, path, stepIndex: 0, error: "", pendingModeChoice: null };
+  if (stairsPath) return found(stairsPath, "stairs");
+  if (elevatorPath) return found(elevatorPath, "elevator");
+  const mixed = findPath(nodes, fromId, toId, "any");
+  return mixed ? found(mixed, null) : noRoute;
 }
 
 // The visitor picked "stairs" or "elevator" from pendingModeChoice.
 export function chooseTransportMode(d, mode) {
   if (!d?.pendingModeChoice) return d;
   const path = mode === "elevator" ? d.pendingModeChoice.elevatorPath : d.pendingModeChoice.stairsPath;
-  return { ...d, path, stepIndex: 0, error: "", pendingModeChoice: null };
+  return { ...d, path, stepIndex: 0, error: "", pendingModeChoice: null, transportMode: mode };
+}
+
+// The way back to the route after wandering off, honoring the chosen mode.
+// A stairs route may fall back to any route; an elevator route never does,
+// since the visitor may have picked the elevator because they can't use
+// stairs.
+function reroute(nodes, fromId, toId, mode) {
+  if (mode === "elevator") return findPath(nodes, fromId, toId, "elevator");
+  return findPath(nodes, fromId, toId, mode || "any") || findPath(nodes, fromId, toId, "any");
 }
 
 export function restartRoute(d) {
@@ -140,20 +158,30 @@ export function syncToPosition(d, currentId, nodes) {
   const idx = d.path.indexOf(currentId);
   if (idx !== -1) return idx === d.stepIndex ? d : { ...d, stepIndex: idx };
 
-  const reroute = findPath(nodes, currentId, d.toId);
-  if (!reroute) {
-    return { ...d, path: null, stepIndex: 0, error: "Lost the route from here — try Get directions again." };
+  const path = reroute(nodes, currentId, d.toId, d.transportMode);
+  if (!path) {
+    const error =
+      d.transportMode === "elevator"
+        ? "No elevator route from here — go back, or try Get directions again."
+        : "Lost the route from here — try Get directions again.";
+    return { ...d, path: null, stepIndex: 0, error };
   }
-  return { ...d, path: reroute, stepIndex: 0, error: "" };
+  return { ...d, path, stepIndex: 0, error: "" };
 }
 
-// The next stop and which way to face going through it, or null at the end.
-// `hotspots` are the hotspots of the node the visitor is standing at.
-export function nextStep(d, hotspots) {
+// The step from where the visitor stands to the route's next stop, or null
+// at the end. `hotspots` are the current node's hotspots. A step with no
+// hotspot that's an elevator ride comes back as kind "elevator": it's taken
+// through the landing marker, not an arrow, and arrives facing out of the
+// destination landing's doors.
+export function nextStep(d, hotspots, nodes) {
   const id = d?.path?.[d.stepIndex + 1];
   if (!id) return null;
   const hs = hotspots.find((h) => h.id === id);
-  return { id, yaw: hs?.yaw, defaultYaw: hs?.defaultYaw, defaultPitch: hs?.defaultPitch };
+  if (hs) return { kind: "walk", id, yaw: hs.yaw, defaultYaw: hs.defaultYaw, defaultPitch: hs.defaultPitch };
+  const ride = nodes ? elevatorRideBetween(nodes, d.path[d.stepIndex], id) : null;
+  if (ride) return { kind: "elevator", id, yaw: arrivalYawFromLanding(ride.toMarker), ride };
+  return { kind: "walk", id };
 }
 
 export function toggleAutoWalk(d) {
@@ -172,14 +200,20 @@ export function settleAutoWalk(d) {
 // `turnInstruction` only means something past the first stop — before that
 // there's no real prior direction to turn relative to (entryYaw is the way
 // you arrived, set from the hotspot you walked through).
-export function routeProgress(d, { byId, hotspots, entryYaw }) {
+//
+// `nextElevator` is set when the next step is an elevator ride:
+// { markerId, floor } — the landing marker to highlight where the visitor
+// stands, and the floor the route rides to.
+export function routeProgress(d, { byId, hotspots, entryYaw, nodes }) {
   const arrived = Boolean(d?.path && d.stepIndex === d.path.length - 1);
   const nextStopId = d?.path?.[d.stepIndex + 1] || null;
   const nextStopName = nextStopId ? byId[nextStopId]?.name || nextStopId : null;
   const nextStopHotspot = nextStopId ? hotspots.find((h) => h.id === nextStopId) || null : null;
+  const ride = nextStopId && !nextStopHotspot && nodes ? elevatorRideBetween(nodes, d.path[d.stepIndex], nextStopId) : null;
+  const nextElevator = ride ? { markerId: ride.fromMarker.id, floor: ride.toFloor } : null;
   const turnInstruction =
     d?.stepIndex > 0 && nextStopHotspot ? getTurnInstruction(entryYaw, nextStopHotspot.yaw) : null;
-  return { arrived, nextStopId, nextStopName, nextStopHotspot, turnInstruction };
+  return { arrived, nextStopId, nextStopName, nextStopHotspot, nextElevator, turnInstruction };
 }
 
 // Whether the visitor has actually begun walking the route: it exists, and

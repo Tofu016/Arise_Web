@@ -6,7 +6,7 @@ import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "..
 import { floorLabel, buildingLabel, floorsForBuilding, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
-import { validateElevatorMarker, groupElevatorLandings } from "../../utils/elevators";
+import { validateElevator, validateElevatorLanding, floorsWithLandingsDropped } from "../../utils/elevators";
 
 const defaultFilters = {
   building: "all",
@@ -42,6 +42,10 @@ export default function NavigationEditorPage() {
     setDefaultView,
     clearDefaultView,
     updateNode,
+    elevators,
+    addElevator,
+    updateElevator,
+    deleteElevator,
   } = useOutletContext();
 
   // The starting node's own "default view" (shown when the kiosk drops a
@@ -74,19 +78,19 @@ export default function NavigationEditorPage() {
   const [addingMarker, setAddingMarker] = useState(false);
   const [newMarkerType, setNewMarkerType] = useState(MARKER_TYPES[0].id);
   const [newMarkerLabel, setNewMarkerLabel] = useState("");
-  const [newMarkerElevatorGroupId, setNewMarkerElevatorGroupId] = useState("");
-  const [newMarkerAccessibleFloors, setNewMarkerAccessibleFloors] = useState([]);
+  // "" | "_new" | an existing elevator id — see the elevator branch below.
+  const [newMarkerElevatorId, setNewMarkerElevatorId] = useState("");
+  const [newElevatorDraft, setNewElevatorDraft] = useState({ id: "", label: "", accessibleFloors: [] });
+  const [elevatorFormError, setElevatorFormError] = useState("");
   const [filters, setFilters] = useState(defaultFilters);
+  const [managingElevatorId, setManagingElevatorId] = useState(null); // editing an existing elevator's floors, from the list below
+  const [editElevatorFloors, setEditElevatorFloors] = useState([]);
+  const [editElevatorError, setEditElevatorError] = useState("");
 
-  // Every elevatorGroupId already used anywhere in the building — offered
-  // as a datalist so adding this same elevator's next landing is picking
-  // an existing ID, not retyping it (a typo here would silently create a
-  // second, disconnected "elevator" instead of extending this one).
-  const existingElevatorGroupIds = current
-    ? [...groupElevatorLandings(nodes).keys()].filter((groupId) =>
-        nodes.some((n) => n.building === current.building && (n.markers || []).some((m) => m.elevatorGroupId === groupId))
-      )
-    : [];
+  // Only elevators already in this node's building can get a landing here
+  // — a landing marker and its elevator must agree on building (enforced
+  // server-side too).
+  const elevatorsHere = current ? elevators.filter((e) => e.building === current.building) : [];
 
   // Capturing the starting view requires staying put on this node — any
   // navigation away (including a hotspot-default-view capture walking to a
@@ -109,40 +113,96 @@ export default function NavigationEditorPage() {
     setAddingMarker(true);
     setNewMarkerType(MARKER_TYPES[0].id);
     setNewMarkerLabel("");
-    setNewMarkerElevatorGroupId("");
-    setNewMarkerAccessibleFloors(current ? [current.floor] : []);
+    setNewMarkerElevatorId("");
+    setNewElevatorDraft({ id: "", label: "", accessibleFloors: current ? [current.floor] : [] });
+    setElevatorFormError("");
   };
 
   const isElevator = newMarkerType === "elevator";
-  const elevatorErrors = isElevator && current
-    ? validateElevatorMarker(
-        { elevatorGroupId: newMarkerElevatorGroupId, accessibleFloors: newMarkerAccessibleFloors, floor: current.floor },
-        floorsForBuilding(current.building)
-      )
-    : [];
+  const isCreatingElevator = isElevator && newMarkerElevatorId === "_new";
+  const selectedElevator = isElevator ? elevatorsHere.find((e) => e.id === newMarkerElevatorId) : null;
+  const landingErrors =
+    isElevator && !isCreatingElevator && current ? validateElevatorLanding(selectedElevator, current) : [];
+
   const canConfirmMarker = isElevator
-    ? elevatorErrors.length === 0
+    ? !!selectedElevator && landingErrors.length === 0
     : !!newMarkerLabel.trim();
 
-  const toggleAccessibleFloor = (floor) => {
-    setNewMarkerAccessibleFloors((floors) =>
-      floors.includes(floor) ? floors.filter((f) => f !== floor) : [...floors, floor].sort((a, b) => a - b)
+  const toggleNewElevatorFloor = (floor) => {
+    setNewElevatorDraft((d) => ({
+      ...d,
+      accessibleFloors: d.accessibleFloors.includes(floor)
+        ? d.accessibleFloors.filter((f) => f !== floor)
+        : [...d.accessibleFloors, floor].sort((a, b) => a - b),
+    }));
+  };
+
+  // Creates the elevator record itself (Elevators_API), then selects it —
+  // placing its first landing is a second, separate step below, since a
+  // brand-new elevator has nowhere to land yet.
+  const confirmCreateElevator = async () => {
+    if (!current) return;
+    const draft = { ...newElevatorDraft, id: newElevatorDraft.id.trim(), label: newElevatorDraft.label.trim() };
+    const errors = validateElevator(
+      { ...draft, building: current.building },
+      { buildingFloors: floorsForBuilding(current.building), existingIds: elevators.map((e) => e.id), isNew: true }
     );
+    if (errors.length > 0) {
+      setElevatorFormError(errors.join(" "));
+      return;
+    }
+    try {
+      await addElevator({ ...draft, building: current.building });
+      setNewMarkerElevatorId(draft.id);
+      setElevatorFormError("");
+    } catch {
+      // A specific toast already fired via addElevator's own mutate() call
+      // (e.g. a duplicate id caught server-side); the form just stays open.
+    }
   };
 
   const confirmStartPlacingNewMarker = () => {
     if (!canConfirmMarker) return;
-    const label = isElevator ? `Elevator ${newMarkerElevatorGroupId.trim()}` : newMarkerLabel.trim();
-    const marker = {
-      id: newMarkerId(),
-      type: newMarkerType,
-      label,
-      ...(isElevator
-        ? { elevatorGroupId: newMarkerElevatorGroupId.trim(), accessibleFloors: newMarkerAccessibleFloors }
-        : {}),
-    };
+    const marker = isElevator
+      ? { id: newMarkerId(), type: "elevator", elevatorId: selectedElevator.id, label: selectedElevator.label }
+      : { id: newMarkerId(), type: newMarkerType, label: newMarkerLabel.trim() };
     editor.startPlacingMarker(marker);
     setAddingMarker(false);
+  };
+
+  // Editing an existing elevator's own accessible floors, from the list
+  // below — dropping a floor that still has a landing is rejected with the
+  // offending node named, both as a local pre-check (floorsWithLandingsDropped)
+  // and, just in case another admin's edit raced this one, by the backend's
+  // own 409 (surfaced via updateElevator's toast).
+  const startManageElevator = (elevator) => {
+    setManagingElevatorId(elevator.id);
+    setEditElevatorFloors(elevator.accessibleFloors);
+    setEditElevatorError("");
+  };
+  const toggleEditElevatorFloor = (floor) => {
+    setEditElevatorFloors((floors) =>
+      floors.includes(floor) ? floors.filter((f) => f !== floor) : [...floors, floor].sort((a, b) => a - b)
+    );
+  };
+  const confirmSaveElevatorFloors = async (elevator) => {
+    const dropped = floorsWithLandingsDropped(elevator, editElevatorFloors);
+    if (dropped.length > 0) {
+      setEditElevatorError(
+        `Remove the landing(s) on ${dropped.map((l) => `${floorLabel(l.floor)} (${l.nodeId})`).join(", ")} first.`
+      );
+      return;
+    }
+    if (editElevatorFloors.length < 2) {
+      setEditElevatorError("Keep at least 2 accessible floors.");
+      return;
+    }
+    try {
+      await updateElevator(elevator.id, { accessibleFloors: editElevatorFloors });
+      setManagingElevatorId(null);
+    } catch {
+      // toast already fired
+    }
   };
 
   // Sidebar (Filter + Node List) stays visible even with nothing selected
@@ -228,7 +288,7 @@ export default function NavigationEditorPage() {
                       {info.icon} {m.label}
                       {m.type === "elevator" && (
                         <span className="portal-tag">
-                          {m.elevatorGroupId} · floors: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
+                          {m.elevatorId} · serves: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
                         </span>
                       )}
                     </span>
@@ -239,6 +299,59 @@ export default function NavigationEditorPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="navigation-editor-list-col">
+            <h5>Elevators in {buildingLabel(current.building)} ({elevatorsHere.length})</h5>
+            <div className="link-list navigation-editor-scroll-list">
+              {elevatorsHere.length === 0 && (
+                <p className="empty-hint">No elevators in this building yet — add one below when placing a landing.</p>
+              )}
+              {elevatorsHere.map((e) => (
+                <div key={e.id} className="link-row elevator-manage-row">
+                  {managingElevatorId === e.id ? (
+                    <>
+                      <span className="link-name">{e.label} <span className="elevator-picker-sub">({e.id})</span></span>
+                      <div className="elevator-floor-checkboxes">
+                        {floorsForBuilding(e.building).map((f) => (
+                          <label key={f} className="elevator-floor-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={editElevatorFloors.includes(f)}
+                              onChange={() => toggleEditElevatorFloor(f)}
+                            />
+                            {floorLabel(f)}
+                          </label>
+                        ))}
+                      </div>
+                      {editElevatorError && <p className="directions-error">{editElevatorError}</p>}
+                      <div className="link-actions">
+                        <button onClick={() => confirmSaveElevatorFloors(e)}>Save floors</button>
+                        <button onClick={() => setManagingElevatorId(null)}>Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="link-name">
+                        {e.label}
+                        <span className="portal-tag">
+                          {e.id} · serves: {e.accessibleFloors.map(floorLabel).join(", ")} · {e.landings.length} landing(s)
+                        </span>
+                      </span>
+                      <div className="link-actions">
+                        <button onClick={() => startManageElevator(e)}>Edit floors</button>
+                        <button
+                          className="danger"
+                          onClick={() => window.confirm(`Delete elevator "${e.label}"? This removes all ${e.landings.length} of its landing markers too.`) && deleteElevator(e.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -278,34 +391,56 @@ export default function NavigationEditorPage() {
                   )
                 ) : isElevator ? (
                   <>
-                    <input
-                      type="text"
-                      autoFocus
-                      list="elevator-group-ids"
-                      placeholder="Elevator ID, e.g. GD1-Main"
-                      value={newMarkerElevatorGroupId}
-                      onChange={(e) => setNewMarkerElevatorGroupId(e.target.value)}
-                    />
-                    <datalist id="elevator-group-ids">
-                      {existingElevatorGroupIds.map((id) => <option key={id} value={id} />)}
-                    </datalist>
-                    <p className="field-hint">
-                      Use the SAME Elevator ID on every floor this elevator serves — that's how the
-                      system knows they're the same physical elevator.
-                    </p>
-                    <div className="elevator-floor-checkboxes">
-                      {floorsForBuilding(current.building).map((f) => (
-                        <label key={f} className="elevator-floor-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={newMarkerAccessibleFloors.includes(f)}
-                            onChange={() => toggleAccessibleFloor(f)}
-                          />
-                          {floorLabel(f)}
-                        </label>
+                    <select value={newMarkerElevatorId} onChange={(e) => setNewMarkerElevatorId(e.target.value)}>
+                      <option value="">Pick an elevator…</option>
+                      {elevatorsHere.map((e) => (
+                        <option key={e.id} value={e.id}>{e.label} ({e.id})</option>
                       ))}
-                    </div>
-                    {elevatorErrors.map((err) => (
+                      <option value="_new">+ New elevator…</option>
+                    </select>
+                    {isCreatingElevator ? (
+                      <>
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Elevator ID, e.g. gd1-elevator-a"
+                          value={newElevatorDraft.id}
+                          onChange={(e) => setNewElevatorDraft((d) => ({ ...d, id: e.target.value }))}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Label, e.g. Elevator A"
+                          value={newElevatorDraft.label}
+                          onChange={(e) => setNewElevatorDraft((d) => ({ ...d, label: e.target.value }))}
+                        />
+                        <p className="field-hint">
+                          One record for this whole physical elevator — every floor it serves shares
+                          this same record, so its floor list can never disagree from one landing to another.
+                        </p>
+                        <div className="elevator-floor-checkboxes">
+                          {floorsForBuilding(current.building).map((f) => (
+                            <label key={f} className="elevator-floor-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={newElevatorDraft.accessibleFloors.includes(f)}
+                                onChange={() => toggleNewElevatorFloor(f)}
+                              />
+                              {floorLabel(f)}
+                            </label>
+                          ))}
+                        </div>
+                        {elevatorFormError && <p className="directions-error">{elevatorFormError}</p>}
+                        <button onClick={confirmCreateElevator}>Create elevator</button>
+                      </>
+                    ) : (
+                      selectedElevator && (
+                        <p className="field-hint">
+                          Serves: {selectedElevator.accessibleFloors.map(floorLabel).join(", ")} ·{" "}
+                          {selectedElevator.landings.length} landing(s) already placed.
+                        </p>
+                      )
+                    )}
+                    {landingErrors.map((err) => (
                       <p key={err} className="directions-error">{err}</p>
                     ))}
                   </>

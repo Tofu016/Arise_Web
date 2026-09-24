@@ -1302,6 +1302,12 @@ button.primary {
   flex-direction: column;
   gap: 8px;
 }
+.directions-mode-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.85;
+}
 .directions-progress-text {
   font-size: 13px;
   color: var(--text);
@@ -1633,8 +1639,13 @@ button.primary {
   max-width: 90vw;
 }
 .elevator-picker h3 {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   font-size: 15px;
+}
+.elevator-picker-here {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .elevator-picker-list {
   display: flex;
@@ -1658,6 +1669,10 @@ button.primary {
 }
 .elevator-picker-option:hover {
   border-color: var(--accent);
+}
+.elevator-picker-option-route {
+  border-color: #2e7d46;
+  background: rgba(46, 125, 70, 0.08);
 }
 .elevator-picker-sub {
   font-size: 12px;
@@ -2109,6 +2124,17 @@ button.primary {
   padding: 6px 8px;
   background: var(--surface-sunken);
   border-radius: var(--radius-sm);
+}
+.elevator-manage-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.elevator-manage-row .link-name {
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
 }
 .link-name {
   font-size: 12px;
@@ -3263,6 +3289,24 @@ button.primary {
   color: #fff;
   font-size: 11px;
   white-space: nowrap;
+}
+/* The route's next step, when it's a marker (an elevator landing) — the
+   same green as a highlighted hotspot, pulsing so it reads as "tap here". */
+.pano-marker-highlighted .pano-marker-dot {
+  animation: pano-marker-pulse 1.4s ease-in-out infinite;
+}
+.pano-marker-highlighted .pano-marker-label {
+  background: #2e7d46;
+}
+@keyframes pano-marker-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(46, 125, 70, 0.9); }
+  50% { box-shadow: 0 0 0 3px #fff, 0 0 0 14px rgba(46, 125, 70, 0.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pano-marker-highlighted .pano-marker-dot {
+    animation: none;
+    box-shadow: 0 0 0 3px #fff, 0 0 0 7px #2e7d46;
+  }
 }
 /* ---------- Face review panel ---------- */
 .face-review-modal {

@@ -20,7 +20,7 @@ import { toPosition } from "../../utils/panoramaMath";
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, onElevatorClick, dimmed, selected }) {
+export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, onElevatorClick, dimmed, selected, highlighted }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
@@ -91,7 +91,7 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
         {/* Layout/colour in index.css → "Panorama overlays"; only the
             per-marker size, type colour and selected ring are dynamic. */}
         <div
-          className="pano-marker"
+          className={"pano-marker" + (highlighted ? " pano-marker-highlighted" : "")}
           style={{ cursor: isClickable ? "pointer" : "default", opacity: dimmed ? 0.35 : 1 }}
           onClick={clickHandler}
           onMouseEnter={() => isClickable && setHovered(true)}
@@ -104,9 +104,12 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
               height: size,
               fontSize,
               background: info.color,
-              boxShadow: selected
-                ? "0 0 0 2px #fff, 0 0 8px rgba(32,27,27,0.55)"
-                : "0 0 6px rgba(32,27,27,0.55)",
+              // Left to the .pano-marker-highlighted pulse when highlighted.
+              boxShadow: highlighted
+                ? undefined
+                : selected
+                  ? "0 0 0 2px #fff, 0 0 8px rgba(32,27,27,0.55)"
+                  : "0 0 6px rgba(32,27,27,0.55)",
             }}
           >
             {info.icon}

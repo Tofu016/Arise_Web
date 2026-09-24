@@ -41,6 +41,7 @@ const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
  *  - onPlaceAngle({yaw, pitch}): called when placing and the user clicks the sphere
  *  - highlightedId: optional neighbor id to render in a distinct color (used for directions)
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
+ *  - highlightedMarkerId: optional marker id to glow as the route's next step (directions: an elevator landing whose ride is next) — also the autoPan target when no hotspot is highlighted
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
@@ -79,6 +80,7 @@ export default function PanoramaNav({
   initialPitch = 0,
   highlightedId = null,
   selectedMarkerId = null,
+  highlightedMarkerId = null,
   sceneKey,
   heightFraction = 1,
   alwaysShowPreview = false,
@@ -158,6 +160,8 @@ export default function PanoramaNav({
     onLiveChangeRef.current?.(live);
   }, [live, scene.sceneKey]);
   const highlightedHotspot = scene.hotspots.find((h) => h.id === highlightedId) || null;
+  const highlightedMarker = scene.markers.find((m) => m.id === highlightedMarkerId) || null;
+  const panTarget = highlightedHotspot || highlightedMarker;
 
   // The Canvas is created once with the first scene's entry angle; later
   // scenes are aimed by CameraAim when they swap in.
@@ -182,8 +186,8 @@ export default function PanoramaNav({
       {leaving && <FadingSphere key={leaving.uuid} texture={leaving} onDone={scene.dismissLeaving} />}
       {scene.holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
       {captureRequestId != null && <CaptureAngle requestId={captureRequestId} onCapture={onCaptureAngle} />}
-      {autoPan && !placing && highlightedHotspot && (
-        <AutoPan target={highlightedHotspot} targetKey={`${scene.sceneKey}:${highlightedHotspot.id}`} />
+      {autoPan && !placing && panTarget && (
+        <AutoPan target={panTarget} targetKey={`${scene.sceneKey}:${panTarget.id}`} />
       )}
       {keyboardNav && (
         <KeyboardNav
@@ -227,6 +231,7 @@ export default function PanoramaNav({
           markerInfo={m.type === "equipment" ? EQUIPMENT_MARKER_INFO : undefined}
           dimmed={placing}
           selected={m.id === selectedMarkerId}
+          highlighted={!placing && m.id === highlightedMarkerId}
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
           onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}

@@ -31,7 +31,8 @@ import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
-import { elevatorDestinationsFrom } from "../utils/elevators";
+import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
+import { speak } from "../utils/tts";
 import {
   floorsForBuilding,
   findKioskEntranceShortcuts,
@@ -435,26 +436,32 @@ function MainPageContent({ onReset }) {
     if (match) openRoomCard(match);
   };
 
-  // Clicking an elevator marker: unlike every other marker type, this
-  // actually moves the visitor — a Jump (fresh start, history cleared),
-  // same as any other teleport-style move, since riding an elevator isn't
-  // a continuous walk through connected panoramas the way a hotspot is.
-  // One reachable floor jumps straight there; more than one opens a small
-  // picker so the visitor chooses which floor to ride to.
-  const handleElevatorMarkerClick = (marker) => {
-    if (!current) return;
-    const destinations = elevatorDestinationsFrom(nodes, current.id, marker.elevatorGroupId);
-    if (destinations.length === 0) return;
-    if (destinations.length === 1) {
-      jumpToSearchResult(destinations[0].id);
-      return;
-    }
-    overlay.openElevatorPicker(destinations);
+  // Riding an elevator is a Walk, not a Jump: history is kept, so Back rides
+  // you down again. It lands on that elevator's own landing node on the
+  // chosen floor, facing out of the doors. During directions, the route's
+  // step onto the new floor is exactly this move, so following the route
+  // this way just advances it; picking another floor is an ordinary
+  // wander-off that reroutes (still honoring stairs vs. elevator).
+  const rideElevatorTo = (dest) => {
+    overlay.closeElevatorPicker();
+    speak(`Taking the elevator to ${floorLabel(dest.floor)}`);
+    goTo(dest.node.id, { yaw: arrivalYawFromLanding(dest.marker) });
   };
 
-  const rideElevatorTo = (nodeId) => {
-    overlay.closeElevatorPicker();
-    jumpToSearchResult(nodeId);
+  // Tapping an elevator landing marker, like pressing the call button: with
+  // only one other floor it rides straight there, otherwise it opens the
+  // floor picker. Nothing is skipped during directions: the route's floor
+  // is simply listed first and marked, so it stays a single extra tap. The
+  // panel's own "Ride to …" button (and auto-walk) skip the picker entirely.
+  const handleElevatorMarkerClick = (marker) => {
+    if (!current) return;
+    const destinations = elevatorDestinationsFrom(nodes, current.id, marker.elevatorId);
+    if (destinations.length === 0) return;
+    if (destinations.length === 1) {
+      rideElevatorTo(destinations[0]);
+      return;
+    }
+    overlay.openElevatorPicker({ markerId: marker.id, label: marker.label, currentFloor: current.floor, destinations });
   };
 
   const handleRoomGetDirections = () => {
@@ -517,8 +524,11 @@ function MainPageContent({ onReset }) {
     );
   }
 
-  const { arrived, nextStopId, nextStopName, turnInstruction, walkStarted } = progress;
+  const { arrived, nextStopId, nextStopName, nextElevator, turnInstruction, walkStarted } = progress;
   const autoWalking = directions?.autoWalking ?? false;
+  // An elevator step is announced as the ride it is, not "Walk to <landing
+  // node's name>" — the landing's node name means little to a visitor.
+  const nextStepAction = nextElevator ? `🛗 Ride elevator to ${floorLabel(nextElevator.floor)}` : `Walk to ${nextStopName}`;
 
   // Kiosk: once the route is actually being walked (the visitor is at its
   // start, and hasn't arrived), the big directions dialog steps aside for the
@@ -774,8 +784,16 @@ function MainPageContent({ onReset }) {
       {directions.pendingModeChoice && (
         <div className="directions-mode-choice">
           <p className="field-hint">This route changes floors — how do you want to get there?</p>
-          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("stairs")}>🪜 Take the stairs</button>
-          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("elevator")}>🛗 Take the elevator</button>
+          {/* Stop counts make the trade-off visible up front, so the choice
+              is one informed tap rather than a guess. */}
+          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("stairs")}>
+            🪜 Take the stairs
+            <span className="directions-mode-sub">{directions.pendingModeChoice.stairsPath.length} stops</span>
+          </button>
+          <button className="primary directions-go-btn" onClick={() => flow.chooseMode("elevator")}>
+            🛗 Take the elevator
+            <span className="directions-mode-sub">{directions.pendingModeChoice.elevatorPath.length} stops · step-free</span>
+          </button>
         </div>
       )}
 
@@ -787,7 +805,9 @@ function MainPageContent({ onReset }) {
         <div className="directions-progress">
           <p className="directions-progress-text">
             Stop {directions.stepIndex + 1} of {directions.path.length}
-            {nextStopName && (
+            {nextElevator ? (
+              <>{" — "}<strong>Take the elevator</strong> to {floorLabel(nextElevator.floor)}</>
+            ) : nextStopName && (
               <>
                 {" — "}
                 {turnInstruction ? (
@@ -807,7 +827,7 @@ function MainPageContent({ onReset }) {
                 onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
                 disabled={autoWalking}
               >
-                Walk to {nextStopName} →
+                {nextStepAction} →
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
@@ -818,7 +838,11 @@ function MainPageContent({ onReset }) {
               </button>
             </>
           )}
-          <p className="field-hint">Follow the green hotspot in the photo — it marks the correct path to your destination.</p>
+          <p className="field-hint">
+            {nextElevator
+              ? "The elevator is glowing in the photo — tap it and pick the highlighted floor, or use the button above."
+              : "Follow the green hotspot in the photo — it marks the correct path to your destination."}
+          </p>
         </div>
       )}
     </>
@@ -830,14 +854,31 @@ function MainPageContent({ onReset }) {
       {overlay.elevatorPicker && (
         <div className="modal-overlay elevator-picker-overlay" onClick={overlay.closeElevatorPicker}>
           <div className="modal elevator-picker" role="dialog" aria-label="Choose a floor" onClick={(e) => e.stopPropagation()}>
-            <h3>Ride to which floor?</h3>
+            <h3>{overlay.elevatorPicker.label}</h3>
+            <p className="elevator-picker-here">You're on {floorLabel(overlay.elevatorPicker.currentFloor)}. Ride to:</p>
             <div className="elevator-picker-list">
-              {overlay.elevatorPicker.destinations.map((dest) => (
-                <button key={dest.id} className="elevator-picker-option" onClick={() => rideElevatorTo(dest.id)}>
-                  {floorLabel(dest.floor)}
-                  <span className="elevator-picker-sub">{buildingLabel(dest.building)} · {dest.name}</span>
-                </button>
-              ))}
+              {(() => {
+                // The route's floor, when this is the elevator the route
+                // rides next — listed first and marked, so following
+                // directions through the picker is still a single tap.
+                const routeFloor =
+                  nextElevator && nextElevator.markerId === overlay.elevatorPicker.markerId ? nextElevator.floor : null;
+                const ordered = [...overlay.elevatorPicker.destinations].sort(
+                  (a, b) => (b.floor === routeFloor) - (a.floor === routeFloor)
+                );
+                return ordered.map((dest) => (
+                  <button
+                    key={dest.node.id}
+                    className={"elevator-picker-option" + (dest.floor === routeFloor ? " elevator-picker-option-route" : "")}
+                    onClick={() => rideElevatorTo(dest)}
+                  >
+                    {floorLabel(dest.floor)}
+                    <span className="elevator-picker-sub">
+                      {dest.floor === routeFloor ? "On your route · " : ""}{dest.node.name}
+                    </span>
+                  </button>
+                ));
+              })()}
             </div>
             <button className="close-btn elevator-picker-close" onClick={overlay.closeElevatorPicker}>✕</button>
           </div>
@@ -933,6 +974,7 @@ function MainPageContent({ onReset }) {
                 initialYaw={entryYaw}
                 initialPitch={entryPitch}
                 highlightedId={nextStopId}
+                highlightedMarkerId={nextElevator?.markerId ?? null}
                 autoPan={!!nextStopId}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
                 alwaysShowPreview
@@ -1111,7 +1153,8 @@ function MainPageContent({ onReset }) {
                 progressText={`Stop ${directions.stepIndex + 1} of ${directions.path.length}${
                   turnInstruction ? ` — ${turnInstruction}` : ""
                 }`}
-                nextStopName={nextStopName}
+                nextStopAction={nextStepAction}
+                isElevator={!!nextElevator}
                 autoWalking={autoWalking}
                 stepIndex={directions.stepIndex}
                 onWalk={flow.walkToNext}
@@ -1252,6 +1295,7 @@ function MainPageContent({ onReset }) {
                 initialYaw={entryYaw}
                 initialPitch={entryPitch}
                 highlightedId={nextStopId}
+                highlightedMarkerId={nextElevator?.markerId ?? null}
                 autoPan={!!nextStopId}
                 keyboardNav
                 onBack={goBack}

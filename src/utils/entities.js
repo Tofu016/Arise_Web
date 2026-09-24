@@ -32,12 +32,14 @@ function toMarker(m) {
 }
 
 // Elevator markers are a Node-only concept (see utils/elevators.js) — tour
-// stops have no floors at all, so elevator_group_id/accessible_floors never
-// apply there and toStop() below deliberately doesn't call this.
+// stops have no floors at all, so toStop() below deliberately doesn't call
+// this. accessibleFloors (and an elevator marker's label) are read-time
+// copies joined from the one `elevators` row, never stored per marker, so
+// every landing of the same elevator always agrees.
 function toNodeMarker(m) {
   return {
     ...toMarker(m),
-    elevatorGroupId: m.elevator_group_id ?? null,
+    elevatorId: m.elevator_id ?? null,
     accessibleFloors: (m.accessible_floors || []).map(Number),
   };
 }
@@ -121,6 +123,30 @@ export function nodePatchBody(patch) {
     body.flowchart_position_y = patch.flowchartPosition ? patch.flowchartPosition.y : null;
   }
   return body;
+}
+
+// ---- Elevator (the single record every landing marker points at) ----
+
+export function toElevator(row) {
+  return {
+    id: row.id,
+    label: row.label,
+    building: row.building,
+    accessibleFloors: (row.accessible_floors || []).map(Number).sort((a, b) => a - b),
+    landings: (row.landings || []).map((l) => ({ markerId: l.marker_id, nodeId: l.node_id, floor: Number(l.floor) })),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function elevatorCreateBody({ id, label, building, accessibleFloors }) {
+  return { id, label, building, accessible_floors: accessibleFloors };
+}
+
+// Building and id are fixed once created (landings are validated against
+// them), so only label and floors are patchable.
+export function elevatorPatchBody(patch) {
+  return pick(patch, { label: "label", accessibleFloors: "accessible_floors" });
 }
 
 // ---- Tour stop (outdoor panorama point) ----

@@ -17,7 +17,7 @@ export const initialOverlay = {
   roomCard: null, // the room whose card the "room" panel shows; kept while its 360° view is open
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
   endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
-  elevatorPicker: null, // { destinations } — an elevator marker was clicked with more than one reachable floor; null once one is picked (or there was only one destination, which just jumps straight there without ever opening this)
+  elevatorPicker: null, // { markerId, label, currentFloor, destinations } — an elevator landing was tapped with more than one other floor to ride to (with only one, it rides straight there and this never opens)
 };
 
 export function overlayReducer(state, action) {
@@ -70,7 +70,7 @@ export function overlayReducer(state, action) {
     case "closeRoomCard":
       return { ...state, roomCard: null, panel: null };
     case "openElevatorPicker":
-      return { ...state, elevatorPicker: { destinations: action.destinations } };
+      return { ...state, elevatorPicker: action.picker };
     case "closeElevatorPicker":
       return { ...state, elevatorPicker: null };
     // A move that happened: back and walk leave the panel as it was; a jump

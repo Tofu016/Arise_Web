@@ -85,13 +85,14 @@ export const TRANSITION_TYPES = ["transition", "transitionExit"];
 // label something visible from where you're standing: a room, a facility, or
 // safety equipment. One system, several categories, rather than building a
 // separate feature per icon type.
-// "elevator" is unlike the other four: it doesn't just label something
-// visible from where you're standing, it carries its own navigation data
-// (accessibleFloors + an elevatorGroupId tying together every landing of
-// the same physical elevator across floors — see utils/elevators.js) and
-// is clickable in the public viewer, not purely informational. Kept in
-// this same array anyway (rather than a separate concept) since it's
-// still placed, positioned and rendered exactly like every other marker.
+// "elevator" is unlike the other four: it's clickable in the public viewer
+// (rides the visitor to another floor) rather than purely informational,
+// and its own navigation data (which floors it serves, its label) lives on
+// a separate `elevators` record, not the marker — a landing marker just
+// points at one by elevatorId, so every landing of the same physical
+// elevator reads the exact same data (see utils/elevators.js). Still kept
+// in this same array rather than a separate concept, since it's placed,
+// positioned and rendered exactly like every other marker.
 export const MARKER_TYPES = [
   { id: "room", label: "Room", icon: "🚪", color: "#2f6db0" },
   { id: "facility", label: "Facility", icon: "📍", color: "#2e7d46" },

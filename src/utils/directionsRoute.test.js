@@ -74,6 +74,68 @@ describe("getDirections", () => {
   });
 });
 
+describe("getDirections across floors: stairs vs. elevator", () => {
+  const elevatorMarker = (id, elevatorId, accessibleFloors) => ({
+    id, type: "elevator", label: "E", yaw: 0, pitch: 0, elevatorId, accessibleFloors,
+  });
+  // p (floor 1) -- stairs (transition, floor1) -- stairs2 (transition, floor2) -- q (floor 2)
+  // p also has an elevator landing paired with q's.
+  const floored = [
+    { id: "p", name: "P", floor: 1, neighbors: ["stairs1"], markers: [elevatorMarker("m1", "E1", [1, 2])] },
+    { id: "stairs1", name: "S1", floor: 1, type: "transition", neighbors: ["p", "stairs2"] },
+    { id: "stairs2", name: "S2", floor: 2, type: "transition", neighbors: ["stairs1", "q"] },
+    { id: "q", name: "Q", floor: 2, neighbors: ["stairs2"], markers: [elevatorMarker("m2", "E1", [1, 2])] },
+  ];
+
+  it("asks stairs-vs-elevator when both exist and differ", () => {
+    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "q", name: "Q" }), fromId: "p", toId: "q" };
+    const next = route.getDirections(d, floored, []);
+    expect(next.path).toBeNull();
+    expect(next.pendingModeChoice.stairsPath).toEqual(["p", "stairs1", "stairs2", "q"]);
+    expect(next.pendingModeChoice.elevatorPath).toEqual(["p", "q"]);
+  });
+
+  it("chooseTransportMode picks the requested path and records the mode", () => {
+    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "q", name: "Q" }), fromId: "p", toId: "q" };
+    const asked = route.getDirections(d, floored, []);
+    const chose = route.chooseTransportMode(asked, "elevator");
+    expect(chose).toMatchObject({ path: ["p", "q"], transportMode: "elevator", pendingModeChoice: null });
+  });
+
+  it("does not ask when only one option exists", () => {
+    const noElevator = floored.map((n) => ({ ...n, markers: [] }));
+    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "q", name: "Q" }), fromId: "p", toId: "q" };
+    const next = route.getDirections(d, noElevator, []);
+    expect(next.pendingModeChoice).toBeNull();
+    expect(next.path).toEqual(["p", "stairs1", "stairs2", "q"]);
+    expect(next.transportMode).toBe("stairs");
+  });
+});
+
+describe("nextStep with an elevator ride", () => {
+  const elevatorMarker = (id, elevatorId, accessibleFloors, yaw) => ({
+    id, type: "elevator", label: "E", yaw, pitch: 0, elevatorId, accessibleFloors,
+  });
+  const floored = [
+    { id: "p", floor: 1, markers: [elevatorMarker("m1", "E1", [1, 2], 90)] },
+    { id: "q", floor: 2, markers: [elevatorMarker("m2", "E1", [1, 2], 10)] },
+  ];
+  const d = { path: ["p", "q"], stepIndex: 0 };
+
+  it("recognizes a step with no hotspot as an elevator ride and faces out of the doors", () => {
+    const step = route.nextStep(d, [], floored);
+    expect(step.kind).toBe("elevator");
+    expect(step.id).toBe("q");
+    expect(step.yaw).toBe(190); // 10 + 180
+    expect(step.ride.toFloor).toBe(2);
+  });
+
+  it("falls back to a plain walk when there is truly no hotspot and no elevator ride", () => {
+    const noRide = [{ id: "p", floor: 1 }, { id: "q", floor: 2 }];
+    expect(route.nextStep(d, [], noRide)).toEqual({ kind: "walk", id: "q" });
+  });
+});
+
 describe("following the visitor", () => {
   it("advances the step when they follow the route", () => {
     expect(route.syncToPosition(withPath(0), "c", nodes).stepIndex).toBe(2);
@@ -101,10 +163,12 @@ describe("stepping and auto-walk", () => {
   const hotspots = [{ id: "b", yaw: 90 }, { id: "e", yaw: 200 }];
 
   it("nextStep names the next stop and which way to face", () => {
-    expect(route.nextStep(withPath(0), hotspots)).toEqual({ id: "b", yaw: 90, defaultYaw: undefined, defaultPitch: undefined });
+    expect(route.nextStep(withPath(0), hotspots)).toEqual({
+      kind: "walk", id: "b", yaw: 90, defaultYaw: undefined, defaultPitch: undefined,
+    });
   });
   it("nextStep has no yaw when the hotspot isn't on this node, and is null at the end", () => {
-    expect(route.nextStep(withPath(1), hotspots)).toEqual({ id: "c", yaw: undefined, defaultYaw: undefined, defaultPitch: undefined });
+    expect(route.nextStep(withPath(1), hotspots)).toEqual({ kind: "walk", id: "c" });
     expect(route.nextStep(withPath(3), hotspots)).toBeNull();
     expect(route.nextStep(null, hotspots)).toBeNull();
   });

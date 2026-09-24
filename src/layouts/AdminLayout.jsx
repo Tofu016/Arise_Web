@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useNodes } from "../hooks/useNodes";
+import { useElevators } from "../hooks/useElevators";
 import { useAuth } from "../context/useAuth";
 
 // Three independent top-level groups, per the confirmed sidebar
@@ -69,6 +70,12 @@ const PHOTOS = { path: "photos", icon: "🖼️", label: "Photos" };
 export default function AdminLayout() {
   const { user, profile, signOut } = useAuth();
   const nodesState = useNodes();
+  // Elevators are their own small collection (see useElevators.js) rather
+  // than folded into a node's own patch — one elevators row can be pointed
+  // at by landing markers on several different nodes at once. `loading` is
+  // renamed to avoid colliding with nodesState's own `loading` in the
+  // merged context below.
+  const { loading: elevatorsLoading, ...elevatorsState } = useElevators();
   // Which group's flyout is open, if any — null, or a GROUPS[].id.
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const expandedGroup = GROUPS.find((g) => g.id === expandedGroupId) || null;
@@ -180,7 +187,7 @@ export default function AdminLayout() {
         )}
 
         <div className="admin-layout-content">
-          <Outlet context={nodesState} />
+          <Outlet context={{ ...nodesState, ...elevatorsState, elevatorsLoading }} />
         </div>
       </div>
     </div>

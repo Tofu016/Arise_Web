@@ -81,7 +81,7 @@ describe("toNode", () => {
         n2: { yaw: 90, pitch: -5, defaultYaw: null, defaultPitch: null },
         n3: { yaw: 180, pitch: 0, defaultYaw: null, defaultPitch: null },
       },
-      markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorGroupId: null, accessibleFloors: [] }],
+      markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorId: null, accessibleFloors: [] }],
       flowchartPosition: { x: 12, y: 34 },
       createdAt: "c",
       updatedAt: "u",

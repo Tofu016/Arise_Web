@@ -6,13 +6,13 @@ const link = (a, b) => {
   a.neighbors.push(b.id);
   b.neighbors.push(a.id);
 };
-const elevatorMarker = (id, groupId, accessibleFloors) => ({
+const elevatorMarker = (id, elevatorId, accessibleFloors) => ({
   id,
   type: "elevator",
   label: "E",
   yaw: 0,
   pitch: 0,
-  elevatorGroupId: groupId,
+  elevatorId,
   accessibleFloors,
 });
 
@@ -71,6 +71,34 @@ describe("findPath", () => {
     const b = node("b", 1);
     link(a, b);
     expect(findPath([a, b], "a", "b", "elevator")).toEqual(["a", "b"]);
+  });
+
+  it("never routes THROUGH a fire exit (transitionExit) — emergency-only, not standard stairs", () => {
+    const a = node("a", 1);
+    const exit1 = node("x1", 1, { type: "transitionExit" });
+    const exit2 = node("x2", 2, { type: "transitionExit" });
+    const b = node("b", 2);
+    link(a, exit1);
+    link(exit1, exit2);
+    link(exit2, b);
+    expect(findPath([a, exit1, exit2, b], "a", "b")).toBeNull();
+    expect(findPath([a, exit1, exit2, b], "a", "b", "stairs")).toBeNull();
+  });
+
+  it("still allows a fire exit as the route's own start or end point", () => {
+    const a = node("a", 1);
+    const exit1 = node("x1", 1, { type: "transitionExit" });
+    link(a, exit1);
+    expect(findPath([a, exit1], "a", "x1")).toEqual(["a", "x1"]);
+  });
+
+  it("a Stairs (transition) node is unaffected by the fire-exit exclusion", () => {
+    const a = node("a", 1);
+    const stairs = node("s1", 1, { type: "transition" });
+    const b = node("b", 1);
+    link(a, stairs);
+    link(stairs, b);
+    expect(findPath([a, stairs, b], "a", "b")).toEqual(["a", "s1", "b"]);
   });
 });
 
