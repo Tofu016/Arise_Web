@@ -61,7 +61,7 @@ export function toNode(row) {
     id: row.id,
     name: row.name,
     building: row.building,
-    floor: row.floor,
+    floor: Number(row.floor),
     type: row.type,
     leadsToFloors: (row.leads_to_floors || []).map(Number),
     startingNode: Number(row.is_starting_node) === 1,

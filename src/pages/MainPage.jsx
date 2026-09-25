@@ -969,6 +969,14 @@ function MainPageContent({ onReset }) {
             <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
           </header>
         )}
+        {compact && (
+          <header
+            className="tour-shell-header tour-shell-header--centered kiosk-shell-header"
+            style={{ height: `${KIOSK_TOP_INSET * 100}%` }}
+          >
+            <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
+          </header>
+        )}
         {!current ? (
           <div className="main-page-status">
             <p>No campus locations available yet.</p>

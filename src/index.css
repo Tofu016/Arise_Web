@@ -1603,8 +1603,9 @@ button.primary {
   position: relative;
 }
 /* ---------- Public tour desktop shell (header + framed, boxed viewport)
-   Compact/kiosk layout renders none of this — .main-page-viewer stays
-   full-bleed there, unchanged. ---------- */
+   Compact/kiosk layout reuses this same header styling (see
+   .kiosk-shell-header below) — everything else here (the framed, boxed
+   viewport) still renders only on desktop. ---------- */
 .tour-shell-header {
   flex-shrink: 0;
   box-sizing: border-box;
@@ -1614,6 +1615,29 @@ button.primary {
   padding: 10px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+}
+/* Kiosk: same header look, but the logo is centered rather than
+   left-aligned (no other controls live in the kiosk header, so there's
+   nothing for it to sit beside). This isn't a header pushing the panorama
+   further down — it fills the existing top whitespace band that
+   .mobile-panorama-frame already leaves above itself (see KIOSK_TOP_INSET
+   in kioskLayout.js), so it's positioned absolute rather than in flex flow;
+   its height comes inline from that same constant, so the two always
+   line up exactly. */
+.tour-shell-header--centered {
+  justify-content: center;
+  padding-left: calc(24px + env(safe-area-inset-left));
+  padding-right: calc(24px + env(safe-area-inset-right));
+}
+.kiosk-shell-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+}
+.kiosk-shell-header .tour-shell-logo {
+  height: 75%;
 }
 .tour-shell-logo {
   height: 40px;
