@@ -22,7 +22,7 @@ export function validateNodeId(id, building, floor) {
   }
 
   if (/\s/.test(id)) {
-    errors.push("ID cannot contain spaces — use underscores.");
+    errors.push("ID cannot contain spaces: use underscores.");
   }
 
   if (!ID_PATTERN.test(id)) {
@@ -42,7 +42,7 @@ export function validateNodeId(id, building, floor) {
         errors.push(`ID says floor ${idFloor} but selected floor is ${floor}.`);
       }
       if (!allBuildingIds().includes(idBuilding)) {
-        errors.push(`"${idBuilding}" isn't a known building — check the building selector above.`);
+        errors.push(`"${idBuilding}" isn't a known building. Check the building selector above.`);
       }
     }
   }

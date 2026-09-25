@@ -228,7 +228,7 @@ export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, 
         </p>
 
         {manualBoxes.length === 0 && (
-          <p className="field-hint">No regions marked yet — safe to publish as-is, or drag to mark one.</p>
+          <p className="field-hint">No regions marked yet. Safe to publish as-is, or drag to mark one.</p>
         )}
 
         {manualBoxes.length > 0 && (

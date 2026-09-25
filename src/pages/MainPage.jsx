@@ -20,6 +20,8 @@ import IdlePrompt from "../components/IdlePrompt";
 import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
+import directionsIcon from "../assets/icons/directions.svg";
+import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
@@ -78,6 +80,9 @@ function radialButtonTransform(index, total) {
   const y = -Math.sin(angleRad) * RADIAL_RADIUS;
   return `translate(${x}px, ${y}px)`;
 }
+
+// Pending real icons — see the icon list handed back to the user.
+const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
 
 // Kiosk: finishing feedback resets the whole system to the start screen and
 // starting node. Remounting the page under a fresh key drops every piece of
@@ -574,7 +579,7 @@ function MainPageContent({ onReset }) {
   const autoWalking = directions?.autoWalking ?? false;
   // An elevator step is announced as the ride it is, not "Walk to <landing
   // node's name>" — the landing's node name means little to a visitor.
-  const nextStepAction = nextElevator ? `🛗 Ride elevator to ${floorLabel(nextElevator.floor)}` : `Walk to ${nextStopName}`;
+  const nextStepAction = nextElevator ? `Ride elevator to ${floorLabel(nextElevator.floor)}` : `Walk to ${nextStopName}`;
 
   // Kiosk: once the route is actually being walked (the visitor is at its
   // start, and hasn't arrived), the big directions dialog steps aside for the
@@ -629,31 +634,31 @@ function MainPageContent({ onReset }) {
   const radialItems = [
     {
       key: "feedback",
-      icon: "💬",
+      icon: PLACEHOLDER("chat-bubble"),
       title: "Give feedback",
       onClick: () => overlay.openFromDock("feedback"),
     },
     {
       key: "exit",
-      icon: "🧭",
+      icon: <img src={directionsIcon} alt="" className="inline-icon-img" />,
       title: "Directions",
       onClick: flow.open, // also collapses the dock
     },
     {
       key: "search",
-      icon: "🔍",
+      icon: PLACEHOLDER("search-magnifier"),
       title: "Search",
       onClick: () => overlay.openFromDock("search"),
     },
     {
       key: "building",
-      icon: "🏢",
+      icon: PLACEHOLDER("building"),
       title: "Choose a building",
       onClick: () => overlay.openFromDock("building"),
     },
     {
       key: "help",
-      icon: "❓",
+      icon: PLACEHOLDER("question-help"),
       title: "How to use this tour",
       onClick: () => overlay.openFromDock("help"),
     },
@@ -694,7 +699,7 @@ function MainPageContent({ onReset }) {
     <>
       {!searchQuery.trim() && randomSuggestions.length > 0 && (
         <div className="room-search-results">
-          <p className="room-search-suggestions-label">Suggested rooms: use Go To or Directions, or start typing to search</p>
+          <p className="room-search-suggestions-label">Suggested Locations</p>
           {randomSuggestions.map((r) => (
             <div key={r.roomName} className="room-search-result-actionable">
               <div className="room-search-result-main">
@@ -829,15 +834,15 @@ function MainPageContent({ onReset }) {
 
       {directions.pendingModeChoice && (
         <div className="directions-mode-choice">
-          <p className="field-hint">This route changes floors — how do you want to get there?</p>
+          <p className="field-hint">This route changes floors. How do you want to get there?</p>
           {/* Stop counts make the trade-off visible up front, so the choice
               is one informed tap rather than a guess. */}
           <button className="primary directions-go-btn" onClick={() => flow.chooseMode("stairs")}>
-            🪜 Take the stairs
+            {PLACEHOLDER("stairs")} Take the stairs
             <span className="directions-mode-sub">{directions.pendingModeChoice.stairsPath.length} stops</span>
           </button>
           <button className="primary directions-go-btn" onClick={() => flow.chooseMode("elevator")}>
-            🛗 Take the elevator
+            {PLACEHOLDER("elevator")} Take the elevator
             <span className="directions-mode-sub">{directions.pendingModeChoice.elevatorPath.length} stops · step-free</span>
           </button>
         </div>
@@ -852,10 +857,10 @@ function MainPageContent({ onReset }) {
           <p className="directions-progress-text">
             Stop {directions.stepIndex + 1} of {directions.path.length}
             {nextElevator ? (
-              <>{" — "}<strong>Take the elevator</strong> to {floorLabel(nextElevator.floor)}</>
+              <>{": "}<strong>Take the elevator</strong> to {floorLabel(nextElevator.floor)}</>
             ) : nextStopName && (
               <>
-                {" — "}
+                {": "}
                 {turnInstruction ? (
                   <><strong>{turnInstruction}</strong> {nextStopName}</>
                 ) : (
@@ -873,7 +878,7 @@ function MainPageContent({ onReset }) {
                 onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
                 disabled={autoWalking}
               >
-                {nextStepAction} →
+                {nextElevator && PLACEHOLDER("elevator")} {nextStepAction} →
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
@@ -886,8 +891,8 @@ function MainPageContent({ onReset }) {
           )}
           <p className="field-hint">
             {nextElevator
-              ? "The elevator is glowing in the photo — tap it and pick the highlighted floor, or use the button above."
-              : "Follow the green hotspot in the photo — it marks the correct path to your destination."}
+              ? "The elevator is glowing in the photo. Tap it and pick the highlighted floor, or use the button above."
+              : "Follow the green hotspot in the photo: it marks the correct path to your destination."}
           </p>
         </div>
       )}
@@ -1203,7 +1208,7 @@ function MainPageContent({ onReset }) {
             {walkBarShown && (
               <KioskWalkBar
                 progressText={`Stop ${directions.stepIndex + 1} of ${directions.path.length}${
-                  turnInstruction ? ` — ${turnInstruction}` : ""
+                  turnInstruction ? `: ${turnInstruction}` : ""
                 }`}
                 nextStopAction={nextStepAction}
                 isElevator={!!nextElevator}
@@ -1226,7 +1231,7 @@ function MainPageContent({ onReset }) {
                     <div className="account-avatar">{initials}</div>
                     <span className="account-name" title={displayName}>{displayName}</span>
                     {role === "admin" && (
-                      <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
+                      <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
                     )}
                     <button onClick={signOut} className="subtle account-signout mobile-signout-btn">Sign out</button>
                   </div>
@@ -1382,7 +1387,7 @@ function MainPageContent({ onReset }) {
                 onClick={flow.open}
                 title="Get directions"
               >
-                🧭
+                <img src={directionsIcon} alt="" className="inline-icon-img" />
               </button>
 
               {/* Client-requested: bottom-left, alongside the exit
@@ -1394,7 +1399,7 @@ function MainPageContent({ onReset }) {
                 onClick={overlay.openFeedback}
                 title="Give feedback"
               >
-                💬
+                {PLACEHOLDER("chat-bubble")}
               </button>
 
               {/* Moved out of the rail and up to the top-right — its own
@@ -1410,7 +1415,7 @@ function MainPageContent({ onReset }) {
                     <div className="account-popover">
                       <span className="account-popover-name" title={displayName}>{displayName}</span>
                       {role === "admin" && (
-                        <Link to="/admin" className="sidebar-admin-btn">🛠 Admin Panel</Link>
+                        <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
                       )}
                       <button onClick={signOut} className="subtle account-signout">Sign out</button>
                     </div>
@@ -1438,7 +1443,7 @@ function MainPageContent({ onReset }) {
                     placeholder="Search a room..."
                     aria-label="Search"
                   />
-                  <span className="floating-search-icon">🔍</span>
+                  <span className="floating-search-icon">{PLACEHOLDER("search-magnifier")}</span>
                 </div>
               </div>
 
@@ -1459,7 +1464,7 @@ function MainPageContent({ onReset }) {
                           <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
                             {allBuildings().map((b) => (
                               <option key={b.id} value={b.id}>
-                                {b.label}{b.id === current?.building ? " — you are here" : ""}
+                                {b.label}{b.id === current?.building ? " (you are here)" : ""}
                               </option>
                             ))}
                           </select>
@@ -1489,7 +1494,7 @@ function MainPageContent({ onReset }) {
                         </div>
 
                         <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
-                          ❓ How to use this tour
+                          {PLACEHOLDER("question-help")} How to use this tour
                         </button>
                       </div>
                     )}

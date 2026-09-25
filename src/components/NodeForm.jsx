@@ -7,6 +7,7 @@ import FaceReviewPanel from "./FaceReviewPanel";
 import { photoFilename } from "../utils/photoStore";
 import { startReview, reviewExisting, confirmReview, cancelReview } from "../utils/panoramaReview";
 import { useToast } from "../context/ToastContext";
+import IconPlaceholder from "./IconPlaceholder";
 
 const emptyDraft = () => ({
   id: "",
@@ -220,7 +221,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
 
   const handleSave = () => {
     if (copyState === "copying") {
-      setErrors(["The photo is still uploading — wait for it to finish before saving."]);
+      setErrors(["The photo is still uploading. Wait for it to finish before saving."]);
       return;
     }
     const normalized = {
@@ -275,12 +276,12 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         <input type="text" value={draft.id} onChange={field("id")} placeholder="gd1_f2_hallway_03" />
         {mode === "create" && idAutoManaged && (
           <span className="field-hint">
-            Auto-filled from Building/Floor/Type — edit freely for a more descriptive name.
+            Auto-filled from Building/Floor/Type: edit freely for a more descriptive name.
           </span>
         )}
         {showIdSuggestion && (
           <span className="field-hint">
-            Building/Floor/Type changed since this node was created — suggested ID: <code>{idSuggestion}</code>{" "}
+            Building/Floor/Type changed since this node was created, suggested ID: <code>{idSuggestion}</code>{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); applyIdSuggestion(); }}>Rename to match?</a>
           </span>
         )}
@@ -334,19 +335,19 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             ))}
           </div>
           <span className="field-hint">
-            Stairs and fire exits often connect both up and down — pick every floor this node actually reaches.
+            Stairs and fire exits often connect both up and down. Pick every floor this node actually reaches.
           </span>
           {unwiredDeclaredFloors.length > 0 && (
             <p className="directions-error">
               ⚠ Declared as leading to {unwiredDeclaredFloors.map(floorLabel).join(", ")}, but no neighbor link of
-              this node actually reaches {unwiredDeclaredFloors.length === 1 ? "that floor" : "those floors"} yet —
-              wire it up in Navigation Editor, or it isn't really routable.
+              this node actually reaches {unwiredDeclaredFloors.length === 1 ? "that floor" : "those floors"} yet.
+              Wire it up in Navigation Editor, or it isn't really routable.
             </p>
           )}
           {undeclaredNeighborFloors.length > 0 && (
             <p className="directions-error">
               ⚠ This node's neighbor links already reach {undeclaredNeighborFloors.map(floorLabel).join(", ")}, but
-              that's not checked above — add {undeclaredNeighborFloors.length === 1 ? "it" : "them"} so this field
+              that's not checked above. Add {undeclaredNeighborFloors.length === 1 ? "it" : "them"} so this field
               matches the actual graph.
             </p>
           )}
@@ -365,7 +366,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         <span className="field-hint">
           Where the kiosk drops visitors who pick this building floor. Only one per floor
           {currentStart && currentStart.id !== draft.id
-            ? ` — saving this replaces ${currentStart.id}.`
+            ? `, saving this replaces ${currentStart.id}.`
             : "."}
           {" "}The camera view they land facing is set from the Virtual Map Navigation Editor, not here.
         </span>
@@ -382,11 +383,11 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             <span>Building entrance</span>
           </label>
           <span className="field-hint">
-            The one node that represents this specific building. Independent of Campus entrance below
-            — a node can be both, either, or neither. Offered as a Kiosk floor-screen shortcut. Only one
+            The one node that represents this specific building. Independent of Campus entrance below:
+            a node can be both, either, or neither. Offered as a Kiosk floor-screen shortcut. Only one
             per building
             {currentBuildingEntrance && currentBuildingEntrance.id !== draft.id
-              ? ` — saving this replaces ${currentBuildingEntrance.id}.`
+              ? `, saving this replaces ${currentBuildingEntrance.id}.`
               : "."}
           </span>
         </div>
@@ -407,7 +408,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             Digital Campus has its own). Powers the cross-campus minimap and a Kiosk floor-screen
             shortcut. Only one per campus
             {currentCampusEntrance && currentCampusEntrance.id !== draft.id
-              ? ` — saving this replaces ${currentCampusEntrance.id}.`
+              ? `, saving this replaces ${currentCampusEntrance.id}.`
               : "."}
           </span>
         </div>
@@ -442,7 +443,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           ))}
         </div>
         <span className="field-hint">
-          Rooms this hallway node serves — this is what search will match on later.
+          Rooms this hallway node serves: this is what search will match on later.
         </span>
       </div>
 
@@ -455,7 +456,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           placeholder="gd1_f2_hallway_03.jpg"
         />
         <span className="field-hint">
-          Set automatically once you pick a file below — only edit this by hand if you're linking to an existing upload.
+          Set automatically once you pick a file below. Only edit this by hand if you're linking to an existing upload.
         </span>
       </label>
 
@@ -468,7 +469,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         <span className="field-hint">
           {copyState === "copying" && "Uploading…"}
           {copyState === "copied" && "✓ Uploaded"}
-          {copyState === "error" && "⚠ Upload failed — check your connection."}
+          {copyState === "error" && "⚠ Upload failed: check your connection."}
           {copyState === "idle" && "Picking a file uploads it to a temporary holding area for review, then publishes it once confirmed."}
         </span>
       </label>
@@ -480,7 +481,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           onClick={handleRescanExisting}
           disabled={rescanning || copyState === "copying"}
         >
-          {rescanning ? "Loading photo…" : "✏️ Edit blur regions on this photo"}
+          {rescanning ? "Loading photo…" : <><IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo</>}
         </button>
       )}
 

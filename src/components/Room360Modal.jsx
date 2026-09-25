@@ -13,7 +13,7 @@ export default function Room360Modal({ roomName, photo360, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal preview-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
-          <h3>360° View — {roomName}</h3>
+          <h3>360° View: {roomName}</h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 

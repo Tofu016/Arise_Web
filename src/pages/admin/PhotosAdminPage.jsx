@@ -80,8 +80,8 @@ export default function PhotosAdminPage() {
         {orphanedCount > 0 && <span className="badge-count">{orphanedCount} orphaned</span>}
       </h2>
       <p className="field-hint">
-        Every photo uploaded anywhere in the system — node panoramas, room photos, tour stops, section covers,
-        and marker photos — scanned directly from disk and checked against what's actually referenced.
+        Every photo uploaded anywhere in the system: node panoramas, room photos, tour stops, section covers,
+        and marker photos, scanned directly from disk and checked against what's actually referenced.
       </p>
 
       <div className="photo-gallery-filter-row">

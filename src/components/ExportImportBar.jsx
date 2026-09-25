@@ -1,4 +1,5 @@
 import { useToast } from "../context/ToastContext";
+import IconPlaceholder from "./IconPlaceholder";
 
 // Triggers a browser download of the current node list as a point-in-time
 // JSON snapshot — a manual backup independent of the live data. It is a
@@ -28,7 +29,7 @@ export default function ExportImportBar({ nodes }) {
 
       {/* Every mutation is persisted to the backend as it happens — there's
           no "connect a file" step and nothing to debounce, just a status badge. */}
-      <span className="sync-badge sync-ok">☁️ Auto-saved</span>
+      <span className="sync-badge sync-ok"><IconPlaceholder name="cloud-sync" /> Auto-saved</span>
 
       <button onClick={handleDownload} className="subtle">Download backup</button>
     </div>

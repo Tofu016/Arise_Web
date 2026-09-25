@@ -13,6 +13,7 @@ import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
 import noImagePanorama from "../assets/images/no-image.jpg";
+import IconPlaceholder from "./IconPlaceholder";
 
 // How long the "No location in front." hint stays up after W/Up finds
 // nothing to walk to.
@@ -22,7 +23,7 @@ const NOTHING_AHEAD_HINT_MS = 1800;
 // "equipment" marker type. Kept here rather than in constants.js's
 // MARKER_TYPES, which would offer it in the indoor Navigation Editor's
 // marker dropdown.
-const EQUIPMENT_MARKER_INFO = { icon: "📷", color: "#C9A24B" };
+const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" />, color: "#C9A24B" };
 
 /**
  * Props:

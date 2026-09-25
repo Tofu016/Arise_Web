@@ -162,8 +162,8 @@ export function syncToPosition(d, currentId, nodes) {
   if (!path) {
     const error =
       d.transportMode === "elevator"
-        ? "No elevator route from here — go back, or try Get directions again."
-        : "Lost the route from here — try Get directions again.";
+        ? "No elevator route from here. Go back, or try Get directions again."
+        : "Lost the route from here. Try Get directions again.";
     return { ...d, path: null, stepIndex: 0, error };
   }
   return { ...d, path, stepIndex: 0, error: "" };

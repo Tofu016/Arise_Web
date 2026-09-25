@@ -1,5 +1,7 @@
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
+import locationIcon from "../assets/icons/location.svg";
+import IconPlaceholder from "./IconPlaceholder";
 
 export default function RoomCard({ room, onClose, onGetDirections, onView360 }) {
   const { roomName, node, placard } = room;
@@ -23,7 +25,7 @@ export default function RoomCard({ room, onClose, onGetDirections, onView360 }) 
             <div className="room-card-photo-placeholder">Loading photo…</div>
           )
         ) : (
-          <div className="room-card-photo-placeholder">📷 No photo yet</div>
+          <div className="room-card-photo-placeholder"><IconPlaceholder name="camera" /> No photo yet</div>
         )}
         <button className="room-card-close" onClick={onClose} title="Close">✕</button>
       </div>
@@ -35,7 +37,7 @@ export default function RoomCard({ room, onClose, onGetDirections, onView360 }) 
 
         {node && (
           <p className="room-card-location">
-            📍 {buildingLabel(node.building)} · {floorLabel(node.floor)} · near {node.name}
+            <img src={locationIcon} alt="" className="inline-icon-img" /> {buildingLabel(node.building)} · {floorLabel(node.floor)} · near {node.name}
           </p>
         )}
 
@@ -57,7 +59,7 @@ export default function RoomCard({ room, onClose, onGetDirections, onView360 }) 
             target="_blank"
             rel="noopener noreferrer"
           >
-            🔗 {placard.link}
+            <IconPlaceholder name="link-chain" /> {placard.link}
           </a>
         )}
 

@@ -39,7 +39,7 @@ export default function PhotoFlowNode({ data }) {
           </div>
           <div className="flowchart-tooltip-row">
             <span className="flowchart-tooltip-key">Type</span>
-            <span className="flowchart-tooltip-val">{data.nodeType || "—"}</span>
+            <span className="flowchart-tooltip-val">{data.nodeType || "N/A"}</span>
           </div>
           <div className="flowchart-tooltip-row">
             <span className="flowchart-tooltip-key">Rooms served</span>

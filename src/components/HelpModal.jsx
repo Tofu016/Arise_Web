@@ -1,4 +1,10 @@
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+import directionsIcon from "../assets/icons/directions.svg";
+import IconPlaceholder from "./IconPlaceholder";
+
+const DIRECTIONS_ICON = <img src={directionsIcon} alt="" className="inline-icon-img" />;
+// Pending real icons — see the icon list handed back to the user.
+const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
 
 // The same quick tips the first-run coachmarks cover, kept reachable at
 // any time afterward — from the desktop menu panel, or the kiosk's radial
@@ -7,13 +13,13 @@ import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 // starts the sequence over on its own — see useOnboardingHints.js).
 const TIPS = {
   desktop: [
-    { icon: "🖱️", text: "Drag to look around, or use WASD or the arrow keys." },
+    { icon: PLACEHOLDER("mouse-drag"), text: "Drag to look around, or use WASD or the arrow keys." },
     { icon: "➜", text: "Click a glowing arrow in the photo to walk that way." },
     { icon: "☰", text: "Open the menu for buildings, entrances and more." },
-    { icon: "🧭", text: "Get directions to any room." },
+    { icon: DIRECTIONS_ICON, text: "Get directions to any room." },
   ],
   kiosk: [
-    { icon: "👆", text: "Touch and drag to look around." },
+    { icon: PLACEHOLDER("touch-tap"), text: "Touch and drag to look around." },
     { icon: "➜", text: "Tap a glowing arrow in the photo to walk that way." },
     { icon: "☰", text: "Tap the menu button for search, directions and more." },
   ],

@@ -8,6 +8,7 @@ import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
 import { useBlurReview } from "../../hooks/useBlurReview";
+import IconPlaceholder from "../../components/IconPlaceholder";
 import { useToast } from "../../context/ToastContext";
 
 // Campus Tour equivalent of Virtual Map Navigation Editor — the same
@@ -177,7 +178,7 @@ export default function TourNavigationEditorPage() {
               {markers.length === 0 && <p className="empty-hint">No equipment markers yet.</p>}
               {markers.map((m) => (
                 <div key={m.id} className="link-row">
-                  <span className="link-name">📷 {m.label} ({(m.photos || []).length} photo{(m.photos || []).length === 1 ? "" : "s"})</span>
+                  <span className="link-name"><IconPlaceholder name="camera" /> {m.label} ({(m.photos || []).length} photo{(m.photos || []).length === 1 ? "" : "s"})</span>
                   <div className="link-actions">
                     <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
                     <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
@@ -213,8 +214,8 @@ export default function TourNavigationEditorPage() {
                 />
                 <span className="field-hint">
                   {markerUploadState === "uploading" && "Uploading…"}
-                  {markerUploadState === "error" && "⚠ Upload failed — check Storage rules/connection."}
-                  {newMarkerPhotos.length === 0 && markerUploadState !== "uploading" && "No photos picked yet — at least one is required."}
+                  {markerUploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
+                  {newMarkerPhotos.length === 0 && markerUploadState !== "uploading" && "No photos picked yet: at least one is required."}
                 </span>
                 {newMarkerPhotos.length > 0 && (
                   <div className="face-review-manual-chips">

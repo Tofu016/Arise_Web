@@ -24,7 +24,7 @@ const KINDS = {
 };
 
 const UNSUPPORTED_PATH_MESSAGE =
-  "This image uses an old storage path that's no longer supported — re-upload it from the editor.";
+  "This image uses an old storage path that's no longer supported. Re-upload it from the editor.";
 
 // Names an upload after `basename` plus the picked file's real extension,
 // so re-uploading a replacement for the same thing cleanly overwrites the

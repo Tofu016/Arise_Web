@@ -100,7 +100,7 @@ export function validateElevator({ id, label, building, accessibleFloors }, { bu
   if (!building) errors.push("Pick a building.");
   const floors = accessibleFloors || [];
   if (floors.length < MIN_ELEVATOR_FLOORS) {
-    errors.push(`Pick at least ${MIN_ELEVATOR_FLOORS} floors — a single-floor elevator can't take anyone anywhere.`);
+    errors.push(`Pick at least ${MIN_ELEVATOR_FLOORS} floors: a single-floor elevator can't take anyone anywhere.`);
   }
   const invalid = floors.filter((f) => !buildingFloors.includes(f));
   if (invalid.length > 0) errors.push(`This building doesn't have floor(s): ${invalid.join(", ")}.`);
@@ -119,7 +119,7 @@ export function validateElevatorLanding(elevator, node) {
   const errors = [];
   if (elevator.building !== node.building) errors.push("That elevator belongs to a different building.");
   if (!elevator.accessibleFloors.includes(Number(node.floor))) {
-    errors.push("That elevator doesn't stop on this node's floor — add the floor to the elevator first.");
+    errors.push("That elevator doesn't stop on this node's floor. Add the floor to the elevator first.");
   }
   const clash = (elevator.landings || []).find((l) => l.floor === Number(node.floor));
   if (clash) {

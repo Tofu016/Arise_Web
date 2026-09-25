@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { markerTypeInfo } from "../../utils/constants";
 import { toPosition } from "../../utils/panoramaMath";
+import IconPlaceholder from "../IconPlaceholder";
 
 // NOTE: sized by the canvas's shorter side alone, while Hotspot uses
 // overlayScale (which also follows the FOV). The two are inconsistent;
@@ -112,7 +113,7 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
                   : "0 0 6px rgba(32,27,27,0.55)",
             }}
           >
-            {info.icon}
+            {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} /> : info.icon}
           </div>
           <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import IconPlaceholder from "../components/IconPlaceholder";
 
 // A generic, identical confirmation message is shown regardless of whether
 // the email actually has an account — revealing "no account with that
@@ -35,7 +36,7 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card auth-card-centered">
-        <div className="auth-icon-badge">🔑</div>
+        <div className="auth-icon-badge"><IconPlaceholder name="key" /></div>
         <h1>Reset your password</h1>
         <p className="field-hint">
           Enter the email you registered with and we'll send a link to reset your password.

@@ -68,7 +68,7 @@ export function GraphEditorPreview({ editor, itemNoun }) {
       </div>
       {(!current.photo || photoMissing) && (
         <p className="photo-missing-note">
-          No photo loaded for this {itemNoun} yet — hotspots still work for testing the link graph.
+          No photo loaded for this {itemNoun} yet, but hotspots still work for testing the link graph.
         </p>
       )}
       {current.photo && !photoUrl && !photoMissing && (

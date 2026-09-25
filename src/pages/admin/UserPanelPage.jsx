@@ -6,10 +6,10 @@ import { fuzzyIncludes } from "../../utils/fuzzy";
 const ROLES = ["pending", "user", "admin"];
 
 function formatJoined(createdAt) {
-  if (!createdAt) return "—";
+  if (!createdAt) return "N/A";
   // Firestore Timestamp (has .toDate()) vs. a plain ISO string, just in case.
   const date = typeof createdAt.toDate === "function" ? createdAt.toDate() : new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleDateString();
 }
 
@@ -97,7 +97,7 @@ export default function UserPanelPage() {
   const pendingCount = users.filter((u) => u.role === "pending").length;
 
   const handleDelete = async (u) => {
-    if (!confirm(`Permanently delete ${u.email}? This removes their login and profile — they'd have to register again from scratch. This can't be undone.`)) {
+    if (!confirm(`Permanently delete ${u.email}? This removes their login and profile; they'd have to register again from scratch. This can't be undone.`)) {
       return;
     }
     setDeletingUid(u.uid);
@@ -158,14 +158,14 @@ export default function UserPanelPage() {
                   value={u.role || "pending"}
                   onChange={(r) => updateUserRole(u.uid, r)}
                   disabled={isSelf || isDeleting}
-                  title={isSelf ? "You can't change your own role here — ask another admin." : undefined}
+                  title={isSelf ? "You can't change your own role here. Ask another admin." : undefined}
                 />
                 <button
                   type="button"
                   className="danger users-row-delete"
                   onClick={() => handleDelete(u)}
                   disabled={isSelf || isDeleting}
-                  title={isSelf ? "You can't delete your own account here — ask another admin." : undefined}
+                  title={isSelf ? "You can't delete your own account here. Ask another admin." : undefined}
                 >
                   {isDeleting ? "Deleting…" : "Delete"}
                 </button>

@@ -3,6 +3,16 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useNodes } from "../hooks/useNodes";
 import { useElevators } from "../hooks/useElevators";
 import { useAuth } from "../context/useAuth";
+import mapIcon from "../assets/icons/map.svg";
+import accountIcon from "../assets/icons/account.svg";
+import locationIcon from "../assets/icons/location.svg";
+import IconPlaceholder from "../components/IconPlaceholder";
+
+const MAP_ICON = <img src={mapIcon} alt="" className="admin-sidebar-icon-img" />;
+const ACCOUNT_ICON = <img src={accountIcon} alt="" className="admin-sidebar-icon-img" />;
+const LOCATION_ICON = <img src={locationIcon} alt="" className="admin-sidebar-icon-img" />;
+// Pending real icons — see the icon list handed back to the user.
+const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="admin-sidebar-icon-img" />;
 
 // Three independent top-level groups, per the confirmed sidebar
 // architecture — Virtual Map and Campus Tour each collapse to one rail
@@ -18,22 +28,22 @@ import { useAuth } from "../context/useAuth";
 const GROUPS = [
   {
     id: "indoor",
-    icon: "🏢",
+    icon: PLACEHOLDER("building"),
     label: "Virtual Map",
     items: [
-      { path: "node-editor", icon: "🏠", label: "Node Editor" },
-      { path: "node-flowchart", icon: "📊", label: "Node Flowchart" },
-      { path: "virtual-map-navigation-editor", icon: "🗺️", label: "Virtual Map Navigation Editor" },
-      { path: "room-editor", icon: "🚪", label: "Room Editor" },
+      { path: "node-editor", icon: PLACEHOLDER("home-house"), label: "Node Editor" },
+      { path: "node-flowchart", icon: PLACEHOLDER("bar-chart"), label: "Node Flowchart" },
+      { path: "virtual-map-navigation-editor", icon: MAP_ICON, label: "Virtual Map Navigation Editor" },
+      { path: "room-editor", icon: PLACEHOLDER("door"), label: "Room Editor" },
     ],
   },
   {
     id: "virtual",
-    icon: "🏞️",
+    icon: PLACEHOLDER("landscape-photo"),
     label: "Campus Tour",
     items: [
-      { path: "tour-stops", icon: "📍", label: "Tour Stops" },
-      { path: "campus-tour-navigation-editor", icon: "🗺️", label: "Campus Tour Navigation Editor" },
+      { path: "tour-stops", icon: LOCATION_ICON, label: "Tour Stops" },
+      { path: "campus-tour-navigation-editor", icon: MAP_ICON, label: "Campus Tour Navigation Editor" },
     ],
   },
 ];
@@ -45,10 +55,10 @@ const GROUPS = [
 // Photo Coverage: covers both nodes (Virtual Map) and tour stops (Campus
 // Tour) together, so it doesn't belong to either single group either.
 // Photos: covers every photo type, not tied to one group.
-const USER_PANEL = { path: "users", icon: "👤", label: "User Panel" };
-const FEEDBACK = { path: "feedback", icon: "💬", label: "Feedback" };
-const PHOTO_COVERAGE = { path: "photo-coverage", icon: "📊", label: "Photo Coverage" };
-const PHOTOS = { path: "photos", icon: "🖼️", label: "Photos" };
+const USER_PANEL = { path: "users", icon: ACCOUNT_ICON, label: "User Panel" };
+const FEEDBACK = { path: "feedback", icon: PLACEHOLDER("chat-bubble"), label: "Feedback" };
+const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("bar-chart"), label: "Photo Coverage" };
+const PHOTOS = { path: "photos", icon: PLACEHOLDER("picture-frame"), label: "Photos" };
 const STANDALONE_ITEMS = [USER_PANEL, FEEDBACK, PHOTO_COVERAGE, PHOTOS];
 
 // Shared shell for every admin section — header, collapsible sidebar, and

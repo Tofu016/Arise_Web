@@ -7,6 +7,7 @@ import { floorLabel, buildingLabel, floorsForBuilding, MARKER_TYPES, markerTypeI
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
 import { validateElevator, validateElevatorLanding, floorsWithLandingsDropped } from "../../utils/elevators";
+import IconPlaceholder from "../../components/IconPlaceholder";
 
 const defaultFilters = {
   building: "all",
@@ -261,7 +262,7 @@ export default function NavigationEditorPage() {
             Starting view (floor/building picker drop-in):{" "}
             {current.startingViewYaw != null
               ? `set (yaw ${Math.round(current.startingViewYaw)}°, pitch ${Math.round(current.startingViewPitch)}°)`
-              : "not set — falls back to the panorama's default facing"}
+              : "not set, falls back to the panorama's default facing"}
           </span>
           <div className="link-actions">
             <button onClick={startSetStartingView} disabled={settingStartingView}>
@@ -279,13 +280,13 @@ export default function NavigationEditorPage() {
           <div className="navigation-editor-list-col">
             <h5>Markers added ({markers.length})</h5>
             <div className="link-list navigation-editor-scroll-list">
-              {markers.length === 0 && <p className="empty-hint">No markers yet — rooms, facilities, exits, hydrants.</p>}
+              {markers.length === 0 && <p className="empty-hint">No markers yet: rooms, facilities, exits, hydrants.</p>}
               {markers.map((m) => {
                 const info = markerTypeInfo(m.type);
                 return (
                   <div key={m.id} className="link-row">
                     <span className="link-name">
-                      {info.icon} {m.label}
+                      {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} /> : info.icon} {m.label}
                       {m.type === "elevator" && (
                         <span className="portal-tag">
                           {m.elevatorId} · serves: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
@@ -306,7 +307,7 @@ export default function NavigationEditorPage() {
             <h5>Elevators in {buildingLabel(current.building)} ({elevatorsHere.length})</h5>
             <div className="link-list navigation-editor-scroll-list">
               {elevatorsHere.length === 0 && (
-                <p className="empty-hint">No elevators in this building yet — add one below when placing a landing.</p>
+                <p className="empty-hint">No elevators in this building yet. Add one below when placing a landing.</p>
               )}
               {elevatorsHere.map((e) => (
                 <div key={e.id} className="link-row elevator-manage-row">
@@ -370,7 +371,7 @@ export default function NavigationEditorPage() {
                   onChange={(e) => { setNewMarkerType(e.target.value); setNewMarkerLabel(""); }}
                 >
                   {MARKER_TYPES.map((t) => (
-                    <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+                    <option key={t.id} value={t.id}>{t.label}</option>
                   ))}
                 </select>
                 {newMarkerType === "room" ? (
@@ -386,7 +387,7 @@ export default function NavigationEditorPage() {
                     </select>
                   ) : (
                     <p className="empty-hint">
-                      This node has no "Rooms served" yet — add one via Node Editor first.
+                      This node has no "Rooms served" yet. Add one via Node Editor first.
                     </p>
                   )
                 ) : isElevator ? (
@@ -414,7 +415,7 @@ export default function NavigationEditorPage() {
                           onChange={(e) => setNewElevatorDraft((d) => ({ ...d, label: e.target.value }))}
                         />
                         <p className="field-hint">
-                          One record for this whole physical elevator — every floor it serves shares
+                          One record for this whole physical elevator: every floor it serves shares
                           this same record, so its floor list can never disagree from one landing to another.
                         </p>
                         <div className="elevator-floor-checkboxes">

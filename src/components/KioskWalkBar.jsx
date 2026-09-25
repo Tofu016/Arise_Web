@@ -1,5 +1,6 @@
 import AutoWalkCountdown from "./AutoWalkCountdown";
 import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import IconPlaceholder from "./IconPlaceholder";
 
 // Kiosk view only: the compact controls that replace the big directions
 // dialog while a route is being walked, so the panorama stays visible. It
@@ -32,12 +33,12 @@ export default function KioskWalkBar({
       <p className="kiosk-walkbar-progress">{progressText}</p>
       <p className="kiosk-walkbar-hint">
         {isElevator
-          ? "The elevator is glowing in the photo — tap it, or use the button below."
-          : "Follow the green hotspot — it marks the correct path to your destination."}
+          ? "The elevator is glowing in the photo. Tap it, or use the button below."
+          : "Follow the green hotspot: it marks the correct path to your destination."}
       </p>
 
       <button type="button" className="primary kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
-        {nextStopAction} →
+        {isElevator && <IconPlaceholder name="elevator" />} {nextStopAction} →
       </button>
 
       <div className="kiosk-walkbar-row">
@@ -56,7 +57,7 @@ export default function KioskWalkBar({
         </button>
 
         <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onShowDialog}>
-          📋 Directions
+          <IconPlaceholder name="clipboard-list" /> Directions
         </button>
       </div>
     </div>

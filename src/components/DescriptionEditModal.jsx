@@ -36,7 +36,7 @@ export default function DescriptionEditModal({ stop, onSave, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal room-edit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
-          <h3>Description — {stop.name}</h3>
+          <h3>Description: {stop.name}</h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 

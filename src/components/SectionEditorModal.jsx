@@ -4,6 +4,7 @@ import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
+import IconPlaceholder from "./IconPlaceholder";
 
 // Section equivalent of AddBuildingDialog.jsx — same "Add New X" /
 // "Existing X/s" two-column structure and exact CSS classes
@@ -114,7 +115,7 @@ export default function SectionEditorModal({ onClose }) {
             <span className="field-hint">
               {uploadState === "uploading" && "Uploading…"}
               {uploadState === "done" && "✓ Uploaded"}
-              {uploadState === "error" && "⚠ Upload failed — check Storage rules/connection."}
+              {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
               {uploadState === "idle" && !coverPath && "No cover photo set yet."}
             </span>
             {coverPath && (
@@ -124,7 +125,7 @@ export default function SectionEditorModal({ onClose }) {
                 onClick={handleCoverReblur}
                 disabled={uploadState === "uploading"}
               >
-                ✏️ Edit blur regions on this photo
+                <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
               </button>
             )}
             {coverPath && coverPreviewUrl && (
@@ -135,7 +136,7 @@ export default function SectionEditorModal({ onClose }) {
           <div className="add-building-existing-col">
             <h4 className="add-building-subheading">Existing Section/s</h4>
             {sections.length === 0 ? (
-              <p className="empty-hint">No sections yet — add one on the left.</p>
+              <p className="empty-hint">No sections yet. Add one on the left.</p>
             ) : (
               <div className="custom-building-list">
                 {sections.map((sec) => (

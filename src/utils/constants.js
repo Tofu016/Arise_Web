@@ -93,12 +93,20 @@ export const TRANSITION_TYPES = ["transition", "transitionExit"];
 // elevator reads the exact same data (see utils/elevators.js). Still kept
 // in this same array rather than a separate concept, since it's placed,
 // positioned and rendered exactly like every other marker.
+// `icon` stays plain text ("?") pending real branding assets for this marker
+// badge — no matching icon existed in ui-branding-guidelines for any of these
+// five. This file is plain .js (no JSX support), and `icon` also feeds a
+// plain-text <option> in NavigationEditorPage.jsx, so it can't hold the
+// placeholder <IconPlaceholder> component the way JSX files do. Marker.jsx
+// swaps in the real placeholder graphic for its on-panorama badge by reading
+// `iconPlaceholder` instead of `icon` when present — see the icon list
+// handed back to the user for what real icon each of these needs.
 export const MARKER_TYPES = [
-  { id: "room", label: "Room", icon: "🚪", color: "#2f6db0" },
-  { id: "facility", label: "Facility", icon: "📍", color: "#2e7d46" },
-  { id: "exit", label: "Emergency Exit", icon: "🚨", color: "#c62a2c" },
-  { id: "hydrant", label: "Fire Hydrant / Extinguisher", icon: "🧯", color: "#b5701c" },
-  { id: "elevator", label: "Elevator", icon: "🛗", color: "#5b3fa0" },
+  { id: "room", label: "Room", icon: "?", iconPlaceholder: "door", color: "#2f6db0" },
+  { id: "facility", label: "Facility", icon: "?", iconPlaceholder: "location-pin", color: "#2e7d46" },
+  { id: "exit", label: "Emergency Exit", icon: "?", iconPlaceholder: "emergency-exit", color: "#c62a2c" },
+  { id: "hydrant", label: "Fire Hydrant / Extinguisher", icon: "?", iconPlaceholder: "fire-extinguisher", color: "#b5701c" },
+  { id: "elevator", label: "Elevator", icon: "?", iconPlaceholder: "elevator", color: "#5b3fa0" },
 ];
 
 // A single-floor "elevator" can't connect anywhere, so it isn't a real

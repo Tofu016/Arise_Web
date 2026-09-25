@@ -8,6 +8,7 @@ import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { useBlurReview } from "../../hooks/useBlurReview";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
+import IconPlaceholder from "../../components/IconPlaceholder";
 
 const defaultFilters = {
   building: "all",
@@ -180,7 +181,7 @@ export default function RoomEditorPage() {
         return;
       }
       if (isRoomNameTaken(trimmedTitle, nodes, node.id, selectedRoom)) {
-        alert(`"${trimmedTitle}" is already used by another room — room names must be unique.`);
+        alert(`"${trimmedTitle}" is already used by another room. Room names must be unique.`);
         return;
       }
     }
@@ -252,7 +253,7 @@ export default function RoomEditorPage() {
 
         {node && rooms.length === 0 && (
           <p className="empty-hint">
-            "{node.name}" has no rooms served yet — add one under "Rooms served" in Node Editor first.
+            "{node.name}" has no rooms served yet. Add one under "Rooms served" in Node Editor first.
           </p>
         )}
 
@@ -283,7 +284,7 @@ export default function RoomEditorPage() {
                   <input type="text" value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} />
                 </label>
                 <p className="field-hint">
-                  Renaming here updates both "Rooms served" on this node and this room's saved details together —
+                  Renaming here updates both "Rooms served" on this node and this room's saved details together;
                   room names must stay unique across the whole campus.
                 </p>
 
@@ -315,7 +316,7 @@ export default function RoomEditorPage() {
                 </label>
 
                 <label>
-                  🔗 Link
+                  <IconPlaceholder name="link-chain" /> Link
                   <input
                     type="text"
                     value={link}
@@ -324,7 +325,7 @@ export default function RoomEditorPage() {
                     className="room-edit-link-input"
                   />
                 </label>
-                <p className="field-hint">Optional — shown as a clickable link on the room's public panel.</p>
+                <p className="field-hint">Optional: shown as a clickable link on the room's public panel.</p>
               </div>
             </div>
 
@@ -336,7 +337,7 @@ export default function RoomEditorPage() {
                   <span className="field-hint">
                     {uploadState === "uploading" && "Uploading…"}
                     {uploadState === "done" && "✓ Uploaded"}
-                    {uploadState === "error" && "⚠ Upload failed — check Storage rules/connection."}
+                    {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
                     {uploadState === "idle" && !photoPath && "No photo set yet."}
                   </span>
                 </label>
@@ -347,7 +348,7 @@ export default function RoomEditorPage() {
                     onClick={() => handleReblur(photoPath, setPhotoPath, setPhotoVersion)}
                     disabled={uploadState === "uploading"}
                   >
-                    ✏️ Edit blur regions on this photo
+                    <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
                   </button>
                 )}
                 {/* Always shows a preview-sized box, even with no photo set
@@ -372,12 +373,12 @@ export default function RoomEditorPage() {
                   <span className="field-hint">
                     {upload360State === "uploading" && "Uploading…"}
                     {upload360State === "done" && "✓ Uploaded"}
-                    {upload360State === "error" && "⚠ Upload failed — check Storage rules/connection."}
+                    {upload360State === "error" && "⚠ Upload failed: check Storage rules/connection."}
                     {upload360State === "idle" && !photo360Path && "No 360° photo set yet."}
                   </span>
                 </label>
                 <p className="field-hint">
-                  Used by the mobile app's AR placard scanner — separate from the room photo above.
+                  Used by the mobile app's AR placard scanner, separate from the room photo above.
                 </p>
                 {photo360Path && (
                   <button
@@ -386,7 +387,7 @@ export default function RoomEditorPage() {
                     onClick={() => handleReblur(photo360Path, setPhoto360Path, setPhoto360Version)}
                     disabled={upload360State === "uploading"}
                   >
-                    ✏️ Edit blur regions on this photo
+                    <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
                   </button>
                 )}
                 <div className="room-editor-photo-preview-box">

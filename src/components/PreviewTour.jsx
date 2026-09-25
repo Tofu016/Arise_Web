@@ -68,7 +68,7 @@ export default function PreviewTour({ nodes, startNodeId, onClose }) {
     <div className="modal-overlay">
       <div className="modal preview-modal">
         <div className="preview-header">
-          <h3>Node Preview — {index + 1} / {sorted.length}</h3>
+          <h3>Node Preview: {index + 1} / {sorted.length}</h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 
@@ -115,7 +115,7 @@ export default function PreviewTour({ nodes, startNodeId, onClose }) {
             <p>
               No photo found for <strong>{current.name}</strong>.<br />
               {current.photo
-                ? <>Its photo reference (<code>{current.photo}</code>) didn't load — the file may have been moved, deleted, or never actually uploaded to Storage.</>
+                ? <>Its photo reference (<code>{current.photo}</code>) didn't load. The file may have been moved, deleted, or never actually uploaded to Storage.</>
                 : "This node has no photo set yet."}
             </p>
             <button className="primary" onClick={() => setShowWarning(false)}>OK, continue</button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import IconPlaceholder from "../components/IconPlaceholder";
 
 // New page — there was no equivalent of this in the original app at
 // all. Firebase's sendPasswordResetEmail() sends people to Firebase's
@@ -54,10 +55,10 @@ export default function ResetPassword() {
     return (
       <div className="auth-page">
         <div className="auth-card auth-card-centered">
-          <div className="auth-icon-badge">⚠️</div>
+          <div className="auth-icon-badge"><IconPlaceholder name="warning-triangle" /></div>
           <h1>Invalid reset link</h1>
           <p className="field-hint">
-            This link is missing its reset token — please use the link from your password reset email,
+            This link is missing its reset token. Please use the link from your password reset email,
             or request a new one.
           </p>
           <p className="auth-switch">
@@ -71,7 +72,7 @@ export default function ResetPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card auth-card-centered">
-        <div className="auth-icon-badge">🔑</div>
+        <div className="auth-icon-badge"><IconPlaceholder name="key" /></div>
         <h1>Choose a new password</h1>
 
         {done ? (

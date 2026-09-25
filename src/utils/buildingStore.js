@@ -98,7 +98,7 @@ export async function addCustomBuilding({ name, floorCount, reservedIds: _reserv
     throw new Error("Floor count must be a whole number of at least 1.");
   }
   if (count > 100) {
-    throw new Error("Floor count seems too high — double check it.");
+    throw new Error("Floor count seems too high. Double check it.");
   }
 
   const body = { name: trimmedName, floor_count: count };
@@ -138,7 +138,7 @@ export async function updateBuilding(id, { name, floorCount, campusId }) {
     if (!Number.isFinite(count) || count < 1) {
       throw new Error("Floor count must be a whole number of at least 1.");
     }
-    if (count > 100) throw new Error("Floor count seems too high — double check it.");
+    if (count > 100) throw new Error("Floor count seems too high. Double check it.");
     patch.floor_count = count;
   }
   // Empty string is meaningful here, not "unset" — it tells the backend to

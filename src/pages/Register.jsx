@@ -61,7 +61,7 @@ export default function Register() {
           Join <span className="auth-accent">ARISE</span>
         </h1>
         <p>
-          Create an account to start exploring campus in 360° — search rooms,
+          Create an account to start exploring campus in 360°: search rooms,
           walk through buildings, and get step-by-step directions.
         </p>
       </div>

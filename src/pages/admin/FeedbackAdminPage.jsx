@@ -1,9 +1,9 @@
 import { useFeedback } from "../../hooks/useFeedback";
 
 function formatDate(createdAt) {
-  if (!createdAt) return "—";
+  if (!createdAt) return "N/A";
   const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 

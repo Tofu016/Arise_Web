@@ -181,6 +181,36 @@ button.primary {
      button-styled-as-a-link situation elsewhere in this file. */
   text-decoration: none;
 }
+/* Branding-asset icons (map, account, etc.) sub in for the plain emoji
+   this rail used to use; sized off the parent's font-size so they still
+   scale correctly at every place this same icon value gets rendered
+   (rail button, flyout row, hover-preview list). */
+.admin-sidebar-icon-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: middle;
+}
+/* Same idea as .admin-sidebar-icon-img, generalized for a branding-asset
+   icon inline with regular body text (room location line, etc.) — sized
+   off the current font-size so it lines up with the text around it. */
+.inline-icon-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: -0.15em;
+}
+/* Stand-in for a real icon that hasn't been supplied yet — same sizing as
+   .admin-sidebar-icon-img/.inline-icon-img, but visually flagged (dashed
+   magenta) so it's obvious in the running app which icons still need a
+   real asset. Search for "icon-placeholder.svg" to find every use. */
+.icon-placeholder-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: -0.15em;
+  opacity: 0.85;
+}
 .admin-sidebar-icon-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border);

@@ -35,7 +35,7 @@ export default function PhotoCoverageAdminPage() {
     <div className="photo-coverage-page">
       <h2 className="admin-page-heading">Photo Coverage</h2>
       <p className="field-hint">
-        Which nodes and tour stops still need a 360° photo uploaded — a node or stop with no photo has nothing
+        Which nodes and tour stops still need a 360° photo uploaded. A node or stop with no photo has nothing
         for a visitor to actually see there.
       </p>
 

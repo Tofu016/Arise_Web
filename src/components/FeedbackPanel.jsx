@@ -23,7 +23,7 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
 
   const body = f.submitted ? (
     <p className="feedback-panel-thanks">
-      Your feedback helps us improve ARISE — thanks for taking the time to share it.
+      Your feedback helps us improve ARISE. Thanks for taking the time to share it.
     </p>
   ) : (
     <form onSubmit={f.submit}>

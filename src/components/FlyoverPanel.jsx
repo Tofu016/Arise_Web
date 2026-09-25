@@ -139,7 +139,7 @@ export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
         </div>
 
         {routeError && (
-          <p className="flyover-note">Showing a straight-line estimate — the routing service didn't respond.</p>
+          <p className="flyover-note">Showing a straight-line estimate: the routing service didn't respond.</p>
         )}
 
         <button className="flyover-skip primary" onClick={handleSkip}>

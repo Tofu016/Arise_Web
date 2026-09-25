@@ -1,6 +1,8 @@
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
 import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import locationIcon from "../assets/icons/location.svg";
+import IconPlaceholder from "./IconPlaceholder";
 
 // The kiosk view's room information card. Shares the KioskDialog footprint
 // (the top half of the panorama band, closed by a centered ✕ underneath) so
@@ -37,7 +39,7 @@ export default function KioskRoomCard({ room, onClose, onGetDirections, onView36
               <div className="room-card-photo-placeholder">Loading photo…</div>
             )
           ) : (
-            <div className="room-card-photo-placeholder">📷 No photo yet</div>
+            <div className="room-card-photo-placeholder"><IconPlaceholder name="camera" /> No photo yet</div>
           )}
         </div>
 
@@ -47,7 +49,7 @@ export default function KioskRoomCard({ room, onClose, onGetDirections, onView36
             {placard?.use && <span className="room-card-badge">{placard.use}</span>}
             {node && (
               <p className="room-card-location">
-                📍 {buildingLabel(node.building)} · {floorLabel(node.floor)} · near {node.name}
+                <img src={locationIcon} alt="" className="inline-icon-img" /> {buildingLabel(node.building)} · {floorLabel(node.floor)} · near {node.name}
               </p>
             )}
             {placard?.roomDescription && (

@@ -172,7 +172,7 @@ Reduce the floor count anyway?`)) {
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
               <span className="field-hint">
-                Floors will be numbered 1 through the count you enter — you can rename/relabel individual floors later if needed.
+                Floors will be numbered 1 through the count you enter. You can rename/relabel individual floors later if needed.
               </span>
             </label>
 
@@ -185,14 +185,14 @@ Reduce the floor count anyway?`)) {
                 ))}
               </select>
               <span className="field-hint">
-                Group this building with others that share a physical campus. Any building can be joined this way — there's no separate "campus" to create first.
+                Group this building with others that share a physical campus. Any building can be joined this way; there's no separate "campus" to create first.
               </span>
             </label>
 
             <label>
               Real-world location <span className="field-hint" style={{ display: "inline" }}>(optional)</span>
               <span className="field-hint">
-                Only needed for a building on a physically separate campus — powers cross-campus directions on the minimap. Click the map to set it.
+                Only needed for a building on a physically separate campus: powers cross-campus directions on the minimap. Click the map to set it.
               </span>
             </label>
             <div className="building-location-picker">

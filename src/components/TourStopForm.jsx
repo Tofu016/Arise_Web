@@ -5,6 +5,7 @@ import { useAutoId } from "../hooks/useAutoId";
 import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
 import { useToast } from "../context/ToastContext";
+import IconPlaceholder from "./IconPlaceholder";
 
 const emptyDraft = () => ({
   id: "",
@@ -135,7 +136,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
 
   const handleSave = () => {
     if (uploadState === "uploading") {
-      setErrors(["The photo is still uploading — wait for it to finish before saving."]);
+      setErrors(["The photo is still uploading. Wait for it to finish before saving."]);
       return;
     }
     const trimmedName = draft.name.trim();
@@ -164,11 +165,11 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         ID
         <input type="text" value={draft.id} onChange={field("id")} placeholder="tour_main_gate_01" />
         {mode === "create" && idAutoManaged && (
-          <span className="field-hint">Auto-filled from Name — edit freely for a more descriptive ID.</span>
+          <span className="field-hint">Auto-filled from Name: edit freely for a more descriptive ID.</span>
         )}
         {showIdSuggestion && (
           <span className="field-hint">
-            Name changed since this stop was created — suggested ID: <code>{idSuggestion}</code>{" "}
+            Name changed since this stop was created, suggested ID: <code>{idSuggestion}</code>{" "}
             <a href="#" onClick={(e) => { e.preventDefault(); applyIdSuggestion(); }}>Rename to match?</a>
           </span>
         )}
@@ -182,13 +183,13 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
       <label>
         Section
         <select value={draft.section} onChange={field("section")}>
-          <option value="">— No section —</option>
+          <option value="">(No section)</option>
           {sections.map((sec) => (
             <option key={sec.id} value={sec.id}>{sec.label}</option>
           ))}
         </select>
         <span className="field-hint">
-          Optional — a stop with no section groups under "Uncategorized" on the public tour page's sidebar.
+          Optional: a stop with no section groups under "Uncategorized" on the public tour page's sidebar.
         </span>
       </label>
 
@@ -198,7 +199,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         <span className="field-hint">
           {uploadState === "uploading" && "Uploading…"}
           {uploadState === "done" && "✓ Uploaded"}
-          {uploadState === "error" && "⚠ Upload failed — check Storage rules/connection."}
+          {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
           {uploadState === "idle" && !draft.photo && "No photo set yet."}
         </span>
       </label>
@@ -210,7 +211,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
           onClick={handleReblur}
           disabled={uploadState === "uploading"}
         >
-          ✏️ Edit blur regions on this photo
+          <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
         </button>
       )}
 
