@@ -364,11 +364,11 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           <span>Starting node for this floor</span>
         </label>
         <span className="field-hint">
-          Where the kiosk drops visitors who pick this building floor. Only one per floor
+          Where visitors land on this floor. Only one per floor
           {currentStart && currentStart.id !== draft.id
             ? `, saving this replaces ${currentStart.id}.`
             : "."}
-          {" "}The camera view they land facing is set from the Virtual Map Navigation Editor, not here.
+          {" "}Camera view is set in Navigation Editor.
         </span>
       </div>
 
@@ -383,9 +383,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             <span>Building entrance</span>
           </label>
           <span className="field-hint">
-            The one node that represents this specific building. Independent of Campus entrance below:
-            a node can be both, either, or neither. Offered as a Kiosk floor-screen shortcut. Only one
-            per building
+            This building's one main entrance, shown as a Kiosk shortcut. Only one per building
             {currentBuildingEntrance && currentBuildingEntrance.id !== draft.id
               ? `, saving this replaces ${currentBuildingEntrance.id}.`
               : "."}
@@ -404,9 +402,8 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             <span>Campus entrance</span>
           </label>
           <span className="field-hint">
-            The one node that represents this whole campus (GD1/GD2/GD3 share a single campus entrance;
-            Digital Campus has its own). Powers the cross-campus minimap and a Kiosk floor-screen
-            shortcut. Only one per campus
+            This campus's one main entrance (GD1/GD2/GD3 share one; Digital Campus has its own). Only one
+            per campus
             {currentCampusEntrance && currentCampusEntrance.id !== draft.id
               ? `, saving this replaces ${currentCampusEntrance.id}.`
               : "."}

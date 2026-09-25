@@ -21,6 +21,7 @@ import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import directionsIcon from "../assets/icons/directions.svg";
+import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useOnboardingHints } from "../hooks/useOnboardingHints";
@@ -109,16 +110,12 @@ function MainPageContent({ onReset }) {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
 
-  // First-run coachmarks (see hooks/useOnboardingHints.js). Different
-  // sequence per layout since the controls differ (WASD only applies on
-  // desktop; the kiosk has one dock button instead of a separate menu and
-  // directions button) — the kiosk shows them one at a time (activeId),
-  // the desktop shows every remaining one at once (activeIds); see the
-  // render below.
-  const menuBtnRef = useRef(null);
-  const directionsBtnRef = useRef(null);
+  // First-run coachmarks (see hooks/useOnboardingHints.js). Kiosk-only: it
+  // shows them one at a time (activeId) — see the render below. The desktop
+  // regular view has no starting-instructions sequence at all (empty order),
+  // so it never accumulates any activeId/activeIds to show.
   const kioskDockBtnRef = useRef(null);
-  const onboarding = useOnboardingHints(compact ? ["move", "dock"] : ["move", "menu", "directions"]);
+  const onboarding = useOnboardingHints(compact ? ["move", "dock"] : []);
 
   // Kiosk End Session button: whether feedback was already sent this
   // session, regardless of how the feedback dialog was reached (the FAB's
@@ -146,16 +143,6 @@ function MainPageContent({ onReset }) {
     }, FADE_MS);
   };
 
-  // Desktop only: hints left untouched for a full minute fade away on
-  // their own, rather than sitting there forever.
-  useEffect(() => {
-    if (compact || onboarding.activeIds.length === 0) return;
-    const ids = onboarding.activeIds;
-    const timer = setTimeout(() => ids.forEach(fadeOutHint), 60000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compact, onboarding.activeIds.join(",")]);
-
   // What's on screen over the panorama — the floating panel, the mobile/kiosk
   // dock, feedback, a room's 360 view, the building dialog, the walk bar —
   // lives in one module; see utils/overlay.js. Blurring the search input
@@ -177,11 +164,6 @@ function MainPageContent({ onReset }) {
   // tapping the tooltip's button — dismiss it the moment that happens,
   // rather than leaving it to reappear (once nothing else is covering the
   // screen again) until it's explicitly dismissed.
-  useEffect(() => {
-    if (panelMode === "menu") onboarding.dismiss("menu");
-    else if (panelMode === "directions") onboarding.dismiss("directions");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelMode, onboarding.dismiss]);
   useEffect(() => {
     if (mobileDockOpen) onboarding.dismiss("dock");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -600,20 +582,12 @@ function MainPageContent({ onReset }) {
   // once they're past the start/building/floor screens.
   const hintsAllowed = initialLoadDone && !!current && !overlayOpen && !kiosk.awaitingStart;
 
-  // Text and target per hint id, shared by both layouts' render below.
+  // Text and target per hint id — kiosk-only now (see onboarding above).
   const hintCoachmarkProps = {
     move: {
-      raised: compact,
-      text: compact
-        ? "Touch and drag to look around. Tap a glowing arrow to walk that way."
-        : "Drag to look around. Use WASD or the arrow keys to walk and turn.",
+      raised: true,
+      text: "Touch and drag to look around. Tap a glowing arrow to walk that way.",
     },
-    menu: {
-      targetRef: menuBtnRef,
-      align: "left",
-      text: "Open the menu for buildings, entrances and more.",
-    },
-    directions: { targetRef: directionsBtnRef, text: "Tap here to get directions to any room." },
     dock: { targetRef: kioskDockBtnRef, text: "Tap here for search, directions and more." },
   };
 
@@ -900,7 +874,7 @@ function MainPageContent({ onReset }) {
   );
 
   return (
-    <div className="main-page-layout">
+    <div className={"main-page-layout" + (compact ? "" : " tour-shell")}>
       {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={flow.close} />}
       {overlay.elevatorPicker && (
         <div className="modal-overlay elevator-picker-overlay" onClick={overlay.closeElevatorPicker}>
@@ -990,6 +964,11 @@ function MainPageContent({ onReset }) {
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
       <div className="main-page-viewer">
+        {!compact && (
+          <header className="tour-shell-header">
+            <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
+          </header>
+        )}
         {!current ? (
           <div className="main-page-status">
             <p>No campus locations available yet.</p>
@@ -1334,189 +1313,196 @@ function MainPageContent({ onReset }) {
             )}
           </div>
         ) : (
-          <div className="main-page-screen">
-              {initialLoadDone && !sceneLive && <div className="photo-transition-indicator">Loading…</div>}
-              <PanoramaNav
-                sceneKey={current.id}
-                url={photoUrl}
-                ready={photoReady}
-                onLiveChange={handleLiveChange}
-                hotspots={hotspots}
-                markers={markers}
-                onNavigate={goTo}
-                onRoomMarkerClick={handleRoomMarkerClick}
-                onElevatorMarkerClick={handleElevatorMarkerClick}
-                onError={() => {}}
-                placing={false}
-                onPlaceAngle={() => {}}
-                initialYaw={entryYaw}
-                initialPitch={entryPitch}
-                highlightedId={nextStopId}
-                highlightedMarkerId={nextElevator?.markerId ?? null}
-                autoPan={!!nextStopId}
-                keyboardNav
-                onBack={goBack}
-              />
-
-              <div className="floating-title-wrap">
-                <div className="floating-title-pill">
-                  {history.length > 0 && (
-                    <button className="floating-title-back" onClick={goBack} title="Back">←</button>
-                  )}
-                  <span>{current.name}</span>
+          <div className="tour-shell-body">
+            <div className="tour-shell-viewport">
+              {/* Static left sidebar — every function module (search,
+                  buildings/entrances, room card, directions) now renders
+                  here instead of as a floating panel over the panorama. */}
+              <aside className="app-sidebar">
+                <div className="app-sidebar-search">
+                  <div className="floating-search-bar">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      inputMode="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => overlay.showPanel("search")}
+                      onBlur={overlay.blurSearch}
+                      placeholder="Search a room..."
+                      aria-label="Search"
+                    />
+                    <span className="floating-search-icon">{PLACEHOLDER("search-magnifier")}</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Floating overlay UI — rail, search bar, and the single
-                  floating panel — all positioned over the panorama itself,
-                  Maps-style, rather than pushing it aside. */}
-              <div className="floating-rail">
-                <button ref={menuBtnRef} className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
-                <div className="floating-rail-spacer" />
-              </div>
+                <div className="app-sidebar-content">
+                  {panelMode === "search" && searchResultsContent}
 
-              {/* Moved out of the rail — fixed position, stacked directly
-                  ABOVE where the minimap sits (same left offset, just
-                  above its top edge) rather than beside it at the same
-                  height. Position stays fixed regardless of whether the
-                  minimap is actually showing right now — a safety button
-                  shouldn't jump around based on unrelated state. */}
-              <button
-                ref={directionsBtnRef}
-                className="floating-rail-btn floating-exit-btn-stacked"
-                onClick={flow.open}
-                title="Get directions"
-              >
-                <img src={directionsIcon} alt="" className="inline-icon-img" />
-              </button>
+                  {panelMode === "menu" && (
+                    <div className="sidebar-card">
+                      <label className="sidebar-field-label">
+                        Building
+                        <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
+                          {allBuildings().map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.label}{b.id === current?.building ? " (you are here)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-              {/* Client-requested: bottom-left, alongside the exit
-                  button — same stacking convention (same left offset,
-                  positioned just above the element below it), one more
-                  step up from the exit button. */}
-              <button
-                className="floating-rail-btn floating-feedback-btn"
-                onClick={overlay.openFeedback}
-                title="Give feedback"
-              >
-                {PLACEHOLDER("chat-bubble")}
-              </button>
+                      <div className="sidebar-entrances">
+                        <h3 className="sidebar-subheading">Entrances</h3>
+                        {entrances.length === 0 && (
+                          <p className="empty-hint">No entrances found for this building yet.</p>
+                        )}
+                        <div className="entrance-list">
+                          {entrances.map((e) => (
+                            <button
+                              key={e.id}
+                              className={"entrance-btn" + (e.id === currentId ? " active" : "")}
+                              onClick={() => jumpToSearchResult(e.id)}
+                            >
+                              {e.name}
+                              {e.campusEntrance && <span className="entrance-btn-tag">Campus Entrance</span>}
+                              {!e.campusEntrance && e.buildingEntrance && (
+                                <span className="entrance-btn-tag">Building Entrance</span>
+                              )}
+                              <span className="entrance-btn-sub">{buildingLabel(e.building)} · {floorLabel(e.floor)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-              {/* Moved out of the rail and up to the top-right — its own
-                  popover now needs to open DOWNWARD instead of upward
-                  (see .floating-account-wrap-top override), since it's no
-                  longer sitting at the bottom of the screen where opening
-                  upward made sense. */}
-              {/* Hidden entirely for a logged-out visitor — same
-                  reasoning as the mobile account button above. */}
-              {user && (
-                <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
-                  {accountMenuOpen && (
-                    <div className="account-popover">
-                      <span className="account-popover-name" title={displayName}>{displayName}</span>
-                      {role === "admin" && (
-                        <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
-                      )}
-                      <button onClick={signOut} className="subtle account-signout">Sign out</button>
+                      <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
+                        {PLACEHOLDER("question-help")} How to use this tour
+                      </button>
                     </div>
                   )}
-                  <button
-                    className="floating-rail-btn floating-account-btn"
-                    onClick={() => setAccountMenuOpen((o) => !o)}
-                    title={displayName}
-                  >
-                    {initials}
-                  </button>
+
+                  {panelMode === "room" && selectedRoomCard && (
+                    <RoomCard
+                      room={selectedRoomCard}
+                      onClose={overlay.closeRoomCard}
+                      onGetDirections={handleRoomGetDirections}
+                      onView360={handleRoomView360}
+                    />
+                  )}
+
+                  {panelMode === "directions" && directions && !arrived && (
+                    <div className="directions-panel">
+                      {directionsContent}
+                    </div>
+                  )}
+
+                  {!panelMode && (
+                    <p className="app-sidebar-empty-hint">
+                      Search for a room, or open the menu for buildings and entrances.
+                    </p>
+                  )}
                 </div>
-              )}
+              </aside>
 
-              <div className="floating-search-wrap">
-                <div className="floating-search-bar">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    inputMode="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => overlay.showPanel("search")}
-                    onBlur={overlay.blurSearch}
-                    placeholder="Search a room..."
-                    aria-label="Search"
-                  />
-                  <span className="floating-search-icon">{PLACEHOLDER("search-magnifier")}</span>
-                </div>
-              </div>
+              {/* Panorama container — the containing block for every
+                  floating auxiliary button below (rail, exit, feedback,
+                  account): all absolutely positioned relative to THIS
+                  element, not the window, so they stay scoped to the
+                  panorama now that it's boxed into its own column. */}
+              <div className="main-page-screen">
+                {initialLoadDone && !sceneLive && <div className="photo-transition-indicator">Loading…</div>}
+                <PanoramaNav
+                  sceneKey={current.id}
+                  url={photoUrl}
+                  ready={photoReady}
+                  onLiveChange={handleLiveChange}
+                  hotspots={hotspots}
+                  markers={markers}
+                  onNavigate={goTo}
+                  onRoomMarkerClick={handleRoomMarkerClick}
+                  onElevatorMarkerClick={handleElevatorMarkerClick}
+                  onError={() => {}}
+                  placing={false}
+                  onPlaceAngle={() => {}}
+                  initialYaw={entryYaw}
+                  initialPitch={entryPitch}
+                  highlightedId={nextStopId}
+                  highlightedMarkerId={nextElevator?.markerId ?? null}
+                  autoPan={!!nextStopId}
+                  keyboardNav
+                  onBack={goBack}
+                />
 
-              {panelMode && (
-                <>
-                  <div className="floating-panel-backdrop" />
-                  <div className={"floating-panel" + (panelMode === "search" ? " floating-panel-search" : "")}>
-                    {panelMode === "search" && (
-                      <>
-                        {searchResultsContent}
-                      </>
+                <div className="floating-title-wrap">
+                  <div className="floating-title-pill">
+                    {history.length > 0 && (
+                      <button className="floating-title-back" onClick={goBack} title="Back">←</button>
                     )}
-
-                    {panelMode === "menu" && (
-                      <div className="sidebar-card">
-                        <label className="sidebar-field-label">
-                          Building
-                          <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
-                            {allBuildings().map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.label}{b.id === current?.building ? " (you are here)" : ""}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <div className="sidebar-entrances">
-                          <h3 className="sidebar-subheading">Entrances</h3>
-                          {entrances.length === 0 && (
-                            <p className="empty-hint">No entrances found for this building yet.</p>
-                          )}
-                          <div className="entrance-list">
-                            {entrances.map((e) => (
-                              <button
-                                key={e.id}
-                                className={"entrance-btn" + (e.id === currentId ? " active" : "")}
-                                onClick={() => jumpToSearchResult(e.id)}
-                              >
-                                {e.name}
-                                {e.campusEntrance && <span className="entrance-btn-tag">Campus Entrance</span>}
-                                {!e.campusEntrance && e.buildingEntrance && (
-                                  <span className="entrance-btn-tag">Building Entrance</span>
-                                )}
-                                <span className="entrance-btn-sub">{buildingLabel(e.building)} · {floorLabel(e.floor)}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
-                          {PLACEHOLDER("question-help")} How to use this tour
-                        </button>
-                      </div>
-                    )}
-
-                    {panelMode === "room" && selectedRoomCard && (
-                      <RoomCard
-                        room={selectedRoomCard}
-                        onClose={overlay.closeRoomCard}
-                        onGetDirections={handleRoomGetDirections}
-                        onView360={handleRoomView360}
-                      />
-                    )}
-
-                    {panelMode === "directions" && directions && !arrived && (
-                      <div className="directions-panel">
-                        {directionsContent}
-                      </div>
-                    )}
+                    <span>{current.name}</span>
                   </div>
-                </>
-              )}
+                </div>
+
+                <div className="floating-rail">
+                  <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
+                  <div className="floating-rail-spacer" />
+                </div>
+
+                {/* Moved out of the rail — fixed position, stacked directly
+                    ABOVE where the minimap sits (same left offset, just
+                    above its top edge) rather than beside it at the same
+                    height. Position stays fixed regardless of whether the
+                    minimap is actually showing right now — a safety button
+                    shouldn't jump around based on unrelated state. */}
+                <button
+                  className="floating-rail-btn floating-exit-btn-stacked"
+                  onClick={flow.open}
+                  title="Get directions"
+                >
+                  <img src={directionsIcon} alt="" className="inline-icon-img" />
+                </button>
+
+                {/* Client-requested: bottom-left, alongside the exit
+                    button — same stacking convention (same left offset,
+                    positioned just above the element below it), one more
+                    step up from the exit button. */}
+                <button
+                  className="floating-rail-btn floating-feedback-btn"
+                  onClick={overlay.openFeedback}
+                  title="Give feedback"
+                >
+                  {PLACEHOLDER("chat-bubble")}
+                </button>
+
+                {/* Moved out of the rail and up to the top-right — its own
+                    popover now needs to open DOWNWARD instead of upward
+                    (see .floating-account-wrap-top override), since it's no
+                    longer sitting at the bottom of the screen where opening
+                    upward made sense. */}
+                {/* Hidden entirely for a logged-out visitor — same
+                    reasoning as the mobile account button above. */}
+                {user && (
+                  <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
+                    {accountMenuOpen && (
+                      <div className="account-popover">
+                        <span className="account-popover-name" title={displayName}>{displayName}</span>
+                        {role === "admin" && (
+                          <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
+                        )}
+                        <button onClick={signOut} className="subtle account-signout">Sign out</button>
+                      </div>
+                    )}
+                    <button
+                      className="floating-rail-btn floating-account-btn"
+                      onClick={() => setAccountMenuOpen((o) => !o)}
+                      title={displayName}
+                    >
+                      {initials}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
         )}
       </div>
 
@@ -1561,12 +1547,11 @@ function MainPageContent({ onReset }) {
         }}
       />
 
-      {/* First-run coachmarks — see hooks/useOnboardingHints.js. Kiosk shows
-          one at a time (activeId); desktop shows every remaining one at
-          once (activeIds), since none of them dim the screen or otherwise
-          get in each other's way. */}
-      {hintsAllowed &&
-        (compact ? [onboarding.activeId].filter(Boolean) : onboarding.activeIds).map((id) => (
+      {/* First-run coachmarks — see hooks/useOnboardingHints.js. Kiosk-only:
+          shown one at a time (activeId). The desktop regular view has no
+          starting-instructions sequence. */}
+      {hintsAllowed && compact &&
+        [onboarding.activeId].filter(Boolean).map((id) => (
           <Coachmark
             key={id}
             {...hintCoachmarkProps[id]}

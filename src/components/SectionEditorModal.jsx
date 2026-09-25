@@ -160,7 +160,7 @@ export default function SectionEditorModal({ onClose }) {
           <button className="primary" onClick={handleCreate} disabled={creating || uploadState === "uploading"}>
             {creating ? "Creating…" : "Create section"}
           </button>
-          <button onClick={onClose}>Close</button>
+          <button className="admin-btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

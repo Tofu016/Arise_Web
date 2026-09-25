@@ -109,4 +109,40 @@
     var(--sdca-maroon) 55%,
     var(--sdca-maroon-dark)
   );
+
+  /* =====================================================================
+     ADMIN CMS ONLY — spacing scale + a true destructive red.
+     The admin CMS doesn't need to follow the public brand guide as
+     strictly (see BRAND.md's public/kiosk scope): it gets its own
+     spacing scale and a red distinct from --accent, so a destructive
+     action never reads as identical to a primary creation action.
+     Referenced only from index.css rules scoped under .admin-layout, or
+     from classes that are exclusively used inside the admin CMS.
+     ===================================================================== */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --admin-radius: 8px;
+  --admin-radius-lg: 12px;
+  --admin-danger: #c0362c;
+  --admin-danger-hover: #9e2a22;
+  --admin-danger-surface: #fbeae8;
+  --admin-danger-border: #e2a099;
+  --admin-danger-text: #7a231c;
+
+  /* =====================================================================
+     PUBLIC TOUR — DESKTOP SHELL ONLY.
+     The boxed, dashboard-style frame around the panorama viewer (header,
+     gray page background, white-margined viewport, dark sidebar) is a
+     public-tour desktop-specific look, distinct from the white/maroon
+     surfaces used everywhere else. Scoped to classes only rendered under
+     .tour-shell (see MainPage.jsx) — the Compact/kiosk layout never uses
+     these and keeps its existing full-bleed look.
+     ===================================================================== */
+  --tour-page-bg: var(--gray-100);
+  --tour-sidebar-bg: var(--gray-700);
+  --tour-sidebar-text: var(--white);
 }

@@ -127,7 +127,7 @@ export default function AdminLayout() {
         <div className="admin-header-side admin-header-account">
           <div className="account-avatar">{initials}</div>
           <span className="account-name" title={displayName}>{displayName}</span>
-          <button onClick={signOut} className="subtle">Sign out</button>
+          <button onClick={signOut} className="admin-btn-secondary">Sign out</button>
         </div>
       </div>
 

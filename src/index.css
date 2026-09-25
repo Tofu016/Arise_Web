@@ -523,13 +523,9 @@ button.primary {
   font-family: var(--font-sans-display);
   font-size: 16px;
 }
-/* The starting node's own drop-in view, reusing .link-row's layout — its
-   text runs longer than a link name, so it wraps instead of ellipsizing. */
+/* The starting node's own drop-in view, reusing .link-row's layout. */
 .starting-view-row {
   margin-bottom: 12px;
-}
-.starting-view-row .link-name {
-  white-space: normal;
 }
 /* Two independently-scrolling lists side by side — Links added and
    Markers added each get their own scroll region, not one shared scroll
@@ -823,13 +819,23 @@ button.primary {
 }
 .node-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid transparent;
   transition: background 0.15s ease;
+  /* .node-list is itself a flex column with a bounded, scrolling height
+     (overflow-y: auto). Without this, a flex child's default
+     flex-shrink: 1 kicks in the moment total row height exceeds that
+     bound (i.e. once there are enough nodes to scroll) and every row
+     gets proportionally squeezed down toward its min-height instead of
+     just scrolling at natural size — which is what actually clipped
+     wrapped names/meta/rooms text against the row's own border, and why
+     it only showed up once a filter (e.g. building "All") pushed the
+     list past one screenful. */
+  flex-shrink: 0;
 }
 .node-row:hover {
   background: var(--surface-hover);
@@ -841,6 +847,7 @@ button.primary {
 .photo-dot {
   width: 8px;
   height: 8px;
+  margin-top: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -850,13 +857,27 @@ button.primary {
 .photo-dot.no-photo {
   background: var(--gray-300);
 }
+/* Without this, a flex child's default min-width:auto refuses to shrink
+   below its text's intrinsic width, so a long name/meta/rooms line pushes
+   past the row's own border. Rather than clipping that text away with an
+   ellipsis, it's allowed to wrap — the row (and its border/separator,
+   which always just matches its content's actual height) grows taller to
+   fit however many lines that takes, instead of hiding the overflow. */
+.node-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 .node-row-name {
   font-size: 13px;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 .node-row-meta {
   font-size: 11px;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 .field-hint {
   display: block;
@@ -970,11 +991,11 @@ button.primary {
 .filter-panel input {
   display: block;
   width: 100%;
-  margin-top: 5px;
-  padding: 7px 8px;
+  margin-top: 6px;
+  padding: 9px 10px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--admin-radius, 6px);
   color: var(--text);
   font-size: 13px;
 }
@@ -986,8 +1007,8 @@ button.primary {
 .filter-panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-md, 12px);
+  margin-bottom: var(--space-sm, 8px);
 }
 .filter-search-field {
   display: block;
@@ -1581,6 +1602,90 @@ button.primary {
   flex: 1;
   position: relative;
 }
+/* ---------- Public tour desktop shell (header + framed, boxed viewport)
+   Compact/kiosk layout renders none of this — .main-page-viewer stays
+   full-bleed there, unchanged. ---------- */
+.tour-shell-header {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: var(--tour-header-height);
+  display: flex;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tour-shell-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+.main-page-layout.tour-shell {
+  /* Kept as named custom properties, not magic numbers, since the modal
+     recentring rule below (.tour-shell .modal-overlay / .flyover-overlay)
+     has to add up to exactly the same offset as the sidebar column and
+     header these values lay out, or a centered dialog's scrim would drift
+     out of alignment with the visible panorama (or darken the header) the
+     moment any one of them is retuned. */
+  --tour-header-height: 61px;
+  --tour-body-pad: 20px;
+  --tour-sidebar-width: 340px;
+  --tour-modal-inset-left: calc(var(--tour-body-pad) + var(--tour-sidebar-width));
+}
+.tour-shell-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: var(--tour-body-pad);
+  background: var(--tour-page-bg);
+}
+/* No container of its own — just the row that puts the sidebar and
+   panorama flush against each other, directly on the gray backdrop above. */
+.tour-shell-viewport {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+}
+.app-sidebar {
+  width: var(--tour-sidebar-width);
+  flex-shrink: 0;
+  background: var(--tour-sidebar-bg);
+  color: var(--tour-sidebar-text);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+.app-sidebar-search {
+  flex-shrink: 0;
+}
+.app-sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.app-sidebar-empty-hint {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  margin: 0;
+}
+/* Recenters AND re-scopes the app's generic centered dialogs (feedback,
+   help, idle prompt, room 360, arrival, elevator picker — all built on
+   .modal-overlay — plus the flyover panel) to the visible panorama
+   instead of the whole window: the scrim now covers exactly that
+   rectangle, excluding the header, the sidebar, and the gray backdrop's
+   margin on every side. Scoped under .tour-shell so kiosk's own
+   .modal-overlay uses (which get .kiosk-raised-overlay instead) are
+   never affected. */
+.main-page-layout.tour-shell .modal-overlay,
+.main-page-layout.tour-shell .flyover-overlay {
+  left: var(--tour-modal-inset-left);
+  top: calc(var(--tour-header-height) + var(--tour-body-pad));
+  right: var(--tour-body-pad);
+  bottom: var(--tour-body-pad);
+}
 /* Shown only while the next photo is still on its way — the current view
    stays up underneath, so this is just a hint, not a blocker. The delay
    keeps it from flashing at all on a fast (prefetched) move. */
@@ -2002,25 +2107,34 @@ button.primary {
   cursor: pointer;
 }
 .add-building-modal {
-  width: 720px;
-  max-width: 92vw;
+  width: 1000px;
+  max-width: 95vw;
 }
 /* Two columns side by side, matching the wireframe — was previously a
    single vertical stack (existing buildings list above the form) before
-   this pass. */
+   this pass. Equal flex (was 1.2/1 favoring the form column) since the
+   existing-buildings column is the one that actually needs the extra
+   horizontal room, for the Move nodes panel's dropdown + button row. */
 .add-building-columns {
   display: flex;
-  gap: 24px;
+  gap: 32px;
   margin-bottom: 14px;
+  align-items: flex-start;
 }
 .add-building-form-col {
-  flex: 1.2;
+  flex: 1;
   min-width: 0;
 }
+/* Generous caps (vh-based, so they scale with the viewport) instead of
+   the old 420px/180px — those were smaller than the modal actually had
+   room for, so the inner list scrolled on its own small max-height while
+   the outer column still had unused space below it. Now the list uses
+   the room it actually has and only scrolls once building count truly
+   exceeds it. */
 .add-building-existing-col {
   flex: 1;
   min-width: 0;
-  max-height: 420px;
+  max-height: 72vh;
   overflow-y: auto;
 }
 .custom-building-list {
@@ -2028,11 +2142,12 @@ button.primary {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 14px;
-  max-height: 180px;
+  max-height: 52vh;
   overflow-y: auto;
 }
 .custom-building-row {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -2043,6 +2158,8 @@ button.primary {
 }
 .custom-building-row span:first-child {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .custom-building-edit {
   flex: 1;
@@ -2124,6 +2241,13 @@ button.primary {
 }
 .building-location-picker .maplibregl-map {
   border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+}
+/* Give the attribution/copyright pill breathing room instead of it
+   touching the map's own edge. */
+.building-location-picker .maplibregl-ctrl-bottom-right {
+  margin: 8px;
 }
 .building-location-readout {
   display: flex;
@@ -2277,6 +2401,7 @@ button.primary {
 }
 .link-row {
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   align-items: center;
   gap: 6px;
@@ -2288,19 +2413,26 @@ button.primary {
   flex-wrap: wrap;
   align-items: flex-start;
 }
+/* Stacks the elevator label above its portal-tag pill instead of running
+   them inline, since .link-name below already handles the wrap-to-fit
+   sizing generically now. */
 .elevator-manage-row .link-name {
-  white-space: normal;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1 1 auto;
 }
+/* flex + min-width: 0 so this can actually shrink below its text's
+   intrinsic width; without it a long link/marker name just pushes past
+   the row's own border/background instead of wrapping, since a nowrap
+   flex item's automatic minimum width is its full unwrapped text width.
+   Wraps and lets the row grow to fit, rather than clipping the name away
+   with an ellipsis. */
 .link-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 12px;
   color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .link-actions {
   display: flex;
@@ -2343,6 +2475,11 @@ button.primary {
   color: var(--text);
   font-size: 12px;
   margin-bottom: 6px;
+}
+.add-link-box select {
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: 12px;
 }
 .add-link-results {
   max-height: 140px;
@@ -2432,6 +2569,7 @@ button.primary {
   font-size: 11px;
   color: var(--warning);
   margin-top: 2px;
+  overflow-wrap: anywhere;
 }
 /* ---------- Auth (login/register/pending/account chip) ---------- */
 .toolbar-spacer {
@@ -2804,6 +2942,7 @@ button.primary {
 }
 .users-row {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -3208,15 +3347,6 @@ button.primary {
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
-.floating-search-wrap {
-  position: absolute;
-  top: 16px;
-  left: 76px;
-  right: 16px;
-  max-width: 520px;
-  z-index: 30;
-  pointer-events: none;
-}
 .floating-search-bar {
   pointer-events: auto;
   position: relative;
@@ -3245,55 +3375,6 @@ button.primary {
   font-size: 14px;
   color: var(--text-muted);
   pointer-events: none;
-}
-/* The search results list matches the (wider) search bar above it and has
-   room for the Go To + Directions buttons. */
-.floating-panel.floating-panel-search {
-  width: 520px;
-}
-.floating-panel-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(32, 27, 27, 0.08);
-  z-index: 25;
-  pointer-events: none;
-}
-.floating-panel {
-  position: absolute;
-  top: 72px;
-  left: 76px;
-  width: 340px;
-  max-width: calc(100vw - 92px);
-  max-height: calc(100% - 88px);
-  overflow-y: auto;
-  /* Opts back into vertical panning against the page-level touch-action:
-     none set on .main-page-layout — this panel genuinely scrolls, that
-     ancestor rule is only meant to stop pinch-zoom/rubber-band on the
-     app chrome as a whole. overscroll-behavior: contain stops an
-     over-scroll here from chaining into (and bouncing) the page behind
-     it once it hits the end of its own content. */
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-2);
-  padding: 14px;
-  z-index: 30;
-}
-.floating-panel .room-search-results {
-  margin-top: 0;
-  border: none;
-  background: transparent;
-  max-height: none;
-  overflow-y: visible;
-  box-shadow: none;
-}
-.floating-panel .room-card {
-  border: none;
-  border-radius: var(--radius-md);
-  margin: -14px;
-  width: calc(100% + 28px);
 }
 .floating-title-wrap {
   position: absolute;
@@ -6026,6 +6107,343 @@ html.kiosk-mode body {
 /* `scale` (not `transform`) so it doesn't clobber the kiosk's translateY centring. */
 @media (prefers-reduced-motion: reduce) {
   .arrival-notice { animation: none; }
+}
+
+/* =====================================================================
+   ADMIN CMS OVERHAUL — unified buttons, spacing and list-row treatment
+   for the /admin section only.
+
+   Everything below either (a) edits a class that is exclusively used
+   inside the admin CMS already (.node-form, .add-building-modal,
+   .link-row, .node-row, .add-link-btn, .admin-*, …), or (b) is scoped
+   under the `.admin-layout` ancestor when it touches a class shared with
+   the public/kiosk UI (.modal, .form-actions, .primary, .danger,
+   .field-hint, …) — the public/kiosk UI keeps following the strict SDCA
+   brand guide (see BRAND.md); only the admin CMS gets this pass.
+   ===================================================================== */
+
+/* ---------- Buttons: one primary, one secondary, one text, one danger ---------- */
+/* Primary (maroon, sparing) — keep the existing .primary/.form-actions
+   .primary look, just unify the radius. Danger gets its OWN red
+   (--admin-danger), distinct from --accent, so "Delete" never looks like
+   "Create" — the exact anti-pattern flagged in the redesign brief. */
+.admin-layout button.primary,
+.admin-layout .form-actions .primary,
+.admin-layout .file-picker-btn,
+.admin-layout .admin-header-nav-btn,
+.admin-layout .node-editor-toolbar > button,
+.admin-layout .add-link-btn {
+  border-radius: var(--admin-radius);
+}
+.admin-layout button.danger,
+.admin-layout .form-actions .danger,
+.admin-layout .custom-building-row button.danger,
+.admin-layout .link-actions button.danger {
+  background: var(--admin-danger);
+  border: 1px solid var(--admin-danger);
+  color: var(--white);
+  border-radius: var(--admin-radius);
+  font-weight: 700;
+}
+.admin-layout button.danger:hover,
+.admin-layout .form-actions .danger:hover,
+.admin-layout .custom-building-row button.danger:hover,
+.admin-layout .link-actions button.danger:hover {
+  background: var(--admin-danger-hover);
+  border-color: var(--admin-danger-hover);
+  color: var(--white);
+}
+/* A standalone, reusable secondary button — outlined neutral, same
+   radius/sizing as .primary, for "Close"/"Cancel"/non-destructive
+   secondary actions that shouldn't compete with the primary action. */
+.admin-btn-secondary {
+  padding: 8px 16px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.admin-btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+/* Text-only button — no border, no fill (the sidebar "Sign out", etc). */
+.admin-btn-text {
+  padding: 7px 14px;
+  border-radius: var(--admin-radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-btn-text:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text);
+}
+/* "+ New Building" / "Node Preview" read as a secondary action next to
+   "+ New Node" — .node-editor-toolbar > button styles every toolbar
+   button as solid maroon by default; this opts specific ones out, so
+   the primary accent color stays sparing rather than covering the
+   whole toolbar in red. */
+.admin-layout .node-editor-toolbar > button.admin-btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.admin-layout .form-actions button {
+  border-radius: var(--admin-radius);
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+/* ---------- Inputs: every <select> gets the same look as a styled
+   <input>, everywhere in the admin CMS (fixes the Campus dropdown, the
+   marker-type picker, etc. rendering as a bare, misaligned native
+   select) ---------- */
+.admin-layout select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.admin-layout select:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+
+/* ---------- Dialog chrome (modal/preview-header/close/error/form-actions) —
+   scoped under .admin-layout since .modal etc. are shared with kiosk
+   dialogs, which keep their own look. Softer card, no thick border,
+   generous padding, bigger title. ---------- */
+.admin-layout .modal {
+  border: none;
+  border-radius: var(--admin-radius-lg);
+  padding: var(--space-xl);
+}
+.admin-layout .preview-header {
+  margin-bottom: var(--space-lg);
+}
+.admin-layout .preview-header h3 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--text);
+}
+.admin-layout .close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--admin-radius);
+  font-size: 16px;
+}
+.admin-layout .close-btn:hover {
+  background: var(--surface-hover);
+}
+.admin-layout .error-box {
+  border-radius: var(--admin-radius);
+  padding: var(--space-md);
+}
+.admin-layout .field-hint,
+.admin-layout .filter-panel label,
+.admin-layout .link-name,
+.admin-layout .node-row-meta,
+.admin-layout .neighbor-id,
+.admin-layout .empty-hint,
+.admin-layout .link-actions button,
+.admin-layout .custom-building-row button {
+  font-size: 12px;
+}
+.admin-layout .link-actions button,
+.admin-layout .portal-tag {
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Node form / Add-building dialog: a real card, labels with
+   breathing room instead of a stacked column of bordered boxes ---------- */
+.node-form {
+  border: none;
+  border-radius: var(--admin-radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-1);
+}
+.node-form h3 {
+  font-size: 17px;
+  color: var(--text);
+}
+.node-form label {
+  margin-bottom: var(--space-lg);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.node-form input,
+.node-form select,
+.node-form textarea {
+  padding: 9px 12px;
+  border-radius: var(--admin-radius);
+  margin-top: 6px;
+  font-size: 14px;
+  text-transform: none;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+.node-form input[type="file"] {
+  padding: 7px 4px;
+  background: transparent;
+  border: none;
+}
+.node-form .field-hint {
+  text-transform: none;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+.add-building-modal label {
+  margin-bottom: var(--space-lg);
+}
+.add-building-modal input,
+.add-building-modal select {
+  padding: 9px 12px;
+  border-radius: var(--admin-radius);
+  margin-top: 6px;
+}
+.add-building-subheading {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Rooms served: stacked vertically (input, then Add, then chips below) —
+   was a single cramped row where the input and button fought for width. */
+.room-chip-input {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-sm);
+}
+.room-chip-input button {
+  align-self: flex-end;
+  padding: 8px 20px;
+  border-radius: var(--admin-radius);
+}
+
+/* ---------- List rows: even height, real padding, spacing between
+   items instead of a near-zero gap (buildings list, nodes list, links/
+   markers lists) ---------- */
+.node-list {
+  gap: var(--space-sm);
+}
+.node-row {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--admin-radius);
+  min-height: 40px;
+  /* A visible line around each entry (was transparent-until-selected) so
+     entries read as clearly separate rows even before the spacing/hover
+     state kicks in. */
+  border-color: var(--border);
+}
+.node-row:hover {
+  border-color: var(--border-strong);
+}
+.link-list {
+  gap: var(--space-sm);
+}
+.link-row {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--admin-radius);
+  min-height: 38px;
+}
+.custom-building-list {
+  gap: var(--space-sm);
+}
+.custom-building-row {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--admin-radius);
+  min-height: 44px;
+}
+/* "built in" / floor count reads as its own aligned column, not text
+   crammed against the building name. */
+.custom-building-meta {
+  flex: 0 0 auto;
+  min-width: 92px;
+  text-align: right;
+}
+.custom-building-row .admin-btn-secondary {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* "+ Add Links" / "+ Add Markers": a proper outlined secondary button,
+   not a dashed wireframe placeholder box. */
+.add-link-btn {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+}
+.add-link-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* "Set starting view" reads as a real, bounded, primary-weight action
+   instead of the same small neutral button every other row action uses. */
+.starting-view-row .link-actions button:not(.danger) {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--admin-radius);
+}
+.starting-view-row .link-actions button:not(.danger):hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* ---------- User widget (header account chip + Sign out) ---------- */
+.admin-header-account {
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* ---------- Page backgrounds: a neutral page behind white card panels,
+   so the panorama/list panel and the data/sidebar panel read as two
+   distinct surfaces instead of blending into one flat page. ---------- */
+.node-editor-page,
+.navigation-editor-page,
+.room-editor-page {
+  background: var(--surface-sunken);
+  gap: var(--space-lg);
+}
+.navigation-editor-main {
+  background: var(--surface);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-1);
 }
 
 /* --- Toasts --- */

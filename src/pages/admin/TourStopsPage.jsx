@@ -79,11 +79,11 @@ export default function TourStopsPage() {
 
       <div className="node-editor-toolbar">
         <button onClick={handleStartCreate}>+ New Stop</button>
-        <button onClick={() => setSectionModalOpen(true)}>+ New Section</button>
+        <button className="admin-btn-secondary" onClick={() => setSectionModalOpen(true)}>+ New Section</button>
         {/* Disabled until a stop is actually selected — this edits
             whichever stop is currently selected in the list, it isn't a
             general/selection-independent action the way New Section is. */}
-        <button onClick={() => setDescriptionModalOpen(true)} disabled={!selectedStop}>
+        <button className="admin-btn-secondary" onClick={() => setDescriptionModalOpen(true)} disabled={!selectedStop}>
           Edit Description
         </button>
       </div>

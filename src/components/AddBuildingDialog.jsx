@@ -172,7 +172,7 @@ Reduce the floor count anyway?`)) {
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
               <span className="field-hint">
-                Floors will be numbered 1 through the count you enter. You can rename/relabel individual floors later if needed.
+                Numbered 1 through your count; relabel floors anytime.
               </span>
             </label>
 
@@ -185,15 +185,12 @@ Reduce the floor count anyway?`)) {
                 ))}
               </select>
               <span className="field-hint">
-                Group this building with others that share a physical campus. Any building can be joined this way; there's no separate "campus" to create first.
+                Groups buildings that share a physical campus.
               </span>
             </label>
 
             <label>
-              Real-world location <span className="field-hint" style={{ display: "inline" }}>(optional)</span>
-              <span className="field-hint">
-                Only needed for a building on a physically separate campus: powers cross-campus directions on the minimap. Click the map to set it.
-              </span>
+              Map location <span className="field-hint" style={{ display: "inline" }}>(set with click)</span>
             </label>
             <div className="building-location-picker">
               <Map
@@ -266,17 +263,18 @@ Reduce the floor count anyway?`)) {
                       </label>
                       <div className="custom-building-edit-actions">
                         <button type="button" className="primary" onClick={() => handleSaveEdit(b)}>Save</button>
-                        <button type="button" onClick={() => setEditingId(null)}>Cancel</button>
+                        <button type="button" className="admin-btn-secondary" onClick={() => setEditingId(null)}>Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <span>{b.label}</span>
-                      <span className="field-hint">
-                        {b.builtIn ? "built in" : `${b.floors.length} floor${b.floors.length === 1 ? "" : "s"}`}
+                      <span className="field-hint custom-building-meta">
+                        {b.builtIn ? "Built in" : `${b.floors.length} floor${b.floors.length === 1 ? "" : "s"}`}
                       </span>
                       <button
                         type="button"
+                        className="admin-btn-secondary"
                         disabled={!b.editable}
                         title={b.editable ? undefined : "No backend record for this building yet"}
                         onClick={() => {
@@ -292,6 +290,7 @@ Reduce the floor count anyway?`)) {
                       {onMoveNodes && nodes.some((n) => n.building === b.id) && (
                         <button
                           type="button"
+                          className="admin-btn-secondary"
                           onClick={() => {
                             setError("");
                             setMovingId(b.id);
@@ -341,7 +340,7 @@ Reduce the floor count anyway?`)) {
                   >
                     {moveBusy ? "Moving…" : "Move nodes"}
                   </button>
-                  <button type="button" onClick={() => setMovingId(null)}>Cancel</button>
+                  <button type="button" className="admin-btn-secondary" onClick={() => setMovingId(null)}>Cancel</button>
                 </div>
               </div>
             )}
@@ -358,7 +357,7 @@ Reduce the floor count anyway?`)) {
           <button className="primary" onClick={handleCreate} disabled={creating}>
             {creating ? "Creating…" : "Create building"}
           </button>
-          <button onClick={() => onClose(null)}>Close</button>
+          <button className="admin-btn-secondary" onClick={() => onClose(null)}>Close</button>
         </div>
       </div>
     </div>

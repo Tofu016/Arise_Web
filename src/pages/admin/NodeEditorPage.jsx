@@ -96,8 +96,8 @@ export default function NodeEditorPage() {
 
       <div className="node-editor-toolbar">
         <button onClick={handleStartCreate}>+ New Node</button>
-        <button onClick={() => setAddBuildingOpen(true)}>+ New Building</button>
-        <button onClick={() => setPreviewOpen(true)}>Node Preview</button>
+        <button className="admin-btn-secondary" onClick={() => setAddBuildingOpen(true)}>+ New Building</button>
+        <button className="admin-btn-secondary" onClick={() => setPreviewOpen(true)}>Node Preview</button>
 
         {/* Not shown in the wireframes at all — kept here rather than
             silently dropped, since downloading a backup of the node data is
