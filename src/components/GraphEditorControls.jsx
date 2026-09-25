@@ -75,7 +75,7 @@ export function GraphEditorPreview({ editor, itemNoun }) {
         <p className="photo-missing-note">Loading photo…</p>
       )}
       <p className="preview-hint">
-        Left-click and drag to look around · click a link to teleport
+        Left-click and drag to look around · click a link to change locations
         {history.length > 0 && (
           <button className="back-btn" onClick={editor.goBack}>← Back</button>
         )}

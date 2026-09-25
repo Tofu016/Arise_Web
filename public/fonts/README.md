@@ -1,36 +1,29 @@
-# Brand fonts — drop the `.woff2` files here
+# Brand fonts
 
 `src/styles/fonts.css` declares `@font-face` rules that point at the files
-below. They are **not** committed to the repo. Until you add them, the app
-falls back to the stacks defined in `src/styles/tokens.css` (Segoe UI /
-system sans, Georgia for the serif) and still renders correctly.
+below.
 
-## Required files (exact names)
+## Files (exact names)
 
 | File | Family / weight |
 |------|-----------------|
-| `SourceSans3-Regular.woff2`   | Source Sans 3 — 400 |
-| `SourceSans3-Medium.woff2`    | Source Sans 3 — 500 |
-| `SourceSans3-SemiBold.woff2`  | Source Sans 3 — 600 |
-| `Montserrat-SemiBold.woff2`   | Montserrat — 600 |
-| `Montserrat-Bold.woff2`       | Montserrat — 700 |
-| `Montserrat-ExtraBold.woff2`  | Montserrat — 800 |
-| `SourceSerif4-SemiBold.woff2` | Source Serif 4 — 600 |
+| `CenturyGothic-Regular.woff2`  | Century Gothic — 400 |
+| `CenturyGothic-Italic.woff2`   | Century Gothic — 400 italic |
+| `CenturyGothic-SemiBold.woff2` | Century Gothic — 600 |
+| `CenturyGothic-Bold.woff2`     | Century Gothic — 700 |
 
-## Where to get them
+## Source
 
-All three families are open-licensed (SIL Open Font License):
+Converted from the Pan-European Century Gothic TTFs in
+`ui-branding-guidelines/fonts/centurygothic/` (repo root, gitignored,
+read-only) using `fonttools`:
 
-- **Fontsource** (pre-built `.woff2`, easiest):
-  - https://fontsource.org/fonts/source-sans-3
-  - https://fontsource.org/fonts/montserrat
-  - https://fontsource.org/fonts/source-serif-4
-- **Google Fonts**: https://fonts.google.com/ — download the family, then
-  convert the `.ttf` to `.woff2` (e.g. `google-webfonts-helper`, or
-  `woff2_compress`).
-
-Rename each downloaded file to match the table above. Subsetting to
-`latin` + `latin-ext` keeps the payload small; no code change needed.
+```python
+from fontTools.ttLib import TTFont
+f = TTFont("path/to/CenturyGothicPaneuropeanRegular.ttf")
+f.flavor = "woff2"
+f.save("CenturyGothic-Regular.woff2")
+```
 
 ## Adding or changing weights
 
