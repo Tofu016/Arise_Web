@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId, suggestedPhotoFilename } from "../utils/constants";
+import { NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
 import { useAutoId } from "../hooks/useAutoId";
@@ -55,11 +55,11 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       setDraft({ ...node, rooms: node.rooms || [] });
     } else {
       // A fresh "New Node" form already has default Building/Floor/Type
-      // selected — auto-fill the ID (and matching photo filename) right away
-      // instead of leaving it blank until the admin touches a dropdown.
+      // selected — auto-fill the ID right away instead of leaving it blank
+      // until the admin touches a dropdown. The photo stays empty until an
+      // upload (or a hand-entered existing Photo path) sets it.
       const fresh = emptyDraft();
       fresh.id = suggestNodeId(fresh.building, fresh.floor, fresh.type, nodes);
-      fresh.photo = suggestedPhotoFilename(fresh.id);
       setDraft(fresh);
     }
     setErrors([]);
@@ -103,13 +103,9 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         next.id = suggestNodeId(next.building, Number(next.floor), next.type, nodes);
       }
 
-      // Auto-suggest the photo filename from the ID, but only while the user
-      // hasn't manually typed/uploaded a different one — avoid clobbering
-      // intentional overrides.
-      if (next.id !== d.id && (!d.photo || d.photo === suggestedPhotoFilename(d.id))) {
-        next.photo = suggestedPhotoFilename(next.id);
-      }
-
+      // `photo` is deliberately NOT derived from the ID: it's a Photo path
+      // ("panoramas/<building>/<id>.webp") set by the upload flow. Guessing
+      // "<id>.jpg" saved nodes pointing at a file that never existed.
       return next;
     });
   };
@@ -128,13 +124,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   const showIdSuggestion = idSuggestion && idSuggestion !== draft.id;
 
   const applyIdSuggestion = () => {
-    setDraft((d) => {
-      const next = { ...d, id: idSuggestion };
-      if (!d.photo || d.photo === suggestedPhotoFilename(d.id)) {
-        next.photo = suggestedPhotoFilename(idSuggestion);
-      }
-      return next;
-    });
+    setDraft((d) => ({ ...d, id: idSuggestion }));
   };
 
   const handleFilePick = async (e) => {
@@ -445,15 +435,17 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       </div>
 
       <label>
-        360° photo filename
+        360° photo path
         <input
           type="text"
           value={draft.photo}
           onChange={field("photo")}
-          placeholder="gd1_f2_hallway_03.jpg"
+          placeholder="panoramas/gd1/gd1_f2_hallway03.webp"
         />
         <span className="field-hint">
-          Set automatically once you pick a file below. Only edit this by hand if you're linking to an existing upload.
+          {draft.photo
+            ? "Set automatically once you pick a file below. Only edit this by hand to link an existing upload (its full path, as shown on the admin Photos page)."
+            : "No photo set yet: pick a file below."}
         </span>
       </label>
 

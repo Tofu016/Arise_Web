@@ -194,16 +194,20 @@ export default function PublicTourPage() {
   }, [stops, selectedStopId, setSelectedStopId]);
 
   const current = selectedStopId ? byId[selectedStopId] : null;
-  const { url: photoUrl } = useSecurePhotoUrl(current?.photo);
+  const { url: photoUrl, error: photoError } = useSecurePhotoUrl(current?.photo);
 
-  // Waits for BOTH the initial Firestore data AND the current stop's
-  // actual photo bytes to be decoded and paintable — not just the data
-  // existing, per the confirmed design. A stop with no photo set at all
-  // has nothing to wait for on that front (photoReady is true
-  // immediately), so a photo-less stop can't leave a visitor stuck on
-  // the loading screen forever.
+  // Waits for BOTH the initial data AND the current stop's actual photo
+  // bytes to be decoded and paintable — not just the data existing, per
+  // the confirmed design. A stop with no photo set at all has nothing to
+  // wait for on that front (photoReady is true immediately), so a
+  // photo-less stop can't leave a visitor stuck on the loading screen
+  // forever. Same for a photo that fails to resolve (a missing file, or a
+  // path that isn't a real Photo path): `photoUrl` then stays null, so
+  // useImagePreloaded never even starts — without `photoError` here the
+  // page sat on "Loading tour…" forever instead of showing PanoramaNav's
+  // "no image" placeholder. useNodePhoto does the same for indoor nodes.
   const imageLoaded = useImagePreloaded(photoUrl);
-  const photoReady = !current?.photo || imageLoaded;
+  const photoReady = !current?.photo || imageLoaded || !!photoError;
   const stillLoading = stopsLoading || sectionsLoading || !current || !photoReady;
 
   const hotspots = useMemo(() => (current ? buildHotspots(current, byId) : []), [current, byId]);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { suggestTourStopId, suggestedTourPanoramaFilename } from "../utils/tourConstants";
+import { suggestTourStopId } from "../utils/tourConstants";
 import { photoFilename, uploadPhoto } from "../utils/photoStore";
 import { useAutoId } from "../hooks/useAutoId";
 import { useBlurReview } from "../hooks/useBlurReview";
@@ -77,12 +77,10 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         next.id = suggestTourStopId(value, stops);
       }
 
-      // Auto-suggest the photo filename from the ID, same as NodeForm.jsx,
-      // only while nothing's been manually typed/uploaded yet.
-      if (next.id !== d.id && (!d.photo || d.photo === suggestedTourPanoramaFilename(d.id))) {
-        next.photo = suggestedTourPanoramaFilename(next.id);
-      }
-
+      // `photo` is deliberately NOT derived from the ID. It's a Photo path
+      // ("tourpanorama/<id>.webp"), set only by an actual upload below;
+      // guessing "<id>.jpg" saved stops pointing at a file that never
+      // existed, and hid the "No photo set yet." hint while doing it.
       return next;
     });
   };
@@ -97,13 +95,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
   const showIdSuggestion = idSuggestion && idSuggestion !== draft.id;
 
   const applyIdSuggestion = () => {
-    setDraft((d) => {
-      const next = { ...d, id: idSuggestion };
-      if (!d.photo || d.photo === suggestedTourPanoramaFilename(d.id)) {
-        next.photo = suggestedTourPanoramaFilename(idSuggestion);
-      }
-      return next;
-    });
+    setDraft((d) => ({ ...d, id: idSuggestion }));
   };
 
   const handleFilePick = async (e) => {

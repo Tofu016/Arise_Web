@@ -46,9 +46,3 @@ export function suggestTourStopId(name, stops, excludeId = null) {
   return `${prefix}${String(n).padStart(2, "0")}`;
 }
 
-// Same pattern as constants.js's suggestedPhotoFilename — names the
-// uploaded photo after the stop's own ID, so it's predictable and a
-// replacement upload cleanly overwrites the same file.
-export function suggestedTourPanoramaFilename(id) {
-  return id ? `${id}.jpg` : "";
-}

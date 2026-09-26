@@ -173,10 +173,6 @@ export function buildingLabel(buildingId) {
   return allBuildings().find((b) => b.id === buildingId)?.label || buildingId;
 }
 
-export function suggestedPhotoFilename(id) {
-  return id ? `${id}.jpg` : "";
-}
-
 // camelCase type ids (transitionExit, openArea) become snake_case for
 // readability inside a generated ID — transitionExit -> transition_exit.
 function typeToIdSlug(typeId) {
