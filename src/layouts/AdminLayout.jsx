@@ -51,15 +51,18 @@ const GROUPS = [
 // Standalone rail icons — each a direct link with no sub-items, so
 // (unlike GROUPS) clicking navigates immediately with no flyout step.
 // User Panel: user management doesn't belong to either tour.
-// Feedback: general app feedback, same reasoning.
+// Analytics: session/behavior tracking plus feedback comments (formerly
+// the plain Feedback page), same reasoning. Uses the bar-chart icon
+// (formerly Photo Coverage's) now that Photo Coverage itself uses the
+// picture-frame icon below.
 // Photo Coverage: covers both nodes (Virtual Map) and tour stops (Campus
 // Tour) together, so it doesn't belong to either single group either.
-// Photos: covers every photo type, not tied to one group.
+// Also now covers every photo type (the former standalone Photos page was
+// merged into it), so it uses that page's own picture-frame icon.
 const USER_PANEL = { path: "users", icon: ACCOUNT_ICON, label: "User Panel" };
-const FEEDBACK = { path: "feedback", icon: PLACEHOLDER("chat-bubble"), label: "Feedback" };
-const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("bar-chart"), label: "Photo Coverage" };
-const PHOTOS = { path: "photos", icon: PLACEHOLDER("picture-frame"), label: "Photos" };
-const STANDALONE_ITEMS = [USER_PANEL, FEEDBACK, PHOTO_COVERAGE, PHOTOS];
+const ANALYTICS = { path: "analytics", icon: PLACEHOLDER("bar-chart"), label: "Analytics" };
+const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("picture-frame"), label: "Photo Coverage" };
+const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE];
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,

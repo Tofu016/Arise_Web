@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../context/useAuth";
 import { useUsers } from "../../hooks/useUsers";
 import { fuzzyIncludes } from "../../utils/fuzzy";
+import CreateUserDialog from "../../components/admin/CreateUserDialog";
 
 const ROLES = ["pending", "user", "admin"];
 
@@ -75,10 +76,11 @@ function RoleSelect({ value, onChange, disabled, title }) {
 // the other three pages rather than matching a specific mockup.
 export default function UserPanelPage() {
   const { user: currentUser } = useAuth();
-  const { users, updateUserRole, deleteUserAccount } = useUsers();
+  const { users, createUser, updateUserRole, deleteUserAccount } = useUsers();
   const [deletingUid, setDeletingUid] = useState(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [showCreate, setShowCreate] = useState(false);
 
   // Pending accounts first (the ones needing action), then alphabetical by email.
   const sorted = [...users].sort((a, b) => {
@@ -135,7 +137,14 @@ export default function UserPanelPage() {
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+        <button type="button" className="primary" onClick={() => setShowCreate(true)}>
+          Create account
+        </button>
       </div>
+
+      {showCreate && (
+        <CreateUserDialog createUser={createUser} onClose={() => setShowCreate(false)} />
+      )}
 
       {sorted.length === 0 && <p className="empty-hint">No registered users yet.</p>}
       {sorted.length > 0 && visible.length === 0 && (

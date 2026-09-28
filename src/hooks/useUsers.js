@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { apiGet, apiPatch, apiDelete } from "../utils/apiClient";
+import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toUser } from "../utils/entities";
 import { useCollection } from "./useCollection";
 
@@ -14,6 +14,15 @@ async function loadAll() {
 
 export function useUsers() {
   const { items: users, loading, error, mutate } = useCollection(loadAll);
+
+  const createUser = useCallback(
+    (data) =>
+      mutate(() => apiPost("Users_API/create", data), {
+        success: `Account created for "${data.email}".`,
+        errorPrefix: "Couldn't create account",
+      }),
+    [mutate]
+  );
 
   const updateUserRole = useCallback(
     (uid, role) =>
@@ -33,5 +42,5 @@ export function useUsers() {
     [mutate]
   );
 
-  return { users, loading, error, updateUserRole, deleteUserAccount };
+  return { users, loading, error, createUser, updateUserRole, deleteUserAccount };
 }

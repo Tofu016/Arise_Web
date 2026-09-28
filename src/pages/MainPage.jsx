@@ -28,6 +28,7 @@ import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
+import { useAnalytics } from "../hooks/useAnalytics";
 import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
@@ -119,8 +120,29 @@ function MainPageContent({ onReset }) {
   useKioskZoomLock(compact);
   useKioskInspectLock(compact);
 
+  // Analytics session: one per kiosk mount (a mount IS a session — see
+  // SESSION.md's Analytics planning notes) or one per desktop
+  // browser/tab session (see useAnalytics.js). stage_reached fires on every
+  // kiosk.stage change; desktop never leaves "exploring", so this also
+  // covers desktop's synthetic session-start event on mount.
+  const analytics = useAnalytics(compact ? "kiosk" : "desktop");
+  useEffect(() => {
+    analytics.stageReached(kiosk.stage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kiosk.stage]);
+  useEffect(() => {
+    if (kiosk.campus || kiosk.building) analytics.setLocation(kiosk.campus, kiosk.building);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kiosk.campus, kiosk.building]);
+
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
+  // Desktop has no kiosk campus/building picks to attribute a session to,
+  // but it does have this filter — the closest desktop equivalent.
+  useEffect(() => {
+    if (!compact && buildingFilter !== "all") analytics.setLocation(null, buildingFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact, buildingFilter]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
@@ -217,6 +239,19 @@ function MainPageContent({ onReset }) {
     () => searchCampus(searchQuery, nodes, searchableRooms),
     [nodes, searchQuery, searchableRooms]
   );
+
+  // Tracked debounced (not on every keystroke) — a pause in typing is a
+  // reasonable proxy for "this is the search they meant to run". matched
+  // reflects whether it resolved to an actual room, for the "no results"
+  // rate; node_id is the top room hit, for "most searched rooms".
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    const timer = setTimeout(() => {
+      analytics.roomSearched(searchQuery, roomResults[0]?.node?.id, roomResults.length > 0);
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   // A quick "don't know what to search for" starting point — a fresh random
   // sample of rooms (that actually have detail records) shown the moment the
@@ -347,10 +382,23 @@ function MainPageContent({ onReset }) {
   // What follows a move that actually happened — everything the navigation
   // module deliberately knows nothing about: the search box (the overlay
   // module handles the panel, dock and room card).
+  //
+  // prevNodeIdRef feeds the walk/jump analytics event's from_node_id: nav's
+  // own currentId is still last render's value inside this closure (the
+  // commit that already happened is queued, not applied yet), so the only
+  // reliable "where they were" is whatever this ref was left at after the
+  // previous move. "back" doesn't update it (nor get tracked as a move at
+  // all — it's retracing an already-tracked hop, not new exploration; see
+  // the Analytics planning notes' walk/jump ratio scheme).
+  const prevNodeIdRef = useRef(currentId);
   const afterMove = (action) => {
     setLastMoveType(action.type);
     overlay.moved({ type: action.type, room: action.meta?.room });
     if (action.type !== "back") setSearchQuery("");
+    if (action.type === "walk" || action.type === "jump") {
+      analytics.move(action.type, prevNodeIdRef.current, action.id);
+      prevNodeIdRef.current = action.id;
+    }
   };
 
   // Hotspot click, and "Walk to next stop" in directions.
@@ -378,6 +426,7 @@ function MainPageContent({ onReset }) {
   // as Maps closing search/place-details once you actually navigate somewhere.
   // Every cross-campus move gets a flyover first, this included.
   const jumpToSearchResult = (id, meta) => {
+    analytics.goTo(id);
     const { outcome, action } = nav.jump(id, meta);
     if (outcome === "ignored") return;
     if (outcome === "moved") afterMove(action);
@@ -434,6 +483,20 @@ function MainPageContent({ onReset }) {
     }
     directionsWasOpenRef.current = isOpen;
   }, [directions]);
+
+  // Tracked the moment a route actually resolves (get(), chooseMode(), or
+  // openNearestExit() — see useDirectionsFlow.js), not on every keystroke:
+  // directions.path flips from falsy to a real array exactly once per
+  // resolved route.
+  const directionsPathRef = useRef(null);
+  useEffect(() => {
+    const path = directions?.path ?? null;
+    if (path && path !== directionsPathRef.current) {
+      analytics.directionsRequested(directions.fromId, directions.toId);
+    }
+    directionsPathRef.current = path;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directions?.path]);
 
   // Called unconditionally here (before any early returns below) since it's a
   // hook. `ready` covers "no photo at all" too, so the splash can't stick when
@@ -1593,7 +1656,10 @@ function MainPageContent({ onReset }) {
         <FeedbackPanel
           onClose={overlay.closeFeedback}
           onFinished={onReset}
-          onSubmitted={() => setFeedbackGiven(true)}
+          onSubmitted={(feedback) => {
+            setFeedbackGiven(true);
+            analytics.feedbackSubmitted(feedback?.id, feedback?.rating);
+          }}
           kiosk={compact}
         />
       )}
@@ -1634,7 +1700,14 @@ function MainPageContent({ onReset }) {
       {isIdle && (
         <IdlePrompt
           onContinue={resetIdle}
-          onStartOver={compact ? onReset : undefined}
+          onStartOver={
+            compact
+              ? () => {
+                  analytics.sessionEnd("idle_timeout");
+                  onReset();
+                }
+              : undefined
+          }
           onGiveFeedback={() => {
             resetIdle();
             overlay.openFeedback();

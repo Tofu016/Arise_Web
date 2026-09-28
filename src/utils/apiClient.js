@@ -12,6 +12,10 @@
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 
+// For callers that can't go through apiRequest (e.g. navigator.sendBeacon,
+// which builds its own request and can't attach the Authorization header).
+export const apiUrl = (path) => `${API_BASE_URL}/${path}`;
+
 function authHeaders(headers = {}) {
   const token = localStorage.getItem("authToken");
   if (token) {

@@ -8,9 +8,8 @@ import RoomEditorPage from "./pages/admin/RoomEditorPage";
 import UserPanelPage from "./pages/admin/UserPanelPage";
 import TourStopsPage from "./pages/admin/TourStopsPage";
 import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
-import FeedbackAdminPage from "./pages/admin/FeedbackAdminPage";
+import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
-import PhotosAdminPage from "./pages/admin/PhotosAdminPage";
 import PublicTourPage from "./pages/PublicTourPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -82,9 +81,8 @@ export default function App() {
             <Route path="users" element={<UserPanelPage />} />
             <Route path="tour-stops" element={<TourStopsPage />} />
             <Route path="campus-tour-navigation-editor" element={<TourNavigationEditorPage />} />
-            <Route path="feedback" element={<FeedbackAdminPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="photo-coverage" element={<PhotoCoverageAdminPage />} />
-            <Route path="photos" element={<PhotosAdminPage />} />
           </Route>
         </Routes>
       </AuthProvider>

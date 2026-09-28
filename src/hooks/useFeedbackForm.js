@@ -49,9 +49,9 @@ export function useFeedbackForm({ onSubmitted } = {}) {
     }
     setState(form.submitStart);
     try {
-      await apiPost("Feedback_API/submit", form.buildPayload(state));
+      const { feedback } = await apiPost("Feedback_API/submit", form.buildPayload(state));
       setState(form.submitSuccess);
-      onSubmitted?.();
+      onSubmitted?.(feedback);
     } catch (err) {
       const message = err.message || "Couldn't submit feedback. Please try again.";
       setState((s) => form.submitFailure(s, message));
