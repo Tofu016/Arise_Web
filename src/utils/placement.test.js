@@ -15,6 +15,7 @@ import {
   withLink,
   withoutLink,
   withoutMarker,
+  renameMarker,
   candidateLinks,
 } from "./placement";
 
@@ -127,6 +128,11 @@ describe("links and markers", () => {
   it("removes a marker", () => {
     expect(withoutMarker(current, 1)).toEqual([{ id: 2 }]);
     expect(withoutMarker({ id: "a" }, 1)).toEqual([]);
+  });
+
+  it("renames a marker by id, leaving others untouched", () => {
+    expect(renameMarker(current, 1, "New label")).toEqual([{ id: 1, label: "New label" }, { id: 2 }]);
+    expect(renameMarker({ id: "a" }, 1, "New label")).toEqual([]);
   });
 });
 

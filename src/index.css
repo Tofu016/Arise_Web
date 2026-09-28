@@ -2010,6 +2010,14 @@ button.primary {
 .preview-screen {
   width: 100%;
   height: 460px;
+  /* flex-shrink: 0 (plus the matching min-height) keeps this its full
+     height inside a flex column even when a sibling below it grows tall
+     (e.g. an elevator's expanded floor picker) — flex items with
+     `overflow: hidden` otherwise get an automatic min-size of 0, so
+     without this the preview would rather shrink to nothing than let its
+     scrollable parent (.navigation-editor-main etc.) scroll instead. */
+  flex-shrink: 0;
+  min-height: 460px;
   background: var(--surface-sunken);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -2462,6 +2470,14 @@ button.primary {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+}
+.marker-rename-input {
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
 }
 .link-actions button {
   font-size: 10px;

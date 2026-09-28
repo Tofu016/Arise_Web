@@ -6,6 +6,7 @@ import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "..
 import { floorLabel, buildingLabel, floorsForBuilding, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
+import { useAutoScrollIntoView } from "../../hooks/useAutoScrollIntoView";
 import { validateElevator, validateElevatorLanding, floorsWithLandingsDropped } from "../../utils/elevators";
 import IconPlaceholder from "../../components/IconPlaceholder";
 
@@ -87,6 +88,13 @@ export default function NavigationEditorPage() {
   const [managingElevatorId, setManagingElevatorId] = useState(null); // editing an existing elevator's floors, from the list below
   const [editElevatorFloors, setEditElevatorFloors] = useState([]);
   const [editElevatorError, setEditElevatorError] = useState("");
+  const [renamingMarkerId, setRenamingMarkerId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  // Refs to scroll each expanding form into view as it opens, so it doesn't
+  // go unnoticed below the fold of these already-scrollable content boxes.
+  const addMarkerBoxRef = useAutoScrollIntoView(addingMarker);
+  const editElevatorFloorsRef = useAutoScrollIntoView(managingElevatorId != null);
 
   // Only elevators already in this node's building can get a landing here
   // — a landing marker and its elevator must agree on building (enforced
@@ -129,6 +137,8 @@ export default function NavigationEditorPage() {
     ? !!selectedElevator && landingErrors.length === 0
     : !!newMarkerLabel.trim();
 
+  const createElevatorFormRef = useAutoScrollIntoView(isCreatingElevator);
+
   const toggleNewElevatorFloor = (floor) => {
     setNewElevatorDraft((d) => ({
       ...d,
@@ -169,6 +179,23 @@ export default function NavigationEditorPage() {
       : { id: newMarkerId(), type: newMarkerType, label: newMarkerLabel.trim() };
     editor.startPlacingMarker(marker);
     setAddingMarker(false);
+  };
+
+  // Room markers take their label from "Rooms served" (renamed via Room
+  // Editor) and elevator markers take theirs from the elevator record
+  // (renamed via "Edit floors" above) — renaming only applies to markers
+  // whose label lives nowhere but on the marker itself.
+  const canRenameMarker = (m) => m.type !== "room" && m.type !== "elevator";
+  const startRenameMarker = (m) => {
+    setRenamingMarkerId(m.id);
+    setRenameDraft(m.label);
+  };
+  const cancelRenameMarker = () => setRenamingMarkerId(null);
+  const confirmRenameMarker = (id) => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) return;
+    editor.renameMarker(id, trimmed);
+    setRenamingMarkerId(null);
   };
 
   // Editing an existing elevator's own accessible floors, from the list
@@ -283,19 +310,46 @@ export default function NavigationEditorPage() {
               {markers.length === 0 && <p className="empty-hint">No markers yet: rooms, facilities, exits, hydrants.</p>}
               {markers.map((m) => {
                 const info = markerTypeInfo(m.type);
+                const isRenaming = renamingMarkerId === m.id;
                 return (
                   <div key={m.id} className="link-row">
-                    <span className="link-name">
-                      {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} /> : info.icon} {m.label}
-                      {m.type === "elevator" && (
-                        <span className="portal-tag">
-                          {m.elevatorId} · serves: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
-                        </span>
-                      )}
-                    </span>
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        className="link-name marker-rename-input"
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmRenameMarker(m.id);
+                          if (e.key === "Escape") cancelRenameMarker();
+                        }}
+                      />
+                    ) : (
+                      <span className="link-name">
+                        {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} /> : info.icon} {m.label}
+                        {m.type === "elevator" && (
+                          <span className="portal-tag">
+                            {m.elevatorId} · serves: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
+                          </span>
+                        )}
+                      </span>
+                    )}
                     <div className="link-actions">
-                      <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
-                      <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
+                      {isRenaming ? (
+                        <>
+                          <button onClick={() => confirmRenameMarker(m.id)} disabled={!renameDraft.trim()}>Save</button>
+                          <button onClick={cancelRenameMarker}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          {canRenameMarker(m) && (
+                            <button onClick={() => startRenameMarker(m)}>Rename</button>
+                          )}
+                          <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
+                          <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -310,7 +364,11 @@ export default function NavigationEditorPage() {
                 <p className="empty-hint">No elevators in this building yet. Add one below when placing a landing.</p>
               )}
               {elevatorsHere.map((e) => (
-                <div key={e.id} className="link-row elevator-manage-row">
+                <div
+                  key={e.id}
+                  className="link-row elevator-manage-row"
+                  ref={managingElevatorId === e.id ? editElevatorFloorsRef : null}
+                >
                   {managingElevatorId === e.id ? (
                     <>
                       <span className="link-name">{e.label} <span className="elevator-picker-sub">({e.id})</span></span>
@@ -365,7 +423,7 @@ export default function NavigationEditorPage() {
             {!addingMarker ? (
               <button className="add-link-btn" onClick={startAddMarker}>+ Add Markers</button>
             ) : (
-              <div className="add-link-box">
+              <div className="add-link-box" ref={addMarkerBoxRef}>
                 <select
                   value={newMarkerType}
                   onChange={(e) => { setNewMarkerType(e.target.value); setNewMarkerLabel(""); }}
@@ -400,7 +458,7 @@ export default function NavigationEditorPage() {
                       <option value="_new">+ New elevator…</option>
                     </select>
                     {isCreatingElevator ? (
-                      <>
+                      <div ref={createElevatorFormRef}>
                         <input
                           type="text"
                           autoFocus
@@ -432,7 +490,7 @@ export default function NavigationEditorPage() {
                         </div>
                         {elevatorFormError && <p className="directions-error">{elevatorFormError}</p>}
                         <button onClick={confirmCreateElevator}>Create elevator</button>
-                      </>
+                      </div>
                     ) : (
                       selectedElevator && (
                         <p className="field-hint">

@@ -153,6 +153,7 @@ export function useGraphEditor({
     startRepositionMarker: (id) => setSession(placement.startRepositionMarker(session, id)),
     cancelMarkerPlacement: () => setSession(placement.cancelMarkerPlacement(session)),
     removeMarker: (id) => setMarkers(current.id, placement.withoutMarker(current, id)),
+    renameMarker: (id, label) => setMarkers(current.id, placement.renameMarker(current, id, label)),
     defaultViewTarget,
     startSetDefaultView,
     cancelSetDefaultView,

@@ -7,6 +7,7 @@ import FilePickerButton from "../../components/FilePickerButton";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
+import { useAutoScrollIntoView } from "../../hooks/useAutoScrollIntoView";
 import { useBlurReview } from "../../hooks/useBlurReview";
 import IconPlaceholder from "../../components/IconPlaceholder";
 import { useToast } from "../../context/ToastContext";
@@ -54,8 +55,12 @@ export default function TourNavigationEditorPage() {
   const [newMarkerPhotos, setNewMarkerPhotos] = useState([]); // storage paths
   const [markerUploadState, setMarkerUploadState] = useState("idle");
   const [sectionFilter, setSectionFilter] = useState("all");
+  const [renamingMarkerId, setRenamingMarkerId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const { requestBlur, blurDialog } = useBlurReview();
   const toast = useToast();
+
+  const addMarkerBoxRef = useAutoScrollIntoView(addingMarker);
 
   const startAddMarker = () => {
     setAddingMarker(true);
@@ -104,6 +109,18 @@ export default function TourNavigationEditorPage() {
 
   const removeNewMarkerPhoto = (path) => {
     setNewMarkerPhotos((prev) => prev.filter((p) => p !== path));
+  };
+
+  const startRenameMarker = (m) => {
+    setRenamingMarkerId(m.id);
+    setRenameDraft(m.label);
+  };
+  const cancelRenameMarker = () => setRenamingMarkerId(null);
+  const confirmRenameMarker = (id) => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) return;
+    editor.renameMarker(id, trimmed);
+    setRenamingMarkerId(null);
   };
 
   const confirmStartPlacingNewMarker = () => {
@@ -176,15 +193,44 @@ export default function TourNavigationEditorPage() {
             <h5>Markers added ({markers.length})</h5>
             <div className="link-list navigation-editor-scroll-list">
               {markers.length === 0 && <p className="empty-hint">No equipment markers yet.</p>}
-              {markers.map((m) => (
-                <div key={m.id} className="link-row">
-                  <span className="link-name"><IconPlaceholder name="camera" /> {m.label} ({(m.photos || []).length} photo{(m.photos || []).length === 1 ? "" : "s"})</span>
-                  <div className="link-actions">
-                    <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
-                    <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
+              {markers.map((m) => {
+                const isRenaming = renamingMarkerId === m.id;
+                return (
+                  <div key={m.id} className="link-row">
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        className="link-name marker-rename-input"
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmRenameMarker(m.id);
+                          if (e.key === "Escape") cancelRenameMarker();
+                        }}
+                      />
+                    ) : (
+                      <span className="link-name">
+                        <IconPlaceholder name="camera" /> {m.label} ({(m.photos || []).length} photo{(m.photos || []).length === 1 ? "" : "s"})
+                      </span>
+                    )}
+                    <div className="link-actions">
+                      {isRenaming ? (
+                        <>
+                          <button onClick={() => confirmRenameMarker(m.id)} disabled={!renameDraft.trim()}>Save</button>
+                          <button onClick={cancelRenameMarker}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startRenameMarker(m)}>Rename</button>
+                          <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
+                          <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -197,7 +243,7 @@ export default function TourNavigationEditorPage() {
             {!addingMarker ? (
               <button className="add-link-btn" onClick={startAddMarker}>+ Add Marker</button>
             ) : (
-              <div className="add-link-box">
+              <div className="add-link-box" ref={addMarkerBoxRef}>
                 <input
                   type="text"
                   autoFocus
