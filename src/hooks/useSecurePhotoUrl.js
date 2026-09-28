@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { acquirePhoto, loadPhoto } from "../utils/photoStore";
+import { acquirePhoto, loadPhoto, loadPhotoThumbnail } from "../utils/photoStore";
 
 // React adapter over photoStore's loadPhoto: `photo` is a backend storage
 // path, e.g. "panoramas/gd1/gd1_f2_hallway01.jpg". Public tour paths
@@ -12,7 +12,13 @@ import { acquirePhoto, loadPhoto } from "../utils/photoStore";
 // `version` is for a photo edited in place (same path, new bytes): bump it to
 // reload, and public photos get a cache-busting query so the browser doesn't
 // keep showing the old file.
-export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
+//
+// `thumbnail` requests a small downscaled copy instead of the original —
+// for a caller that only ever displays the photo tiny (the node flowchart).
+// It's a separate code path (loadPhotoThumbnail, never the shared session
+// cache) so it can never serve a low-res copy to a caller that needs the
+// original, or vice versa.
+export function useSecurePhotoUrl(photo, { cached = false, version = 0, thumbnail = false } = {}) {
   // Keyed on the (photo, cached, version) it was resolved for, and reset
   // during render (not only in the effect below) the instant that key
   // changes. An effect-based reset alone only runs AFTER the render where
@@ -22,7 +28,7 @@ export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
   // takes that pairing as "the new scene has finished loading" and reveals
   // it — the previous node's photo flashes as if it belonged to the node
   // just navigated to. See useImagePreloaded's identical pattern.
-  const key = `${photo ?? ""}|${cached}|${version}`;
+  const key = `${photo ?? ""}|${cached}|${version}|${thumbnail}`;
   const [state, setState] = useState({ key, url: null, error: null });
   if (state.key !== key) setState({ key, url: null, error: null });
 
@@ -32,7 +38,11 @@ export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
     let cancelled = false;
     let release = null;
 
-    (cached ? acquirePhoto : loadPhoto)(photo)
+    let loader = loadPhoto;
+    if (thumbnail) loader = loadPhotoThumbnail;
+    else if (cached) loader = acquirePhoto;
+
+    loader(photo)
       .then((loaded) => {
         if (cancelled) {
           loaded.release();
@@ -51,7 +61,7 @@ export function useSecurePhotoUrl(photo, { cached = false, version = 0 } = {}) {
       if (release) release();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photo, cached, version]);
+  }, [photo, cached, version, thumbnail]);
 
   return state.key === key ? { url: state.url, error: state.error } : { url: null, error: null };
 }

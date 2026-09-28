@@ -37,7 +37,7 @@ export default function PhotoFlowNode({ data }) {
     return () => observer.disconnect();
   }, [visible]);
 
-  const { url } = useSecurePhotoUrl(visible ? data.photo : null);
+  const { url } = useSecurePhotoUrl(visible ? data.photo : null, { thumbnail: true });
   const [hovered, setHovered] = useState(false);
 
   return (

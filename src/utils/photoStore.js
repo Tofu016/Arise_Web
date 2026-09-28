@@ -74,6 +74,23 @@ export function fetchProtectedPhoto(path, fallbackError = "Couldn't load photo."
   );
 }
 
+// One of Photo_preview::WIDTHS on the backend — a request for any other
+// number is rejected there, so this is deliberately the same fixed list
+// rather than an arbitrary caller-chosen size.
+const THUMBNAIL_WIDTH = 320;
+
+// Same as fetchProtectedPhoto, but asks the backend's serve() for its
+// already-built-for-the-mobile-app downscaled JPEG (format=jpeg&width=)
+// instead of the original. For a caller that only ever displays a photo at
+// a few hundred CSS pixels (the node flowchart's thumbnails) — pulling down
+// and decoding the full multi-MB panorama just to shrink it in CSS wastes
+// both. The backend caches the converted copy on disk, so repeat requests
+// for the same photo are cheap after the first.
+export function fetchProtectedPhotoThumbnail(path, fallbackError = "Couldn't load photo.") {
+  const query = `path=${encodeURIComponent(path)}&format=jpeg&width=${THUMBNAIL_WIDTH}`;
+  return protectedPhotoLimiter(() => apiGetBlob(`IndoorUploads_API/serve?${query}`, fallbackError));
+}
+
 function publicPhotoUrl(path) {
   return `${API_BASE_URL.replace(/\/index\.php$/, "")}/uploads/${path}`;
 }
@@ -123,6 +140,25 @@ export async function loadPhoto(path) {
   }
 
   const blob = await fetchProtectedPhoto(path);
+  const url = URL.createObjectURL(blob);
+  return { url, release: () => URL.revokeObjectURL(url) };
+}
+
+// Same shape and contract as loadPhoto, but resolves to a small downscaled
+// copy instead of the original — for a caller that only ever shows the
+// photo tiny (the node flowchart). Public kinds fall back to the ordinary
+// resolution: serve()'s format/width params only apply to protected photos,
+// since public ones are served straight from disk by Apache, never through
+// serve() at all.
+export async function loadPhotoThumbnail(path) {
+  const spec = specForPath(path);
+  if (!spec) throw new Error(UNSUPPORTED_PATH_MESSAGE);
+
+  if (spec.visibility === "public") {
+    return { url: publicPhotoUrl(path), release() {} };
+  }
+
+  const blob = await fetchProtectedPhotoThumbnail(path);
   const url = URL.createObjectURL(blob);
   return { url, release: () => URL.revokeObjectURL(url) };
 }
