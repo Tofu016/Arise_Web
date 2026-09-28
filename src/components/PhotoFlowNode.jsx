@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
@@ -12,11 +12,37 @@ import { buildingLabel, floorLabel } from "../utils/constants";
 // (PanoramaNav) — this is a structural overview meant to be scanned
 // quickly across many nodes at once, not explored one at a time.
 export default function PhotoFlowNode({ data }) {
-  const { url } = useSecurePhotoUrl(data.photo);
+  // Doesn't request its photo until this node has actually scrolled/zoomed
+  // into view — with hundreds of nodes in scope (e.g. "All floors"), fetching
+  // every one on mount means every one of them firing a multi-MB panorama
+  // fetch+decode at once. Stays true once seen, so panning away and back
+  // never drops the already-loaded photo.
+  const [visible, setVisible] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (visible) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  const { url } = useSecurePhotoUrl(visible ? data.photo : null);
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
+      ref={containerRef}
       className="flowchart-node"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

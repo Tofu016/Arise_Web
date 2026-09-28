@@ -23,7 +23,7 @@ const NOTHING_AHEAD_HINT_MS = 1800;
 // "equipment" marker type. Kept here rather than in constants.js's
 // MARKER_TYPES, which would offer it in the indoor Navigation Editor's
 // marker dropdown.
-const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" />, color: "#C9A24B" };
+const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" variant="white" />, color: "#C9A24B" };
 
 /**
  * Props:

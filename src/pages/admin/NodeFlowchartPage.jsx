@@ -199,6 +199,7 @@ export default function NodeFlowchartPage() {
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onNodeDragStop={handleNodeDragStop}
+          onlyRenderVisibleElements
         >
           <FitViewOnReady />
           <Background />

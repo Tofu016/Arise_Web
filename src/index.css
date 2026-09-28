@@ -200,10 +200,11 @@ button.primary {
   object-fit: contain;
   vertical-align: -0.15em;
 }
-/* Stand-in for a real icon that hasn't been supplied yet — same sizing as
-   .admin-sidebar-icon-img/.inline-icon-img, but visually flagged (dashed
-   magenta) so it's obvious in the running app which icons still need a
-   real asset. Search for "icon-placeholder.svg" to find every use. */
+/* Rendered by <IconPlaceholder> for every icon that goes through it —
+   same sizing as .admin-sidebar-icon-img/.inline-icon-img. Most names now
+   resolve to a real branding-asset icon; any name with no matching asset
+   still falls back to the dashed-magenta stand-in so it stays obvious in
+   the running app. Search for "icon-placeholder.svg" to find that path. */
 .icon-placeholder-img {
   width: 1em;
   height: 1em;

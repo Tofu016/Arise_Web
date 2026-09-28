@@ -113,7 +113,7 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
                   : "0 0 6px rgba(32,27,27,0.55)",
             }}
           >
-            {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} /> : info.icon}
+            {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} variant="white" /> : info.icon}
           </div>
           <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
         </div>

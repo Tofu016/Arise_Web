@@ -1,5 +1,6 @@
 import { API_BASE_URL, apiGetBlob, apiUpload } from "./apiClient";
 import { convertImage } from "./imageConverter";
+import { createLimiter } from "./concurrencyLimiter";
 
 // Every photo the app stores, in one table: which backend endpoint takes
 // it, which storage-path prefix it lands under, and whether that prefix is
@@ -59,10 +60,18 @@ function specForPath(path) {
   return Object.values(KINDS).find((spec) => path.startsWith(spec.prefix)) || null;
 }
 
+// Caps how many protected-photo requests are ever in flight at once — pages
+// that mount many nodes at the same time (e.g. the node flowchart with many
+// buildings/floors in scope) would otherwise fire a full-resolution
+// panorama fetch+decode per node simultaneously and stall the main thread.
+const protectedPhotoLimiter = createLimiter(4);
+
 // Authenticated read of a protected photo's bytes. Exposed separately for
 // the blur review, which needs the raw Blob rather than a display URL.
 export function fetchProtectedPhoto(path, fallbackError = "Couldn't load photo.") {
-  return apiGetBlob(`IndoorUploads_API/serve?path=${encodeURIComponent(path)}`, fallbackError);
+  return protectedPhotoLimiter(() =>
+    apiGetBlob(`IndoorUploads_API/serve?path=${encodeURIComponent(path)}`, fallbackError)
+  );
 }
 
 function publicPhotoUrl(path) {
