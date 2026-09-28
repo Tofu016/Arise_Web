@@ -3,6 +3,9 @@ import { Map, Marker, Source, Layer, useMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { osmRasterStyle } from "../utils/osmMapStyle";
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+import IconPlaceholder from "./IconPlaceholder";
+import chevronRight from "../assets/icons/chevron-right.svg";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 
 const AUTO_PROCEED_MS = 4000;
 
@@ -110,9 +113,11 @@ export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
     >
       <div className="flyover-panel">
         <div className="flyover-header">
-          <span>{fromLabel} → {toLabel}</span>
+          <span>
+            {fromLabel} <img src={chevronRight} alt="" className="inline-icon-img" /> {toLabel}
+          </span>
           <button className="flyover-cancel" onClick={handleCancel} title="Stay here">
-            ✕
+            <IconPlaceholder name="close" className="inline-icon-img" />
           </button>
         </div>
 
@@ -143,7 +148,7 @@ export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
         )}
 
         <button className="flyover-skip primary" onClick={handleSkip}>
-          Skip →
+          Skip <img src={chevronRightWhite} alt="" className="inline-icon-img" />
         </button>
       </div>
     </div>

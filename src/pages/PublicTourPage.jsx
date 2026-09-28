@@ -7,6 +7,10 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
+import IconPlaceholder from "../components/IconPlaceholder";
+import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
+import chevronDownWhite from "../assets/icons/chevron-down-white.svg";
 
 // Shows a Storage path's photo, resolved via useSecurePhotoUrl the same
 // secure-fetch way the rest of the app already does — that call still
@@ -84,7 +88,9 @@ function SectionRow({ section, stopsInSection, expanded, onToggle, currentStopId
           )}
         </span>
         <span className="tour-sidebar-section-label">{section.label}</span>
-        <span className="tour-sidebar-section-caret">{expanded ? "▾" : "▸"}</span>
+        <span className="tour-sidebar-section-caret">
+          <img src={expanded ? chevronDownWhite : chevronRightWhite} alt="" className="inline-icon-img" />
+        </span>
       </button>
       {expanded && (
         <div className="tour-sidebar-stop-list">
@@ -120,14 +126,20 @@ function MarkerPhotoCarousel({ marker, onClose }) {
   return (
     <div className="modal-overlay tour-carousel-overlay" onClick={onClose}>
       <div className="tour-carousel" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn tour-carousel-close" onClick={onClose}>✕</button>
+        <button className="close-btn tour-carousel-close" onClick={onClose}>
+          <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
+        </button>
         <div className="tour-carousel-main">
           {photos.length > 1 && (
-            <button className="tour-carousel-arrow tour-carousel-arrow-prev" onClick={prev}>‹</button>
+            <button className="tour-carousel-arrow tour-carousel-arrow-prev" onClick={prev}>
+              <img src={chevronLeftWhite} alt="" className="inline-icon-img" />
+            </button>
           )}
           {url && <img src={url} alt={marker.label} className="tour-carousel-image" />}
           {photos.length > 1 && (
-            <button className="tour-carousel-arrow tour-carousel-arrow-next" onClick={next}>›</button>
+            <button className="tour-carousel-arrow tour-carousel-arrow-next" onClick={next}>
+              <img src={chevronRightWhite} alt="" className="inline-icon-img" />
+            </button>
           )}
         </div>
         {photos.length > 1 && (
@@ -242,7 +254,9 @@ export default function PublicTourPage() {
     return (
       <div className="tour-page tour-page-empty">
         <p>No tour stops available yet.</p>
-        <Link to="/">← Back to Main Page</Link>
+        <Link to="/">
+          <img src={chevronLeftWhite} alt="" className="inline-icon-img" /> Back to Main Page
+        </Link>
       </div>
     );
   }

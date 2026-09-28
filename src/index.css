@@ -1098,6 +1098,18 @@ button.primary {
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
+  /* Cancel the global .primary rule's uppercase/tracked Montserrat
+     treatment in this one context: a form-actions row already sits its
+     buttons side by side in the same font, same case, same size — only
+     background/border/color differ. Layering the bold-uppercase-display
+     treatment on top of that (e.g. the "Done exploring?" prompt's
+     GIVE FEEDBACK next to Keep exploring / Start over / Cancel) made one
+     button look like it belonged to a different component. The accent
+     fill plus 700 weight above is enough to read as the primary action
+     without changing font family or case. */
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
 }
 .form-actions .primary:hover {
   background: var(--accent-hover);
@@ -1306,15 +1318,15 @@ button.primary {
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
-.account-avatar {
-  width: 34px;
-  height: 34px;
+.admin-account-badge {
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-pill, 999px);
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.02em;
+  padding: 6px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1954,7 +1966,11 @@ button.primary {
   background: var(--surface-sunken);
   cursor: pointer;
   text-align: left;
-  font-weight: 600;
+  /* 700, not 600 — the app only uses the binary 400/700 weight scale
+     (see .elevator-picker-sub below at 400, and .mobile-floor-btn /
+     .mobile-entrance-btn elsewhere at 700); a lone 600 read as an
+     off-scale third weight. */
+  font-weight: 700;
 }
 .elevator-picker-option:hover {
   border-color: var(--accent);
@@ -2071,7 +2087,12 @@ button.primary {
   border: 1px solid var(--accent);
   background: none;
   color: var(--accent);
-  font-weight: 700;
+  /* Regular weight, sentence case — this is an outline/secondary button
+     (no fill), not a primary CTA, so it doesn't take the bold+uppercase
+     Montserrat treatment .primary buttons get (see BRAND.md "Type" —
+     that treatment is reserved for primary CTAs). It previously carried
+     font-weight: 700 alone, a bold/Title-Case hybrid that matched
+     neither the primary nor the secondary button style. */
   cursor: pointer;
 }
 .preview-screen-empty {
@@ -3280,6 +3301,13 @@ button.primary {
 }
 /* ---------- Floating overlay UI (Maps-style) ---------- */
 .floating-rail {
+  /* This box spans the full left column height (top:16 to bottom:16),
+     which geometrically overlaps .floating-exit-btn-stacked and
+     .floating-feedback-btn below (also z-index: 30, same left:16
+     column, "moved out of the rail" per their own comments). Only
+     pointer-events: none here (with no background of its own) keeps
+     that overlap inert — .floating-rail-spacer, the only other child,
+     must stay background-free too, or this becomes a real collision. */
   position: absolute;
   top: 16px;
   left: 16px;
@@ -3335,7 +3363,10 @@ button.primary {
   right: 0;
 }
 .floating-account-btn {
-  border-radius: 50%;
+  width: auto;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
@@ -3420,8 +3451,17 @@ button.primary {
 .floating-title-wrap {
   position: absolute;
   top: 16px;
-  left: 0;
-  right: 0;
+  /* 140px gutters on both sides (not 0/0) — this pill previously relied
+     on a viewport-relative max-width (55vw on .floating-title-pill) to
+     avoid the left rail (.floating-rail, 44px button + 16px offset) and
+     the top-right account button (.floating-account-wrap-top, up to
+     ~100px for the "Admin" label + 16px offset), but 55vw ignores both
+     of those and can overlap either one on a moderate window width with
+     a long node name. Explicit, equal gutters keep this both genuinely
+     centered (see .mobile-title-wrap's own comment on why equal gutters
+     matter for that) and guaranteed clear of both side elements. */
+  left: 140px;
+  right: 140px;
   display: flex;
   justify-content: center;
   z-index: 28;
@@ -3486,7 +3526,11 @@ button.primary {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
-  font-weight: 600;
+  /* No font-weight here: this button is always paired with .primary in
+     JSX (className="flyover-skip primary"), and at equal specificity a
+     local font-weight here would silently override .primary's
+     documented 700 with whatever's set here — this rule previously set
+     600, an off-scale weight that quietly won that fight. */
   cursor: pointer;
   font-size: 14px;
 }
@@ -3502,7 +3546,9 @@ button.primary {
   box-shadow: var(--shadow-1);
   color: var(--text);
   font-size: 13px;
-  max-width: 55vw;
+  /* Bounded by .floating-title-wrap's own left/right gutters now (see
+     its comment), not an independent viewport-relative guess. */
+  max-width: 100%;
 }
 .floating-title-pill span {
   overflow: hidden;
@@ -3756,13 +3802,16 @@ button.primary {
      right to clear the minimap, shifts the centered content left of
      center by half the difference, which read as "not centered" even
      though justify-content: center was doing exactly what it was told).
-     140px matches the minimap's own width so it stays clear on the
-     right; the left side gets the same value purely for symmetry, even
-     though nothing actually sits there — .mobile-title-pill's own
-     text-overflow: ellipsis handles the rest gracefully on narrow
-     phones. */
-  left: calc(140px + env(safe-area-inset-left));
-  right: calc(140px + env(safe-area-inset-right));
+     Both sides are now 268px: the left gutter has to clear
+     .nearby-rooms-panel (12px + its 256px --nearby-rooms-width — see
+     the SIZE KNOBS comment on that rule below), which is wider than the
+     140px the minimap needs on the right, so the right gutter was
+     widened to match rather than left narrower than right — keeping
+     both equal is what keeps this actually centered (see above); a
+     14px minimap could ask for a right-specific value again, but 268px
+     leaves it plenty of clearance either way. */
+  left: calc(268px + env(safe-area-inset-left));
+  right: calc(268px + env(safe-area-inset-right));
   display: flex;
   justify-content: center;
   z-index: 20;
@@ -3795,10 +3844,10 @@ button.primary {
    rather than following the page's light/dark text token.
    ---- SIZE KNOBS ----
    --nearby-rooms-width: overall panel width (currently 2x the original
-     128px). Note it now exceeds the 140px gutter .mobile-title-wrap
-     reserves for it — widen that gutter's `left` too (its `right` stays
-     140px for its own centering) if the title pill and this panel start
-     visibly colliding on a given screen.
+     128px). .mobile-title-wrap's left/right gutters (268px) are sized to
+     clear this exact value (12px left offset + this width) — widen both
+     of that rule's gutters together if this width grows further, or the
+     title pill and this panel will start visibly colliding again.
    --nearby-rooms-row-gap and --nearby-rooms-padding-block: vertical
      breathing room (currently 3x the original) — the two knobs that make
      the 5-row list actually tall, since height itself isn't a fixed
@@ -4056,13 +4105,6 @@ button.primary {
   scale: 0.9;
   opacity: 0.85;
 }
-.mobile-radial-btn.mobile-account-btn {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 700;
-  font-size: 30px;
-}
 /* ---------- Mobile modals: search, directions/exit, account, Building
    picker — all reuse the shared .modal-overlay/.modal pattern
    (FeedbackPanel.jsx is the reference implementation) rather than a
@@ -4079,10 +4121,6 @@ button.primary {
 .kiosk-raised-overlay > .flyover-panel {
   margin-top: var(--kiosk-card-center);
   transform: translateY(-50%);
-}
-.mobile-account-modal {
-  width: 320px;
-  max-width: 92vw;
 }
 .mobile-building-modal {
   width: 340px;
@@ -4125,29 +4163,6 @@ button.primary {
   background: transparent;
   border: none;
   box-shadow: none;
-}
-.mobile-account-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 4px;
-}
-.mobile-account-panel .account-avatar {
-  width: 56px;
-  height: 56px;
-  font-size: 18px;
-}
-.mobile-account-panel .account-name {
-  font-size: 15px;
-  max-width: 100%;
-}
-.mobile-signout-btn {
-  width: 100%;
-  padding: 12px;
-  min-height: 44px;
-  border-radius: var(--radius-md);
-  margin-top: 6px;
 }
 .mobile-search-row {
   position: relative;
@@ -4516,6 +4531,12 @@ button.primary {
    itself carries readability against whatever panorama content sits
    behind it, rather than a background gradient doing that job. */
 .tour-header {
+  /* Deliberately empty for now (no children render into it yet), so its
+     z-index (30, above .tour-description-panel's 20) has no visible
+     effect today. If content is ever added here, check it against
+     .tour-description-panel's top:16/right:16 box first — they occupy
+     the same top strip of the screen and this would render on top of
+     it with nothing else resolving that overlap. */
   position: absolute;
   top: 0;
   left: 0;
@@ -4591,6 +4612,13 @@ button.primary {
   color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
 }
+.tour-sidebar-section-caret img {
+  /* The icon file itself is opaque white; this reproduces the muted
+     rgba(255,255,255,0.6) the old text-glyph caret rendered at via
+     `color`, which an <img> can't inherit (see menu.svg vs
+     menu-white.svg for the general currentColor-through-<img> issue). */
+  opacity: 0.6;
+}
 .tour-sidebar-stop-list {
   display: flex;
   flex-direction: column;
@@ -4645,7 +4673,11 @@ button.primary {
   border: none;
   color: rgba(255, 255, 255, 0.85);
   font-size: 13px;
-  font-weight: 600;
+  /* No font-weight here — matches .tour-sidebar-stop-item's own base
+     state (also unweighted); both reuse .tour-sidebar-stop-item-active
+     as-is for the active/bold state (see the comment above this rule),
+     so the base states need to match too or a loose stop reads bolder
+     than a nested one before either is even selected. */
   text-align: left;
   cursor: pointer;
 }
@@ -4876,7 +4908,8 @@ button.primary {
   display: block;
   margin-bottom: 12px;
   font-size: 13px;
-  font-weight: 600;
+  /* No font-weight — matches .sidebar-field-label, the app's other form
+     field label (directions "From"/"To"), which is also unweighted. */
   color: var(--text-muted);
 }
 .feedback-body input,
@@ -5489,7 +5522,13 @@ button.primary {
    ===================================================================== */
 .kiosk-walkbar {
   position: fixed;
-  right: 28px;
+  /* 28px + 72px: the FAB dock (.mobile-side-dock) stays visible and
+     interactive (z-index 26) while the walk bar is showing, so its
+     right edge has to clear the dock's closed width (72px,
+     .mobile-side-dock--closed) too, not just the 28px page margin —
+     otherwise the hamburger tab paints over this box's top-right
+     corner. */
+  right: calc(28px + 72px);
   /* Half the keyboard column's width (which is (100vw - 68px) / 2), and
      taller: the controls stack vertically instead of sitting side by side. */
   width: calc((100vw - 68px) / 4);
@@ -6488,10 +6527,11 @@ html.kiosk-mode body {
 }
 
 /* --- Toasts --- */
-/* Above every modal (.modal-overlay tops out at z-index: 600) — a toast
-   reporting the result of an action started behind an open modal (e.g. a
-   mutation that resolves after the admin has already moved on) must still
-   be visible. */
+/* Above every modal (.modal-overlay is z-index: 100, the highest of the
+   centered-dialog tier; .loading-screen at 500 is the next highest thing
+   below this) — a toast reporting the result of an action started behind
+   an open modal (e.g. a mutation that resolves after the admin has
+   already moved on) must still be visible. */
 .toast-stack {
   position: fixed;
   right: 20px;
@@ -6529,6 +6569,10 @@ html.kiosk-mode body {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--white);
+}
+.toast-icon img {
+  width: 12px;
+  height: 12px;
 }
 .toast-message {
   flex: 1;

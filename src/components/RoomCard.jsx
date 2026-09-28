@@ -1,6 +1,7 @@
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
 import locationIcon from "../assets/icons/location.svg";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 export default function RoomCard({ room, onClose, onGetDirections, onView360 }) {
@@ -27,7 +28,9 @@ export default function RoomCard({ room, onClose, onGetDirections, onView360 }) 
         ) : (
           <div className="room-card-photo-placeholder"><IconPlaceholder name="camera" /> No photo yet</div>
         )}
-        <button className="room-card-close" onClick={onClose} title="Close">✕</button>
+        <button className="room-card-close" onClick={onClose} title="Close">
+          <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
+        </button>
       </div>
 
       <div className="room-card-body">
@@ -42,7 +45,9 @@ export default function RoomCard({ room, onClose, onGetDirections, onView360 }) 
         )}
 
         <div className="room-card-actions">
-          <button className="primary" onClick={onGetDirections}>➜ Get Directions</button>
+          <button className="primary" onClick={onGetDirections}>
+            <img src={chevronRightWhite} alt="" className="inline-icon-img" /> Get Directions
+          </button>
           <button onClick={onView360} disabled={!placard?.photo360} title={!placard?.photo360 ? "No 360° photo set for this room yet" : undefined}>
             360° View
           </button>

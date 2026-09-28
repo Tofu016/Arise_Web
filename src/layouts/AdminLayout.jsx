@@ -105,9 +105,6 @@ export default function AdminLayout() {
   const isActivePath = (path) => pathname === `/admin/${path}` || pathname.startsWith(`/admin/${path}/`);
 
   const displayName = profile?.name || user?.email || "";
-  const initials = displayName
-    ? displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-    : "?";
 
   return (
     <div className="admin-layout">
@@ -125,7 +122,7 @@ export default function AdminLayout() {
           <span className="admin-header-title">Admin Editor</span>
         </div>
         <div className="admin-header-side admin-header-account">
-          <div className="account-avatar">{initials}</div>
+          <div className="admin-account-badge">Admin</div>
           <span className="account-name" title={displayName}>{displayName}</span>
           <button onClick={signOut} className="admin-btn-secondary">Sign out</button>
         </div>

@@ -1,5 +1,6 @@
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import PanoramaNav from "./PanoramaNav";
+import IconPlaceholder from "./IconPlaceholder";
 
 // Shows a room's OWN photo360 (set via the "360° room photo" field in Room
 // Edit) as a standalone, draggable 360° sphere — deliberately not part of
@@ -14,7 +15,9 @@ export default function Room360Modal({ roomName, photo360, onClose }) {
       <div className="modal preview-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
           <h3>360° View: {roomName}</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose}>
+            <IconPlaceholder name="close" className="inline-icon-img" />
+          </button>
         </div>
 
         <div className="preview-screen">

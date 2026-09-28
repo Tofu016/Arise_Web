@@ -1,8 +1,10 @@
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 import directionsIcon from "../assets/icons/directions.svg";
+import menuIcon from "../assets/icons/menu.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 const DIRECTIONS_ICON = <img src={directionsIcon} alt="" className="inline-icon-img" />;
+const MENU_ICON = <img src={menuIcon} alt="" className="inline-icon-img" />;
 // Pending real icons — see the icon list handed back to the user.
 const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
 
@@ -14,14 +16,14 @@ const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-ico
 const TIPS = {
   desktop: [
     { icon: PLACEHOLDER("mouse-drag"), text: "Drag to look around, or use WASD or the arrow keys." },
-    { icon: "➜", text: "Click a glowing arrow in the photo to walk that way." },
-    { icon: "☰", text: "Open the menu for buildings, entrances and more." },
+    { icon: DIRECTIONS_ICON, text: "Click a glowing arrow in the photo to walk that way." },
+    { icon: MENU_ICON, text: "Open the menu for buildings, entrances and more." },
     { icon: DIRECTIONS_ICON, text: "Get directions to any room." },
   ],
   kiosk: [
     { icon: PLACEHOLDER("touch-tap"), text: "Touch and drag to look around." },
-    { icon: "➜", text: "Tap a glowing arrow in the photo to walk that way." },
-    { icon: "☰", text: "Tap the menu button for search, directions and more." },
+    { icon: DIRECTIONS_ICON, text: "Tap a glowing arrow in the photo to walk that way." },
+    { icon: MENU_ICON, text: "Tap the menu button for search, directions and more." },
   ],
 };
 
@@ -37,7 +39,9 @@ export default function HelpModal({ open, kiosk, onClose, onReplay }) {
       <div className="modal help-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
           <h3>How to use this tour</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose}>
+            <IconPlaceholder name="close" className="inline-icon-img" />
+          </button>
         </div>
         <ul className="help-tip-list">
           {(kiosk ? TIPS.kiosk : TIPS.desktop).map((tip) => (

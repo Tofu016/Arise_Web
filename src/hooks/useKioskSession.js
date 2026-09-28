@@ -57,3 +57,28 @@ export function useKioskZoomLock(compact) {
     };
   }, [compact]);
 }
+
+// On the Compact layout, block the right-click context menu and the common
+// devtools/view-source keyboard shortcuts, so a visitor at the physical
+// kiosk can't casually open Inspect Element. This only deters the ordinary
+// path (the browser's own menu and shortcuts) — it can't stop devtools
+// opened some other way, so it's not a security boundary, just a kiosk
+// hardening measure to match the deployed hardware's locked-down browser.
+export function useKioskInspectLock(compact) {
+  useEffect(() => {
+    if (!compact) return;
+    const blockContextMenu = (e) => e.preventDefault();
+    const blockDevToolsKeys = (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "f12") return e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) return e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && key === "u") return e.preventDefault();
+    };
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockDevToolsKeys);
+    return () => {
+      document.removeEventListener("contextmenu", blockContextMenu);
+      document.removeEventListener("keydown", blockDevToolsKeys);
+    };
+  }, [compact]);
+}

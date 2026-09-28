@@ -21,13 +21,17 @@ import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import directionsIcon from "../assets/icons/directions.svg";
+import menuIcon from "../assets/icons/menu.svg";
+import menuIconWhite from "../assets/icons/menu-white.svg";
+import powerIcon from "../assets/icons/power.svg";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
-import { useKioskSession, useKioskZoomLock } from "../hooks/useKioskSession";
+import { useKioskSession, useKioskZoomLock, useKioskInspectLock } from "../hooks/useKioskSession";
 import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
@@ -53,7 +57,7 @@ import { useDirectionsFlow } from "../hooks/useDirectionsFlow";
 import { AUTO_WALK_STEP_SECONDS } from "../hooks/useDirections";
 import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useNodePhoto } from "../hooks/useNodePhoto";
-import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_PANORAMA_CENTER, KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_PANORAMA_CENTER } from "../utils/kioskLayout";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
 import { useAuth } from "../context/useAuth";
 
@@ -84,6 +88,16 @@ function radialButtonTransform(index, total) {
 
 // Pending real icons — see the icon list handed back to the user.
 const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
+const DIRECTIONS_ICON = <img src={directionsIcon} alt="" className="inline-icon-img" />;
+const MENU_ICON = <img src={menuIcon} alt="" className="inline-icon-img" />;
+// SVGs loaded via <img> don't inherit CSS currentColor from the host page
+// (they render in an isolated document), so a "stroke: currentColor" icon
+// can't actually follow the button's color the way the grey/white
+// IconPlaceholder assets do with two prebaked colors — same reason this
+// needs its own white copy for the accent-filled FAB, not a CSS override.
+const MENU_ICON_WHITE = <img src={menuIconWhite} alt="" className="inline-icon-img" />;
+const CHEVRON_RIGHT_WHITE = <img src={chevronRightWhite} alt="" className="inline-icon-img" />;
+const POWER_ICON = <img src={powerIcon} alt="" className="inline-icon-img" />;
 
 // Kiosk: finishing feedback resets the whole system to the start screen and
 // starting node. Remounting the page under a fresh key drops every piece of
@@ -103,6 +117,7 @@ function MainPageContent({ onReset }) {
   // — see utils/kioskSession.js. Desktop skips straight to exploring.
   const kiosk = useKioskSession(compact);
   useKioskZoomLock(compact);
+  useKioskInspectLock(compact);
 
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
@@ -403,6 +418,23 @@ function MainPageContent({ onReset }) {
   });
   const { directions, progress, suggestions } = flow;
 
+  const toFieldRef = useRef(null);
+  // Focus (and select, so any pre-filled text is ready to be typed over) the
+  // destination field the moment the panel opens, so the visitor doesn't
+  // have to tap it first. Keyed off the open/closed transition, not
+  // `directions` itself, since that also changes on every keystroke as the
+  // visitor types — refocusing/reselecting mid-edit would fight them. Called
+  // unconditionally here (before any early returns below) since it's a hook.
+  const directionsWasOpenRef = useRef(false);
+  useEffect(() => {
+    const isOpen = !!directions;
+    if (isOpen && !directionsWasOpenRef.current) {
+      toFieldRef.current?.focus();
+      toFieldRef.current?.select();
+    }
+    directionsWasOpenRef.current = isOpen;
+  }, [directions]);
+
   // Called unconditionally here (before any early returns below) since it's a
   // hook. `ready` covers "no photo at all" too, so the splash can't stick when
   // zero nodes are configured; `firstLoadDone` latches for the full-screen
@@ -636,13 +668,6 @@ function MainPageContent({ onReset }) {
       title: "How to use this tour",
       onClick: () => overlay.openFromDock("help"),
     },
-    user && {
-      key: "account",
-      icon: initials,
-      title: displayName,
-      onClick: () => overlay.openFromDock("account"),
-      className: "mobile-account-btn",
-    },
   ].filter(Boolean);
 
   // The two actions on a search result. The entry itself isn't clickable —
@@ -656,7 +681,7 @@ function MainPageContent({ onReset }) {
         onMouseDown={(e) => { e.preventDefault(); onGoTo(); }}
         title="Go to this location"
       >
-        ⤳ Go To
+        {PLACEHOLDER("location-pin")} Go To
       </button>
       <button
         type="button"
@@ -664,7 +689,7 @@ function MainPageContent({ onReset }) {
         onMouseDown={(e) => { e.preventDefault(); flow.openTo(directionsNode); }}
         title="Get directions"
       >
-        ➜ Directions
+        {DIRECTIONS_ICON} Directions
       </button>
     </div>
   );
@@ -739,6 +764,28 @@ function MainPageContent({ onReset }) {
   // field is currently being edited.
   const renderDirectionsSuggestions = (field) => {
     if (directions?.editingField !== field) return null;
+    // The destination field shows a starting point immediately on open,
+    // same "don't know what to search for" idea as the main search bar's
+    // own randomSuggestions, so a visitor isn't stuck typing before seeing
+    // anything. Only "to", not "from" — the visitor already knows where
+    // they're starting from (it's wherever they are).
+    if (field === "to" && !directions.toQuery.trim()) {
+      if (randomSuggestions.length === 0) return null;
+      return (
+        <div className="room-search-results directions-suggestions">
+          <p className="room-search-suggestions-label">Suggested Locations</p>
+          {randomSuggestions.map((r) => (
+            <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
+              <span className="room-search-name">{r.roomName}</span>
+              <span className="room-search-sub">
+                {r.placard.use ? `${r.placard.use} · ` : ""}
+                {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
     if (suggestions.rooms.length === 0 && suggestions.places.length === 0) return null;
     return (
       <div className="room-search-results directions-suggestions">
@@ -775,7 +822,11 @@ function MainPageContent({ onReset }) {
     <>
       <div className="directions-panel-header">
         <h3>Directions</h3>
-        {!compact && <button className="close-btn" onClick={flow.close}>✕</button>}
+        {!compact && (
+          <button className="close-btn" onClick={flow.close}>
+            {PLACEHOLDER("close")}
+          </button>
+        )}
       </div>
 
       <label className="sidebar-field-label">
@@ -795,6 +846,7 @@ function MainPageContent({ onReset }) {
         To
         <input
           type="text"
+          ref={toFieldRef}
           value={directions.toQuery}
           onChange={(e) => flow.editField("to", e.target.value)}
           onFocus={() => flow.focusField("to")}
@@ -852,13 +904,15 @@ function MainPageContent({ onReset }) {
                 onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
                 disabled={autoWalking}
               >
-                {nextElevator && PLACEHOLDER("elevator")} {nextStepAction} →
+                {nextElevator && PLACEHOLDER("elevator")} {nextStepAction} {CHEVRON_RIGHT_WHITE}
               </button>
               <button
                 className="directions-go-btn directions-autowalk-btn"
                 onClick={() => { overlay.setWalkDialog(false); flow.toggleAutoWalk(); }}
               >
-                {autoWalking ? "⏸ Stop auto-walk" : `▶ Auto-walk (every ${AUTO_WALK_STEP_SECONDS}s)`}
+                {autoWalking
+                  ? <>{PLACEHOLDER("pause")} Stop auto-walk</>
+                  : <>{PLACEHOLDER("play")} Auto-walk (every {AUTO_WALK_STEP_SECONDS}s)</>}
                 {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
               </button>
             </>
@@ -905,7 +959,9 @@ function MainPageContent({ onReset }) {
                 ));
               })()}
             </div>
-            <button className="close-btn elevator-picker-close" onClick={overlay.closeElevatorPicker}>✕</button>
+            <button className="close-btn elevator-picker-close" onClick={overlay.closeElevatorPicker}>
+              {PLACEHOLDER("close")}
+            </button>
           </div>
         </div>
       )}
@@ -1092,7 +1148,9 @@ function MainPageContent({ onReset }) {
                   aria-expanded={mobileDockOpen}
                   title={mobileDockOpen ? "Close menu" : "Menu"}
                 >
-                  {mobileDockOpen ? "✕" : "☰"}
+                  {mobileDockOpen
+                    ? <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
+                    : MENU_ICON_WHITE}
                 </button>
 
                 {mobileDockOpen && (
@@ -1131,7 +1189,7 @@ function MainPageContent({ onReset }) {
                 title="Back"
                 aria-label="Back"
               >
-                ←
+                {PLACEHOLDER("back")}
               </button>
             )}
 
@@ -1153,7 +1211,7 @@ function MainPageContent({ onReset }) {
                 title="End session"
                 aria-label="End session"
               >
-                ⏻
+                {POWER_ICON}
               </button>
             )}
 
@@ -1207,25 +1265,6 @@ function MainPageContent({ onReset }) {
               />
             )}
 
-            {panelMode === "account" && user && (
-              <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE} onClick={overlay.closePanel}>
-                <div className="modal mobile-account-modal" onClick={(e) => e.stopPropagation()}>
-                  <div className="preview-header">
-                    <h3>Account</h3>
-                    <button className="close-btn" onClick={overlay.closePanel}>✕</button>
-                  </div>
-                  <div className="mobile-account-panel">
-                    <div className="account-avatar">{initials}</div>
-                    <span className="account-name" title={displayName}>{displayName}</span>
-                    {role === "admin" && (
-                      <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
-                    )}
-                    <button onClick={signOut} className="subtle account-signout mobile-signout-btn">Sign out</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {buildingMenuOpen && (
               <div
                 className="modal-overlay mobile-building-overlay"
@@ -1235,7 +1274,9 @@ function MainPageContent({ onReset }) {
                 <div className="modal mobile-building-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="preview-header">
                     <h3>Choose a building</h3>
-                    <button className="close-btn" onClick={overlay.closeBuildingMenu}>✕</button>
+                    <button className="close-btn" onClick={overlay.closeBuildingMenu}>
+                      {PLACEHOLDER("close")}
+                    </button>
                   </div>
                   <div className="mobile-building-list">
                     {mainCampusEntrance && (
@@ -1444,14 +1485,14 @@ function MainPageContent({ onReset }) {
                 <div className="floating-title-wrap">
                   <div className="floating-title-pill">
                     {history.length > 0 && (
-                      <button className="floating-title-back" onClick={goBack} title="Back">←</button>
+                      <button className="floating-title-back" onClick={goBack} title="Back">{PLACEHOLDER("back")}</button>
                     )}
                     <span>{current.name}</span>
                   </div>
                 </div>
 
                 <div className="floating-rail">
-                  <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">☰</button>
+                  <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">{MENU_ICON}</button>
                   <div className="floating-rail-spacer" />
                 </div>
 
@@ -1504,7 +1545,7 @@ function MainPageContent({ onReset }) {
                       onClick={() => setAccountMenuOpen((o) => !o)}
                       title={displayName}
                     >
-                      {initials}
+                      {role === "admin" ? "Admin" : initials}
                     </button>
                   </div>
                 )}

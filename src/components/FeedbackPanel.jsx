@@ -1,6 +1,9 @@
 import { useFeedbackForm } from "../hooks/useFeedbackForm";
 import KioskDialog from "./KioskDialog";
 import KioskThanks from "./KioskThanks";
+import IconPlaceholder from "./IconPlaceholder";
+import starOutline from "../assets/icons/star-outline.svg";
+import starFilled from "../assets/icons/star-filled.svg";
 
 // General app/experience feedback — genuinely optional and skippable,
 // triggered by its own button rather than shown automatically. Not
@@ -49,7 +52,11 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
             aria-checked={f.rating === star}
             role="radio"
           >
-            {star <= displayRating ? "★" : "☆"}
+            <img
+              src={star <= displayRating ? starFilled : starOutline}
+              alt=""
+              className="inline-icon-img"
+            />
           </button>
         ))}
       </div>
@@ -111,7 +118,9 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
       <div className="modal feedback-modal" onClick={(e) => e.stopPropagation()}>
         <div className="preview-header">
           <h3>{title}</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose}>
+            <IconPlaceholder name="close" className="inline-icon-img" />
+          </button>
         </div>
         <div className="feedback-body">{body}</div>
       </div>

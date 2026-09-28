@@ -1,4 +1,5 @@
 import OnScreenKeyboard from "./OnScreenKeyboard";
+import IconPlaceholder from "./IconPlaceholder";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 
 // The kiosk view's dialog: one shared shell for every module that needs a
@@ -50,7 +51,7 @@ export default function KioskDialog({ title, titleClassName = "", keyboard = "se
           </div>
         </div>
         <button type="button" className="kiosk-dialog-close" onClick={onClose} aria-label="Close">
-          ✕
+          <IconPlaceholder name="close" className="inline-icon-img" />
         </button>
       </div>
     </>

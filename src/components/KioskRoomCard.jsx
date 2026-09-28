@@ -2,6 +2,7 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
 import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 import locationIcon from "../assets/icons/location.svg";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 // The kiosk view's room information card. Shares the KioskDialog footprint
@@ -63,13 +64,15 @@ export default function KioskRoomCard({ room, onClose, onGetDirections, onView36
           </div>
 
           <div className="room-card-actions">
-            <button className="primary" onClick={onGetDirections}>➜ Get Directions</button>
+            <button className="primary" onClick={onGetDirections}>
+              <img src={chevronRightWhite} alt="" className="inline-icon-img" /> Get Directions
+            </button>
             <button onClick={onView360}>360° View</button>
           </div>
         </div>
       </div>
       <button type="button" className="kiosk-dialog-close" onClick={onClose} aria-label="Close">
-        ✕
+        <IconPlaceholder name="close" className="inline-icon-img" />
       </button>
     </div>
   );
