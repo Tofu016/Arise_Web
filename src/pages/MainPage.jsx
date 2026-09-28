@@ -637,7 +637,17 @@ function MainPageContent({ onReset }) {
   // reachable without opening the menu first. Every handler collapses the
   // radial menu itself first (openFromDock) so only the modal is left
   // showing, not both stacked at once.
+  // index 0 renders bottom-most on the arc (see radialButtonTransform:
+  // index 0 gets the most negative angle, which sweeps downward toward 7
+  // o'clock) — Nearest Exit goes first in this array so it lands in that
+  // bottom-most slot, the 6th/last position counting top-to-bottom.
   const radialItems = [
+    {
+      key: "nearest-exit",
+      icon: PLACEHOLDER("emergency-exit"),
+      title: "Nearest Exit",
+      onClick: flow.openNearestExit, // also collapses the dock
+    },
     {
       key: "feedback",
       icon: PLACEHOLDER("chat-bubble"),
@@ -1520,6 +1530,18 @@ function MainPageContent({ onReset }) {
                   title="Give feedback"
                 >
                   {PLACEHOLDER("chat-bubble")}
+                </button>
+
+                {/* Nearest Exit: same bottom-left safety stack, one more
+                    step up from feedback, so it's reachable without
+                    opening the menu first, like the directions button
+                    below it. */}
+                <button
+                  className="floating-rail-btn floating-nearest-exit-btn"
+                  onClick={flow.openNearestExit}
+                  title="Nearest Exit"
+                >
+                  {PLACEHOLDER("emergency-exit")}
                 </button>
 
                 {/* Moved out of the rail and up to the top-right — its own

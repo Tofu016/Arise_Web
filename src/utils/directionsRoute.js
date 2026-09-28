@@ -130,6 +130,24 @@ export function getDirections(d, nodes, searchableRooms) {
   return mixed ? found(mixed, null) : noRoute;
 }
 
+// The "Nearest Exit" route: fromId/toId are already resolved (toId is
+// whatever findNearestExit picked), so unlike getDirections this skips
+// name-resolution AND the stairs/elevator question entirely — it always
+// takes the stairs-only path, since offering an elevator as an evacuation
+// route would defeat the point of the feature.
+export function getEmergencyDirections(d, nodes) {
+  if (!d?.fromId || !d?.toId) {
+    return { ...d, path: null, pendingModeChoice: null, error: "Could not find a route to the nearest exit from here." };
+  }
+  const path = findPath(nodes, d.fromId, d.toId, "stairs");
+  if (!path) {
+    return { ...d, path: null, pendingModeChoice: null, error: "No stairs-only route to an exit found from here." };
+  }
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const sameFloor = byId[d.fromId]?.floor === byId[d.toId]?.floor;
+  return { ...d, path, stepIndex: 0, error: "", pendingModeChoice: null, transportMode: sameFloor ? null : "stairs" };
+}
+
 // The visitor picked "stairs" or "elevator" from pendingModeChoice.
 export function chooseTransportMode(d, mode) {
   if (!d?.pendingModeChoice) return d;

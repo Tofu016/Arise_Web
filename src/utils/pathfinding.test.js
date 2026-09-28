@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findPath, getTurnInstruction } from "./pathfinding";
+import { findPath, findNearestExit, getTurnInstruction } from "./pathfinding";
 
 const node = (id, floor, extra = {}) => ({ id, building: "gd1", floor, type: "hallway", neighbors: [], markers: [], ...extra });
 const link = (a, b) => {
@@ -99,6 +99,43 @@ describe("findPath", () => {
     link(a, stairs);
     link(stairs, b);
     expect(findPath([a, stairs, b], "a", "b")).toEqual(["a", "s1", "b"]);
+  });
+});
+
+describe("findNearestExit", () => {
+  it("picks the closer of two reachable fire exits", () => {
+    const a = node("a", 1);
+    const mid = node("mid", 1);
+    const near = node("near", 1, { type: "transitionExit" });
+    const far = node("far", 1, { type: "transitionExit" });
+    link(a, near);
+    link(a, mid);
+    link(mid, far);
+    expect(findNearestExit([a, mid, near, far], "a")).toBe("near");
+  });
+
+  it("returns the starting node when it's already a fire exit", () => {
+    const exit = node("x1", 1, { type: "transitionExit" });
+    expect(findNearestExit([exit], "x1")).toBe("x1");
+  });
+
+  it("never rides an elevator to reach an exit, even when one would be shorter", () => {
+    const a = node("a", 1, { markers: [elevatorMarker("m1", "E1", [1, 2])] });
+    const exitViaElevator = node("x1", 2, { type: "transitionExit", markers: [elevatorMarker("m2", "E1", [1, 2])] });
+    const stairs1 = node("s1", 1, { type: "transition" });
+    const stairs2 = node("s2", 2, { type: "transition" });
+    const exitViaStairs = node("x2", 2, { type: "transitionExit" });
+    link(a, stairs1);
+    link(stairs1, stairs2);
+    link(stairs2, exitViaStairs);
+    expect(findNearestExit([a, exitViaElevator, stairs1, stairs2, exitViaStairs], "a")).toBe("x2");
+  });
+
+  it("returns null when no fire exit is reachable", () => {
+    const a = node("a", 1);
+    const b = node("b", 1);
+    link(a, b);
+    expect(findNearestExit([a, b], "a")).toBeNull();
   });
 });
 

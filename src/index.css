@@ -3396,6 +3396,15 @@ button.primary {
   left: 16px;
   z-index: 30;
 }
+/* One more step up the same stack — 214px (feedback button's own offset)
+   + 44px + 12px = 270px. Same left offset and gap convention as the rest
+   of this bottom-left safety cluster. */
+.floating-nearest-exit-btn {
+  position: absolute;
+  bottom: 270px;
+  left: 16px;
+  z-index: 30;
+}
 .account-popover {
   position: absolute;
   bottom: calc(100% + 8px);

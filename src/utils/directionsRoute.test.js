@@ -112,6 +112,43 @@ describe("getDirections across floors: stairs vs. elevator", () => {
   });
 });
 
+describe("getEmergencyDirections", () => {
+  const elevatorMarker = (id, elevatorId, accessibleFloors) => ({
+    id, type: "elevator", label: "E", yaw: 0, pitch: 0, elevatorId, accessibleFloors,
+  });
+  const floored = [
+    { id: "p", name: "P", floor: 1, neighbors: ["stairs1"], markers: [elevatorMarker("m1", "E1", [1, 2])] },
+    { id: "stairs1", name: "S1", floor: 1, type: "transition", neighbors: ["p", "stairs2"] },
+    { id: "stairs2", name: "S2", floor: 2, type: "transition", neighbors: ["stairs1", "x"] },
+    { id: "x", name: "X", floor: 2, type: "transitionExit", neighbors: ["stairs2"], markers: [elevatorMarker("m2", "E1", [1, 2])] },
+  ];
+
+  it("takes the stairs-only route without asking, even though an elevator path also exists", () => {
+    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "x", name: "X" }), fromId: "p", toId: "x" };
+    const next = route.getEmergencyDirections(d, floored);
+    expect(next).toMatchObject({
+      path: ["p", "stairs1", "stairs2", "x"], transportMode: "stairs", pendingModeChoice: null, error: "",
+    });
+  });
+
+  it("reports when no stairs-only route to the exit exists", () => {
+    const noStairs = floored.filter((n) => n.id !== "stairs1" && n.id !== "stairs2");
+    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "x", name: "X" }), fromId: "p", toId: "x" };
+    const next = route.getEmergencyDirections(d, noStairs);
+    expect(next.path).toBeNull();
+    expect(next.error).toMatch(/No stairs-only route/);
+  });
+
+  it("leaves transportMode null on a same-floor exit route", () => {
+    const sameFloor = [
+      { id: "a", name: "A", floor: 1, neighbors: ["x1"] },
+      { id: "x1", name: "X1", floor: 1, type: "transitionExit", neighbors: ["a"] },
+    ];
+    const d = { ...route.openDirectionsTo({ id: "a", name: "A" }, { id: "x1", name: "X1" }), fromId: "a", toId: "x1" };
+    expect(route.getEmergencyDirections(d, sameFloor)).toMatchObject({ path: ["a", "x1"], transportMode: null });
+  });
+});
+
 describe("nextStep with an elevator ride", () => {
   const elevatorMarker = (id, elevatorId, accessibleFloors, yaw) => ({
     id, type: "elevator", label: "E", yaw, pitch: 0, elevatorId, accessibleFloors,

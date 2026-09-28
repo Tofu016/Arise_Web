@@ -66,6 +66,35 @@ export function findPath(nodes, fromId, toId, mode = "any") {
   return null; // no route between these two nodes under this mode
 }
 
+// Nearest fire exit (transitionExit) from a starting node, for the
+// "Nearest Exit" emergency feature. Stairs-only by construction: it walks
+// neighbor edges the same way "stairs" mode does (no elevatorAdjacency), so
+// it can never route an evacuee through an elevator ride, which is a real
+// fire-safety rule, not just a pathfinding preference. Stops at the first
+// transitionExit node it reaches, so (matching findPath's "never pass
+// through one" rule) it can't return an exit reached by cutting through a
+// different exit first. Returns that node's id, or null if none is
+// reachable without an elevator.
+export function findNearestExit(nodes, fromId) {
+  if (!fromId) return null;
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  if (!byId[fromId]) return null;
+  if (byId[fromId].type === "transitionExit") return fromId;
+
+  const visited = new Set([fromId]);
+  const queue = [fromId];
+  while (queue.length > 0) {
+    const id = queue.shift();
+    for (const nb of byId[id]?.neighbors || []) {
+      if (visited.has(nb) || !byId[nb]) continue;
+      visited.add(nb);
+      if (byId[nb].type === "transitionExit") return nb;
+      queue.push(nb);
+    }
+  }
+  return null;
+}
+
 // Turn-by-turn instruction ("Go straight through" / "Turn left toward" /
 // "Turn right toward" / "Turn around toward"), computed from data that
 // already exists — no new collection needed. entryYaw is the direction

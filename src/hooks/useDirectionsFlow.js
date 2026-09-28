@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useDirections, useAutoWalk } from "./useDirections";
 import * as route from "../utils/directionsRoute";
+import { findNearestExit } from "../utils/pathfinding";
 import { searchCampus } from "../utils/search";
 import { speak } from "../utils/tts";
 import { floorLabel } from "../utils/constants";
@@ -71,6 +72,29 @@ export function useDirectionsFlow({
     overlay.closeDirections();
   };
 
+  // "Nearest Exit": finds the closest transitionExit node by stairs (see
+  // findNearestExit) and routes straight to it, no From/To typing needed —
+  // one tap in an emergency. Reuses the same panel/state as a normal
+  // route once the destination is resolved, so progress, auto-walk, and
+  // arrival all work the same way as any other directions flow.
+  const openNearestExit = () => {
+    if (!current || !nodes) return;
+    const exitId = findNearestExit(nodes, currentId);
+    if (!exitId) {
+      setDirections({ ...route.openDirections(current), error: "No emergency exit reachable by stairs from here." });
+      overlay.openDirections();
+      clearSearch();
+      return;
+    }
+    const exitNode = nodes.find((n) => n.id === exitId);
+    const opened = route.openDirectionsTo(current, exitNode);
+    const next = route.getEmergencyDirections(opened, nodes);
+    setDirections(next);
+    overlay.openDirections();
+    clearSearch();
+    if (next.path) startWalking(next);
+  };
+
   const startWalking = (d = directions) => {
     if (!d?.path) return;
     moves.jump(d.path[0]);
@@ -112,6 +136,7 @@ export function useDirectionsFlow({
     suggestions,
     open,
     openTo,
+    openNearestExit,
     close,
     get,
     chooseMode,
