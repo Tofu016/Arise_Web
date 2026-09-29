@@ -46,6 +46,17 @@ describe("default landing", () => {
     ];
     expect(pickDefaultNode(ns, buildings).id).toBe("e1a");
   });
+  it("prefers the Main Campus entrance over any other entrance", () => {
+    const mainBuildings = [
+      { id: "gd1", label: "GD1", campus: "main" },
+      { id: "gd2", label: "GD2", campus: "main" },
+    ];
+    const ns = [
+      node("e1", "gd1", { type: "entrance", floor: 1 }),
+      node("ce", "gd2", { type: "entrance", floor: 3, campusEntrance: true }),
+    ];
+    expect(pickDefaultNode(ns, mainBuildings).id).toBe("ce");
+  });
   it("falls back to the first node without entrances, and to null without nodes", () => {
     expect(pickDefaultNode(nodes, buildings).id).toBe("a");
     expect(pickDefaultNode([], buildings)).toBeNull();

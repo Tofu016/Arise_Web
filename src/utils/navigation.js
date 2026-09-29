@@ -34,11 +34,17 @@ export function initialNavigation() {
   return { currentId: null, history: [], entryYaw: 0, entryPitch: 0, flyover: null, lastNavAt: 0 };
 }
 
-// Deterministic "where do we start" pick: prefer an entrance, in building
-// order (GD1, GD2, GD3, then any admin-added buildings), lowest floor first.
-// Falls back to the first node at all if the data has no entrances tagged.
+// Deterministic "where do we start" pick: the Main Campus entrance (the
+// node an admin flagged campusEntrance, shared across GD1/GD2/GD3) wins
+// outright when one exists, since that's the single front door visitors
+// should land at. Otherwise prefer an entrance, in building order (GD1,
+// GD2, GD3, then any admin-added buildings), lowest floor first. Falls
+// back to the first node at all if the data has no entrances tagged.
 export function pickDefaultNode(nodes, buildings) {
   if (!nodes || nodes.length === 0) return null;
+  const campusOf = (buildingId) => buildings.find((b) => b.id === buildingId)?.campus ?? buildingId;
+  const mainEntrance = nodes.find((n) => n.campusEntrance && campusOf(n.building) === "main");
+  if (mainEntrance) return mainEntrance;
   const entrances = nodes.filter((n) => n.type === "entrance");
   if (entrances.length === 0) return nodes[0];
   const order = buildings.map((b) => b.id);
