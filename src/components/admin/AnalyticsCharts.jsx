@@ -64,11 +64,15 @@ function barWidth(ratio) {
 // unique `key`, since labels (node names) aren't guaranteed unique. Value
 // sits at the bar tip rather than in a far-right column, so it reads as
 // belonging to its bar.
-export function RankedBarChart({ items, emptyHint, emptyIcon }) {
+export function RankedBarChart({ items, emptyHint, emptyIcon, columns = 1 }) {
   if (!items.length) return <EmptyState icon={emptyIcon}>{emptyHint}</EmptyState>;
   const max = Math.max(...items.map((i) => i.value), 1);
   return (
-    <div className="analytics-bar-list" role="table" aria-label="Ranked bar chart">
+    <div
+      className={"analytics-bar-list" + (columns === 2 ? " analytics-bar-list-columns" : "")}
+      role="table"
+      aria-label="Ranked bar chart"
+    >
       {items.map((item) => (
         <div className="analytics-bar-row" key={item.key} role="row" title={`${item.label}: ${item.value}`}>
           <span className="analytics-bar-row-label" role="rowheader">

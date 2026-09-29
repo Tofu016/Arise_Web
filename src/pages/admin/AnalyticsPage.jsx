@@ -148,11 +148,14 @@ function FilterBar({ filters, setFilters, buildings }) {
   );
 }
 
-function Section({ title, hint, filters, badge, loading, updating, error, wide, children }) {
+function Section({ title, hint, filters, badge, loading, updating, error, wide, emphasis, children }) {
   return (
     <section
       className={
-        "analytics-section" + (wide ? " analytics-section-wide" : "") + (updating ? " analytics-section-updating" : "")
+        "analytics-section" +
+        (wide ? " analytics-section-wide" : "") +
+        (emphasis ? " analytics-section-emphasis" : "") +
+        (updating ? " analytics-section-updating" : "")
       }
       aria-busy={updating}
     >
@@ -342,6 +345,7 @@ export default function AnalyticsPage() {
 
         <Section
           title="Top searches"
+          emphasis
           hint={
             searches.data?.total
               ? `${Math.round(searches.data.noMatchRate * 100)}% of ${searches.data.total} searches found no room.`
@@ -353,16 +357,23 @@ export default function AnalyticsPage() {
         >
           <RankedBarChart
             items={searchItems}
+            columns={2}
             emptyIcon="search-magnifier"
             emptyHint="No searches tracked yet in this range."
           />
         </Section>
 
-        <Section title="Most common routes" loading={routes.loading} updating={routes.updating} error={routes.error}>
+        <Section
+          title="Most common routes"
+          emphasis
+          loading={routes.loading}
+          updating={routes.updating}
+          error={routes.error}
+        >
           {routesItems.length === 0 ? (
             <EmptyState icon="location-pin">No directions requested yet in this range.</EmptyState>
           ) : (
-            <div className="analytics-bar-list">
+            <div className="analytics-bar-list analytics-bar-list-columns">
               {routesItems.map((r) => (
                 <div className="analytics-route-row" key={`${r.from_node_id}|${r.to_node_id}`}>
                   <span className="analytics-route-label">

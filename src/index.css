@@ -5361,12 +5361,17 @@ button.primary {
    ignored the admin rail and dropped to one column on laptop widths.
    min(100%, ...) lets a card shrink below 380px on a narrow screen
    instead of overflowing. */
+/* Half-width track (190px) so a normal card (span 2) keeps its old ~380px
+   width while analytics-section-emphasis (span 3) comes out to 1.5x that,
+   without hardcoding pixel widths that would fight auto-fit's responsive
+   reflow. */
 .analytics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   gap: 20px;
 }
 .analytics-section {
+  grid-column: span 2;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -5378,6 +5383,11 @@ button.primary {
 }
 .analytics-section-wide {
   grid-column: 1 / -1;
+}
+/* Top searches / Most common routes: 1.5x a normal panel's width, with
+   room for their entry lists to run two columns instead of one. */
+.analytics-section-emphasis {
+  grid-column: span 3;
 }
 .analytics-section-heading {
   margin: 0 0 4px 0;
@@ -5447,6 +5457,21 @@ button.primary {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* Two-column entry layout for the wider emphasis panels (Top searches,
+   Most common routes): CSS multi-column rather than a fixed row/column
+   grid, since entry count varies and multi-column fills top-to-bottom per
+   column on its own. gap doesn't apply outside flex/grid, so rows get
+   their own margin-bottom instead. */
+.analytics-bar-list-columns {
+  display: block;
+  column-count: 2;
+  column-gap: 24px;
+}
+.analytics-bar-list-columns .analytics-bar-row,
+.analytics-bar-list-columns .analytics-route-row {
+  break-inside: avoid;
+  margin-bottom: 8px;
 }
 .analytics-bar-row {
   display: grid;
