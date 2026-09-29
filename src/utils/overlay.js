@@ -3,18 +3,17 @@
 //
 // One exclusive panel slot (Maps-style: only one of menu/search/room/
 // directions/account at a time) plus overlays that stand on their own and can
-// coexist with it: the mobile dock, the feedback panel, a room's 360° view
-// and the building dialog.
+// coexist with it: the mobile dock, the feedback panel, and the building
+// dialog.
 
 export const initialOverlay = {
   panel: null, // null | "menu" | "search" | "room" | "directions" | "account"
   dock: false, // mobile/kiosk: the radial menu is expanded
   feedback: false,
-  room360: false,
   buildingMenu: false,
   floorPick: null, // building whose floor list is expanded in the building dialog
   walkDialog: true, // kiosk: big directions dialog (true) vs compact walk bar (false)
-  roomCard: null, // the room whose card the "room" panel shows; kept while its 360° view is open
+  roomCard: null, // the room whose card the "room" panel shows
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
   endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
   elevatorPicker: null, // { markerId, label, currentFloor, destinations } — an elevator landing was tapped with more than one other floor to ride to (with only one, it rides straight there and this never opens)
@@ -46,10 +45,6 @@ export function overlayReducer(state, action) {
       return { ...state, endSessionThanks: true };
     case "closeEndSessionThanks":
       return { ...state, endSessionThanks: false };
-    case "openRoom360":
-      return { ...state, room360: true };
-    case "closeRoom360":
-      return { ...state, room360: false };
     case "openHelp":
       return { ...state, dock: false, help: true };
     case "closeHelp":
@@ -116,7 +111,6 @@ export function blocksIdle(state, { flyover, awaitingStart }) {
     state.dock ||
     state.feedback ||
     state.endSessionThanks ||
-    state.room360 ||
     state.help ||
     !!state.elevatorPicker ||
     !!flyover ||
@@ -144,7 +138,6 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
     state.feedback ||
     state.endSessionThanks ||
     state.buildingMenu ||
-    state.room360 ||
     state.help ||
     !!state.elevatorPicker ||
     !!flyover;

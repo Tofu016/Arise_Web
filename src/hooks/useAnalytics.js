@@ -5,8 +5,19 @@ const FLUSH_INTERVAL_MS = 15000;
 const MAX_QUEUED = 10;
 const DESKTOP_SESSION_KEY = "ariseAnalyticsSession";
 
+// crypto.randomUUID() only exists in secure contexts (HTTPS, or the
+// localhost exception) — dev/kiosk testing over plain http://<LAN-ip>
+// (e.g. WiFi) is not secure, so it's undefined there and throws,
+// crashing the whole app before first render. These ids just need to be
+// unique per session, not cryptographically random, so fall back to a
+// manual UUID v4 when the API is missing.
 function newSessionId() {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 // Kiosk: a fresh id every mount — MainPageContent only remounts on a real

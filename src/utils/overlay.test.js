@@ -74,20 +74,15 @@ describe("moves", () => {
     expect(s).toMatchObject({ roomCard: null, panel: null });
   });
 
-  it("keeps the room card while its 360° view is open over a closed panel", () => {
-    const s = run({ type: "moved", move: { type: "jump", room } }, { type: "openRoom360" }, { type: "closePanel" });
-    expect(s).toMatchObject({ roomCard: room, room360: true });
-  });
 });
 
 describe("blocksIdle", () => {
   const ctx = { flyover: null, awaitingStart: false };
   it("is false with nothing up", () => expect(blocksIdle(initialOverlay, ctx)).toBe(false));
-  it("is true for a panel, the dock, feedback, a 360° view, help, a flyover or the kiosk start screens", () => {
+  it("is true for a panel, the dock, feedback, help, a flyover or the kiosk start screens", () => {
     expect(blocksIdle(run({ type: "showPanel", mode: "search" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openDock" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openFeedback" }), ctx)).toBe(true);
-    expect(blocksIdle(run({ type: "openRoom360" }), ctx)).toBe(true);
     expect(blocksIdle(run({ type: "openHelp" }), ctx)).toBe(true);
     expect(blocksIdle(initialOverlay, { ...ctx, flyover: {} })).toBe(true);
     expect(blocksIdle(initialOverlay, { ...ctx, awaitingStart: true })).toBe(true);
@@ -120,10 +115,9 @@ describe("coverage", () => {
     expect(coverage(run({ type: "showPanel", mode: "account" }), base).kioskDialogOpen).toBe(false);
   });
 
-  it("the building dialog, dock, 360° view, help and flyover cover the panorama", () => {
+  it("the building dialog, dock, help and flyover cover the panorama", () => {
     expect(coverage({ ...initialOverlay, buildingMenu: true }, base).coversPanorama).toBe(true);
     expect(coverage(run({ type: "openDock" }), base).coversPanorama).toBe(true);
-    expect(coverage(run({ type: "openRoom360" }), base).coversPanorama).toBe(true);
     expect(coverage(run({ type: "openHelp" }), base).coversPanorama).toBe(true);
     expect(coverage(initialOverlay, { ...base, flyover: {} }).coversPanorama).toBe(true);
     expect(coverage(initialOverlay, base).coversPanorama).toBe(false);

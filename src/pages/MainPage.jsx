@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
 import RoomCard from "../components/RoomCard";
-import Room360Modal from "../components/Room360Modal";
 import FlyoverPanel from "../components/FlyoverPanel";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
@@ -40,7 +39,7 @@ import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
-import { buildSearchableRooms, findRoomForMarker, pickSuggestions, searchCampus } from "../utils/search";
+import { buildSearchableRooms, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
 import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
 import { speak } from "../utils/tts";
@@ -225,7 +224,6 @@ function MainPageContent({ onReset }) {
     panel: panelMode,
     dock: mobileDockOpen,
     feedback: showFeedback,
-    room360: room360Open,
     buildingMenu: buildingMenuOpen,
     floorPick: floorPickBuilding,
     roomCard: selectedRoomCard,
@@ -258,13 +256,16 @@ function MainPageContent({ onReset }) {
   const nav = useNavigation(nodes, byId);
   const { currentId, history, entryYaw, entryPitch, flyover } = nav;
 
-  // Rooms with actual detail records (photo/description/department/use) —
-  // built by matching each node's "Rooms served" entries against
-  // placardDialogs. Only rooms an admin has actually gone through Room Edit
-  // for show up in search this way; a room existing on a node alone isn't
-  // enough, since there'd be nothing to show on the card.
+  // Built by matching each node's "Rooms served" entries against
+  // placardDialogs. The kiosk only lists rooms an admin has gone through
+  // Room Edit for; desktop also lists the rest with a null placard (its
+  // sidebar has a "No information." state), so anything rendering a room
+  // must treat `placard` as optional.
   const { getForRoom } = usePlacardDialogs();
-  const searchableRooms = useMemo(() => buildSearchableRooms(nodes, getForRoom), [nodes, getForRoom]);
+  const searchableRooms = useMemo(
+    () => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: !compact }),
+    [nodes, getForRoom, compact]
+  );
 
   // Room search always scans the whole campus regardless of the building filter —
   // that filter only picks which entrances are offered to browse from, it
@@ -288,12 +289,14 @@ function MainPageContent({ onReset }) {
   }, [searchQuery]);
 
   // A quick "don't know what to search for" starting point — a fresh random
-  // sample of rooms (that actually have detail records) shown the moment the
-  // (empty) search box is focused, re-shuffled each time it's opened.
-  const randomSuggestions = useMemo(() => {
-    return pickSuggestions(searchableRooms);
+  // sample of rooms and places (see pickLocationSuggestions — rooms with
+  // detail records first, plain nodes filling the rest, same breadth typing
+  // draws from) shown the moment the (empty) search box or destination
+  // field is focused, re-shuffled each time either panel opens.
+  const { rooms: randomSuggestions, places: randomPlaceSuggestions } = useMemo(() => {
+    return pickLocationSuggestions(nodes, searchableRooms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelMode === "search", searchableRooms]);
+  }, [panelMode, searchableRooms, nodes]);
 
   // The kiosk's after-building floor screen: every floor of whichever
   // building the visitor just picked.
@@ -515,8 +518,17 @@ function MainPageContent({ onReset }) {
     if (isOpen && !directionsWasOpenRef.current) {
       toFieldRef.current?.focus();
       toFieldRef.current?.select();
+      // The kiosk's own on-screen keyboard (inputMode="none") means the
+      // usual OS-keyboard-triggers-focus-styling path doesn't apply here,
+      // so the suggestions dropdown is driven straight off `editingField`
+      // rather than trusting the native focus event to have landed in
+      // time for this same render pass: expand it explicitly so
+      // suggestions are already showing the instant the modal opens,
+      // not only after the visitor's first tap into the field.
+      flow.focusField("to");
     }
     directionsWasOpenRef.current = isOpen;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directions]);
 
   // Tracked the moment a route actually resolves (get(), chooseMode(), or
@@ -606,9 +618,13 @@ function MainPageContent({ onReset }) {
   // details exist for that label, nothing happens — same "only rooms an admin
   // has actually gone through Room Edit for are actionable" rule search
   // already follows.
+  // On desktop, a marker whose label isn't in any node's "Rooms served"
+  // list still opens the sidebar's "No information." state, anchored to
+  // the node the marker was clicked from.
   const handleRoomMarkerClick = (marker) => {
     const match = findRoomForMarker(marker, searchableRooms);
     if (match) openRoomCard(match);
+    else if (!compact && marker.label?.trim()) openRoomCard({ roomName: marker.label.trim(), node: current, placard: null });
   };
 
   // Riding an elevator is a Walk, not a Jump: history is kept, so Back rides
@@ -642,14 +658,6 @@ function MainPageContent({ onReset }) {
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
     flow.openTo(selectedRoomCard.node);
-  };
-
-  // Opens the room's OWN photo360 (set via the "360° room photo" field in
-  // Room Edit) as a standalone viewer. The button is disabled in RoomCard
-  // when no photo360 is set, so this can assume one exists.
-  const handleRoomView360 = () => {
-    if (!selectedRoomCard?.placard?.photo360) return;
-    overlay.openRoom360();
   };
 
   // Every mobile Building dialog / kiosk campus-building-floor screen pick —
@@ -817,7 +825,7 @@ function MainPageContent({ onReset }) {
 
   const searchResultsContent = (
     <>
-      {!searchQuery.trim() && randomSuggestions.length > 0 && (
+      {!searchQuery.trim() && (randomSuggestions.length > 0 || randomPlaceSuggestions.length > 0) && (
         <div className="room-search-results">
           <p className="room-search-suggestions-label">Suggested Locations</p>
           {randomSuggestions.map((r) => (
@@ -825,11 +833,23 @@ function MainPageContent({ onReset }) {
               <div className="room-search-result-main">
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
-                  {r.placard.use ? `${r.placard.use} · ` : ""}
+                  {r.placard?.use ? `${r.placard.use} · ` : ""}
                   {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                 </span>
               </div>
               {renderResultActions(() => openRoomCard(r), r.node)}
+            </div>
+          ))}
+          {randomPlaceSuggestions.map((n) => (
+            <div key={n.id} className="room-search-result-actionable">
+              <div className="room-search-result-main">
+                <span className="room-search-name">{n.name}</span>
+                <span className="room-search-sub">
+                  {n.rooms?.length ? `Rooms: ${n.rooms.join(", ")} · ` : ""}
+                  {buildingLabel(n.building)} · {floorLabel(n.floor)}
+                </span>
+              </div>
+              {renderResultActions(() => jumpToSearchResult(n.id), n)}
             </div>
           ))}
         </div>
@@ -844,7 +864,7 @@ function MainPageContent({ onReset }) {
                   <div className="room-search-result-main">
                     <span className="room-search-name">{r.roomName}</span>
                     <span className="room-search-sub">
-                      {r.placard.use ? `${r.placard.use} · ` : ""}
+                      {r.placard?.use ? `${r.placard.use} · ` : ""}
                       {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                     </span>
                   </div>
@@ -891,7 +911,7 @@ function MainPageContent({ onReset }) {
     // anything. Only "to", not "from" — the visitor already knows where
     // they're starting from (it's wherever they are).
     if (field === "to" && !directions.toQuery.trim()) {
-      if (randomSuggestions.length === 0) return null;
+      if (randomSuggestions.length === 0 && randomPlaceSuggestions.length === 0) return null;
       return (
         <div className="room-search-results directions-suggestions">
           <p className="room-search-suggestions-label">Suggested Locations</p>
@@ -899,8 +919,17 @@ function MainPageContent({ onReset }) {
             <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
               <span className="room-search-name">{r.roomName}</span>
               <span className="room-search-sub">
-                {r.placard.use ? `${r.placard.use} · ` : ""}
+                {r.placard?.use ? `${r.placard.use} · ` : ""}
                 {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
+              </span>
+            </div>
+          ))}
+          {randomPlaceSuggestions.map((n) => (
+            <div key={n.id} className="room-search-result" onClick={() => flow.pickNode(field, n)}>
+              <span className="room-search-name">{n.name}</span>
+              <span className="room-search-sub">
+                {n.rooms?.length ? `Rooms: ${n.rooms.join(", ")} · ` : ""}
+                {buildingLabel(n.building)} · {floorLabel(n.floor)}
               </span>
             </div>
           ))}
@@ -917,7 +946,7 @@ function MainPageContent({ onReset }) {
               <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
-                  {r.placard.use ? `${r.placard.use} · ` : ""}
+                  {r.placard?.use ? `${r.placard.use} · ` : ""}
                   {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                 </span>
               </div>
@@ -1243,7 +1272,6 @@ function MainPageContent({ onReset }) {
                 room={selectedRoomCard}
                 onClose={overlay.closeRoomCard}
                 onGetDirections={handleRoomGetDirections}
-                onView360={handleRoomView360}
               />
             )}
 
@@ -1488,7 +1516,9 @@ function MainPageContent({ onReset }) {
               {/* Static left sidebar — every function module (search,
                   buildings/entrances, room card, directions) now renders
                   here instead of as a floating panel over the panorama. */}
-              <aside className="app-sidebar">
+              {/* Room mode recolors the whole sidebar (see .app-sidebar-room)
+                  instead of stacking a separate card on top of it. */}
+              <aside className={`app-sidebar ${panelMode === "room" && selectedRoomCard ? "app-sidebar-room" : ""}`}>
                 {/* The sidebar's own session-start walkthrough — see
                     SidebarIntroOverlay.jsx and the sidebarIntroSeen state
                     above. Shares dismissIntro with DesktopIntroOverlay
@@ -1574,7 +1604,6 @@ function MainPageContent({ onReset }) {
                       room={selectedRoomCard}
                       onClose={overlay.closeRoomCard}
                       onGetDirections={handleRoomGetDirections}
-                      onView360={handleRoomView360}
                     />
                   )}
 
@@ -1626,20 +1655,32 @@ function MainPageContent({ onReset }) {
                   onDismiss={dismissIntro}
                 />
 
+                {/* .floating-title-center is the ONLY flex item .floating-title-wrap
+                    centers — its own width is just the pill's (the back
+                    button is position: absolute inside it, so it adds no
+                    width), so the name pill lands dead-center in the
+                    panorama regardless of whether the back button is
+                    showing. Previously the back button was a sibling flex
+                    item next to the pill, so justify-content: center
+                    centered the (back + gap + pill) row as a whole,
+                    dragging the pill itself off-center by half the back
+                    button's own width whenever it was present. */}
                 <div className="floating-title-wrap">
-                  {history.length > 0 && (
-                    <button
-                      type="button"
-                      className="floating-title-back"
-                      onClick={goBack}
-                      title="Back"
-                      aria-label="Back"
-                    >
-                      {PLACEHOLDER("back")}
-                    </button>
-                  )}
-                  <div className="floating-title-pill">
-                    <span>{current.name}</span>
+                  <div className="floating-title-center">
+                    {history.length > 0 && (
+                      <button
+                        type="button"
+                        className="floating-title-back"
+                        onClick={goBack}
+                        title="Back"
+                        aria-label="Back"
+                      >
+                        {PLACEHOLDER("back")}
+                      </button>
+                    )}
+                    <div className="floating-title-pill">
+                      <span>{current.name}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1697,14 +1738,6 @@ function MainPageContent({ onReset }) {
           </div>
         )}
       </div>
-
-      {room360Open && selectedRoomCard && (
-        <Room360Modal
-          roomName={selectedRoomCard.roomName}
-          photo360={selectedRoomCard.placard?.photo360}
-          onClose={overlay.closeRoom360}
-        />
-      )}
 
       {flyover && (
         <FlyoverPanel flyover={flyover} kiosk={compact} onComplete={completeFlyover} onCancel={cancelFlyover} />

@@ -142,6 +142,19 @@ export default function OnScreenKeyboard({ layout = "search" }) {
     if (el) editField(el, backspaceAt);
     refreshCap();
   };
+  // Wipes the whole field in one tap, rather than holding backspace down
+  // character by character.
+  const clear = () => {
+    const el = target();
+    if (!el) return;
+    setFieldValue(el, "");
+    try {
+      el.setSelectionRange(0, 0);
+    } catch {
+      // Same: the caret just stays wherever the browser leaves it.
+    }
+    refreshCap();
+  };
 
   const upper = shift || autoCap;
 
@@ -173,6 +186,14 @@ export default function OnScreenKeyboard({ layout = "search" }) {
             ⇧
           </button>
         )}
+        <button
+          type="button"
+          className="onscreen-keyboard-key onscreen-keyboard-clear"
+          onMouseDown={(e) => { e.preventDefault(); clear(); }}
+          aria-label="Clear"
+        >
+          Clear
+        </button>
         <button
           type="button"
           className="onscreen-keyboard-key onscreen-keyboard-space"

@@ -212,6 +212,23 @@ button.primary {
   vertical-align: -0.15em;
   opacity: 0.85;
 }
+/* emergency-exit (the person-running-through-a-door pictogram) keeps its
+   real artwork, but its fine detail lines all but disappear at the size
+   every other icon renders at (1em, ~17px in a rail button), made worse by
+   .icon-placeholder-img's own default 0.85 opacity above — that's built for
+   subtler glyphs, not one this thin. Targeted by IconPlaceholder's own
+   data-icon-placeholder attribute (see IconPlaceholder.jsx) rather than a
+   per-button class, so every render site (the floating button, the kiosk
+   radial dock, the sidebar overlay tip, the panorama marker) gets the same
+   fix at once: full opacity, a noticeably larger size than its neighbors,
+   and a soft dark halo (drop-shadow, not a flat outline baked into the
+   artwork) so the white linework holds up against whatever's behind it. */
+img[data-icon-placeholder="emergency-exit"] {
+  opacity: 1;
+  width: 1.25em;
+  height: 1.25em;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+}
 .admin-sidebar-icon-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border);
@@ -3317,32 +3334,7 @@ button.primary {
   font-size: 12px;
   font-family: var(--font-mono);
 }
-/* ---------- Room card (Google Maps-style place card) ---------- */
-.room-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  animation: room-card-in 0.18s ease-out;
-}
-.room-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
-}
-@keyframes room-card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .room-card { animation: none; }
-}
-.room-card-photo-wrap {
-  position: relative;
-  width: 100%;
-  height: 160px;
-  background: var(--surface-sunken);
-}
+/* ---------- Room card (shared by the kiosk room card) ---------- */
 .room-card-photo {
   width: 100%;
   height: 100%;
@@ -3357,25 +3349,6 @@ button.primary {
   justify-content: center;
   color: var(--text-muted);
   font-size: 13px;
-}
-.room-card-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(32, 27, 27, 0.55);
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-.room-card-body {
-  padding: 14px;
 }
 .room-card-title {
   margin: 0 0 6px 0;
@@ -3433,22 +3406,217 @@ button.primary {
   line-height: 1.5;
   margin: 0 0 10px 0;
 }
-.room-card-link {
-  display: inline-block;
-  font-size: 13px;
-  color: var(--accent);
-  text-decoration: underline;
-  word-break: break-all;
-  margin: 0 0 10px 0;
-}
-.room-card-link:hover {
-  color: var(--accent-hover);
-}
 .room-card-department {
   font-size: 12px;
   color: var(--text-muted);
   margin: 0;
 }
+/* ---------- Sidebar room mode (desktop) ----------
+   Selecting a room recolors the whole app sidebar maroon instead of
+   stacking a separate card on top of it. .app-sidebar-content becomes a
+   flex column here so .sidebar-room can stretch to the sidebar's full
+   remaining height, which is what lets the photo carousel take up
+   everything below the text block. */
+.app-sidebar {
+  transition: background-color 0.2s ease;
+}
+.app-sidebar-room {
+  background: var(--accent);
+}
+.app-sidebar-room .app-sidebar-content {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-room {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 4px;
+  animation: room-card-in 0.18s ease-out;
+}
+@keyframes room-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar { transition: none; }
+  .sidebar-room { animation: none; }
+}
+.sidebar-room-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.sidebar-room-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-sans-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--white);
+  overflow-wrap: anywhere;
+}
+.sidebar-room-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-room-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.sidebar-room-badge {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+}
+.sidebar-room-actions {
+  display: flex;
+  gap: 8px;
+}
+.sidebar-room-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  cursor: pointer;
+}
+.sidebar-room-actions button.sidebar-room-directions {
+  flex: 1;
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: var(--white);
+}
+.sidebar-room-actions button.sidebar-room-directions:hover {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
+}
+.sidebar-room-description {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--sdca-maroon-deeper);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--white);
+  white-space: pre-line;
+}
+.sidebar-room-link {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--white);
+  text-decoration: underline;
+  word-break: break-all;
+}
+.sidebar-room-link:hover {
+  color: var(--gold);
+}
+.sidebar-room-department {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.sidebar-room-carousel {
+  position: relative;
+  flex: 1;
+  min-height: 180px;
+  margin-top: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--sdca-maroon-deeper);
+}
+.sidebar-room-carousel-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sidebar-room-carousel-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.sidebar-room-carousel-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-300);
+}
+.sidebar-room-carousel-placeholder img {
+  width: 56px;
+  height: 56px;
+  opacity: 0.7;
+}
+.sidebar-room-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(32, 27, 27, 0.55);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-room-carousel-arrow:hover {
+  background: rgba(32, 27, 27, 0.8);
+}
+.sidebar-room-carousel-prev { left: 8px; }
+.sidebar-room-carousel-next { right: 8px; }
+.sidebar-room-carousel-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.sidebar-room-carousel-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+.sidebar-room-carousel-dot-active {
+  background: var(--gold);
+}
+
 /* ---------- Floating overlay UI (Maps-style) ---------- */
 /* The hamburger that used to anchor this rail is gone (the directory
    sidebar is always on now — see MainPage.jsx), so there's no visible
@@ -3620,9 +3788,19 @@ button.primary {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   z-index: 28;
   pointer-events: none;
+}
+/* The single flex item .floating-title-wrap actually centers — see the
+   comment at its JSX call site (MainPage.jsx). Its own box is exactly the
+   pill's size (position: relative just gives .floating-title-back
+   something to anchor to; it contributes no width of its own since that
+   button is taken out of flow below), so centering it centers the pill
+   alone, not a back-button-plus-pill row. */
+.floating-title-center {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 /* ---------- Cross-campus flyover panel ---------- */
 .flyover-overlay {
@@ -3714,9 +3892,17 @@ button.primary {
 }
 /* Its own separate circular button now (not merged into the name pill's
    own rounded rect) — same surface/border/shadow treatment as the pill so
-   the two read as a matched pair sitting side by side. */
+   the two read as a matched pair sitting side by side. Positioned absolute,
+   hovering just to the pill's left, rather than a flex sibling of it — see
+   .floating-title-center above: this keeps it from ever being counted in
+   what gets centered, so the pill (and so the node name) stays truly
+   centered in the panorama whether or not this button is showing. */
 .floating-title-back {
-  flex-shrink: 0;
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 8px;
   pointer-events: auto;
   width: 36px;
   height: 36px;
@@ -5048,6 +5234,10 @@ button.primary {
 }
 .onscreen-keyboard-space {
   flex: 4;
+  max-width: none;
+}
+.onscreen-keyboard-clear {
+  flex: 2;
   max-width: none;
 }
 .onscreen-keyboard-shift {

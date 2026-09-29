@@ -1,22 +1,32 @@
 import { useEffect, useRef } from "react";
-import directionsIcon from "../assets/icons/directions.svg";
+import directionsIconWhite from "../assets/icons/directions-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 // The white variant of each icon actually used by the sidebar buttons below
-// it (search-magnifier, building, question-help are grey by default there —
-// see PLACEHOLDER in MainPage.jsx — since those sit on light/transparent
-// surfaces; directionsIcon is already a white asset). This overlay reuses
-// the exact same icon per function, just switched to the readable-on-dark
-// variant for its own opaque backdrop. Nearest Exit itself renders as
-// .floating-nearest-exit-btn over the panorama, not inside .app-sidebar —
-// listed here anyway (first, same safety-first ordering as the kiosk's own
-// radialItems) since it's one of the app's core functions this walkthrough
-// covers, same "emergency-exit" icon as that button.
+// it (search-magnifier, question-help are grey by default there — see
+// PLACEHOLDER in MainPage.jsx — since those sit on light/transparent
+// surfaces). "directory" is a dedicated icon (a location pin with list
+// lines, i.e. a list of places, not a file-folder glyph), not reused from
+// elsewhere — nothing else in the app already represents "browse the
+// directory" specifically (the sidebar's directory list itself has no icon
+// of its own; "building" would only cover one campus, not the whole
+// directory). directionsIcon (directions.svg) turned out NOT to actually be
+// white — it looks white over a light background purely by background
+// contrast, but its mask-based "recolor" only whitens an invisible helper
+// copy used to build the alpha mask, not the visible image itself, so on
+// this overlay's dark background it rendered as its real (dark) color and
+// was effectively invisible. directions-white.svg is a plain, genuinely
+// white icon instead, same fix pattern as the grey/white icon pairs
+// elsewhere. Nearest Exit itself renders as .floating-nearest-exit-btn over
+// the panorama, not inside .app-sidebar — listed here anyway (first, same
+// safety-first ordering as the kiosk's own radialItems) since it's one of
+// the app's core functions this walkthrough covers, same "emergency-exit"
+// icon as that button.
 const TIPS = [
   { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: "Nearest Exit shows the fastest way outside from wherever you are." },
   { icon: <IconPlaceholder name="search-magnifier" variant="white" className="inline-icon-img" />, text: "Search for a room, building, or place by name." },
-  { icon: <img src={directionsIcon} alt="" className="inline-icon-img" />, text: "Get directions to any room." },
-  { icon: <IconPlaceholder name="building" variant="white" className="inline-icon-img" />, text: "Browse the directory below to jump to any building or room." },
+  { icon: <img src={directionsIconWhite} alt="" className="inline-icon-img" />, text: "Get directions to any room." },
+  { icon: <IconPlaceholder name="directory" variant="white" className="inline-icon-img" />, text: "Browse the directory below to jump to any building or room." },
   { icon: <IconPlaceholder name="question-help" variant="white" className="inline-icon-img" />, text: "Come back here anytime to replay these tips." },
 ];
 

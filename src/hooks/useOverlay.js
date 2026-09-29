@@ -24,8 +24,6 @@ export function useOverlay() {
       closeFeedback: send("closeFeedback"),
       openEndSessionThanks: send("openEndSessionThanks"),
       closeEndSessionThanks: send("closeEndSessionThanks"),
-      openRoom360: send("openRoom360"),
-      closeRoom360: send("closeRoom360"),
       openHelp: send("openHelp"),
       closeHelp: send("closeHelp"),
       closeBuildingMenu: send("closeBuildingMenu"),

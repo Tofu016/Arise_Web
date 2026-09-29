@@ -56,7 +56,7 @@ export function searchRooms(query, searchableRooms) {
     if (nameScore === 0) return { group: GROUP_EXACT, score: 0 };
     if (nameScore < 30) return { group: GROUP_PARTIAL, score: nameScore };
 
-    const { roomDescription, department, use } = r.placard;
+    const { roomDescription, department, use } = r.placard || {};
     const shortText = [department, use].filter(Boolean);
     const textScore = Math.min(
       bestScore(q, shortText, { fuzzy: false }),
@@ -75,7 +75,10 @@ export function searchRooms(query, searchableRooms) {
 // placard dialogs. Only rooms an admin has gone through Room Edit for are
 // searchable; a room existing on a node alone isn't enough, since there'd
 // be nothing to show on its card. Deduped case-insensitively.
-export function buildSearchableRooms(nodes, getForRoom) {
+// `includeWithoutDetails` (desktop only) keeps rooms with no record too,
+// with a null placard: the desktop sidebar has a "No information." state
+// for them, while the kiosk still hides anything it couldn't show.
+export function buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails = false } = {}) {
   if (!nodes) return [];
   const out = [];
   const seen = new Set();
@@ -83,8 +86,8 @@ export function buildSearchableRooms(nodes, getForRoom) {
     for (const roomName of n.rooms || []) {
       const key = roomName.trim().toUpperCase();
       if (seen.has(key)) continue;
-      const placard = getForRoom(roomName);
-      if (!placard) continue; // no detail record yet — not searchable here
+      const placard = getForRoom(roomName) || null;
+      if (!placard && !includeWithoutDetails) continue; // no detail record yet, not searchable here
       seen.add(key);
       out.push({ roomName, node: n, placard });
     }
@@ -103,15 +106,37 @@ export function searchCampus(query, nodes, searchableRooms) {
   return { roomResults, placeResults: searchNodes(query, nodes).filter((n) => !roomNodeIds.has(n.id)) };
 }
 
-// A "don't know what to search for" starting point: a random sample of
-// searchable rooms. `random` is injectable so tests can pin the shuffle.
-export function pickSuggestions(searchableRooms, count = 6, random = Math.random) {
-  const pool = [...searchableRooms];
+function shuffle(items, random) {
+  const pool = [...items];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, count);
+  return pool;
+}
+
+// A "don't know what to search for" starting point: a random sample of
+// searchable rooms. `random` is injectable so tests can pin the shuffle.
+export function pickSuggestions(searchableRooms, count = 6, random = Math.random) {
+  return shuffle(searchableRooms, random).slice(0, count);
+}
+
+// The empty-state counterpart to searchCampus: rooms first (same pool as
+// pickSuggestions), then plain nodes filling whatever's left, the same
+// "rooms first, places second, no duplicates" shape searchCampus returns
+// once there's a query. Without this, an admin who hasn't gone through
+// Room Edit for any room yet (no placardDialogs records, so
+// buildSearchableRooms comes up empty) would see zero suggestions on an
+// empty search box, even though typing a letter finds plenty of plain
+// node/place matches — this keeps the empty state drawing from the same
+// breadth of data typing does, instead of the narrower rooms-only pool.
+export function pickLocationSuggestions(nodes, searchableRooms, count = 6, random = Math.random) {
+  const rooms = pickSuggestions(searchableRooms, count, random);
+  const remaining = count - rooms.length;
+  if (remaining <= 0 || !nodes) return { rooms, places: [] };
+  const roomNodeIds = new Set(rooms.map((r) => r.node.id));
+  const placePool = nodes.filter((n) => !roomNodeIds.has(n.id));
+  return { rooms, places: shuffle(placePool, random).slice(0, remaining) };
 }
 
 // A "room" marker's label is a separate, independently-typed field from a

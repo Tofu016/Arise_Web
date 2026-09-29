@@ -14,12 +14,12 @@ import IconPlaceholder from "./IconPlaceholder";
 //   │          │ Room name          │
 //   │  photo   │ badge · location   │
 //   │          │ description, dept  │
-//   │          │ [Directions] [360°]│
+//   │          │ [Directions]       │
 //   └──────────┴────────────────────┘
 //                      (  ✕  )
 //
 // There's deliberately no scrim: the lower half of the panorama stays live.
-export default function KioskRoomCard({ room, onClose, onGetDirections, onView360 }) {
+export default function KioskRoomCard({ room, onClose, onGetDirections }) {
   const { roomName, node, placard } = room;
   const { url: photoUrl } = useSecurePhotoUrl(placard?.photo);
 
@@ -67,7 +67,6 @@ export default function KioskRoomCard({ room, onClose, onGetDirections, onView36
             <button className="primary" onClick={onGetDirections}>
               <img src={chevronRightWhite} alt="" className="inline-icon-img" /> Get Directions
             </button>
-            <button onClick={onView360}>360° View</button>
           </div>
         </div>
       </div>

@@ -31,6 +31,12 @@ describe("buildSearchableRooms", () => {
     expect(rooms).toHaveLength(1);
     expect(rooms[0].node.id).toBe("a");
   });
+  it("keeps rooms without a record, with a null placard, when asked", () => {
+    const rooms = buildSearchableRooms(nodes, (n) => (n === "203" ? {} : null), { includeWithoutDetails: true });
+    expect(rooms.map((r) => r.roomName)).toEqual(["203", "2033", "Registrar"]);
+    expect(rooms[1].placard).toBeNull();
+    expect(searchRooms("registrar", rooms).map((r) => r.roomName)).toEqual(["Registrar"]);
+  });
   it("handles no nodes", () => {
     expect(buildSearchableRooms(null, getForRoom)).toEqual([]);
   });
