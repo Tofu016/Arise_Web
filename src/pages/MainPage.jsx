@@ -1553,6 +1553,7 @@ function MainPageContent({ onReset }) {
                   autoPan={!!nextStopId}
                   keyboardNav
                   onBack={goBack}
+                  wheelZoomable
                 />
 
                 <div className="floating-title-wrap">

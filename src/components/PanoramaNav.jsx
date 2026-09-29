@@ -9,6 +9,7 @@ import { usePanoramaFov, TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panora
 import { Hotspot } from "./panorama/Hotspot";
 import { Marker } from "./panorama/Marker";
 import { ZoomControls } from "./panorama/ZoomControls";
+import { ZoomIndicator } from "./panorama/ZoomIndicator";
 import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
@@ -47,6 +48,7 @@ const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" variant="wh
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
  *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator; hidden along with the previews while previewsHidden
+ *  - wheelZoomable: bool — desktop view: the mouse scroll wheel zooms the panorama, with the same small level indicator (shown only away from the default 1.0x)
  *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
@@ -87,6 +89,7 @@ export default function PanoramaNav({
   alwaysShowPreview = false,
   previewsHidden = false,
   zoomable = false,
+  wheelZoomable = false,
   autoPan = false,
   keyboardNav = false,
   onBack,
@@ -104,8 +107,27 @@ export default function PanoramaNav({
   // correctly updates live on an actual orientation change while the
   // viewer is already open, not just on initial mount.
   const baseFov = usePanoramaFov(heightFraction);
-  const { zoom, setZoom } = useZoom();
-  const fov = zoomable ? zoomedFov(baseFov, zoom) : baseFov;
+  const { zoom, setZoom, zoomByWheel } = useZoom();
+  const zoomActive = zoomable || wheelZoomable;
+  const fov = zoomActive ? zoomedFov(baseFov, zoom) : baseFov;
+
+  // Native (non-passive) wheel listener: React's own onWheel is attached
+  // passive by default, so e.preventDefault() inside it silently does
+  // nothing and the page would scroll underneath the zoom. A plain
+  // addEventListener with passive: false is the only way to actually stop
+  // that while still zooming the panorama.
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!wheelZoomable) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      zoomByWheel(e.deltaY);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [wheelZoomable, zoomByWheel]);
 
   // Which url the texture load most recently failed for (a bad/corrupt file
   // — distinct from `url` never resolving, e.g. no photo assigned or the
@@ -182,7 +204,7 @@ export default function PanoramaNav({
 
   const canvas = (
     <Canvas camera={{ position: firstCameraPosition, fov: baseFov }} style={{ cursor }}>
-      {zoomable && <FovController fov={fov} />}
+      {zoomActive && <FovController fov={fov} />}
       {visible && <PanoramaSphere texture={visible.texture} placing={placing} onSurfaceClick={onPlaceAngle} />}
       {leaving && <FadingSphere key={leaving.uuid} texture={leaving} onDone={scene.dismissLeaving} />}
       {scene.holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
@@ -244,10 +266,13 @@ export default function PanoramaNav({
   );
 
   return (
-    <div className="pano-zoom-wrap">
+    <div className="pano-zoom-wrap" ref={wrapRef}>
       {canvas}
       {/* Hidden, like the hotspot previews, while a menu/dialog is open over the panorama. */}
       {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
+      {wheelZoomable && (
+        <ZoomIndicator zoom={zoom} className="pano-zoom-indicator pano-wheel-zoom-indicator" />
+      )}
       {nothingAheadHint && <div className="pano-nothing-ahead-hint">No location in front.</div>}
     </div>
   );

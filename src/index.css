@@ -6349,6 +6349,15 @@ html.kiosk-mode body {
   opacity: 0.85;
   box-shadow: var(--shadow-2);
 }
+/* Desktop scroll-wheel zoom indicator: bottom-right corner of the panorama
+   screen, clear of the top-right account button and the bottom-left
+   minimap/rail stack (see .floating-account-wrap-top, .floating-rail). */
+.pano-wheel-zoom-indicator {
+  position: absolute;
+  bottom: 16px;
+  right: calc(16px + env(safe-area-inset-right));
+  z-index: 20;
+}
 .kiosk-start-title {
   font-size: 96px;
   font-weight: 800;
