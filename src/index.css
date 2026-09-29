@@ -1695,6 +1695,17 @@ button.primary {
   gap: 14px;
   overflow-y: auto;
 }
+.app-sidebar-logo {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 14px 0;
+}
+.app-sidebar-logo img {
+  width: 68%;
+  height: auto;
+  display: block;
+}
 .app-sidebar-search {
   flex-shrink: 0;
 }
@@ -1702,11 +1713,6 @@ button.primary {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-}
-.app-sidebar-empty-hint {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  margin: 0;
 }
 /* Recenters AND re-scopes the app's generic centered dialogs (feedback,
    help, idle prompt, room 360, arrival, elevator picker — all built on
@@ -3302,8 +3308,8 @@ button.primary {
 /* ---------- Floating overlay UI (Maps-style) ---------- */
 .floating-rail {
   /* This box spans the full left column height (top:16 to bottom:16),
-     which geometrically overlaps .floating-exit-btn-stacked and
-     .floating-feedback-btn below (also z-index: 30, same left:16
+     which geometrically overlaps .floating-feedback-btn and
+     .floating-nearest-exit-btn below (also z-index: 30, same left:16
      column, "moved out of the rail" per their own comments). Only
      pointer-events: none here (with no background of its own) keeps
      that overlap inert — .floating-rail-spacer, the only other child,
@@ -3373,35 +3379,27 @@ button.primary {
   font-size: 13px;
   border-color: var(--accent);
 }
-/* Now positioned OUTSIDE the rail's own flex layout, so it needs its own
+/* Positioned OUTSIDE the rail's own flex layout, so it needs its own
    absolute position — stacked directly above where the desktop minimap
    sits (same left offset), not beside it. 130px (the minimap's own
    height) + 16px (the minimap's own bottom offset) + 12px gap = 158px,
    placing this button's bottom edge just above the minimap's top edge.
    Flush with the rail's own left edge (16px) — no longer needs to clear
-   the rail's width, since this button moved out of the rail entirely. */
-.floating-exit-btn-stacked {
+   the rail's width, since this button moved out of the rail entirely.
+   (The directions button that used to sit here moved into the sidebar's
+   search bar, so feedback is now the base of this stack.) */
+.floating-feedback-btn {
   position: absolute;
   bottom: 158px;
   left: 16px;
   z-index: 30;
 }
-/* One step further up the same stack — 158px (exit button's own
-   offset) + 44px (its own height) + 12px (the same gap convention used
-   throughout this stack) = 214px. Same left offset, genuinely part of
-   the same bottom-left cluster the client asked for. */
-.floating-feedback-btn {
-  position: absolute;
-  bottom: 214px;
-  left: 16px;
-  z-index: 30;
-}
-/* One more step up the same stack — 214px (feedback button's own offset)
-   + 44px + 12px = 270px. Same left offset and gap convention as the rest
-   of this bottom-left safety cluster. */
+/* One step further up the same stack — 158px (feedback button's own
+   offset) + 44px + 12px = 214px. Same left offset and gap convention as
+   the rest of this bottom-left safety cluster. */
 .floating-nearest-exit-btn {
   position: absolute;
-  bottom: 270px;
+  bottom: 214px;
   left: 16px;
   z-index: 30;
 }
@@ -3438,7 +3436,7 @@ button.primary {
 }
 .floating-search-bar input {
   width: 100%;
-  padding: 15px 68px 15px 22px;
+  padding: 15px 96px 15px 22px;
   border-radius: var(--radius-pill);
   border: none;
   background: transparent;
@@ -3448,14 +3446,28 @@ button.primary {
 .floating-search-bar input:focus {
   outline: none;
 }
-.floating-search-icon {
+.floating-search-icon,
+.floating-search-directions-icon {
   position: absolute;
-  right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
-  pointer-events: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.floating-search-icon {
+  right: 52px;
+}
+.floating-search-directions-icon {
+  right: 16px;
 }
 .floating-title-wrap {
   position: absolute;

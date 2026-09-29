@@ -26,6 +26,7 @@ import menuIconWhite from "../assets/icons/menu-white.svg";
 import powerIcon from "../assets/icons/power.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
+import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
 import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useAnalytics } from "../hooks/useAnalytics";
@@ -1458,6 +1459,10 @@ function MainPageContent({ onReset }) {
                   buildings/entrances, room card, directions) now renders
                   here instead of as a floating panel over the panorama. */}
               <aside className="app-sidebar">
+                <div className="app-sidebar-logo">
+                  <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" />
+                </div>
+
                 <div className="app-sidebar-search">
                   <div className="floating-search-bar">
                     <input
@@ -1471,7 +1476,27 @@ function MainPageContent({ onReset }) {
                       placeholder="Search a room..."
                       aria-label="Search"
                     />
-                    <span className="floating-search-icon">{PLACEHOLDER("search-magnifier")}</span>
+                    <button
+                      type="button"
+                      className="floating-search-icon"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        overlay.showPanel("search");
+                        searchInputRef.current?.focus();
+                      }}
+                      title="Search"
+                    >
+                      {PLACEHOLDER("search-magnifier")}
+                    </button>
+                    <button
+                      type="button"
+                      className="floating-search-directions-icon"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={flow.open}
+                      title="Get directions"
+                    >
+                      <img src={directionsIcon} alt="" className="inline-icon-img" />
+                    </button>
                   </div>
                 </div>
 
@@ -1534,12 +1559,6 @@ function MainPageContent({ onReset }) {
                       {directionsContent}
                     </div>
                   )}
-
-                  {!panelMode && (
-                    <p className="app-sidebar-empty-hint">
-                      Search for a room, or open the menu for buildings and entrances.
-                    </p>
-                  )}
                 </div>
               </aside>
 
@@ -1587,24 +1606,9 @@ function MainPageContent({ onReset }) {
                   <div className="floating-rail-spacer" />
                 </div>
 
-                {/* Moved out of the rail — fixed position, stacked directly
-                    ABOVE where the minimap sits (same left offset, just
-                    above its top edge) rather than beside it at the same
-                    height. Position stays fixed regardless of whether the
-                    minimap is actually showing right now — a safety button
-                    shouldn't jump around based on unrelated state. */}
-                <button
-                  className="floating-rail-btn floating-exit-btn-stacked"
-                  onClick={flow.open}
-                  title="Get directions"
-                >
-                  <img src={directionsIcon} alt="" className="inline-icon-img" />
-                </button>
-
-                {/* Client-requested: bottom-left, alongside the exit
-                    button — same stacking convention (same left offset,
-                    positioned just above the element below it), one more
-                    step up from the exit button. */}
+                {/* Client-requested: bottom-left, stacked directly above
+                    where the desktop minimap sits (same stacking
+                    convention as the rest of this cluster). */}
                 <button
                   className="floating-rail-btn floating-feedback-btn"
                   onClick={overlay.openFeedback}
@@ -1615,8 +1619,7 @@ function MainPageContent({ onReset }) {
 
                 {/* Nearest Exit: same bottom-left safety stack, one more
                     step up from feedback, so it's reachable without
-                    opening the menu first, like the directions button
-                    below it. */}
+                    opening the menu first. */}
                 <button
                   className="floating-rail-btn floating-nearest-exit-btn"
                   onClick={flow.openNearestExit}
