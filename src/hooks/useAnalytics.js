@@ -20,12 +20,20 @@ function sessionIdFor(platform) {
   try {
     const existing = sessionStorage.getItem(DESKTOP_SESSION_KEY);
     if (existing) return existing;
-    const id = newSessionId();
-    sessionStorage.setItem(DESKTOP_SESSION_KEY, id);
-    return id;
   } catch {
     return newSessionId();
   }
+  return rotatedDesktopSessionId();
+}
+
+function rotatedDesktopSessionId() {
+  const id = newSessionId();
+  try {
+    sessionStorage.setItem(DESKTOP_SESSION_KEY, id);
+  } catch {
+    // Storage blocked: the id still works for this page's lifetime.
+  }
+  return id;
 }
 
 // Tracks kiosk/desktop analytics events (see Analytics_API/track) and
@@ -38,7 +46,13 @@ function sessionIdFor(platform) {
 // Returns { setLocation, stageReached, roomSearched, goTo,
 //   directionsRequested, move, feedbackSubmitted, sessionEnd }.
 export function useAnalytics(platform) {
-  const sessionId = useMemo(() => sessionIdFor(platform), [platform]);
+  // A ref, not a memo: desktop swaps to a fresh id after feedback (see
+  // feedbackSubmitted) without remounting anything.
+  const platformSessionId = useMemo(() => sessionIdFor(platform), [platform]);
+  const sessionIdRef = useRef(platformSessionId);
+  useEffect(() => {
+    sessionIdRef.current = platformSessionId;
+  }, [platformSessionId]);
   const queueRef = useRef([]);
   const metaRef = useRef({ campus: null, building: null });
 
@@ -46,7 +60,7 @@ export function useAnalytics(platform) {
     if (!queueRef.current.length) return;
     const events = queueRef.current;
     queueRef.current = [];
-    const body = { session_id: sessionId, platform, ...metaRef.current, events };
+    const body = { session_id: sessionIdRef.current, platform, ...metaRef.current, events };
 
     // On a page-hide path a normal fetch can be cancelled mid-flight by the
     // tab closing; sendBeacon survives that. text/plain keeps it a
@@ -57,7 +71,7 @@ export function useAnalytics(platform) {
       return;
     }
     apiPost("Analytics_API/track", body).catch(() => {});
-  }, [sessionId, platform]);
+  }, [platform]);
 
   useEffect(() => {
     const interval = setInterval(flush, FLUSH_INTERVAL_MS);
@@ -101,8 +115,19 @@ export function useAnalytics(platform) {
         track({ type: "directions_requested", from_node_id: fromNodeId, to_node_id: toNodeId }),
       move: (kind, fromNodeId, toNodeId) =>
         track({ type: "move", move_kind: kind, from_node_id: fromNodeId || undefined, to_node_id: toNodeId }),
-      feedbackSubmitted: (feedbackId, rating) =>
-        track({ type: "feedback_submitted", feedback_id: feedbackId, rating }),
+      // Kiosk: the session stays open ("Keep exploring" is allowed) and is
+      // ended by sessionEnd on reset. Desktop never resets, so its session
+      // is ended right here and whatever the visitor does next starts a
+      // fresh one instead of piling onto a session that already gave
+      // feedback.
+      feedbackSubmitted: (feedbackId, rating) => {
+        track({ type: "feedback_submitted", feedback_id: feedbackId, rating });
+        if (platform === "desktop") {
+          track({ type: "session_end", reason: "feedback" });
+          flush();
+          sessionIdRef.current = rotatedDesktopSessionId();
+        }
+      },
       // Flushed immediately (not left for the interval) since the kiosk is
       // about to remount and drop this hook entirely.
       sessionEnd: (reason) => {
@@ -110,6 +135,6 @@ export function useAnalytics(platform) {
         flush();
       },
     }),
-    [track, flush]
+    [track, flush, platform]
   );
 }

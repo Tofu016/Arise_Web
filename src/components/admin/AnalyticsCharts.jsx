@@ -30,16 +30,17 @@ export function StatTile({ label, value, sub }) {
   );
 }
 
-// Ranked horizontal bars, single hue — used for Most Searched Rooms and
-// the building heatmap's ranked list. One series, so no legend (per the
-// skill: "a single series needs no legend box").
+// Ranked horizontal bars, single hue: used for Top Destinations, Top
+// Searches and the building heatmap's ranked list. One series, so no legend
+// (per the skill: "a single series needs no legend box"). Each item needs a
+// unique `key`, since labels (node names) aren't guaranteed unique.
 export function RankedBarChart({ items, emptyHint }) {
   if (!items.length) return <p className="empty-hint">{emptyHint}</p>;
   const max = Math.max(...items.map((i) => i.value), 1);
   return (
     <div className="analytics-bar-list" role="table" aria-label="Ranked bar chart">
       {items.map((item) => (
-        <div className="analytics-bar-row" key={item.label} role="row">
+        <div className="analytics-bar-row" key={item.key} role="row">
           <span className="analytics-bar-row-label" title={item.label}>
             {item.label}
           </span>
@@ -112,9 +113,6 @@ export function SplitMeter({ walk, jump }) {
         </span>
         <span className="analytics-legend-item">
           <span className="analytics-legend-swatch analytics-swatch-jump" /> Jump: {jump}
-        </span>
-        <span className="analytics-split-meter-ratio">
-          {jump > 0 ? `${(walk / jump).toFixed(2)} : 1` : "—"}
         </span>
       </div>
     </div>
@@ -204,7 +202,7 @@ export function TimingHeatmap({ cells }) {
                   key={h}
                   className="analytics-heatmap-cell"
                   style={{ background: sequentialColor(count / max) }}
-                  title={`${dowLabel} ${h}:00 — ${count} event${count === 1 ? "" : "s"}`}
+                  title={`${dowLabel} ${h}:00: ${count} event${count === 1 ? "" : "s"}`}
                 />
               );
             })}

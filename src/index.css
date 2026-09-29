@@ -4976,12 +4976,12 @@ button.primary {
    picker above, with color alone (not glyph) distinguishing filled from
    empty — a cleaner look for a plain, non-interactive display. */
 .feedback-admin-stars {
-  color: var(--gold);
-  font-size: 15px;
-  letter-spacing: 1px;
+  display: inline-flex;
+  gap: 2px;
 }
-.feedback-admin-stars-empty {
-  color: var(--border);
+.feedback-admin-star-icon {
+  width: 15px;
+  height: 15px;
 }
 .feedback-admin-comment {
   font-size: 13px;
@@ -5178,6 +5178,27 @@ button.primary {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A route row has no bar track, so its label takes the track's column too. */
+.analytics-route-label {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.analytics-route-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.analytics-section-updating > :not(.analytics-section-heading) {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.analytics-section-updating-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
 .analytics-bar-track {
   height: 16px;
   background: var(--surface-sunken);
@@ -5293,11 +5314,6 @@ button.primary {
 }
 .analytics-swatch-jump {
   background: var(--gold);
-}
-.analytics-split-meter-ratio {
-  margin-left: auto;
-  font-weight: 700;
-  color: var(--text);
 }
 
 /* Trend line — 2px line, ~10% area wash, sparse axis labels (first/last

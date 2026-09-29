@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useAnalyticsDashboard } from "../../hooks/useAnalyticsDashboard";
 import { useFeedback } from "../../hooks/useFeedback";
 import { allBuildings, buildingLabel } from "../../utils/constants";
+import { fillDateGaps, localToday } from "../../utils/analyticsSeries";
 import {
   StatTile,
   RankedBarChart,
@@ -11,34 +12,46 @@ import {
   TrendLineChart,
   TimingHeatmap,
 } from "../../components/admin/AnalyticsCharts";
+import starFilledIcon from "../../assets/icons/star-filled.svg";
+import starOutlineIcon from "../../assets/icons/star-outline.svg";
+import chevronRightIcon from "../../assets/icons/chevron-right.svg";
+
+const EMPTY_VALUE = "N/A";
 
 function formatDate(createdAt) {
-  if (!createdAt) return "N/A";
+  if (!createdAt) return EMPTY_VALUE;
   const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "N/A";
+  if (Number.isNaN(date.getTime())) return EMPTY_VALUE;
   return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function Stars({ rating }) {
   return (
-    <span className="feedback-admin-stars" aria-label={`${rating} out of 5`}>
-      {"★".repeat(rating)}
-      <span className="feedback-admin-stars-empty">{"★".repeat(5 - rating)}</span>
+    <span className="feedback-admin-stars" role="img" aria-label={`${rating} out of 5`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <img key={i} src={i < rating ? starFilledIcon : starOutlineIcon} alt="" className="feedback-admin-star-icon" />
+      ))}
     </span>
   );
 }
 
 function formatDuration(seconds) {
-  if (seconds === null || seconds === undefined) return "—";
+  if (seconds === null || seconds === undefined) return EMPTY_VALUE;
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+function formatWalkShare(summary) {
+  const total = (summary?.walkCount || 0) + (summary?.jumpCount || 0);
+  if (!total) return EMPTY_VALUE;
+  return `${Math.round((summary.walkCount / total) * 100)}%`;
+}
+
 // Filter row shared by every chart section below (KPI cards, funnel,
-// trends, rooms/routes, walk/jump, heatmaps) — the Comments section has
-// its own additional filters (rating, has-comment) layered on top, since
-// those don't apply to the behavioral sections at all.
+// trends, destinations/searches/routes, walk/jump, heatmaps). The Comments
+// section has its own additional filters (rating, has-comment) layered on
+// top, since those don't apply to the behavioral sections at all.
 function FilterBar({ filters, setFilters, buildings }) {
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
   return (
@@ -83,10 +96,13 @@ function FilterBar({ filters, setFilters, buildings }) {
   );
 }
 
-function Section({ title, hint, loading, error, children }) {
+function Section({ title, hint, loading, updating, error, children }) {
   return (
-    <section className="analytics-section">
-      <h3 className="analytics-section-heading">{title}</h3>
+    <section className={"analytics-section" + (updating ? " analytics-section-updating" : "")} aria-busy={updating}>
+      <h3 className="analytics-section-heading">
+        {title}
+        {updating && <span className="analytics-section-updating-label">Updating…</span>}
+      </h3>
       {hint && <p className="field-hint">{hint}</p>}
       {error ? (
         <p className="error-box-inline">{error}</p>
@@ -105,14 +121,14 @@ export default function AnalyticsPage() {
   const buildings = useMemo(() => allBuildings(), []);
 
   const [filters, setFilters] = useState({ from: "", to: "", platform: "", building: "" });
-  const { summary, funnel, rooms, routes, movement, trends, heatmap } = useAnalyticsDashboard(filters);
+  const { summary, funnel, rooms, searches, routes, movement, trends, heatmap } = useAnalyticsDashboard(filters);
 
   // Comments section: its own rating/has-comment filters layered on the
-  // shared date range (see Feedback_Model::getAll) — platform/building
+  // shared date range (see Feedback_Model::getAll). Platform/building
   // don't apply to app feedback at all, so they're left out here.
   const [minRating, setMinRating] = useState("");
   const [hasComment, setHasComment] = useState("");
-  const { feedback, loading: feedbackLoading, markReviewed } = useFeedback({
+  const { feedback, loading: feedbackLoading, error: feedbackError, markReviewed } = useFeedback({
     from: filters.from,
     to: filters.to,
     minRating,
@@ -125,69 +141,111 @@ export default function AnalyticsPage() {
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
-  const roomLabel = (nodeId) => byId[nodeId]?.name || nodeId;
-  const roomsChartItems = (rooms.data?.rooms || []).map((r) => ({ label: roomLabel(r.node_id), value: r.count }));
+  const nodeLabel = (nodeId) => byId[nodeId]?.name || nodeId;
+  const destinationItems = (rooms.data?.rooms || []).map((r) => ({
+    key: r.node_id,
+    label: nodeLabel(r.node_id),
+    value: r.count,
+  }));
+  const searchItems = (searches.data?.queries || []).map((q) => ({
+    key: q.query,
+    label: q.matched ? q.query : `${q.query} (no match)`,
+    value: q.count,
+  }));
   const routesItems = routes.data?.routes || [];
   const buildingItems = (heatmap.data?.buildings || []).map((b) => ({
+    key: b.building,
     label: buildingLabel(b.building),
     value: b.count,
   }));
+  const trendSeries = useMemo(
+    () =>
+      fillDateGaps(trends.data?.series || [], {
+        from: filters.from,
+        to: filters.to,
+        today: localToday(),
+        zero: { sessions: 0, feedbackRate: 0 },
+      }),
+    [trends.data, filters.from, filters.to]
+  );
 
   return (
     <div className="analytics-page">
       <h2 className="admin-page-heading">Analytics</h2>
       <p className="field-hint">
-        Kiosk and desktop visitor behavior, plus feedback comments. A kiosk session runs from the attract screen
-        to feedback (or an idle restart); a desktop session runs for as long as the tab stays active.
+        Kiosk and desktop visitor behavior, plus feedback comments. A kiosk session runs from the first tap past the
+        attract screen until an idle restart or the post-feedback reset; a desktop session runs until feedback or 30
+        minutes without activity.
       </p>
 
       <FilterBar filters={filters} setFilters={setFilters} buildings={buildings} />
 
-      <div className="analytics-stat-row">
-        <StatTile label="Sessions" value={summary.data?.sessionCount ?? "—"} />
+      <div className={"analytics-stat-row" + (summary.updating ? " analytics-section-updating" : "")}>
+        <StatTile label="Sessions" value={summary.data?.sessionCount ?? EMPTY_VALUE} />
         <StatTile label="Avg. duration" value={formatDuration(summary.data?.avgDurationSeconds)} />
         <StatTile
           label="Feedback rate"
-          value={summary.data ? `${Math.round(summary.data.feedbackRate * 100)}%` : "—"}
+          value={summary.data ? `${Math.round(summary.data.feedbackRate * 100)}%` : EMPTY_VALUE}
         />
-        <StatTile
-          label="Walk : Jump"
-          value={summary.data?.walkJumpRatio !== null && summary.data?.walkJumpRatio !== undefined ? `${summary.data.walkJumpRatio} : 1` : "—"}
-        />
+        <StatTile label="Moves that were walks" value={formatWalkShare(summary.data)} />
       </div>
 
       <Section
         title="Session funnel"
-        hint={filters.platform === "desktop" ? "Desktop has no campus/building/floor gate — it starts already exploring." : "Defaults to kiosk sessions, where the campus/building/floor gate makes drop-off meaningful."}
+        hint={
+          filters.platform === "desktop"
+            ? "Desktop has no campus/building/floor gate, so it starts already exploring."
+            : "Kiosk sessions only, where the campus/building/floor gate makes drop-off meaningful."
+        }
         loading={funnel.loading}
+        updating={funnel.updating}
         error={funnel.error}
       >
         <FunnelChart stages={funnel.data?.stages || []} />
       </Section>
 
-      <Section title="Sessions over time" loading={trends.loading} error={trends.error}>
-        <TrendLineChart series={trends.data?.series || []} valueKey="sessions" label="Sessions" />
+      <Section title="Sessions over time" loading={trends.loading} updating={trends.updating} error={trends.error}>
+        <TrendLineChart series={trendSeries} valueKey="sessions" label="Sessions" />
       </Section>
 
       <div className="analytics-section-grid">
         <Section
-          title="Most searched rooms"
-          hint="By go-to taps and directions requests, resolved against the current node list."
+          title="Top destinations"
+          hint="Places visitors chose from search, a room card or Nearby, plus directions destinations."
           loading={rooms.loading}
+          updating={rooms.updating}
           error={rooms.error}
         >
-          <RankedBarChart items={roomsChartItems} emptyHint="No room activity tracked yet in this range." />
+          <RankedBarChart items={destinationItems} emptyHint="No destinations chosen yet in this range." />
         </Section>
 
-        <Section title="Most common routes" loading={routes.loading} error={routes.error}>
+        <Section
+          title="Top searches"
+          hint={
+            searches.data?.total
+              ? `${Math.round(searches.data.noMatchRate * 100)}% of ${searches.data.total} searches found no room.`
+              : "What visitors typed into room search."
+          }
+          loading={searches.loading}
+          updating={searches.updating}
+          error={searches.error}
+        >
+          <RankedBarChart items={searchItems} emptyHint="No searches tracked yet in this range." />
+        </Section>
+      </div>
+
+      <div className="analytics-section-grid">
+        <Section title="Most common routes" loading={routes.loading} updating={routes.updating} error={routes.error}>
           {routesItems.length === 0 ? (
             <p className="empty-hint">No directions requested yet in this range.</p>
           ) : (
             <div className="analytics-bar-list">
-              {routesItems.map((r, i) => (
-                <div className="analytics-bar-row" key={i}>
-                  <span className="analytics-bar-row-label">
-                    {roomLabel(r.from_node_id)} → {roomLabel(r.to_node_id)}
+              {routesItems.map((r) => (
+                <div className="analytics-bar-row" key={`${r.from_node_id}|${r.to_node_id}`}>
+                  <span className="analytics-bar-row-label analytics-route-label">
+                    {nodeLabel(r.from_node_id)}
+                    <img src={chevronRightIcon} alt="to" className="analytics-route-icon" />
+                    {nodeLabel(r.to_node_id)}
                   </span>
                   <span className="analytics-bar-row-value">{r.count}</span>
                 </div>
@@ -195,23 +253,30 @@ export default function AnalyticsPage() {
             </div>
           )}
         </Section>
-      </div>
 
-      <Section title="Walk vs. jump" loading={movement.loading} error={movement.error}>
-        <SplitMeter walk={movement.data?.totals?.walk || 0} jump={movement.data?.totals?.jump || 0} />
-      </Section>
+        <Section title="Walk vs. jump" loading={movement.loading} updating={movement.updating} error={movement.error}>
+          <SplitMeter walk={movement.data?.totals?.walk || 0} jump={movement.data?.totals?.jump || 0} />
+        </Section>
+      </div>
 
       <div className="analytics-section-grid">
         <Section
           title="Building heatmap"
-          hint="Visit density by building — ranked, since node/room coordinates aren't tracked for a true map overlay yet."
+          hint="Arrivals (walks and jumps) by the building of the node arrived at. Ranked, since node coordinates aren't tracked for a true map overlay yet."
           loading={heatmap.loading}
+          updating={heatmap.updating}
           error={heatmap.error}
         >
           <RankedBarChart items={buildingItems} emptyHint="No building activity tracked yet in this range." />
         </Section>
 
-        <Section title="When people visit" hint="Day of week × hour of day." loading={heatmap.loading} error={heatmap.error}>
+        <Section
+          title="When people visit"
+          hint="Day of week × hour of day."
+          loading={heatmap.loading}
+          updating={heatmap.updating}
+          error={heatmap.error}
+        >
           <TimingHeatmap cells={heatmap.data?.timing || []} />
         </Section>
       </div>
@@ -243,9 +308,10 @@ export default function AnalyticsPage() {
           </label>
         </div>
 
+        {feedbackError && <p className="error-box-inline">Couldn't load feedback: {feedbackError}</p>}
         {feedbackLoading ? (
           <p className="field-hint">Loading…</p>
-        ) : sortedFeedback.length === 0 ? (
+        ) : feedbackError ? null : sortedFeedback.length === 0 ? (
           <p className="empty-hint">No feedback submitted yet in this range.</p>
         ) : (
           <div className="users-list">

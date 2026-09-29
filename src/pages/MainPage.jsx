@@ -135,6 +135,15 @@ function MainPageContent({ onReset }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kiosk.campus, kiosk.building]);
 
+  // Every kiosk reset is a session boundary, so the session is closed here
+  // with why it ended. Desktop closes its own session on feedback (see
+  // useAnalytics' feedbackSubmitted), so it must not send a second end
+  // against the fresh id it has already rotated to.
+  const endSessionAndReset = (reason) => {
+    if (compact) analytics.sessionEnd(reason);
+    onReset();
+  };
+
   const { nodes, error: loadError } = usePublicNodes();
   const [buildingFilter, setBuildingFilter] = useState("all");
   // Desktop has no kiosk campus/building picks to attribute a session to,
@@ -425,12 +434,20 @@ function MainPageContent({ onReset }) {
   // direct hop. Also dismisses whatever the floating panel was showing, same
   // as Maps closing search/place-details once you actually navigate somewhere.
   // Every cross-campus move gets a flyover first, this included.
-  const jumpToSearchResult = (id, meta) => {
-    analytics.goTo(id);
+  const jumpTo = (id, meta) => {
     const { outcome, action } = nav.jump(id, meta);
-    if (outcome === "ignored") return;
+    if (outcome === "ignored") return outcome;
     if (outcome === "moved") afterMove(action);
     else overlay.heldForFlyover({ closePanel: true }); // the hop itself is deferred, the panel is not
+    return outcome;
+  };
+
+  // The visitor picking a destination themselves (search, room card, Nearby)
+  // is what "go_to" analytics counts. Directions' own hop to its start node
+  // and the kiosk's entrance picks use plain jumpTo, since neither is a
+  // chosen destination.
+  const jumpToSearchResult = (id, meta) => {
+    if (jumpTo(id, meta) !== "ignored") analytics.goTo(id);
   };
 
   // The kiosk's own campus/building/floor sequence's initial pick: lands on
@@ -461,7 +478,7 @@ function MainPageContent({ onReset }) {
     entryYaw,
     hotspots,
     searchableRooms,
-    moves: { jump: jumpToSearchResult, walk: goTo },
+    moves: { jump: jumpTo, walk: goTo },
     overlay,
     clearSearch: () => setSearchQuery(""),
   });
@@ -623,7 +640,7 @@ function MainPageContent({ onReset }) {
     setBuildingFilter,
     closeBuildingMenu: overlay.closeBuildingMenu,
     currentId,
-    jump: jumpToSearchResult,
+    jump: jumpTo,
     land: landAtKioskStart,
   });
 
@@ -1656,7 +1673,7 @@ function MainPageContent({ onReset }) {
       {showFeedback && (
         <FeedbackPanel
           onClose={overlay.closeFeedback}
-          onFinished={onReset}
+          onFinished={() => endSessionAndReset("feedback")}
           onSubmitted={(feedback) => {
             setFeedbackGiven(true);
             analytics.feedbackSubmitted(feedback?.id, feedback?.rating);
@@ -1669,7 +1686,7 @@ function MainPageContent({ onReset }) {
           thank-you card/countdown/"Keep exploring" cancel FeedbackPanel
           shows after a fresh submission, without re-asking for a rating. */}
       {overlay.endSessionThanks && (
-        <KioskThanks onDone={onReset} onResume={overlay.closeEndSessionThanks} />
+        <KioskThanks onDone={() => endSessionAndReset("feedback")} onResume={overlay.closeEndSessionThanks} />
       )}
 
       <HelpModal
@@ -1701,14 +1718,7 @@ function MainPageContent({ onReset }) {
       {isIdle && (
         <IdlePrompt
           onContinue={resetIdle}
-          onStartOver={
-            compact
-              ? () => {
-                  analytics.sessionEnd("idle_timeout");
-                  onReset();
-                }
-              : undefined
-          }
+          onStartOver={compact ? () => endSessionAndReset("idle_timeout") : undefined}
           onGiveFeedback={() => {
             resetIdle();
             overlay.openFeedback();
