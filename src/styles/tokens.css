@@ -143,6 +143,15 @@
      these and keeps its existing full-bleed look.
      ===================================================================== */
   --tour-page-bg: var(--gray-100);
-  --tour-sidebar-bg: var(--gray-700);
+  --tour-sidebar-bg: #5c5858;
   --tour-sidebar-text: var(--white);
+
+  /* Directory accordion (sidebar): two highlight tiers, not existing
+     --gray-700/--gold steps, since neither matches the requested tones.
+     Tier 1 is the resting band on every campus/building row; tier 2 is
+     the darker override for whichever campus/building/room is the
+     visitor's actual current location. */
+  --tour-directory-parent-bg: #4c4848;
+  --tour-directory-selected-bg: #3a3737;
+  --tour-search-placeholder: #b0b0b0;
 }

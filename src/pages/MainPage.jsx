@@ -20,8 +20,8 @@ import IdlePrompt from "../components/IdlePrompt";
 import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
+import DirectoryAccordion from "../components/DirectoryAccordion";
 import directionsIcon from "../assets/icons/directions.svg";
-import menuIcon from "../assets/icons/menu.svg";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import powerIcon from "../assets/icons/power.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
@@ -91,7 +91,6 @@ function radialButtonTransform(index, total) {
 // Pending real icons — see the icon list handed back to the user.
 const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
 const DIRECTIONS_ICON = <img src={directionsIcon} alt="" className="inline-icon-img" />;
-const MENU_ICON = <img src={menuIcon} alt="" className="inline-icon-img" />;
 // SVGs loaded via <img> don't inherit CSS currentColor from the host page
 // (they render in an isolated document), so a "stroke: currentColor" icon
 // can't actually follow the button's color the way the grey/white
@@ -270,13 +269,6 @@ function MainPageContent({ onReset }) {
     return pickSuggestions(searchableRooms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelMode === "search", searchableRooms]);
-
-  const entrances = useMemo(() => {
-    if (!nodes) return [];
-    return nodes.filter(
-      (n) => n.type === "entrance" && (buildingFilter === "all" || n.building === buildingFilter)
-    );
-  }, [nodes, buildingFilter]);
 
   // The kiosk's after-building floor screen: every floor of whichever
   // building the visitor just picked.
@@ -725,9 +717,10 @@ function MainPageContent({ onReset }) {
   const radialItems = [
     {
       key: "nearest-exit",
-      icon: PLACEHOLDER("emergency-exit"),
+      icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />,
       title: "Nearest Exit",
       onClick: flow.openNearestExit, // also collapses the dock
+      className: "mobile-nearest-exit-btn",
     },
     {
       key: "feedback",
@@ -1473,7 +1466,7 @@ function MainPageContent({ onReset }) {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => overlay.showPanel("search")}
                       onBlur={overlay.blurSearch}
-                      placeholder="Search a room..."
+                      placeholder="Search St. Dominic:"
                       aria-label="Search"
                     />
                     <button
@@ -1500,44 +1493,29 @@ function MainPageContent({ onReset }) {
                   </div>
                 </div>
 
+                {/* No dedicated toggle for this anymore (the hamburger's
+                    gone) — the directory is the sidebar's resting state,
+                    shown whenever nothing else (search results, a room
+                    card, directions) is occupying the content area. Lives
+                    outside .app-sidebar-content (same tier as the logo/
+                    search bar above) so it stays put while the accordion
+                    scrolls underneath it, instead of scrolling away with
+                    the rest of the directory's rows. */}
+                {panelMode !== "search" && panelMode !== "room" && panelMode !== "directions" && (
+                  <h3 className="directory-title">Directory</h3>
+                )}
+
                 <div className="app-sidebar-content">
                   {panelMode === "search" && searchResultsContent}
 
-                  {panelMode === "menu" && (
-                    <div className="sidebar-card">
-                      <label className="sidebar-field-label">
-                        Building
-                        <select value={buildingFilter} onChange={(e) => setBuildingFilter(e.target.value)}>
-                          {allBuildings().map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.label}{b.id === current?.building ? " (you are here)" : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <div className="sidebar-entrances">
-                        <h3 className="sidebar-subheading">Entrances</h3>
-                        {entrances.length === 0 && (
-                          <p className="empty-hint">No entrances found for this building yet.</p>
-                        )}
-                        <div className="entrance-list">
-                          {entrances.map((e) => (
-                            <button
-                              key={e.id}
-                              className={"entrance-btn" + (e.id === currentId ? " active" : "")}
-                              onClick={() => jumpToSearchResult(e.id)}
-                            >
-                              {e.name}
-                              {e.campusEntrance && <span className="entrance-btn-tag">Campus Entrance</span>}
-                              {!e.campusEntrance && e.buildingEntrance && (
-                                <span className="entrance-btn-tag">Building Entrance</span>
-                              )}
-                              <span className="entrance-btn-sub">{buildingLabel(e.building)} · {floorLabel(e.floor)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  {panelMode !== "search" && panelMode !== "room" && panelMode !== "directions" && (
+                    <div className="sidebar-card sidebar-card-directory">
+                      <DirectoryAccordion
+                        nodes={nodes}
+                        onSelect={jumpToSearchResult}
+                        currentId={currentId}
+                        currentBuildingId={current?.building}
+                      />
 
                       <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
                         {PLACEHOLDER("question-help")} How to use this tour
@@ -1593,17 +1571,20 @@ function MainPageContent({ onReset }) {
                 />
 
                 <div className="floating-title-wrap">
+                  {history.length > 0 && (
+                    <button
+                      type="button"
+                      className="floating-title-back"
+                      onClick={goBack}
+                      title="Back"
+                      aria-label="Back"
+                    >
+                      {PLACEHOLDER("back")}
+                    </button>
+                  )}
                   <div className="floating-title-pill">
-                    {history.length > 0 && (
-                      <button className="floating-title-back" onClick={goBack} title="Back">{PLACEHOLDER("back")}</button>
-                    )}
                     <span>{current.name}</span>
                   </div>
-                </div>
-
-                <div className="floating-rail">
-                  <button className="floating-rail-btn" onClick={overlay.toggleMenu} title="Menu">{MENU_ICON}</button>
-                  <div className="floating-rail-spacer" />
                 </div>
 
                 {/* Client-requested: bottom-left, stacked directly above
@@ -1625,7 +1606,7 @@ function MainPageContent({ onReset }) {
                   onClick={flow.openNearestExit}
                   title="Nearest Exit"
                 >
-                  {PLACEHOLDER("emergency-exit")}
+                  <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />
                 </button>
 
                 {/* Moved out of the rail and up to the top-right — its own

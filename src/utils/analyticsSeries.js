@@ -35,3 +35,76 @@ export function localToday(now = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+function shiftDay(day, days) {
+  return formatDay(parseDay(day) + days * DAY_MS);
+}
+
+// The dashboard's default range: the last `days` calendar days, today
+// included. A bounded default is what gives the KPI cards a previous
+// period to compare against; "all time" has none.
+export function defaultDateRange(today, days = 30) {
+  return { from: shiftDay(today, -(days - 1)), to: today };
+}
+
+// The equally long stretch of days immediately before from..to, or null
+// when either end is open (no fixed length to mirror).
+export function previousPeriod({ from, to }) {
+  if (!from || !to || from > to) return null;
+  const length = Math.round((parseDay(to) - parseDay(from)) / DAY_MS) + 1;
+  return { from: shiftDay(from, -length), to: shiftDay(from, -1) };
+}
+
+export function periodLength({ from, to }) {
+  return Math.round((parseDay(to) - parseDay(from)) / DAY_MS) + 1;
+}
+
+// KPI delta against the previous period. kind "relative" is a % change
+// (counts, durations); kind "points" is a percentage-point change, for
+// values that are already rates (0-1), where a relative % of a % misleads.
+// higherIsBetter picks the tone. Returns null when there's no baseline to
+// compare against (missing value, or a relative change from zero).
+export function kpiDelta(current, previous, { kind = "relative", higherIsBetter = true } = {}) {
+  if (current === null || current === undefined || previous === null || previous === undefined) return null;
+  let change;
+  let label;
+  if (kind === "points") {
+    change = Math.round((current - previous) * 100);
+    label = `${Math.abs(change)} pts`;
+  } else {
+    if (previous === 0) return null;
+    change = Math.round(((current - previous) / previous) * 100);
+    label = `${Math.abs(change)}%`;
+  }
+  if (change === 0) return { label: "No change", tone: "neutral" };
+  const up = change > 0;
+  return {
+    label: `${up ? "\u2191" : "\u2193"} ${label}`,
+    tone: up === higherIsBetter ? "good" : "bad",
+  };
+}
+
+// Clean round ticks (0 / 5 / 10, 0 / 20 / 40, ...) for a count axis that
+// starts at zero. Steps never go below 1, since sessions are whole numbers.
+export function niceTicks(max, target = 4) {
+  const rawStep = Math.max(max, 1) / target;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  const niceStep = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
+  const step = Math.max(1, niceStep);
+  const top = Math.max(step, Math.ceil(max / step) * step);
+  const ticks = [];
+  for (let t = 0; t <= top; t += step) ticks.push(t);
+  return ticks;
+}
+
+// "2026-09-28" -> "Sep 28". Read as UTC so the label never shifts a day
+// in timezones west of UTC.
+export function shortDate(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}

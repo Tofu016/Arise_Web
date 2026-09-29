@@ -1694,6 +1694,15 @@ button.primary {
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
+  overflow-x: hidden;
+  /* Scrolling itself stays available (content still grows the scroll
+     range vertically as the directory expands) — only the visible
+     scrollbar chrome is suppressed. */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge/IE */
+}
+.app-sidebar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
 }
 .app-sidebar-logo {
   flex-shrink: 0;
@@ -1712,7 +1721,141 @@ button.primary {
 .app-sidebar-content {
   flex: 1;
   min-height: 0;
+  /* Bled out to .app-sidebar's true edges and then padded back in by the
+     same amount: normal children (search results, room card, directions)
+     land at the exact same inset as before, but this element's own
+     border-box now reaches all the way to the sidebar's actual edges. That
+     matters because overflow-x: hidden below clips relative to THIS box —
+     previously this box stopped 16px short of the real edge, which silently
+     capped how far a bled descendant (see .directory-accordion) could ever
+     reach, no matter what negative margin it used on itself. */
+  margin: 0 -16px;
+  padding: 0 16px;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app-sidebar-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* Directory accordion — overrides .sidebar-card's light "sunken" surface
+   (meant for panels sitting on the dark sidebar as their own light card):
+   the directory instead sits directly on the sidebar's own dark
+   background, with only its building-level rows getting a distinct band
+   (see .directory-building-row below).
+   The whole block bleeds out to the sidebar's actual edges ONCE here
+   (undoing .app-sidebar's 16px side padding via a negative margin), so
+   every row's own background — width: 100% of THIS bled container — just
+   naturally reaches both edges, with no per-row math to keep in sync.
+   overflow-x stays hidden above and nothing in here is allowed to force a
+   row wider than that: rows wrap onto a second line (flex-wrap, and
+   labels that can break) instead of ever overflowing sideways. */
+.sidebar-card-directory {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.directory-accordion {
+  margin: 0 -16px;
+}
+.directory-title {
+  flex-shrink: 0;
+  margin: 4px 0 10px;
+  text-align: center;
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+.directory-campus {
+  display: flex;
+  flex-direction: column;
+  /* Matches .directory-building-list's own 2px gap (GD1/GD2/GD3 apart from
+     each other) so the campus row sits the same distance from its first
+     expanded child (GD1, or a solo campus's room list) as those children
+     sit from one another. */
+  gap: 2px;
+}
+.directory-campus + .directory-campus {
+  margin-top: 2px;
+}
+.directory-campus-row,
+.directory-building-row,
+.directory-room-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  width: 100%;
+  font-family: var(--font-sans-display);
+  text-transform: uppercase;
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.directory-campus-row > span:first-child,
+.directory-building-row > span:first-child,
+.directory-room-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+/* Tier 1 (default): campus and building rows always carry this band,
+   whether expanded or not. Tier 2 (.directory-row-selected, below) is the
+   only thing that ever overrides it. */
+.directory-campus-row,
+.directory-building-row {
+  background: var(--tour-directory-parent-bg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.directory-campus-row {
+  padding: 10px 16px;
+  font-size: 13px;
+}
+.directory-building-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.directory-building-row {
+  padding: 10px 16px 10px 28px;
+  font-size: 12px;
+}
+.directory-room-list {
+  display: flex;
+  flex-direction: column;
+}
+.directory-room-row {
+  background: none;
+  padding: 8px 16px 8px 40px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+/* Tier 2: the campus, building, and room that make up the visitor's
+   actual current location — always wins over tier 1's default band
+   (same specificity, declared after it) and is the only background a
+   room row ever shows, since rooms have no tier-1 band of their own. */
+.directory-row-selected {
+  background: var(--tour-directory-selected-bg);
+}
+.directory-room-row:hover,
+.directory-building-row:hover,
+.directory-campus-row:hover {
+  filter: brightness(1.15);
+}
+.directory-empty-hint {
+  margin: 0;
+  padding: 6px 16px 6px 40px;
+  font-size: 11px;
+  color: var(--tour-search-placeholder);
+  text-transform: none;
 }
 /* Recenters AND re-scopes the app's generic centered dialogs (feedback,
    help, idle prompt, room 360, arrival, elevator picker — all built on
@@ -3306,26 +3449,10 @@ button.primary {
   margin: 0;
 }
 /* ---------- Floating overlay UI (Maps-style) ---------- */
-.floating-rail {
-  /* This box spans the full left column height (top:16 to bottom:16),
-     which geometrically overlaps .floating-feedback-btn and
-     .floating-nearest-exit-btn below (also z-index: 30, same left:16
-     column, "moved out of the rail" per their own comments). Only
-     pointer-events: none here (with no background of its own) keeps
-     that overlap inert — .floating-rail-spacer, the only other child,
-     must stay background-free too, or this becomes a real collision. */
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  bottom: 16px;
-  width: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  z-index: 30;
-  pointer-events: none;
-}
+/* The hamburger that used to anchor this rail is gone (the directory
+   sidebar is always on now — see MainPage.jsx), so there's no visible
+   .floating-rail container left, just its buttons below, still occupying
+   the same left:16, 44px-wide column their own positioning describes. */
 .floating-rail-btn {
   pointer-events: auto;
   width: 44px;
@@ -3343,9 +3470,6 @@ button.primary {
 }
 .floating-rail-btn:hover {
   border-color: var(--accent);
-}
-.floating-rail-spacer {
-  flex: 1;
 }
 .floating-account-wrap {
   position: relative;
@@ -3402,6 +3526,12 @@ button.primary {
   bottom: 214px;
   left: 16px;
   z-index: 30;
+  background: var(--success);
+  border-color: var(--success);
+}
+.floating-nearest-exit-btn:hover {
+  border-color: var(--success);
+  filter: brightness(1.1);
 }
 .account-popover {
   position: absolute;
@@ -3446,6 +3576,9 @@ button.primary {
 .floating-search-bar input:focus {
   outline: none;
 }
+.floating-search-bar input::placeholder {
+  color: var(--tour-search-placeholder);
+}
 .floating-search-icon,
 .floating-search-directions-icon {
   position: absolute;
@@ -3484,7 +3617,9 @@ button.primary {
   left: 140px;
   right: 140px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
   z-index: 28;
   pointer-events: none;
 }
@@ -3576,13 +3711,18 @@ button.primary {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Its own separate circular button now (not merged into the name pill's
+   own rounded rect) — same surface/border/shadow treatment as the pill so
+   the two read as a matched pair sitting side by side. */
 .floating-title-back {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  pointer-events: auto;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -3593,6 +3733,12 @@ button.primary {
 }
 .floating-title-back:hover {
   color: var(--text);
+}
+/* The back.svg asset itself is drawn pointing right (a ">" chevron) — a
+   plain horizontal mirror is simpler and safer than re-deriving its
+   internal rotation/clip-path math just to point it the other way. */
+.floating-title-back .icon-placeholder-img {
+  transform: scaleX(-1);
 }
 /* ---------- Panorama overlays (R3F <Html> — hotspot preview & marker) ---------- */
 .pano-hotspot-preview {
@@ -4118,6 +4264,10 @@ button.primary {
 }
 @media (prefers-reduced-motion: reduce) {
   .mobile-radial-btn { animation: none; }
+}
+.mobile-nearest-exit-btn {
+  background: var(--success);
+  border-color: var(--success);
 }
 .mobile-radial-btn:active {
   /* `scale`, not `transform` — see the comment on the base rule above;
@@ -5051,73 +5201,121 @@ button.primary {
 }
 
 /* =====================================================================
-   Analytics dashboard (AnalyticsPage.jsx) — the filter bar, KPI stat
-   tiles, and the SVG/CSS chart primitives in AnalyticsCharts.jsx. Mark
-   specs (bar thickness, rounded data-ends, 2px surface gaps, the
-   sequential ramp) follow the dataviz skill's guidance; the Comments
-   section below this reuses .users-list/.users-row/.feedback-admin-*
+   Analytics dashboard (AnalyticsPage.jsx): the filter bar, KPI stat
+   tiles, the card grid, and the SVG/CSS chart primitives in
+   AnalyticsCharts.jsx. Mark specs (bar thickness, rounded data-ends, 2px
+   surface gaps, the sequential ramp) follow the dataviz skill's guidance;
+   the Comments section reuses .users-list/.users-row/.feedback-admin-*
    directly, same as the page it replaced.
    ===================================================================== */
+/* Sunken page background so each white card reads as its own widget. */
 .analytics-page {
-  padding: 16px;
-  max-width: 1100px;
+  padding: 20px;
+  min-height: 100%;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
+}
+/* No max-width here: the admin content area is often wider than 1200px,
+   and capping these left a wide column of unused space on the right of
+   the page instead of letting the grid pick up another column. */
+/* The intro used to reuse .field-hint (11px, meant for form-field hints);
+   the gray itself passes contrast, the size was what made it hard to read. */
+.analytics-page-intro {
+  margin: 6px 0 0 0;
+  max-width: 72ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-body);
 }
 .analytics-filter-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: 16px;
-  margin: 16px 0 24px 0;
-  padding: 12px 16px;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: 20px 0;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+/* The Comments section's own filters, sitting inside its white card. */
+.analytics-filter-bar-inline {
+  margin: 12px 0 16px 0;
+  padding: 12px 14px;
   background: var(--surface-sunken);
-  border-radius: var(--admin-radius);
+  border: none;
 }
 .analytics-filter-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
+/* One fixed height for date inputs and selects alike: left to their
+   intrinsic sizes, native date inputs and selects render at different
+   heights and their calendar icon / dropdown arrow sit off-center. */
 .analytics-filter-field select,
 .analytics-filter-field input[type="date"] {
+  box-sizing: border-box;
+  height: 36px;
+  min-width: 150px;
+  padding: 0 10px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
   color: var(--text);
-  padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
+.analytics-filter-field select:focus-visible,
+.analytics-filter-field input[type="date"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.analytics-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.analytics-filter-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
 .analytics-filter-clear {
-  align-self: center;
+  height: 36px;
   background: none;
   border: none;
   color: var(--accent);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  padding: 0;
+  padding: 0 4px;
 }
 
 .analytics-stat-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 .analytics-stat-tile {
-  flex: 1;
-  min-width: 160px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 16px;
+  padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -5129,78 +5327,79 @@ button.primary {
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
-/* Hero figure: proportional (not tabular) figures at display size — see
+/* Hero figure: proportional (not tabular) figures at display size; see
    the dataviz skill's marks-and-anatomy.md. */
 .analytics-stat-value {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   font-family: var(--font-sans-display);
   font-variant-numeric: normal;
   color: var(--text);
+}
+/* Tone = direction x whether up is good; the arrow and text carry the
+   direction too, so color is never the only signal. */
+.analytics-stat-delta {
+  font-size: 13px;
+  font-weight: 700;
+}
+.analytics-stat-delta-good {
+  color: var(--success);
+}
+.analytics-stat-delta-bad {
+  color: var(--danger-text);
+}
+.analytics-stat-delta-neutral {
+  color: var(--text-muted);
 }
 .analytics-stat-sub {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.analytics-section {
-  margin-bottom: 32px;
-}
-.analytics-section-grid {
+/* Card grid: as many ~380px columns as fit (two at the page's max width),
+   sized off the content area rather than a viewport breakpoint, which
+   ignored the admin rail and dropped to one column on laptop widths.
+   min(100%, ...) lets a card shrink below 380px on a narrow screen
+   instead of overflowing. */
+.analytics-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
 }
-@media (max-width: 860px) {
-  .analytics-section-grid {
-    grid-template-columns: 1fr;
-  }
+.analytics-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 20px 20px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(32, 27, 27, 0.04);
+}
+.analytics-section-wide {
+  grid-column: 1 / -1;
 }
 .analytics-section-heading {
   margin: 0 0 4px 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.error-box-inline {
-  color: var(--danger-text);
+.analytics-section-hint {
+  margin: 0;
   font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
-
-/* Ranked bar chart — single hue, <=24px thick, rounded data-end at the
-   value tip, square at the baseline. */
-.analytics-bar-list {
+/* flex: 1 so an empty state stretches to match a taller sibling card. */
+.analytics-section-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-.analytics-bar-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 220px) 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-.analytics-bar-row-label {
-  font-size: 13px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* A route row has no bar track, so its label takes the track's column too. */
-.analytics-route-label {
-  grid-column: span 2;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.analytics-route-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+  flex: 1;
+  margin-top: 14px;
 }
 .analytics-section-updating > :not(.analytics-section-heading) {
   opacity: 0.55;
@@ -5211,28 +5410,111 @@ button.primary {
   font-weight: 400;
   color: var(--text-muted);
 }
-.analytics-bar-track {
-  height: 16px;
-  background: var(--surface-sunken);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.analytics-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 0 4px 4px 0;
-  min-width: 4px;
-}
-.analytics-bar-row-value {
+.error-box-inline {
+  color: var(--danger-text);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  min-width: 2ch;
-  text-align: right;
+  margin: 0;
 }
 
-/* Funnel — cumulative fill per stage, drop-off called out as its own
+.analytics-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  padding: 20px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  text-align: center;
+}
+.analytics-empty-icon {
+  width: 28px;
+  height: 28px;
+  opacity: 0.7;
+}
+.analytics-empty-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Ranked bar chart: single hue, <=24px thick, rounded data-end at the
+   value tip, square at the baseline, value label right after the tip. */
+.analytics-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.analytics-bar-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 38%) 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.analytics-bar-row-label {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.analytics-bar-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  min-width: 0;
+}
+.analytics-bar-fill {
+  flex-shrink: 0;
+  height: 16px;
+  min-width: 3px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+  transition: width 0.2s ease;
+}
+.analytics-bar-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.analytics-route-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.analytics-route-row:last-child {
+  border-bottom: none;
+}
+.analytics-route-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.analytics-route-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.analytics-route-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Funnel: cumulative fill per stage, drop-off called out as its own
    direct label rather than left for the reader to subtract. */
 .analytics-funnel {
   display: flex;
@@ -5241,54 +5523,37 @@ button.primary {
 }
 .analytics-funnel-row {
   display: grid;
-  grid-template-columns: 140px 1fr 90px;
+  grid-template-columns: minmax(100px, 130px) 1fr 76px;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 .analytics-funnel-label {
   font-size: 13px;
   color: var(--text);
 }
 .analytics-funnel-track {
-  height: 22px;
-  background: var(--surface-sunken);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  height: 24px;
 }
-.analytics-funnel-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 0 4px 4px 0;
-  min-width: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 8px;
-  transition: width 0.2s ease;
-}
-.analytics-funnel-fill-value {
-  color: var(--accent-contrast);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.analytics-funnel-track .analytics-bar-fill {
+  height: 20px;
 }
 .analytics-funnel-dropoff {
   font-size: 12px;
   color: var(--danger-text);
-  font-weight: 600;
+  font-weight: 700;
+  text-align: right;
 }
 
-/* Split meter (walk/jump) — one bar, two segments, a 2px surface gap
+/* Split meter (walk/jump): one bar, two segments, a 2px surface gap
    between them (the spacer, not a stroke, does the separating). */
 .analytics-split-meter {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 480px;
+  gap: 12px;
 }
 .analytics-split-meter-track {
   display: flex;
-  height: 20px;
+  height: 24px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--surface-sunken);
@@ -5305,8 +5570,9 @@ button.primary {
 }
 .analytics-split-meter-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 20px;
+  gap: 8px 20px;
   font-size: 13px;
   color: var(--text);
 }
@@ -5328,16 +5594,27 @@ button.primary {
   background: var(--gold);
 }
 
-/* Trend line — 2px line, ~10% area wash, sparse axis labels (first/last
-   date + the end value only, not every point). */
-.analytics-trend-svg {
+/* Trend line: 2px line, ~10% area wash, y-axis on round ticks with
+   hairline gridlines, sparse date labels, crosshair + tooltip on hover.
+   Drawn at the container's real pixel width (see useElementWidth), so
+   the 12px axis text stays 12px. */
+.analytics-trend-wrap {
+  position: relative;
   width: 100%;
-  max-width: 640px;
-  height: auto;
 }
-.analytics-axis-line {
+.analytics-trend-svg {
+  display: block;
+  overflow: visible;
+}
+.analytics-grid-line {
   stroke: var(--border);
   stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.analytics-crosshair {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
 }
 .analytics-trend-area {
   fill: var(--accent);
@@ -5361,41 +5638,159 @@ button.primary {
 }
 .analytics-axis-text {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .analytics-trend-end-label {
   fill: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
+.analytics-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.analytics-tooltip-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.analytics-tooltip-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
 
-/* Timing heatmap — sequential ramp (one hue, light to dark), cells sized
-   by the CSS grid rather than fixed pixels so a wide hour range still
-   fits. display:contents keeps each day's cells in the same grid rows as
-   the shared hour-label row above them. */
+/* Timing heatmap: sequential ramp (one hue, light to dark), always all
+   24 hours. Fixed cell height with only the width flexing, so the grid
+   stays seven short rows however wide the card is. display:contents
+   keeps each day's cells in the same grid rows as the hour-label row.
+   Sized to fit a normal (non-wide) card, now that it sits next to Rating
+   distribution instead of spanning the full grid; overflow-x still
+   covers any card narrower than the min-width below. */
 .analytics-heatmap-wrap {
   overflow-x: auto;
 }
 .analytics-heatmap-grid {
   display: grid;
-  gap: 3px;
+  grid-template-columns: 30px repeat(24, minmax(10px, 1fr));
+  gap: 2px;
   align-items: center;
-  min-width: 420px;
+  min-width: 320px;
 }
+/* Labels only on every third hour, each allowed to spill over the empty
+   label cells to its right instead of being squeezed into one column. */
 .analytics-heatmap-hour-label {
   font-size: 10px;
   color: var(--text-muted);
-  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  font-variant-numeric: tabular-nums;
 }
 .analytics-heatmap-dow-label {
   font-size: 11px;
   color: var(--text-muted);
-  padding-right: 6px;
 }
 .analytics-heatmap-cell {
-  aspect-ratio: 1;
-  min-width: 18px;
-  border-radius: 3px;
+  height: 16px;
+  border-radius: 2px;
+}
+.analytics-heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.analytics-heatmap-legend span:first-child {
+  margin-right: 4px;
+}
+.analytics-heatmap-legend span:last-child {
+  margin-left: 4px;
+}
+.analytics-heatmap-legend-swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.analytics-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.analytics-pager .admin-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Rating distribution: vertical columns, deliberately unlike every other
+   section's horizontal ranked bars (RankedBarChart, the funnel), so a
+   rating spread reads as its own kind of chart at a glance. Value on the
+   cap per marks-and-anatomy.md; a fixed track height keeps all five
+   columns the same height regardless of how tall their card grows. */
+.analytics-rating-columns {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-height: 160px;
+}
+.analytics-rating-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  height: 100%;
+}
+.analytics-rating-column-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.analytics-rating-column-track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 40px;
+  height: 120px;
+  background: var(--surface-sunken);
+  border-radius: 4px 4px 0 0;
+  overflow: hidden;
+}
+.analytics-rating-column-fill {
+  width: 100%;
+  background: var(--gold);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.2s ease;
+}
+.analytics-rating-column-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.analytics-rating-star-icon {
+  width: 12px;
+  height: 12px;
 }
 
 /* =====================================================================

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet } from "../utils/apiClient";
+import { previousPeriod } from "../utils/analyticsSeries";
 
 // One fetch-on-filter-change per Analytics_API read endpoint (see
 // Analytics_API.php): summary, funnel, rooms, searches, routes, movement,
@@ -23,14 +24,16 @@ function toQueryString(filters, extra = {}) {
 // the .then/.catch callbacks. The state remembers which query its data
 // answers: `loading` is the very first load (nothing to show yet), and
 // `updating` is a newer filter range still in flight while the previous
-// range's numbers stay on screen.
+// range's numbers stay on screen. filters null skips the fetch entirely
+// (data stays null), for a query that doesn't apply to the current range.
 function useAnalyticsQuery(path, filters, extra) {
-  const query = `Analytics_API/${path}${toQueryString(filters, extra)}`;
+  const query = filters ? `Analytics_API/${path}${toQueryString(filters, extra)}` : null;
   const [state, setState] = useState({ query: null, data: null, error: "" });
   const requestIdRef = useRef(0);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
+    if (!query) return;
     apiGet(query)
       .then((data) => {
         if (requestIdRef.current === requestId) setState({ query, data, error: "" });
@@ -42,6 +45,7 @@ function useAnalyticsQuery(path, filters, extra) {
       });
   }, [query]);
 
+  if (!query) return { data: null, error: "", loading: false, updating: false };
   return {
     data: state.data,
     error: state.error,
@@ -51,8 +55,12 @@ function useAnalyticsQuery(path, filters, extra) {
 }
 
 export function useAnalyticsDashboard(filters) {
+  // Same platform/building, shifted to the equally long stretch before the
+  // selected range, for the KPI cards' "vs previous period" deltas.
+  const previous = previousPeriod(filters);
   return {
     summary: useAnalyticsQuery("summary", filters),
+    previousSummary: useAnalyticsQuery("summary", previous && { ...filters, ...previous }),
     funnel: useAnalyticsQuery("funnel", filters),
     rooms: useAnalyticsQuery("rooms", filters, { limit: 10 }),
     searches: useAnalyticsQuery("searches", filters, { limit: 10 }),
