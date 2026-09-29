@@ -20,6 +20,20 @@ import IconPlaceholder from "./IconPlaceholder";
 // nothing to walk to.
 const NOTHING_AHEAD_HINT_MS = 1800;
 
+// Held-Shift/Control keyboard zoom: how many wheel-deltaY-equivalent units
+// per second of holding feed into zoomByWheel (tuned to land roughly where
+// a few slow scroll notches would).
+const KEY_ZOOM_DELTA_PER_SECOND = 700;
+
+// Same check as KeyboardNav.jsx's own (kept local rather than shared/exported
+// to avoid a fast-refresh warning on a file that otherwise only exports a
+// component).
+function isTypingTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+}
+
 // A camera icon in the brand's premium-accent gold: the Virtual Tour's
 // "equipment" marker type. Kept here rather than in constants.js's
 // MARKER_TYPES, which would offer it in the indoor Navigation Editor's
@@ -127,6 +141,48 @@ export default function PanoramaNav({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  }, [wheelZoomable, zoomByWheel]);
+
+  // Desktop keyboard zoom: Shift zooms in, Control zooms out, continuously
+  // while held (fed through the same zoomByWheel curve the scroll wheel
+  // uses, via an equivalent deltaY-per-second, rather than a separate
+  // step function) — see DesktopIntroOverlay.jsx, which documents this as
+  // the keyboard alternative to the wheel. Same wheelZoomable gate as the
+  // wheel listener above (desktop only; the kiosk's zoomable has its own
+  // +/- buttons instead).
+  useEffect(() => {
+    if (!wheelZoomable) return;
+    const dir = { current: 0 }; // -1 Shift (in), 1 Control (out)
+    const onKeyDown = (e) => {
+      if (isTypingTarget(e.target)) return;
+      if (e.key === "Shift") dir.current = -1;
+      else if (e.key === "Control") dir.current = 1;
+    };
+    const onKeyUp = (e) => {
+      if (e.key === "Shift" && dir.current === -1) dir.current = 0;
+      else if (e.key === "Control" && dir.current === 1) dir.current = 0;
+    };
+    const onBlur = () => {
+      dir.current = 0;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    let raf;
+    let last = performance.now();
+    const tick = (now) => {
+      const deltaSeconds = (now - last) / 1000;
+      last = now;
+      if (dir.current !== 0) zoomByWheel(dir.current * KEY_ZOOM_DELTA_PER_SECOND * deltaSeconds);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      cancelAnimationFrame(raf);
+    };
   }, [wheelZoomable, zoomByWheel]);
 
   // Which url the texture load most recently failed for (a bad/corrupt file

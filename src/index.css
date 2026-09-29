@@ -1685,6 +1685,7 @@ button.primary {
   flex-direction: row;
 }
 .app-sidebar {
+  position: relative; /* containing block for .sidebar-intro-overlay */
   width: var(--tour-sidebar-width);
   flex-shrink: 0;
   background: var(--tour-sidebar-bg);
@@ -7436,5 +7437,269 @@ html.kiosk-mode body {
     right: 16px;
     bottom: 16px;
     max-width: none;
+  }
+}
+
+/* =====================================================================
+   Desktop intro overlay (DesktopIntroOverlay.jsx) — the desktop view's
+   session-start walkthrough. Scoped to .main-page-screen (the panorama's
+   own container, position: relative) rather than the full viewport, so it
+   covers only the panoramic view and leaves the rest of the desktop shell
+   (header, sidebar) visible and usable. z-index 60 only has to outrank
+   this container's own children (.floating-title-wrap etc. top out at 28),
+   not the app-wide tiers .modal-overlay/.loading-screen use.
+   A dark, translucent tint (not solid) rather than the brand gradient, so
+   the panorama itself stays faintly visible behind it — and every icon,
+   keycap and line of text is plain white, with no maroon/gold accent, to
+   read clearly against a background whose actual color varies with
+   whatever photo is behind it.
+   ===================================================================== */
+.desktop-intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 40px 24px;
+  background: rgba(10, 8, 8, 0.72);
+  color: var(--white);
+  text-align: center;
+  cursor: pointer;
+  animation: modal-overlay-in 0.2s ease;
+}
+.desktop-intro-overlay:focus {
+  outline: none;
+}
+.desktop-intro-logo {
+  height: 64px;
+  width: auto;
+}
+.desktop-intro-tips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 40px;
+  max-width: 760px;
+}
+.desktop-intro-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 190px;
+}
+/* Fixed-height holder every column's icon sits in, regardless of that
+   icon's own natural width/height (the mouse glyph and the WASD cluster
+   are taller than the hotspot glyph and the Shift/Ctrl row) — so the
+   paragraph below always starts at the same y across every column in a
+   row, instead of drifting with whichever icon happens to be tallest. */
+.desktop-intro-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+}
+.desktop-intro-tip p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--white);
+}
+.desktop-intro-or {
+  margin: 0;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--white);
+}
+.desktop-intro-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 40px;
+  max-width: 640px;
+}
+.desktop-intro-key-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+}
+.desktop-intro-key-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.desktop-intro-key-row {
+  display: flex;
+  gap: 4px;
+}
+.desktop-intro-key-group p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--white);
+}
+.intro-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-bottom-width: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--white);
+}
+.intro-keycap-wide {
+  min-width: 56px;
+  padding: 0 10px;
+}
+.desktop-intro-dismiss {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- Mouse icon (drag / scroll), drawn not sourced ---------- */
+.intro-mouse-icon {
+  width: 34px;
+  height: 50px;
+  color: var(--white);
+}
+.intro-mouse-highlight {
+  animation: intro-pulse 1.4s ease-in-out infinite;
+}
+.intro-mouse-wheel {
+  animation: intro-scroll-wheel 1.4s ease-in-out infinite;
+}
+@keyframes intro-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes intro-scroll-wheel {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+/* ---------- Hotspot click icon, drawn not sourced ---------- */
+.intro-hotspot-icon {
+  width: 44px;
+  height: 44px;
+}
+.intro-hotspot-ring {
+  transform-origin: 30px 32px;
+  animation: intro-hotspot-ring-pulse 1.6s ease-out infinite;
+}
+/* Anchored at the arrow's own tip point (30,32 — see the path in
+   DesktopIntroOverlay.jsx), which is drawn exactly on the ring/dot's
+   center, so the tap animation pivots from the point that's actually
+   touching the hotspot rather than from the cursor's bounding box. */
+.intro-hotspot-cursor {
+  transform-origin: 30px 32px;
+  animation: intro-hotspot-cursor-tap 1.6s ease-in-out infinite;
+}
+@keyframes intro-hotspot-ring-pulse {
+  0% { transform: scale(0.85); opacity: 1; }
+  60%, 100% { transform: scale(1.25); opacity: 0; }
+}
+@keyframes intro-hotspot-cursor-tap {
+  0%, 55% { transform: scale(1); }
+  65% { transform: scale(0.88); }
+  75%, 100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-intro-overlay,
+  .intro-mouse-highlight,
+  .intro-mouse-wheel,
+  .intro-hotspot-ring,
+  .intro-hotspot-cursor {
+    animation: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .desktop-intro-tips,
+  .desktop-intro-keys {
+    gap: 24px;
+  }
+  .desktop-intro-tip,
+  .desktop-intro-key-group {
+    width: 150px;
+  }
+}
+
+/* =====================================================================
+   Sidebar intro overlay (SidebarIntroOverlay.jsx) — the app sidebar's own
+   session-start walkthrough, companion to .desktop-intro-overlay above.
+   Scoped to .app-sidebar (position: relative, set above) rather than the
+   full viewport. Near-opaque rather than translucent: unlike the panorama
+   behind .desktop-intro-overlay, what's behind this one is dense text (the
+   directory list), which would fight for attention with this overlay's own
+   text if left much visible through it. White-only, no accent, matching
+   the panorama overlay's revised palette.
+   ===================================================================== */
+.sidebar-intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  background: rgba(10, 8, 8, 0.94);
+  color: var(--white);
+  cursor: pointer;
+  animation: modal-overlay-in 0.2s ease;
+}
+.sidebar-intro-overlay:focus {
+  outline: none;
+}
+.sidebar-intro-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sidebar-intro-tips li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+/* Fixed-width holder, same reasoning as .desktop-intro-icon: every row's
+   text starts at the same x regardless of that row's own icon width
+   (the directions.svg raster isn't the same intrinsic size as the other
+   icons' square glyphs). */
+.sidebar-intro-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+}
+.sidebar-intro-icon .inline-icon-img {
+  width: 22px;
+  height: 22px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-intro-overlay {
+    animation: none;
   }
 }

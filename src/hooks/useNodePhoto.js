@@ -3,7 +3,7 @@ import { useSecurePhotoUrl } from "./useSecurePhotoUrl";
 import { useImagePreloaded } from "./useImagePreloaded";
 import { useRectilinearPreview } from "./useRectilinearPreview";
 import { prefetchPhoto } from "../utils/photoStore";
-import { planPrefetch, nextFirstLoadDone } from "../utils/photoPipeline";
+import { planPrefetch, planSecondHopPrefetch, nextFirstLoadDone } from "../utils/photoPipeline";
 
 // The visitor's photo pipeline. photoStore is the seam beneath it; callers
 // see only what to show and when it is safe to show it.
@@ -16,8 +16,10 @@ import { planPrefetch, nextFirstLoadDone } from "../utils/photoPipeline";
 //                  the one-time splash; later moves never bring it back
 // Once ready, quietly warms the photos its hotspots lead to, one at a time
 // (never crowding out a photo the visitor tapped), `priorityId` first — see
-// planPrefetch. Call it before any early return; it is a hook.
-export function useNodePhoto(node, { neighbors = [], priorityId, nodesLoaded = true } = {}) {
+// planPrefetch. `nextNeighbors` (priorityId's own hotspot list) adds one more
+// hop past priorityId only, never fanned out across every hotspot — see
+// planSecondHopPrefetch. Call it before any early return; it is a hook.
+export function useNodePhoto(node, { neighbors = [], nextNeighbors = [], priorityId, nodesLoaded = true } = {}) {
   const { url, error } = useSecurePhotoUrl(node?.photo, { cached: true });
   const decoded = useImagePreloaded(url);
   // `error` covers the fetch itself failing (missing file, auth/network
@@ -32,7 +34,14 @@ export function useNodePhoto(node, { neighbors = [], priorityId, nodesLoaded = t
   const firstLoadDone = nextFirstLoadDone(latched, { nodesLoaded, photoReady: ready });
   if (firstLoadDone !== latched) setLatched(firstLoadDone);
 
-  const prefetchKey = decoded ? planPrefetch(neighbors, { currentId: node?.id, priorityId }).join("|") : "";
+  const prefetchKey = decoded
+    ? [
+        ...new Set([
+          ...planPrefetch(neighbors, { currentId: node?.id, priorityId }),
+          ...planSecondHopPrefetch(nextNeighbors, { currentId: node?.id, priorityId }),
+        ]),
+      ].join("|")
+    : "";
   useEffect(() => {
     if (!prefetchKey) return;
     let cancelled = false;

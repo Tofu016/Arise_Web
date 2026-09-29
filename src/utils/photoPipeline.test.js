@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planPrefetch, nextFirstLoadDone, PREFETCH_LIMIT } from "./photoPipeline";
+import { planPrefetch, planSecondHopPrefetch, nextFirstLoadDone, PREFETCH_LIMIT, SECOND_HOP_LIMIT } from "./photoPipeline";
 
 const hs = (...ids) => ids.map((id) => ({ id, photo: `${id}.jpg` }));
 
@@ -28,6 +28,31 @@ describe("planPrefetch", () => {
     const input = hs("a", "b");
     planPrefetch(input, { currentId: "x", priorityId: "b" });
     expect(input.map((h) => h.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("planSecondHopPrefetch", () => {
+  it("yields nothing without a priorityId, since there's no direction to bet on", () => {
+    expect(planSecondHopPrefetch(hs("a", "b"), { currentId: "x" })).toEqual([]);
+  });
+
+  it("warms priorityId's own neighbors when there is a priority", () => {
+    expect(planSecondHopPrefetch(hs("d", "e"), { currentId: "x", priorityId: "c" })).toEqual(["d.jpg", "e.jpg"]);
+  });
+
+  it("excludes links back to the current node or to priorityId itself", () => {
+    const nextNeighbors = [...hs("d"), { id: "x", photo: "x.jpg" }, { id: "c", photo: "c.jpg" }];
+    expect(planSecondHopPrefetch(nextNeighbors, { currentId: "x", priorityId: "c" })).toEqual(["d.jpg"]);
+  });
+
+  it("skips hotspots with no photo", () => {
+    const nextNeighbors = [...hs("d"), { id: "e", photo: "" }];
+    expect(planSecondHopPrefetch(nextNeighbors, { currentId: "x", priorityId: "c" })).toEqual(["d.jpg"]);
+  });
+
+  it("caps the list at SECOND_HOP_LIMIT", () => {
+    const many = hs(..."defgh".split(""));
+    expect(planSecondHopPrefetch(many, { currentId: "x", priorityId: "c" })).toHaveLength(SECOND_HOP_LIMIT);
   });
 });
 

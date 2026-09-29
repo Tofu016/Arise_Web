@@ -19,6 +19,8 @@ import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
 import Coachmark from "../components/Coachmark";
 import HelpModal from "../components/HelpModal";
+import DesktopIntroOverlay from "../components/DesktopIntroOverlay";
+import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
 import directionsIcon from "../assets/icons/directions.svg";
@@ -162,6 +164,29 @@ function MainPageContent({ onReset }) {
   // so it never accumulates any activeId/activeIds to show.
   const kioskDockBtnRef = useRef(null);
   const onboarding = useOnboardingHints(compact ? ["move", "dock"] : []);
+
+  // Desktop's own session-start walkthrough (DesktopIntroOverlay) — a single
+  // upfront splash instead of the kiosk's sequential coachmarks, since the
+  // desktop view has no per-button callouts to point at (see onboarding
+  // above). Deliberately not persisted, same reasoning as the coachmarks:
+  // every fresh page load is a new visitor's first impression.
+  const [desktopIntroSeen, setDesktopIntroSeen] = useState(false);
+  // Same idea, for the app sidebar's own walkthrough (SidebarIntroOverlay) —
+  // a separate seen flag per overlay (each covers a different region and
+  // starts hidden independently), but a single shared dismiss: clicking
+  // either one closes both at once instead of leaving the other still up.
+  const [sidebarIntroSeen, setSidebarIntroSeen] = useState(false);
+  const dismissIntro = () => {
+    setDesktopIntroSeen(true);
+    setSidebarIntroSeen(true);
+  };
+  // "How to use this tour" (the sidebar's own help button) replays both
+  // overlays instead of opening the old HelpModal now that they exist —
+  // HelpModal stays in use for the kiosk's radial-dock help item below.
+  const replayIntro = () => {
+    setDesktopIntroSeen(false);
+    setSidebarIntroSeen(false);
+  };
 
   // Kiosk End Session button: whether feedback was already sent this
   // session, regardless of how the feedback dialog was reached (the FAB's
@@ -508,6 +533,17 @@ function MainPageContent({ onReset }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directions?.path]);
 
+  // One hop past the route's next stop, so useNodePhoto can warm a second
+  // panorama along the direction the visitor is actually headed instead of
+  // stopping at the immediate neighbor — see planSecondHopPrefetch's
+  // reasoning for why this stays scoped to the single node on the active
+  // route rather than every hotspot's own neighbors.
+  const nextStopNode = progress.nextStopId ? byId[progress.nextStopId] : null;
+  const nextStopHotspots = useMemo(
+    () => (nextStopNode ? buildHotspots(nextStopNode, byId, { withPhoto: true }) : []),
+    [nextStopNode, byId]
+  );
+
   // Called unconditionally here (before any early returns below) since it's a
   // hook. `ready` covers "no photo at all" too, so the splash can't stick when
   // zero nodes are configured; `firstLoadDone` latches for the full-screen
@@ -518,6 +554,7 @@ function MainPageContent({ onReset }) {
     firstLoadDone: initialLoadDone,
   } = useNodePhoto(current, {
     neighbors: hotspots,
+    nextNeighbors: nextStopHotspots,
     priorityId: progress.nextStopId,
     nodesLoaded: !!nodes,
   });
@@ -1452,6 +1489,15 @@ function MainPageContent({ onReset }) {
                   buildings/entrances, room card, directions) now renders
                   here instead of as a floating panel over the panorama. */}
               <aside className="app-sidebar">
+                {/* The sidebar's own session-start walkthrough — see
+                    SidebarIntroOverlay.jsx and the sidebarIntroSeen state
+                    above. Shares dismissIntro with DesktopIntroOverlay
+                    below, so clicking either one closes both. */}
+                <SidebarIntroOverlay
+                  open={hintsAllowed && !compact && !sidebarIntroSeen}
+                  onDismiss={dismissIntro}
+                />
+
                 <div className="app-sidebar-logo">
                   <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" />
                 </div>
@@ -1517,7 +1563,7 @@ function MainPageContent({ onReset }) {
                         currentBuildingId={current?.building}
                       />
 
-                      <button type="button" className="sidebar-help-btn" onClick={overlay.openHelp}>
+                      <button type="button" className="sidebar-help-btn" onClick={replayIntro}>
                         {PLACEHOLDER("question-help")} How to use this tour
                       </button>
                     </div>
@@ -1568,6 +1614,16 @@ function MainPageContent({ onReset }) {
                   keyboardNav
                   onBack={goBack}
                   wheelZoomable
+                />
+
+                {/* Desktop's session-start walkthrough, scoped to the
+                    panorama itself (not the whole screen) — see
+                    DesktopIntroOverlay.jsx and the desktopIntroSeen state
+                    above. Shares dismissIntro with SidebarIntroOverlay, so
+                    clicking either one closes both. */}
+                <DesktopIntroOverlay
+                  open={hintsAllowed && !compact && !desktopIntroSeen}
+                  onDismiss={dismissIntro}
                 />
 
                 <div className="floating-title-wrap">
