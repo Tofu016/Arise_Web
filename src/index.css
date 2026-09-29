@@ -5047,6 +5047,7 @@ button.primary {
    directly, same as the page it replaced.
    ===================================================================== */
 .analytics-page {
+  padding: 16px;
   max-width: 1100px;
 }
 .analytics-filter-bar {
@@ -5376,6 +5377,9 @@ button.primary {
    only the grid/card layout and the in-use/orphaned badges themselves
    need new rules here.
    ===================================================================== */
+.photo-coverage-page {
+  padding: 16px;
+}
 .photo-gallery-filter-row {
   display: flex;
   gap: 8px;
