@@ -1181,6 +1181,11 @@ function MainPageContent({ onReset }) {
             style={{ height: `${KIOSK_TOP_INSET * 100}%` }}
           >
             <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
+            {current && !kioskDialogOpen && (
+              <div className="mobile-title-pill">
+                <span>{current.name}</span>
+              </div>
+            )}
           </header>
         )}
         {!current ? (
@@ -1232,24 +1237,6 @@ function MainPageContent({ onReset }) {
                 previewsHidden={overlayOpen}
               />
             </div>
-
-            {/* ---------- Top: read-only location title only — no buttons up
-                here. Every actionable control (search, back, exit,
-                feedback, account, building picker) lives behind the
-                middle-right FAB instead (see "Middle-right control dock"
-                below), within arm's reach of someone standing at a
-                wall-mounted kiosk, not up in the top corners. Safe-area
-                padded (see CSS) so it clears a notch or kiosk bezel. ---------- */}
-            {!kioskDialogOpen && (
-            <div
-              className="mobile-title-wrap"
-              style={{ top: `calc(${KIOSK_TOP_INSET * 100}% + 12px)` }}
-            >
-              <div className="mobile-title-pill">
-                <span>{current.name}</span>
-              </div>
-            </div>
-            )}
 
             {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (
               <NearbyRoomsPanel
@@ -1516,9 +1503,10 @@ function MainPageContent({ onReset }) {
               {/* Static left sidebar — every function module (search,
                   buildings/entrances, room card, directions) now renders
                   here instead of as a floating panel over the panorama. */}
-              {/* Room mode recolors the whole sidebar (see .app-sidebar-room)
-                  instead of stacking a separate card on top of it. */}
-              <aside className={`app-sidebar ${panelMode === "room" && selectedRoomCard ? "app-sidebar-room" : ""}`}>
+              {/* An open room card is a bottom sheet over the directory (see
+                  RoomCard.jsx), not a separate sidebar mode, so the
+                  directory stays browsable behind its collapsed peek. */}
+              <aside className={`app-sidebar ${panelMode === "room" && selectedRoomCard ? "app-sidebar-with-room" : ""}`}>
                 {/* The sidebar's own session-start walkthrough — see
                     SidebarIntroOverlay.jsx and the sidebarIntroSeen state
                     above. Shares dismissIntro with DesktopIntroOverlay
@@ -1577,19 +1565,19 @@ function MainPageContent({ onReset }) {
                     search bar above) so it stays put while the accordion
                     scrolls underneath it, instead of scrolling away with
                     the rest of the directory's rows. */}
-                {panelMode !== "search" && panelMode !== "room" && panelMode !== "directions" && (
+                {panelMode !== "search" && panelMode !== "directions" && (
                   <h3 className="directory-title">Directory</h3>
                 )}
 
                 <div className="app-sidebar-content">
                   {panelMode === "search" && searchResultsContent}
 
-                  {panelMode !== "search" && panelMode !== "room" && panelMode !== "directions" && (
+                  {panelMode !== "search" && panelMode !== "directions" && (
                     <div className="sidebar-card sidebar-card-directory">
                       <DirectoryAccordion
-                        nodes={nodes}
-                        onSelect={jumpToSearchResult}
-                        currentId={currentId}
+                        rooms={searchableRooms}
+                        onSelect={openRoomCard}
+                        selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}
                       />
 
@@ -1599,20 +1587,23 @@ function MainPageContent({ onReset }) {
                     </div>
                   )}
 
-                  {panelMode === "room" && selectedRoomCard && (
-                    <RoomCard
-                      room={selectedRoomCard}
-                      onClose={overlay.closeRoomCard}
-                      onGetDirections={handleRoomGetDirections}
-                    />
-                  )}
-
                   {panelMode === "directions" && directions && !arrived && (
                     <div className="directions-panel">
                       {directionsContent}
                     </div>
                   )}
                 </div>
+
+                {/* Outside .app-sidebar-content so it anchors to the sidebar
+                    itself rather than scrolling with the directory. */}
+                {panelMode === "room" && selectedRoomCard && (
+                  <RoomCard
+                    key={selectedRoomCard.roomName}
+                    room={selectedRoomCard}
+                    onClose={overlay.closeRoomCard}
+                    onGetDirections={handleRoomGetDirections}
+                  />
+                )}
               </aside>
 
               {/* Panorama container — the containing block for every

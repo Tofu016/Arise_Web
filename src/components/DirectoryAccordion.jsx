@@ -2,56 +2,30 @@ import { useMemo, useState } from "react";
 import { allBuildings, allCampuses, buildingLabel, campusForBuilding } from "../utils/constants";
 import { buildingsForCampus } from "../utils/navigation";
 
-// How many room/facility entries to surface per building in the accordion.
-// There's no curated "directory listing" data yet (see Room Editor — only
-// rooms an admin has gone through that for have detail records, and most
-// nodes don't), so this picks straight from that building's own nodes
-// instead of leaving the accordion empty. Picked once per session (see
-// shuffledPicks below), not on every render.
-const ROOMS_PER_BUILDING = 5;
-
-// Deterministic-feeling but different every session: shuffles once when
-// `nodes`/`buildingId` first loads and keeps that same order for the rest
-// of the visit, rather than re-rolling on every render (which would make
-// items jump around under the visitor's cursor). This intentionally does
-// NOT depend on currentId, so pressing an entry (which changes currentId
-// via navigation) never triggers a re-shuffle.
-function shuffledPicks(nodes, buildingId) {
-  const candidates = (nodes || []).filter((n) => n.building === buildingId);
-  const shuffled = [...candidates];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return { candidates, picks: shuffled.slice(0, ROOMS_PER_BUILDING) };
+// Every room/facility (from nodes' "Rooms served" lists, see
+// buildSearchableRooms) in one building, in natural order ("Room 2" before
+// "Room 10"). Rooms rather than nodes: a node is a panorama point, which
+// means nothing to a visitor browsing for a destination.
+function roomsInBuilding(rooms, buildingId) {
+  return (rooms || [])
+    .filter((r) => r.node.building === buildingId)
+    .sort((a, b) => a.roomName.localeCompare(b.roomName, undefined, { numeric: true, sensitivity: "base" }));
 }
 
-// The visitor's actual current node is always forced into its building's
-// list (swapped in over the last pick if the shuffle didn't already
-// include it), without re-shuffling the rest of the order.
-function withCurrentForced(picks, candidates, currentId) {
-  if (!picks.some((n) => n.id === currentId)) {
-    const current = candidates.find((n) => n.id === currentId);
-    if (current) return [...picks.slice(0, -1), current];
-  }
-  return picks;
-}
-
-function RoomRow({ node, isHere, onSelect }) {
+function RoomRow({ room, isSelected, onSelect }) {
   return (
     <button
       type="button"
-      className={"directory-room-row" + (isHere ? " directory-row-selected" : "")}
-      onClick={() => onSelect(node.id)}
+      className={"directory-room-row" + (isSelected ? " directory-row-selected" : "")}
+      onClick={() => onSelect(room)}
     >
-      <span>{node.name}</span>
+      <span>{room.roomName}</span>
     </button>
   );
 }
 
-function BuildingRow({ building, nodes, expanded, isHere, currentId, onToggle, onSelect }) {
-  const { candidates, picks } = useMemo(() => shuffledPicks(nodes, building.id), [nodes, building.id]);
-  const rooms = useMemo(() => withCurrentForced(picks, candidates, currentId), [picks, candidates, currentId]);
+function BuildingRow({ building, rooms: allRooms, expanded, isHere, selectedRoomName, onToggle, onSelect }) {
+  const rooms = useMemo(() => roomsInBuilding(allRooms, building.id), [allRooms, building.id]);
   return (
     <div className="directory-building">
       <button
@@ -65,8 +39,8 @@ function BuildingRow({ building, nodes, expanded, isHere, currentId, onToggle, o
       {expanded && (
         <div className="directory-room-list">
           {rooms.length === 0 && <p className="directory-empty-hint">No rooms found for this building yet.</p>}
-          {rooms.map((n) => (
-            <RoomRow key={n.id} node={n} isHere={n.id === currentId} onSelect={onSelect} />
+          {rooms.map((r) => (
+            <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
           ))}
         </div>
       )}
@@ -84,7 +58,7 @@ function BuildingRow({ building, nodes, expanded, isHere, currentId, onToggle, o
 // something opened from a hamburger, so there's no collapse-everything
 // affordance — Main Campus starts expanded and stays that way; a visitor
 // only ever expands further into it or into another campus.
-export default function DirectoryAccordion({ nodes, onSelect, currentId, currentBuildingId }) {
+export default function DirectoryAccordion({ rooms, onSelect, selectedRoomName, currentBuildingId }) {
   const campuses = allCampuses();
   const mainCampus = campuses.find((c) => c.id === "main");
   const otherCampuses = campuses.filter((c) => c.id !== "main");
@@ -129,8 +103,8 @@ export default function DirectoryAccordion({ nodes, onSelect, currentId, current
                 <BuildingRow
                   key={b.id}
                   building={b}
-                  nodes={nodes}
-                  currentId={currentId}
+                  rooms={rooms}
+                  selectedRoomName={selectedRoomName}
                   isHere={b.id === currentBuildingId}
                   expanded={expandedBuildings.has(b.id)}
                   onToggle={() => toggleBuilding(b.id)}
@@ -160,7 +134,12 @@ export default function DirectoryAccordion({ nodes, onSelect, currentId, current
             </button>
             {expanded && (
               <div className="directory-room-list">
-                <SoloCampusRooms buildingId={soloBuildingId} nodes={nodes} currentId={currentId} onSelect={onSelect} />
+                <SoloCampusRooms
+                  buildingId={soloBuildingId}
+                  rooms={rooms}
+                  selectedRoomName={selectedRoomName}
+                  onSelect={onSelect}
+                />
               </div>
             )}
           </div>
@@ -170,16 +149,15 @@ export default function DirectoryAccordion({ nodes, onSelect, currentId, current
   );
 }
 
-function SoloCampusRooms({ buildingId, nodes, currentId, onSelect }) {
-  const { candidates, picks } = useMemo(() => shuffledPicks(nodes, buildingId), [nodes, buildingId]);
-  const rooms = useMemo(() => withCurrentForced(picks, candidates, currentId), [picks, candidates, currentId]);
+function SoloCampusRooms({ buildingId, rooms: allRooms, selectedRoomName, onSelect }) {
+  const rooms = useMemo(() => roomsInBuilding(allRooms, buildingId), [allRooms, buildingId]);
   return (
     <>
       {rooms.length === 0 && (
         <p className="directory-empty-hint">No rooms found for {buildingLabel(buildingId)} yet.</p>
       )}
-      {rooms.map((n) => (
-        <RoomRow key={n.id} node={n} isHere={n.id === currentId} onSelect={onSelect} />
+      {rooms.map((r) => (
+        <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
       ))}
     </>
   );

@@ -1666,8 +1666,23 @@ img[data-icon-placeholder="emergency-exit"] {
   right: 0;
   z-index: 15;
 }
+/* Kiosk header also carries the current node's name (the title pill),
+   stacked under the logo. The pill keeps its natural height and the logo
+   takes whatever is left of the fixed-height band (flex: 1 + min-height: 0
+   lets it shrink below its intrinsic size), so the two always fit inside
+   KIOSK_TOP_INSET without pushing into the panorama. */
+.kiosk-shell-header {
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
 .kiosk-shell-header .tour-shell-logo {
-  height: 75%;
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 .tour-shell-logo {
   height: 40px;
@@ -3411,37 +3426,99 @@ img[data-icon-placeholder="emergency-exit"] {
   color: var(--text-muted);
   margin: 0;
 }
-/* ---------- Sidebar room mode (desktop) ----------
-   Selecting a room recolors the whole app sidebar maroon instead of
-   stacking a separate card on top of it. .app-sidebar-content becomes a
-   flex column here so .sidebar-room can stretch to the sidebar's full
-   remaining height, which is what lets the photo carousel take up
-   everything below the text block. */
-.app-sidebar {
-  transition: background-color 0.2s ease;
-}
-.app-sidebar-room {
-  background: var(--accent);
-}
-.app-sidebar-room .app-sidebar-content {
+/* ---------- Sidebar room sheet (desktop) ----------
+   The room card is a bottom sheet over the app sidebar's directory (see
+   RoomCard.jsx). Its height is driven inline: the measured peek height
+   while collapsed, 100% of the sidebar while expanded, and the live
+   pointer position mid-drag (.sidebar-room-dragging drops the transition
+   so it tracks the pointer 1:1). Everything below the peek is clipped by
+   overflow: hidden until it's dragged up into view. */
+.sidebar-room {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--white);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
+  transition: height 0.25s ease, border-radius 0.25s ease;
+  animation: room-sheet-in 0.22s ease-out;
 }
-.sidebar-room {
-  flex: 1;
+.sidebar-room-expanded {
+  border-radius: 0;
+}
+.sidebar-room-dragging {
+  transition: none;
+}
+@keyframes room-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-room { transition: none; animation: none; }
+}
+/* The collapsed sheet covers the directory's last rows; this lets them
+   scroll up clear of it. */
+.app-sidebar-with-room .app-sidebar-content {
+  padding-bottom: 200px;
+}
+.sidebar-room-peek {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-bottom: 4px;
-  animation: room-card-in 0.18s ease-out;
+  padding: 6px 16px 16px;
+  cursor: grab;
+  /* Pointer events drive the drag; without this a touch drag would be
+     taken over by the browser as a scroll/pan gesture. */
+  touch-action: none;
+  user-select: none;
 }
-@keyframes room-card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+.sidebar-room-dragging .sidebar-room-peek {
+  cursor: grabbing;
 }
-@media (prefers-reduced-motion: reduce) {
-  .app-sidebar { transition: none; }
-  .sidebar-room { animation: none; }
+.sidebar-room-handle {
+  align-self: center;
+  width: 44px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: inherit;
+  position: relative;
+}
+.sidebar-room-handle::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.55);
+}
+.sidebar-room-handle:hover::before,
+.sidebar-room-handle:focus-visible::before {
+  background: var(--white);
+}
+.sidebar-room-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar-room-body::-webkit-scrollbar {
+  display: none;
 }
 .sidebar-room-header {
   display: flex;
@@ -3476,6 +3553,22 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .sidebar-room-close:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+.sidebar-room-close .icon-placeholder-img {
+  opacity: 1;
+}
+.sidebar-room-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
 }
 .sidebar-room-badge {
   align-self: flex-start;
@@ -3535,26 +3628,24 @@ img[data-icon-placeholder="emergency-exit"] {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.85);
 }
+/* Sized by the photo's own aspect ratio rather than stretched to fill the
+   sheet; any leftover height stays empty below it. The placeholder/loading
+   states have no image to size them, so they fall back to a fixed ratio. */
 .sidebar-room-carousel {
   position: relative;
-  flex: 1;
-  min-height: 180px;
+  flex-shrink: 0;
   margin-top: 4px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--sdca-maroon-deeper);
 }
 .sidebar-room-carousel-image {
-  position: absolute;
-  inset: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   display: block;
 }
 .sidebar-room-carousel-empty {
-  position: absolute;
-  inset: 0;
+  aspect-ratio: 4 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3563,8 +3654,7 @@ img[data-icon-placeholder="emergency-exit"] {
   color: rgba(255, 255, 255, 0.7);
 }
 .sidebar-room-carousel-placeholder {
-  position: absolute;
-  inset: 0;
+  aspect-ratio: 4 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3781,8 +3871,8 @@ img[data-icon-placeholder="emergency-exit"] {
      ~100px for the "Admin" label + 16px offset), but 55vw ignores both
      of those and can overlap either one on a moderate window width with
      a long node name. Explicit, equal gutters keep this both genuinely
-     centered (see .mobile-title-wrap's own comment on why equal gutters
-     matter for that) and guaranteed clear of both side elements. */
+     centered (an asymmetric gutter shifts the centered content off
+     screen-center by half the difference) and guaranteed clear of both side elements. */
   left: 140px;
   right: 140px;
   display: flex;
@@ -4147,61 +4237,33 @@ img[data-icon-placeholder="emergency-exit"] {
   right: 0;
   overflow: hidden;
 }
-/* ---------- Top: read-only location title, no controls ---------- */
-.mobile-title-wrap {
-  position: absolute;
-  top: calc(12px + env(safe-area-inset-top));
-  /* Equal gutters on both sides — required for this to actually sit at
-     true screen-center (an asymmetric gutter, e.g. a bigger one on the
-     right to clear the minimap, shifts the centered content left of
-     center by half the difference, which read as "not centered" even
-     though justify-content: center was doing exactly what it was told).
-     Both sides are now 268px: the left gutter has to clear
-     .nearby-rooms-panel (12px + its 256px --nearby-rooms-width — see
-     the SIZE KNOBS comment on that rule below), which is wider than the
-     140px the minimap needs on the right, so the right gutter was
-     widened to match rather than left narrower than right — keeping
-     both equal is what keeps this actually centered (see above); a
-     14px minimap could ask for a right-specific value again, but 268px
-     leaves it plenty of clearance either way. */
-  left: calc(268px + env(safe-area-inset-left));
-  right: calc(268px + env(safe-area-inset-right));
-  display: flex;
-  justify-content: center;
-  z-index: 20;
-  pointer-events: none;
-}
+/* Read-only location title, inside .kiosk-shell-header. Maroon fill with
+   white text (BRAND.md: "White text on Maroon", AA) so it stands out from
+   the white header rather than blending into it. */
 .mobile-title-pill {
+  flex-shrink: 0;
   max-width: 100%;
+  box-sizing: border-box;
   padding: 8px 16px;
   border-radius: var(--radius-pill);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-1);
-  color: var(--text);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* ---------- Nearby rooms: sits in the left gutter .mobile-title-wrap
-   already reserves (140px, for symmetry with the right side) so it never
-   overlaps the centered title pill, positioned via inline `top` (see
-   MainPage.jsx) to sit just under the header band rather than in it —
-   same offset the title pill itself uses.
-   Dark and translucent (not the light --surface glass the title pill
-   uses), no backdrop blur — whatever's behind shows through sharp, not
+/* ---------- Nearby rooms: top-left corner, positioned via inline `top`
+   (see MainPage.jsx) to sit just under the header band rather than in it.
+   Dark and translucent, no backdrop blur — whatever's behind shows through sharp, not
    softened — so the background alpha is pushed up close to opaque (0.88)
    to keep text legible over it. Text is pinned to a light color
    regardless of theme so it stays readable against whatever's behind it
    rather than following the page's light/dark text token.
    ---- SIZE KNOBS ----
    --nearby-rooms-width: overall panel width (currently 2x the original
-     128px). .mobile-title-wrap's left/right gutters (268px) are sized to
-     clear this exact value (12px left offset + this width) — widen both
-     of that rule's gutters together if this width grows further, or the
-     title pill and this panel will start visibly colliding again.
+     128px).
    --nearby-rooms-row-gap and --nearby-rooms-padding-block: vertical
      breathing room (currently 3x the original) — the two knobs that make
      the 5-row list actually tall, since height itself isn't a fixed

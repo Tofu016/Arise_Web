@@ -1,9 +1,6 @@
-// Kiosk-only: a card in the top-left corner (the gutter .mobile-title-wrap
-// already reserves for symmetry with the right side — see its comment in
-// index.css), underneath the header band, listing the nearest
-// rooms/facilities to the visitor's current node. `style` carries the
-// caller's vertical placement (see MainPage.jsx, mirrors the title pill's
-// own inline top). Read-only for now; `onSelect` is wired up by the caller
+// Kiosk-only: a card in the top-left corner, underneath the header band,
+// listing the nearest rooms/facilities to the visitor's current node.
+// `style` carries the caller's vertical placement (see MainPage.jsx). Read-only for now; `onSelect` is wired up by the caller
 // once the interaction model is settled.
 export default function NearbyRoomsPanel({ rooms, currentFloor, onSelect, style }) {
   if (!rooms || rooms.length === 0) return null;
