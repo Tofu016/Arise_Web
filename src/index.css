@@ -2191,10 +2191,23 @@ img[data-icon-placeholder="emergency-exit"] {
 .directory-row-selected {
   background: var(--tour-directory-selected-bg);
 }
-.directory-room-row:hover,
+/* Room/facility rows (only) use brand maroon for the selected state; the
+   campus and building rows keep the dark gray above. */
+.directory-room-row.directory-row-selected {
+  background: var(--sdca-maroon);
+}
 .directory-building-row:hover,
 .directory-campus-row:hover {
   filter: brightness(1.15);
+}
+/* Room hover: a crisp, static maroon highlight (no blur) in the same color
+   as the selected highlight — a hard inset outline over a maroon wash. */
+.directory-room-row:hover {
+  background: rgba(161, 33, 36, 0.4);
+  box-shadow: inset 0 0 0 1px var(--sdca-maroon);
+}
+.directory-room-row.directory-row-selected:hover {
+  background: var(--sdca-maroon);
 }
 .directory-empty-hint {
   margin: 0;
