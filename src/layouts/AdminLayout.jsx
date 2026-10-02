@@ -59,10 +59,13 @@ const GROUPS = [
 // Tour) together, so it doesn't belong to either single group either.
 // Also now covers every photo type (the former standalone Photos page was
 // merged into it), so it uses that page's own picture-frame icon.
-const USER_PANEL = { path: "users", icon: ACCOUNT_ICON, label: "User Panel" };
+const USER_PANEL = { path: "user-panel", icon: ACCOUNT_ICON, label: "User Panel" };
 const ANALYTICS = { path: "analytics", icon: PLACEHOLDER("bar-chart"), label: "Analytics" };
 const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("picture-frame"), label: "Photo Coverage" };
-const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE];
+// Advertisements: the kiosk's bottom-band media (signage). Kiosk-wide, not
+// part of either tour's content, so it stands alone too.
+const ADVERTISEMENTS = { path: "advertisements", icon: PLACEHOLDER("megaphone"), label: "Advertisements" };
+const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS];
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,

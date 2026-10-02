@@ -83,7 +83,7 @@ CodeIgniter 3, MySQL) needs to be set up and running first:
      matters.
 6. **Seed the first admin** — see `Arise_API`'s own `SEED.md`. A fresh
    database has no accounts at all; someone has to become the first admin by
-   hand before the Users panel can promote anyone else.
+   hand before the User Panel can promote anyone else.
 
 Full details — including the two `.htaccess` files this setup genuinely
 needs (one for CORS on the uploads folder, one for Apache to forward the
@@ -185,7 +185,7 @@ specifically the `admin` role. Three roles exist:
 |---|---|
 | `pending` | Nothing yet — sees an "awaiting approval" screen. Default for every new account. |
 | `user` | Nothing beyond what a public visitor can already do — `/` and `/tour` don't require this role at all anymore. Exists mainly as a stepping stone role for anyone waiting on `admin` access. |
-| `admin` | The full `/admin` editor, including the Users panel. |
+| `admin` | The full `/admin` editor, including the User Panel. |
 
 **Registering**: `/register` requires an `@sdca.edu.ph` email — checked
 client-side immediately, and enforced again server-side (can't be bypassed by
@@ -193,8 +193,9 @@ calling the API directly).
 
 **Getting approved to `admin`**: every new account starts as `pending` and
 needs an existing admin to promote them — from `/admin`, click **👤 User
-Panel** (shows a badge with the pending count). Each user has a role
-dropdown.
+Panel** (its Pending filter shows how many are waiting). Pending rows have an
+**Approve** button, which makes the account a `user`; every row also has a
+role dropdown for promoting to `admin` or changing the role later.
 
 **Deleting an account**: the same panel has a **Delete** button per row.
 Confirms before deleting; an admin can't delete their own account from here.
@@ -235,6 +236,15 @@ document database.
   outside `htdocs` entirely, served only through an authenticated-or-public
   (depending on the content) PHP endpoint — see
   [Security & authentication](#security--authentication).
+- **Kiosk advertisements (signage)**: `signage_slides` (one row per
+  advertisement: its file, crop, time on screen, rotation position, on/off
+  and optional run dates) and `signage_settings` (one row: rotation order,
+  transition, default time on screen). The files themselves (images, GIFs,
+  MP4/WebM videos) live in `Arise_API/uploads/signage/`, public like the
+  tour photos. Named "signage" in every table, file path, endpoint and CSS
+  class, never "ads": ad blockers hide or refuse requests and elements that
+  look like advertisements. (The admin page's own route,
+  `/admin/advertisements`, is exempt: it's in-app navigation, not a request.)
 
 Nothing here is real-time the way the old Firestore-backed version was — an
 edit made in `/admin` shows up for another open session on the next data
@@ -414,6 +424,39 @@ deleted. The backend independently re-checks "is this still in use" at the
 moment of deletion, from a fresh database read — not just trusting whatever
 this page last displayed, in case something changed in the meantime.
 
+### Advertisements
+
+**Advertisements** (megaphone icon, `/admin/advertisements`): what plays in the
+white band along the bottom of the kiosk screen, below the panorama. That
+band is 1080 x 336 px on the 1080 x 1920 kiosk; with nothing live it stays
+plain white, as before.
+
+- **Add advertisement** opens a dialog: drop in (or choose) a JPG, PNG, GIF,
+  WebP, MP4 or WebM file, up to 40 MB locally (the server's own
+  `upload_max_filesize` is the real limit). Videos play muted and loop.
+- **Crop**: a box with the band's exact shape sits over the file, and
+  everything outside it is dimmed. Drag the box to move it and drag a
+  corner to zoom; **Zoom in / Zoom out / Fit to band** and the keyboard
+  (arrow keys, + and -) do the same. A live preview shows the band and the
+  whole kiosk screen. A warning appears if the visible part is narrower than
+  1080 px, since it would look soft on the kiosk.
+- **Details**: a name (admins only), **time on screen** (3 to 600 seconds,
+  to a tenth of a second, e.g. 7.5; a video defaults to its own length
+  rounded up to the next tenth), an optional **schedule** (starts /
+  ends; blank means "now" and "until switched off") and an **on/off**
+  switch.
+- The file is uploaded only on save, so cancelling leaves nothing behind.
+  Deleting an advertisement, or replacing its file, deletes the old file
+  too (unless something else still uses it).
+- **Rotation settings**: play in list order (reorder with the arrows on
+  each row) or shuffled (never the same advertisement twice in a row),
+  crossfade or instant switching, and the default time on screen for new
+  images. A single live advertisement just stays up.
+- Each row shows **Live**, **Scheduled**, **Ended** or **Off**, judged on
+  the server's clock. **Playing on the kiosk now** previews the real
+  rotation. Kiosks re-read the list every five minutes, and on every new
+  Kiosk session.
+
 ---
 
 ## User guide (`/`)
@@ -545,6 +588,23 @@ Elevators — the single source every landing marker above points at by
     { markerId: 124, nodeId: "gd1_f2_hallway01", floor: 2 }
   ],
   createdAt, updatedAt
+}
+```
+
+Signage slides (kiosk advertisements), from `signage_slides` via
+`toSignageSlide` in `utils/entities.js`:
+
+```js
+{
+  id: "4",
+  title: "Enrollment 2027",
+  mediaPath: "signage/enrollment-2027-mupq9sh.webm",  // public; extension decides image vs video
+  crop: { x: 0, y: 0.22, w: 1, h: 0.55 },  // fractions of the media's own size, band-shaped
+  durationSeconds: 7.5,                    // seconds, in tenths
+  sortOrder: 0,                             // rotation position
+  active: true,
+  startsAt: null,                           // server-local "YYYY-MM-DD HH:MM:SS", or null
+  endsAt: "2026-10-31 17:00:00"             // exclusive
 }
 ```
 

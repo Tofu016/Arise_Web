@@ -62,6 +62,8 @@ import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useNodePhoto } from "../hooks/useNodePhoto";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_PANORAMA_CENTER } from "../utils/kioskLayout";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
+import { useLiveSignage } from "../hooks/useSignage";
+import KioskSignage from "../components/KioskSignage";
 import { useAuth } from "../context/useAuth";
 
 // Mobile/kiosk control dock: how far each radial icon sits from the
@@ -113,6 +115,9 @@ function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, profile, role, signOut } = useAuth();
   const compact = useCompactLayout();
+  // The bottom band's advertisements (signage); only the Compact layout has
+  // that band, so desktop never fetches them.
+  const signage = useLiveSignage(compact);
   // Kiosk session: the attract screen, then the campus screen, then (only
   // for a multi-building campus) the building screen, then the floor
   // screen, then exploring
@@ -1236,6 +1241,14 @@ function MainPageContent({ onReset }) {
                 zoomable
                 previewsHidden={overlayOpen}
               />
+            </div>
+
+            {/* ---------- Bottom band: the admin's advertisements (signage),
+                filling the whitespace left below the panorama, which stays
+                plain white when none is live. Purely visual: nothing in it is
+                interactive, and every dialog and backdrop stacks above it. */}
+            <div className="kiosk-signage-band" style={{ height: `${KIOSK_BOTTOM_INSET * 100}%` }}>
+              <KioskSignage slides={signage.slides} settings={signage.settings} />
             </div>
 
             {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (

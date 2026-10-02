@@ -15,6 +15,10 @@ import { createLimiter } from "./concurrencyLimiter";
 //   tourPanorama  outdoor tour stop panoramas
 //   tourCover     tour section cover photos
 //   tourMarker    tour marker photos
+//   signage       kiosk bottom-band media (see utils/signage.js): images,
+//                 animated GIFs and MP4/WebM video. Uploaded as picked
+//                 (raw), since convertImage's canvas re-encode would
+//                 flatten a GIF to one frame and can't read video at all.
 const KINDS = {
   panorama: { endpoint: "IndoorUploads_API/panoramaPublish", prefix: "panoramas/", visibility: "protected" },
   roomPhoto: { endpoint: "IndoorUploads_API/roomPhoto", prefix: "roomphoto/", visibility: "protected" },
@@ -22,6 +26,7 @@ const KINDS = {
   tourPanorama: { endpoint: "TourUploads_API/panorama", prefix: "tourpanorama/", visibility: "public" },
   tourCover: { endpoint: "TourUploads_API/cover", prefix: "tourcover/", visibility: "public" },
   tourMarker: { endpoint: "TourUploads_API/marker", prefix: "tourmarker/", visibility: "public" },
+  signage: { endpoint: "Signage_API/upload", prefix: "signage/", visibility: "public", raw: true },
 };
 
 const UNSUPPORTED_PATH_MESSAGE =
@@ -45,7 +50,7 @@ export async function uploadPhoto(kind, file, { filename, building } = {}) {
   const spec = KINDS[kind];
   if (!spec) throw new Error(`Unknown photo kind: ${kind}`);
 
-  const converted = await convertImage(file);
+  const converted = spec.raw ? file : await convertImage(file);
   const formData = new FormData();
   formData.append("file", converted);
   if (building !== undefined) formData.append("building", building);
@@ -91,7 +96,9 @@ export function fetchProtectedPhotoThumbnail(path, fallbackError = "Couldn't loa
   return protectedPhotoLimiter(() => apiGetBlob(`IndoorUploads_API/serve?${query}`, fallbackError));
 }
 
-function publicPhotoUrl(path) {
+// The direct static URL of a public photo (no auth, no fetch), for a
+// caller that needs a plain src synchronously, like the kiosk's signage.
+export function publicPhotoUrl(path) {
   return `${API_BASE_URL.replace(/\/index\.php$/, "")}/uploads/${path}`;
 }
 

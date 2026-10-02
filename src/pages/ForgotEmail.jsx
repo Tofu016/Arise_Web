@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 // registered email" is an account-enumeration risk, and this app doesn't
 // collect a separate recovery identifier at registration anyway (your
 // @sdca.edu.ph email effectively *is* your identity here). An admin looking
-// you up by name in the Users panel is the safe equivalent.
+// you up by name in the User Panel is the safe equivalent.
 export default function ForgotEmail() {
   return (
     <div className="auth-page">
@@ -25,7 +25,7 @@ export default function ForgotEmail() {
 
         <p className="auth-info">
           Still stuck? An administrator can look your account up by name from the admin
-          Users panel; reach out to one directly, or contact your school's IT/registrar
+          User Panel; reach out to one directly, or contact your school's IT/registrar
           office if you're not sure who that is.
         </p>
 

@@ -10,6 +10,7 @@ import TourStopsPage from "./pages/admin/TourStopsPage";
 import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
+import SignagePage from "./pages/admin/SignagePage";
 import PublicTourPage from "./pages/PublicTourPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -78,11 +79,19 @@ export default function App() {
             <Route path="node-flowchart" element={<NodeFlowchartPage />} />
             <Route path="virtual-map-navigation-editor" element={<NavigationEditorPage />} />
             <Route path="room-editor" element={<RoomEditorPage />} />
-            <Route path="users" element={<UserPanelPage />} />
+            <Route path="user-panel" element={<UserPanelPage />} />
             <Route path="tour-stops" element={<TourStopsPage />} />
             <Route path="campus-tour-navigation-editor" element={<TourNavigationEditorPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="photo-coverage" element={<PhotoCoverageAdminPage />} />
+            {/* Named for the page, like every admin route. Only the API,
+                file paths and class names avoid "ad" (see utils/signage.js):
+                this is an in-app route, not a request ad blockers filter. */}
+            <Route path="advertisements" element={<SignagePage />} />
+            {/* Any other /admin/* path (a stale bookmark to a renamed page,
+                e.g. the old /admin/users) would otherwise render the admin
+                shell around an empty content area. */}
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>
       </AuthProvider>

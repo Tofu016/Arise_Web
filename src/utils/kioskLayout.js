@@ -7,6 +7,19 @@ export const KIOSK_TOP_INSET = 0.075;
 export const KIOSK_BOTTOM_INSET = 0.175;
 export const KIOSK_PANORAMA_FRACTION = 1 - KIOSK_TOP_INSET - KIOSK_BOTTOM_INSET;
 
+// The first kiosk's screen (see CONTEXT.md, "Compact layout"). Signage (the
+// media rotating in the bottom band, see utils/signage.js) is cropped for
+// this screen's band: 1080 x 336, a wide 45:14 strip. Other Compact-layout
+// screens get a band of a slightly different shape, and the cropped area
+// is scaled to cover it (see cropLayout).
+export const KIOSK_REFERENCE_WIDTH = 1080;
+export const KIOSK_REFERENCE_HEIGHT = 1920;
+export const SIGNAGE_REFERENCE_SIZE = {
+  width: KIOSK_REFERENCE_WIDTH,
+  height: Math.round(KIOSK_REFERENCE_HEIGHT * KIOSK_BOTTOM_INSET),
+};
+export const SIGNAGE_ASPECT = SIGNAGE_REFERENCE_SIZE.width / SIGNAGE_REFERENCE_SIZE.height;
+
 // Vertical center (fraction of screen height) of the panorama band itself —
 // the middle of what's actually visible between the header and bottom
 // whitespace, not the middle of the whole screen. Used to anchor the

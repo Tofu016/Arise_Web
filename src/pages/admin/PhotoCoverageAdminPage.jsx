@@ -3,6 +3,7 @@ import { useNodes } from "../../hooks/useNodes";
 import { useTourStops } from "../../hooks/useTourStops";
 import { usePhotos } from "../../hooks/usePhotos";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { isVideoPath } from "../../utils/signage";
 
 function CoverageSummary({ label, total, withPhoto }) {
   const missing = total - withPhoto;
@@ -64,7 +65,10 @@ function PhotoCard({ photo, onDelete, deleting }) {
 
   return (
     <div className="photo-gallery-card" ref={containerRef}>
-      {url ? (
+      {url && isVideoPath(photo.path) ? (
+        // Signage videos live in the same store (see utils/signage.js).
+        <video src={url} className="photo-gallery-thumb" muted playsInline preload="metadata" aria-label={photo.path} />
+      ) : url ? (
         <img src={url} alt={photo.path} className="photo-gallery-thumb" />
       ) : (
         <div className="photo-gallery-thumb-placeholder" />
@@ -177,7 +181,7 @@ export default function PhotoCoverageAdminPage() {
       </h2>
       <p className="field-hint">
         Every photo uploaded anywhere in the system: node panoramas, room photos, tour stops, section covers,
-        and marker photos, scanned directly from disk and checked against what's actually referenced.
+        marker photos, and advertisement images and videos, scanned directly from disk and checked against what's actually referenced.
       </p>
 
       <div className="photo-gallery-filter-row">

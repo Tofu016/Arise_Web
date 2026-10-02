@@ -11,7 +11,7 @@ An indoor panorama point (building, floor, type) linked to neighboring Nodes.
 An outdoor panorama point, grouped into a **Section**.
 
 **Photo kind**:
-A category of stored photo (node panorama, room photo, room 360, tour panorama, tour cover, tour marker). A kind decides where the photo is stored and whether it is public or protected.
+A category of stored photo (node panorama, room photo, room 360, tour panorama, tour cover, tour marker, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
 _Avoid_: photo type, upload type
 
 **Public photo**:
@@ -64,3 +64,7 @@ The flow a visitor goes through on the Compact layout: the start screen until it
 
 **Directions**:
 The from/to panel and the Route it computes. Opening it replaces whatever panel was showing, and getting directions starts the walk in one go (a Jump to the Route's first stop, then the Route is followed one stop at a time).
+
+**Signage**:
+The advertisements an admin rotates through the Compact layout's bottom band (the whitespace below the panorama, 1080 × 336 on the first kiosk). Each **Signage slide** is one image, GIF or looping video with a band-shaped crop, a time on screen, an on/off switch and an optional run window; it is **live** when switched on and inside its window. Called "Advertisements" in the admin UI only.
+_Avoid_: "ad"/"advert" in any code identifier, file path, table, endpoint or CSS class (ad blockers hide or refuse those, blanking the band or the admin's previews; the admin page's route `/admin/advertisements` is the one exception, since page URLs follow page names); banner (that's the whole band, not one slide).

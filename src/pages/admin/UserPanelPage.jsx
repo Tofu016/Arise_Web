@@ -3,8 +3,10 @@ import { useAuth } from "../../context/useAuth";
 import { useUsers } from "../../hooks/useUsers";
 import { fuzzyIncludes } from "../../utils/fuzzy";
 import CreateUserDialog from "../../components/admin/CreateUserDialog";
+import IconPlaceholder from "../../components/IconPlaceholder";
 
 const ROLES = ["pending", "user", "admin"];
+const ROLE_LABELS = { pending: "Pending", user: "User", admin: "Admin" };
 
 function formatJoined(createdAt) {
   if (!createdAt) return "N/A";
@@ -12,6 +14,17 @@ function formatJoined(createdAt) {
   const date = typeof createdAt.toDate === "function" ? createdAt.toDate() : new Date(createdAt);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleDateString();
+}
+
+// Inline <svg>, not an <img>, so the caret picks up the button's own
+// currentColor (muted when enabled, faded with it when disabled); see
+// SESSION.md's note on <img> SVGs not inheriting currentColor.
+function Caret() {
+  return (
+    <svg className="role-select-caret" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
+      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 // A fully custom dropdown, not a native <select> — some browsers (notably
@@ -41,8 +54,9 @@ function RoleSelect({ value, onChange, disabled, title }) {
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
         title={title}
+        aria-label={`Role: ${ROLE_LABELS[value] || value}`}
       >
-        {value} <span className="role-select-caret">▾</span>
+        {ROLE_LABELS[value] || value} <Caret />
       </button>
       {open && (
         <div className="role-select-menu">
@@ -55,7 +69,7 @@ function RoleSelect({ value, onChange, disabled, title }) {
                 setOpen(false);
               }}
             >
-              {r}
+              {ROLE_LABELS[r]}
             </div>
           ))}
         </div>
@@ -71,23 +85,39 @@ function RoleSelect({ value, onChange, disabled, title }) {
 // globally would just mean every page pays for a Firestore subscription
 // only this one page actually uses.
 //
-// No wireframe reference exists for this page's own content (only the
-// sidebar label) — layout below follows the same general conventions as
-// the other three pages rather than matching a specific mockup.
+// Layout: the page's one primary action (New Account) sits in the header
+// row opposite the title, the same place a reader looks for it on any
+// list page, rather than trailing the filters where it read as part of
+// the search controls. The role filter is a row of count-bearing chips
+// instead of a <select>: four fixed options fit on one line, the counts
+// answer "how many are waiting on me?" without opening anything, and it
+// sidesteps `.admin-layout select`'s width: 100% that had stretched the
+// old dropdown across the row and crushed the search box to nothing.
 export default function UserPanelPage() {
   const { user: currentUser } = useAuth();
-  const { users, createUser, updateUserRole, deleteUserAccount } = useUsers();
+  const { users, loading, createUser, updateUserRole, deleteUserAccount } = useUsers();
   const [deletingUid, setDeletingUid] = useState(null);
+  const [approvingUid, setApprovingUid] = useState(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
 
   // Pending accounts first (the ones needing action), then alphabetical by email.
-  const sorted = [...users].sort((a, b) => {
-    if (a.role === "pending" && b.role !== "pending") return -1;
-    if (b.role === "pending" && a.role !== "pending") return 1;
-    return (a.email || "").localeCompare(b.email || "");
-  });
+  const sorted = useMemo(
+    () =>
+      [...users].sort((a, b) => {
+        if (a.role === "pending" && b.role !== "pending") return -1;
+        if (b.role === "pending" && a.role !== "pending") return 1;
+        return (a.email || "").localeCompare(b.email || "");
+      }),
+    [users]
+  );
+
+  const roleCounts = useMemo(() => {
+    const counts = { all: users.length, pending: 0, user: 0, admin: 0 };
+    for (const u of users) counts[u.role || "pending"] = (counts[u.role || "pending"] || 0) + 1;
+    return counts;
+  }, [users]);
 
   const visible = useMemo(() => {
     return sorted.filter((u) => {
@@ -96,7 +126,19 @@ export default function UserPanelPage() {
     });
   }, [sorted, search, roleFilter]);
 
-  const pendingCount = users.filter((u) => u.role === "pending").length;
+  // Approves to "user", not "admin": the backend's own notion of an
+  // approved account is user-or-admin, and handing out full editor access
+  // should stay a deliberate second step through the role menu.
+  const handleApprove = async (u) => {
+    setApprovingUid(u.uid);
+    try {
+      await updateUserRole(u.uid, "user");
+    } catch {
+      // updateUserRole's own mutate() already reports this via toast.
+    } finally {
+      setApprovingUid(null);
+    }
+  };
 
   const handleDelete = async (u) => {
     if (!confirm(`Permanently delete ${u.email}? This removes their login and profile; they'd have to register again from scratch. This can't be undone.`)) {
@@ -112,68 +154,107 @@ export default function UserPanelPage() {
     }
   };
 
+  const filterChips = [{ id: "all", label: "All" }, ...ROLES.map((r) => ({ id: r, label: ROLE_LABELS[r] }))];
+
   return (
     <div className="user-panel-page">
-      <h2 className="admin-page-heading">
-        User Panel
-        {pendingCount > 0 && <span className="badge-count">{pendingCount} pending</span>}
-      </h2>
-
-      <div className="users-filter-row">
-        <input
-          type="text"
-          className="users-search-input"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="users-role-filter"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-        >
-          <option value="all">All roles</option>
-          {ROLES.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
-        <button type="button" className="primary" onClick={() => setShowCreate(true)}>
-          Create account
+      <div className="user-panel-header">
+        <div className="user-panel-title">
+          <h2 className="admin-page-heading">User Panel</h2>
+          <p className="user-panel-subtitle">
+            Approve new sign-ups, change roles, and create or remove admin accounts.
+          </p>
+        </div>
+        <button type="button" className="primary user-panel-create-btn" onClick={() => setShowCreate(true)}>
+          + New Account
         </button>
+      </div>
+
+      <div className="user-panel-toolbar">
+        <div className="user-panel-search">
+          <IconPlaceholder name="search-magnifier" className="user-panel-search-icon" />
+          <input
+            type="search"
+            className="user-panel-search-input"
+            placeholder="Search by name or email"
+            aria-label="Search accounts by name or email"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="user-panel-filters" role="group" aria-label="Filter by role">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className={
+                "user-panel-filter-chip" +
+                (roleFilter === chip.id ? " user-panel-filter-chip-active" : "") +
+                (chip.id === "pending" && roleCounts.pending > 0 ? " user-panel-filter-chip-alert" : "")
+              }
+              aria-pressed={roleFilter === chip.id}
+              onClick={() => setRoleFilter(chip.id)}
+            >
+              {chip.label}
+              <span className="user-panel-filter-count">{roleCounts[chip.id] || 0}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {showCreate && (
         <CreateUserDialog createUser={createUser} onClose={() => setShowCreate(false)} />
       )}
 
-      {sorted.length === 0 && <p className="empty-hint">No registered users yet.</p>}
+      {loading && users.length === 0 && <p className="empty-hint">Loading accounts...</p>}
+      {!loading && sorted.length === 0 && <p className="empty-hint">No registered users yet.</p>}
       {sorted.length > 0 && visible.length === 0 && (
-        <p className="empty-hint">No users match this search/filter.</p>
+        <p className="empty-hint">No accounts match this search or role filter.</p>
       )}
 
       <div className="users-list">
         {visible.map((u) => {
           const isSelf = u.uid === currentUser?.uid;
           const isDeleting = deletingUid === u.uid;
+          const isApproving = approvingUid === u.uid;
+          const isBusy = isDeleting || isApproving;
+          const role = u.role || "pending";
           return (
-            <div key={u.uid} className={"users-row" + (u.role === "pending" ? " users-row-pending" : "")}>
+            <div key={u.uid} className={"users-row user-panel-row" + (role === "pending" ? " users-row-pending" : "")}>
               <div className="users-row-main">
-                <span className="users-row-email">{u.email}</span>
-                {u.name && <span className="users-row-name">{u.name}</span>}
-                <span className="field-hint">Joined {formatJoined(u.createdAt)}</span>
+                <div className="user-panel-row-name">
+                  <span>{u.name || u.email}</span>
+                  {isSelf && <span className="user-panel-tag">You</span>}
+                  {role === "pending" && (
+                    <span className="user-panel-tag user-panel-tag-pending">Awaiting approval</span>
+                  )}
+                </div>
+                {u.name && <span className="users-row-email">{u.email}</span>}
               </div>
+              <span className="user-panel-row-joined">Joined {formatJoined(u.createdAt)}</span>
               <div className="users-row-actions">
+                {role === "pending" && (
+                  <button
+                    type="button"
+                    className="user-panel-approve-btn"
+                    onClick={() => handleApprove(u)}
+                    disabled={isBusy}
+                    title="Approve as User. Use the role menu to make them an Admin."
+                  >
+                    {isApproving ? "Approving…" : "Approve"}
+                  </button>
+                )}
                 <RoleSelect
-                  value={u.role || "pending"}
+                  value={role}
                   onChange={(r) => updateUserRole(u.uid, r)}
-                  disabled={isSelf || isDeleting}
+                  disabled={isSelf || isBusy}
                   title={isSelf ? "You can't change your own role here. Ask another admin." : undefined}
                 />
                 <button
                   type="button"
                   className="danger users-row-delete"
                   onClick={() => handleDelete(u)}
-                  disabled={isSelf || isDeleting}
+                  disabled={isSelf || isBusy}
                   title={isSelf ? "You can't delete your own account here. Ask another admin." : undefined}
                 >
                   {isDeleting ? "Deleting…" : "Delete"}

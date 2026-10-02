@@ -271,3 +271,56 @@ export function dialogCreateBody(roomName, patch) {
     ...dialogPatchBody(patch),
   };
 }
+
+// ---- Signage slide (kiosk bottom-band media, see utils/signage.js) ----
+
+export function toSignageSlide(row) {
+  return {
+    id: String(row.id),
+    title: row.title,
+    mediaPath: row.media_path,
+    crop: { x: Number(row.crop_x), y: Number(row.crop_y), w: Number(row.crop_w), h: Number(row.crop_h) },
+    durationSeconds: Number(row.duration_seconds),
+    sortOrder: Number(row.sort_order),
+    active: Number(row.is_active) === 1,
+    startsAt: row.starts_at || null,
+    endsAt: row.ends_at || null,
+  };
+}
+
+// Create and update share one body: the API takes any subset on update
+// and requires title/mediaPath on create. The crop always travels as all
+// four values (the API refuses a partial one). Dates are null to clear.
+export function signageSlideBody(patch) {
+  const body = pick(patch, {
+    title: "title",
+    mediaPath: "media_path",
+    durationSeconds: "duration_seconds",
+    active: "is_active",
+    startsAt: "starts_at",
+    endsAt: "ends_at",
+  });
+  if (patch.crop) {
+    body.crop_x = patch.crop.x;
+    body.crop_y = patch.crop.y;
+    body.crop_w = patch.crop.w;
+    body.crop_h = patch.crop.h;
+  }
+  return body;
+}
+
+export function toSignageSettings(row) {
+  return {
+    rotationOrder: row.rotation_order,
+    transition: row.transition,
+    defaultDurationSeconds: Number(row.default_duration_seconds),
+  };
+}
+
+export function signageSettingsBody(patch) {
+  return pick(patch, {
+    rotationOrder: "rotation_order",
+    transition: "transition",
+    defaultDurationSeconds: "default_duration_seconds",
+  });
+}

@@ -1,6 +1,15 @@
 import { useState } from "react";
+import IconPlaceholder from "../IconPlaceholder";
 
-const ROLES = ["pending", "user", "admin"];
+// Order and copy match README's "Accounts & roles" table. Shown as
+// described radio cards rather than a bare <select> of role ids, since
+// the role is the one choice here whose consequence isn't obvious from
+// its name alone (e.g. "user" grants nothing beyond public access).
+const ROLE_OPTIONS = [
+  { id: "admin", label: "Admin", description: "Full access to this admin editor, including the User Panel." },
+  { id: "user", label: "User", description: "No admin access. Same as a public visitor for now." },
+  { id: "pending", label: "Pending", description: "Waits for an admin to approve it, like a self-registered account." },
+];
 
 // Admin-only account creation (Users_API/create) — distinct from the
 // public /register flow, which always lands new accounts on "pending".
@@ -14,7 +23,12 @@ export default function CreateUserDialog({ onClose, createUser }) {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const handleCreate = async () => {
+  const canSubmit = !creating && email.trim() && name.trim() && password;
+
+  // A real <form> so Enter in any field submits, the same as the auth pages.
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
     setError("");
     setCreating(true);
     try {
@@ -29,54 +43,74 @@ export default function CreateUserDialog({ onClose, createUser }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <form
+        className="modal create-user-modal"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        aria-labelledby="create-user-title"
+      >
         <div className="preview-header">
-          <h3>New Account</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <h3 id="create-user-title">New Account</h3>
+          <button type="button" className="close-btn" onClick={onClose} aria-label="Close">
+            <IconPlaceholder name="close" className="create-user-close-icon" />
+          </button>
         </div>
 
-        <label>
+        <label className="create-user-field">
+          Full name
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Juan Dela Cruz"
+            autoComplete="off"
+            autoFocus
+          />
+        </label>
+
+        <label className="create-user-field">
           Email
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@sdca.edu.ph"
-            autoFocus
+            autoComplete="off"
           />
         </label>
 
-        <label>
-          Name
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full name"
-          />
-        </label>
-
-        <label>
+        <label className="create-user-field">
           Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
+            autoComplete="new-password"
           />
         </label>
 
-        <label>
-          Role
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-          <span className="field-hint">
-            Unlike self-registration, this account skips "pending" if you choose "user" or "admin" here.
-          </span>
-        </label>
+        <fieldset className="create-user-roles">
+          <legend>Role</legend>
+          {ROLE_OPTIONS.map((opt) => (
+            <label
+              key={opt.id}
+              className={"create-user-role" + (role === opt.id ? " create-user-role-active" : "")}
+            >
+              <input
+                type="radio"
+                name="create-user-role"
+                value={opt.id}
+                checked={role === opt.id}
+                onChange={() => setRole(opt.id)}
+              />
+              <span className="create-user-role-text">
+                <span className="create-user-role-label">{opt.label}</span>
+                <span className="create-user-role-desc">{opt.description}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
         {error && (
           <div className="error-box">
@@ -84,18 +118,13 @@ export default function CreateUserDialog({ onClose, createUser }) {
           </div>
         )}
 
-        <div className="form-actions">
-          <button
-            type="button"
-            className="primary"
-            onClick={handleCreate}
-            disabled={creating || !email.trim() || !name.trim() || !password}
-          >
+        <div className="form-actions create-user-actions">
+          <button type="button" className="admin-btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSubmit}>
             {creating ? "Creating…" : "Create account"}
           </button>
-          <button type="button" className="admin-btn-secondary" onClick={onClose}>Cancel</button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
