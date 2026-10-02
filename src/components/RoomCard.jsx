@@ -1,11 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
+import { useToast } from "../context/ToastContext";
 import { buildingLabel, floorLabel } from "../utils/constants";
-import directionsIconWhite from "../assets/icons/directions-white.svg";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import placeholderIcon from "../assets/icons/icon-placeholder.svg";
 import locationIcon from "../assets/icons/location.svg";
+import linkIcon from "../assets/icons/link.svg";
+import linkIconWhite from "../assets/icons/link-white.svg";
+import bookmarkIconWhite from "../assets/icons/bookmark-white.svg";
+import bookmarkFilledIconWhite from "../assets/icons/bookmark-filled-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 // How far (as a fraction of the collapsed-to-expanded travel) a drag has to
@@ -17,17 +21,20 @@ const TAP_SLOP_PX = 4;
 
 // The desktop view's room information, as a bottom sheet over the app
 // sidebar's directory. It opens collapsed to its "peek" (name, close,
-// location, Directions) so the directory stays usable behind it, and is
-// dragged (or its handle tapped) up to the sidebar's full height to reveal
-// the description, link, department, and photos below. MainPage keys it on
-// the room, so picking another room always starts collapsed again.
-export default function RoomCard({ room, onClose, onGetDirections }) {
+// location/link/contact number, then Directions/link/call/save) so the
+// directory stays usable behind it, and is dragged (or its handle tapped)
+// up to the sidebar's full height to reveal the description, department,
+// and photos below. A room opened with search's "Go To" (room.openExpanded)
+// starts fully expanded instead. MainPage keys it on the room and that flag,
+// so each new pick starts in its own state.
+export default function RoomCard({ room, saved, onToggleSave, onClose, onGetDirections }) {
   const { roomName, placard, node } = room;
+  const toast = useToast();
 
   const sheetRef = useRef(null);
   const peekRef = useRef(null);
   const dragRef = useRef(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(!!room.openExpanded);
   const [peekHeight, setPeekHeight] = useState(null);
   // The sheet's live height while a drag is in progress; null otherwise, so
   // the snapped states come from CSS and animate.
@@ -105,8 +112,21 @@ export default function RoomCard({ room, onClose, onGetDirections }) {
     ? `https://${placard.link}`
     : placard?.link;
 
+  // This is the desktop view, where a tel: link usually has nothing to hand
+  // the call to (or pops an app picker), so the call button copies the
+  // number for the visitor to dial instead. The peek is user-select: none
+  // for dragging, so this is also the only way to copy it.
+  const copyContactNumber = async () => {
+    try {
+      await navigator.clipboard.writeText(placard.contactNumber);
+      toast.success(`Contact number copied: ${placard.contactNumber}`);
+    } catch {
+      toast.error("Couldn't copy the contact number.");
+    }
+  };
+
   // Rooms with no Room Edit record (placard is null) or an empty one.
-  const hasInfo = !!(placard?.use || placard?.roomDescription || placard?.link || placard?.department);
+  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber || placard?.department);
 
   return (
     <div
@@ -136,19 +156,69 @@ export default function RoomCard({ room, onClose, onGetDirections }) {
         <div className="sidebar-room-header">
           <h2 className="sidebar-room-title">{roomName}</h2>
           <button type="button" className="sidebar-room-close" onClick={onClose} title="Close" aria-label="Close">
-            <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
+            <IconPlaceholder name="close" className="inline-icon-img" />
           </button>
         </div>
 
-        {node && (
-          <p className="sidebar-room-location">
-            <img src={locationIcon} alt="" className="inline-icon-img" /> {buildingLabel(node.building)} &middot; {floorLabel(node.floor)}
-          </p>
+        {(node || placard?.link || placard?.contactNumber) && (
+          <div className="sidebar-room-contact">
+            {node && (
+              <p className="sidebar-room-contact-row">
+                <img src={locationIcon} alt="" className="inline-icon-img" />
+                <span>{buildingLabel(node.building)} &middot; {floorLabel(node.floor)}</span>
+              </p>
+            )}
+            {placard?.link && (
+              <a className="sidebar-room-contact-row" href={linkHref} target="_blank" rel="noopener noreferrer">
+                <img src={linkIcon} alt="" className="inline-icon-img" />
+                <span>{placard.link}</span>
+              </a>
+            )}
+            {placard?.contactNumber && (
+              <p className="sidebar-room-contact-row">
+                <IconPlaceholder name="call" className="inline-icon-img" />
+                <span>{placard.contactNumber}</span>
+              </p>
+            )}
+          </div>
         )}
 
         <div className="sidebar-room-actions">
           <button type="button" className="primary sidebar-room-directions" onClick={onGetDirections}>
-            <img src={directionsIconWhite} alt="" className="inline-icon-img" /> Directions
+            <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Directions
+          </button>
+          {placard?.link && (
+            <a
+              className="sidebar-room-icon-btn"
+              href={linkHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open link"
+              aria-label="Open link in a new tab"
+            >
+              <img src={linkIconWhite} alt="" className="inline-icon-img" />
+            </a>
+          )}
+          {placard?.contactNumber && (
+            <button
+              type="button"
+              className="sidebar-room-icon-btn"
+              onClick={copyContactNumber}
+              title="Copy contact number"
+              aria-label={`Copy contact number ${placard.contactNumber}`}
+            >
+              <IconPlaceholder name="call" variant="white" className="inline-icon-img" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="sidebar-room-icon-btn"
+            onClick={onToggleSave}
+            aria-pressed={saved}
+            title={saved ? "Remove from Saved Directories" : "Save to Saved Directories"}
+            aria-label={saved ? "Remove from Saved Directories" : "Save to Saved Directories"}
+          >
+            <img src={saved ? bookmarkFilledIconWhite : bookmarkIconWhite} alt="" className="inline-icon-img" />
           </button>
         </div>
       </div>
@@ -156,17 +226,9 @@ export default function RoomCard({ room, onClose, onGetDirections }) {
       {/* Hidden from assistive tech and the tab order while collapsed, since
           it's clipped out of view below the peek. */}
       <div className="sidebar-room-body" inert={!expanded}>
-        {placard?.use && <span className="sidebar-room-badge">{placard.use}</span>}
-
         <p className="sidebar-room-description">
           {placard?.roomDescription || (hasInfo ? "No description." : "No information.")}
         </p>
-
-        {placard?.link && (
-          <a className="sidebar-room-link" href={linkHref} target="_blank" rel="noopener noreferrer">
-            <IconPlaceholder name="link-chain" variant="white" /> {placard.link}
-          </a>
-        )}
 
         {placard?.department && (
           <p className="sidebar-room-department">

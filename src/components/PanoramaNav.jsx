@@ -59,6 +59,7 @@ const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" variant="wh
  *  - selectedMarkerId: optional marker id to render with a highlight ring (admin editing)
  *  - highlightedMarkerId: optional marker id to glow as the route's next step (directions: an elevator landing whose ride is next) — also the autoPan target when no hotspot is highlighted
  *  - sceneKey: optional identity of the scene (e.g. the node id). When given, a change of scene keeps the previous panorama, hotspots and markers up until the new photo has loaded, then cross-fades and aims at initialYaw/initialPitch — so the parent should NOT remount PanoramaNav (no key=) to move between scenes. When omitted, a new url simply replaces the scene
+ *  - aimKey: optional value that changes on every arrival (useNavigation's `arrival`). An arrival that keeps the same sceneKey (e.g. jumping to a room in the panorama already on screen) loads nothing new, so instead of the swap-in aim the view pans to the new initialYaw/initialPitch
  *  - heightFraction: optional 0-1 share of the window height the panorama's container fills (default 1) — only used to derive the right FOV
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
  *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator; hidden along with the previews while previewsHidden
@@ -99,6 +100,7 @@ export default function PanoramaNav({
   selectedMarkerId = null,
   highlightedMarkerId = null,
   sceneKey,
+  aimKey,
   heightFraction = 1,
   alwaysShowPreview = false,
   previewsHidden = false,
@@ -242,6 +244,18 @@ export default function PanoramaNav({
   const highlightedMarker = scene.markers.find((m) => m.id === highlightedMarkerId) || null;
   const panTarget = highlightedHotspot || highlightedMarker;
 
+  // An arrival that stays on the scene already on screen loads no texture,
+  // so CameraAim never fires for it: pan to its entry view instead. Any
+  // arrival elsewhere drops this, so it never pulls on a later scene (Back
+  // onto this one included).
+  const [aimedKey, setAimedKey] = useState(aimKey);
+  const [reaim, setReaim] = useState(null);
+  if (aimKey !== aimedKey) {
+    setAimedKey(aimKey);
+    const sameScene = scene.holdsScene && shown?.key === sceneKey;
+    setReaim(sameScene ? { id: aimKey, yaw: initialYaw, pitch: initialPitch } : null);
+  }
+
   // The Canvas is created once with the first scene's entry angle; later
   // scenes are aimed by CameraAim when they swap in.
   const [firstCameraPosition] = useState(() => initialCameraPosition(initialYaw, initialPitch));
@@ -268,6 +282,8 @@ export default function PanoramaNav({
       {autoPan && !placing && panTarget && (
         <AutoPan target={panTarget} targetKey={`${scene.sceneKey}:${panTarget.id}`} />
       )}
+      {/* Directions' own pan wins: two pans at once would fight. */}
+      {reaim && !placing && !(autoPan && panTarget) && <AutoPan target={reaim} targetKey={`reaim:${reaim.id}`} />}
       {keyboardNav && (
         <KeyboardNav
           hotspots={scene.hotspots}

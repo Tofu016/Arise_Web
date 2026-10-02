@@ -12,7 +12,7 @@ import IconPlaceholder from "./IconPlaceholder";
 //
 //   ┌──────────┬────────────────────┐
 //   │          │ Room name          │
-//   │  photo   │ badge · location   │
+//   │  photo   │ location           │
 //   │          │ description, dept  │
 //   │          │ [Directions]       │
 //   └──────────┴────────────────────┘
@@ -47,7 +47,6 @@ export default function KioskRoomCard({ room, onClose, onGetDirections }) {
         <div className="kiosk-room-card-body">
           <div className="kiosk-room-card-text">
             <h2 className="room-card-title">{roomName}</h2>
-            {placard?.use && <span className="room-card-badge">{placard.use}</span>}
             {node && (
               <p className="room-card-location">
                 <img src={locationIcon} alt="" className="inline-icon-img" /> {buildingLabel(node.building)} · {floorLabel(node.floor)} · near {node.name}

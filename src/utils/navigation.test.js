@@ -149,6 +149,17 @@ describe("walk, jump and back", () => {
     const { action } = requestJump(at("a"), world, { id: "b", meta: { room: "203" } }, tick());
     expect(action.meta).toEqual({ room: "203" });
   });
+
+  it("counts every arrival, including a jump onto the node already on screen", () => {
+    const walked = requestWalk(at("a"), world, { id: "b" }, tick()).nav;
+    expect(walked.arrival).toBe(1);
+    const again = requestJump(walked, world, { id: "b", yaw: 120, pitch: 10 }, tick()).nav;
+    expect(again).toMatchObject({ currentId: "b", arrival: 2, entryYaw: 120, entryPitch: 10 });
+  });
+
+  it("back with no history is no arrival", () => {
+    expect(requestBack(at("a"), world, tick()).nav.arrival).toBe(0);
+  });
 });
 
 describe("debounce", () => {
@@ -189,6 +200,7 @@ describe("cross-campus flyover", () => {
     const { nav, outcome } = move(start);
     expect(outcome).toBe("flyover");
     expect(nav.currentId).toBe("a"); // hasn't moved yet
+    expect(nav.arrival).toBe(0);
     expect(nav.flyover.toLabel).toBe("Far");
   });
 

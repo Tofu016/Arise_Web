@@ -9,6 +9,7 @@ import { useBlurReview } from "../../hooks/useBlurReview";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
 import IconPlaceholder from "../../components/IconPlaceholder";
+import linkIcon from "../../assets/icons/link.svg";
 
 const defaultFilters = {
   building: "all",
@@ -68,7 +69,7 @@ export default function RoomEditorPage() {
   const [roomTitle, setRoomTitle] = useState(selectedRoom || "");
   const [description, setDescription] = useState("");
   const [department, setDepartment] = useState("");
-  const [use, setUse] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [link, setLink] = useState("");
   const [photoPath, setPhotoPath] = useState("");
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
@@ -89,7 +90,7 @@ export default function RoomEditorPage() {
     setRoomTitle(selectedRoom || "");
     setDescription(existing?.roomDescription || "");
     setDepartment(existing?.department || "");
-    setUse(existing?.use || "");
+    setContactNumber(existing?.contactNumber || "");
     setLink(existing?.link || "");
     setPhotoPath(existing?.photo || "");
     setUploadState("idle");
@@ -211,7 +212,7 @@ export default function RoomEditorPage() {
         roomName: trimmedTitle,
         roomDescription: description.trim(),
         department: department.trim(),
-        use: use.trim(),
+        contactNumber: contactNumber.trim(),
         link: link.trim(),
         photo: photoPath,
         photo360: photo360Path,
@@ -273,7 +274,7 @@ export default function RoomEditorPage() {
               </div>
             )}
 
-            {/* Top row: title/description (left) and department/use/link
+            {/* Top row: title/description (left) and department/contact number/link
                 (right) side by side. Bottom row: both photo choosers side
                 by side, spanning the full width — a different split from
                 the previous "all text left, both photos right" layout. */}
@@ -306,17 +307,19 @@ export default function RoomEditorPage() {
                 </label>
 
                 <label>
-                  Use
+                  <IconPlaceholder name="call" /> Contact number
                   <input
-                    type="text"
-                    value={use}
-                    onChange={(e) => setUse(e.target.value)}
-                    placeholder="e.g. Classroom, Faculty office, Storage"
+                    type="tel"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    placeholder="e.g. (02) 8123-4567 loc. 210"
+                    maxLength={50}
                   />
                 </label>
+                <p className="field-hint">Optional: shown on the room's public panel.</p>
 
                 <label>
-                  <IconPlaceholder name="link-chain" /> Link
+                  <img src={linkIcon} alt="" className="icon-placeholder-img" /> Link
                   <input
                     type="text"
                     value={link}

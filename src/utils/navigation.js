@@ -2,11 +2,14 @@
 // no React, no clock, no globals: `now` and the campus (`world`) are
 // passed in, so every rule here is testable by calling a function.
 //
-// State: { currentId, history, entryYaw, entryPitch, flyover, lastNavAt }
+// State: { currentId, history, entryYaw, entryPitch, arrival, flyover, lastNavAt }
 //   currentId   node the visitor is standing at (null until the tour lands)
 //   history     stack of previous node ids, for Back
 //   entryYaw    the yaw the visitor arrived facing
 //   entryPitch  the pitch the visitor arrived facing
+//   arrival     counts applied moves, so the viewer can tell a fresh arrival
+//               apart even when it lands on the node already on screen
+//               (e.g. jumping to a room in the panorama being looked at)
 //   flyover     the cross-campus flyover in progress, or null; it carries
 //               the move it is holding back (`pending`)
 //   lastNavAt   timestamp of the last accepted move, for the debounce
@@ -31,7 +34,7 @@ import { hotspotAngle } from "./hotspots";
 export const NAV_DEBOUNCE_MS = 500;
 
 export function initialNavigation() {
-  return { currentId: null, history: [], entryYaw: 0, entryPitch: 0, flyover: null, lastNavAt: 0 };
+  return { currentId: null, history: [], entryYaw: 0, entryPitch: 0, arrival: 0, flyover: null, lastNavAt: 0 };
 }
 
 // Deterministic "where do we start" pick: the Main Campus entrance (the
@@ -175,9 +178,11 @@ export function findFlyover(fromNode, toNode, buildings) {
   };
 }
 
-function applyMove(nav, action) {
+function applyMove(prev, action) {
+  // Back with nothing to go back to lands nowhere, so it's no arrival.
+  if (action.type === "back" && prev.history.length === 0) return prev;
+  const nav = { ...prev, arrival: prev.arrival + 1 };
   if (action.type === "back") {
-    if (nav.history.length === 0) return nav;
     const history = [...nav.history];
     const currentId = history.pop();
     return { ...nav, currentId, history, entryYaw: action.yaw ?? 0, entryPitch: action.pitch ?? 0 };
@@ -191,9 +196,9 @@ function applyMove(nav, action) {
       entryPitch: action.pitch ?? 0,
     };
   }
-  // jump: a fresh start, facing the destination's own starting view when
-  // it has one (e.g. landing on a floor's starting node from the
-  // floor/building picker), else dead ahead.
+  // jump: a fresh start, facing whatever the caller aimed it at (a room's
+  // marker, or the destination's own starting view, e.g. landing on a
+  // floor's starting node from the floor/building picker), else dead ahead.
   return { ...nav, history: [], currentId: action.id, entryYaw: action.yaw ?? 0, entryPitch: action.pitch ?? 0 };
 }
 

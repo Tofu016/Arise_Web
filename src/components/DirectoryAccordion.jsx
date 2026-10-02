@@ -58,7 +58,11 @@ function BuildingRow({ building, rooms: allRooms, expanded, isHere, selectedRoom
 // something opened from a hamburger, so there's no collapse-everything
 // affordance — Main Campus starts expanded and stays that way; a visitor
 // only ever expands further into it or into another campus.
-export default function DirectoryAccordion({ rooms, onSelect, selectedRoomName, currentBuildingId }) {
+//
+// `savedRooms` (the visitor's saved rooms, already resolved to directory
+// rooms, see utils/savedRooms.js) adds a "Saved Directories" group above
+// the campuses, collapsed to start, and only while at least one is saved.
+export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, selectedRoomName, currentBuildingId }) {
   const campuses = allCampuses();
   const mainCampus = campuses.find((c) => c.id === "main");
   const otherCampuses = campuses.filter((c) => c.id !== "main");
@@ -66,6 +70,7 @@ export default function DirectoryAccordion({ rooms, onSelect, selectedRoomName, 
 
   const [expandedCampuses, setExpandedCampuses] = useState(() => new Set(mainCampus ? [mainCampus.id] : []));
   const [expandedBuildings, setExpandedBuildings] = useState(() => new Set());
+  const [savedExpanded, setSavedExpanded] = useState(false);
 
   const toggleCampus = (id) =>
     setExpandedCampuses((prev) => {
@@ -87,6 +92,26 @@ export default function DirectoryAccordion({ rooms, onSelect, selectedRoomName, 
 
   return (
     <div className="directory-accordion">
+      {savedRooms.length > 0 && (
+        <div className="directory-campus directory-saved">
+          <button
+            type="button"
+            className="directory-campus-row"
+            aria-expanded={savedExpanded}
+            onClick={() => setSavedExpanded((v) => !v)}
+          >
+            <span>Saved Directories</span>
+          </button>
+          {savedExpanded && (
+            <div className="directory-room-list">
+              {savedRooms.map((r) => (
+                <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {mainCampus && (
         <div className="directory-campus">
           <button

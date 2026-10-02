@@ -43,6 +43,7 @@ export function useNavigation(nodes, byId) {
     history: nav.history,
     entryYaw: nav.entryYaw,
     entryPitch: nav.entryPitch,
+    arrival: nav.arrival,
     flyover: nav.flyover,
     // `angle` may carry a per-edge default arrival view (defaultYaw/
     // defaultPitch), which wins over the arrow's own plain yaw/pitch —
@@ -51,12 +52,15 @@ export function useNavigation(nodes, byId) {
       perform((n, world, now) =>
         requestWalk(n, world, { id, yaw: angle?.defaultYaw ?? angle?.yaw, pitch: angle?.defaultPitch, meta }, now)
       ),
-    // Jumping lands on a fresh node — if it has its own starting view
-    // (set for a floor/building picker drop-in), face that.
-    jump: (id, meta) =>
+    // Jumping lands on a fresh node, facing `view` ({ yaw, pitch }) when
+    // given (a room's own marker), else the node's own starting view if it
+    // has one (set for a floor/building picker drop-in).
+    jump: (id, meta, view) =>
       perform((n, world, now) => {
         const node = world.byId[id];
-        return requestJump(n, world, { id, yaw: node?.startingViewYaw, pitch: node?.startingViewPitch, meta }, now);
+        const yaw = view ? view.yaw : node?.startingViewYaw;
+        const pitch = view ? view.pitch : node?.startingViewPitch;
+        return requestJump(n, world, { id, yaw, pitch, meta }, now);
       }),
     // The kiosk's own campus/building/floor sequence's initial pick — lands
     // on the node directly, no flyover. See requestLand.

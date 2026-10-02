@@ -40,7 +40,7 @@ import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
-import { buildSearchableRooms, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
+import { buildSearchableRooms, findMarkerForRoom, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
 import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
 import { speak } from "../utils/tts";
@@ -63,6 +63,8 @@ import { usePublicNodes } from "../hooks/usePublicNodes";
 import { useNodePhoto } from "../hooks/useNodePhoto";
 import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_CARD_CENTER, KIOSK_PANORAMA_CENTER } from "../utils/kioskLayout";
 import { usePlacardDialogs } from "../hooks/usePlacardDialogs";
+import { useSavedRooms } from "../hooks/useSavedRooms";
+import { resolveSavedRooms } from "../utils/savedRooms";
 import { useLiveSignage } from "../hooks/useSignage";
 import KioskSignage from "../components/KioskSignage";
 import { useAuth } from "../context/useAuth";
@@ -260,7 +262,7 @@ function MainPageContent({ onReset }) {
   // Where the visitor is standing, their history, and any cross-campus
   // flyover in progress — see utils/navigation.js.
   const nav = useNavigation(nodes, byId);
-  const { currentId, history, entryYaw, entryPitch, flyover } = nav;
+  const { currentId, history, entryYaw, entryPitch, arrival, flyover } = nav;
 
   // Built by matching each node's "Rooms served" entries against
   // placardDialogs. The kiosk only lists rooms an admin has gone through
@@ -272,6 +274,11 @@ function MainPageContent({ onReset }) {
     () => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: !compact }),
     [nodes, getForRoom, compact]
   );
+
+  // Desktop only: the save button is on RoomCard and the "Saved Directories"
+  // group in its directory; the kiosk is a shared screen.
+  const { savedNames, isSaved, toggleSaved } = useSavedRooms();
+  const savedRooms = useMemo(() => resolveSavedRooms(savedNames, searchableRooms), [savedNames, searchableRooms]);
 
   // Room search always scans the whole campus regardless of the building filter —
   // that filter only picks which entrances are offered to browse from, it
@@ -461,8 +468,8 @@ function MainPageContent({ onReset }) {
   // direct hop. Also dismisses whatever the floating panel was showing, same
   // as Maps closing search/place-details once you actually navigate somewhere.
   // Every cross-campus move gets a flyover first, this included.
-  const jumpTo = (id, meta) => {
-    const { outcome, action } = nav.jump(id, meta);
+  const jumpTo = (id, meta, view) => {
+    const { outcome, action } = nav.jump(id, meta, view);
     if (outcome === "ignored") return outcome;
     if (outcome === "moved") afterMove(action);
     else overlay.heldForFlyover({ closePanel: true }); // the hop itself is deferred, the panel is not
@@ -473,8 +480,8 @@ function MainPageContent({ onReset }) {
   // is what "go_to" analytics counts. Directions' own hop to its start node
   // and the kiosk's entrance picks use plain jumpTo, since neither is a
   // chosen destination.
-  const jumpToSearchResult = (id, meta) => {
-    if (jumpTo(id, meta) !== "ignored") analytics.goTo(id);
+  const jumpToSearchResult = (id, meta, view) => {
+    if (jumpTo(id, meta, view) !== "ignored") analytics.goTo(id);
   };
 
   // The kiosk's own campus/building/floor sequence's initial pick: lands on
@@ -609,8 +616,17 @@ function MainPageContent({ onReset }) {
   // Selecting a room from search moves the viewer to its attached node (a
   // jump, so it flies over a campus boundary like any other) and opens its
   // info card once it lands. "Get Directions"/"360° View" on the card itself
-  // are the explicit actions that go further.
-  const openRoomCard = (room) => jumpToSearchResult(room.node.id, { room });
+  // are the explicit actions that go further. Lands facing the room's own
+  // marker, centered, when its node has one (else the node's starting view);
+  // that holds even when the room is in the panorama already on screen.
+  const openRoomCard = (room) => {
+    const marker = findMarkerForRoom(room.node, room.roomName);
+    jumpToSearchResult(room.node.id, { room }, marker && { yaw: marker.yaw, pitch: marker.pitch });
+  };
+  // Search's "Go To" is a deliberate pick, so the desktop room panel opens
+  // fully expanded; picks from the directory (and everywhere else) open as
+  // the collapsed peek so the directory stays usable behind it.
+  const goToRoom = (room) => openRoomCard({ ...room, openExpanded: true });
 
   // Tapping a result in the Nearby panel: same behavior as picking it from
   // search — opens the room card if it has one, otherwise just jumps there.
@@ -839,11 +855,10 @@ function MainPageContent({ onReset }) {
               <div className="room-search-result-main">
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
-                  {r.placard?.use ? `${r.placard.use} · ` : ""}
                   {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                 </span>
               </div>
-              {renderResultActions(() => openRoomCard(r), r.node)}
+              {renderResultActions(() => goToRoom(r), r.node)}
             </div>
           ))}
           {randomPlaceSuggestions.map((n) => (
@@ -870,11 +885,10 @@ function MainPageContent({ onReset }) {
                   <div className="room-search-result-main">
                     <span className="room-search-name">{r.roomName}</span>
                     <span className="room-search-sub">
-                      {r.placard?.use ? `${r.placard.use} · ` : ""}
                       {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                     </span>
                   </div>
-                  {renderResultActions(() => openRoomCard(r), r.node)}
+                  {renderResultActions(() => goToRoom(r), r.node)}
                 </div>
               ))}
             </>
@@ -925,7 +939,6 @@ function MainPageContent({ onReset }) {
             <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
               <span className="room-search-name">{r.roomName}</span>
               <span className="room-search-sub">
-                {r.placard?.use ? `${r.placard.use} · ` : ""}
                 {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
               </span>
             </div>
@@ -952,7 +965,6 @@ function MainPageContent({ onReset }) {
               <div key={r.roomName} className="room-search-result" onClick={() => flow.pickRoom(field, r)}>
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
-                  {r.placard?.use ? `${r.placard.use} · ` : ""}
                   {buildingLabel(r.node.building)} · {floorLabel(r.node.floor)}
                 </span>
               </div>
@@ -1234,6 +1246,7 @@ function MainPageContent({ onReset }) {
                 onPlaceAngle={() => {}}
                 initialYaw={entryYaw}
                 initialPitch={entryPitch}
+                aimKey={arrival}
                 highlightedId={nextStopId}
                 highlightedMarkerId={nextElevator?.markerId ?? null}
                 autoPan={!!nextStopId}
@@ -1590,6 +1603,7 @@ function MainPageContent({ onReset }) {
                     <div className="sidebar-card sidebar-card-directory">
                       <DirectoryAccordion
                         rooms={searchableRooms}
+                        savedRooms={savedRooms}
                         onSelect={openRoomCard}
                         selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}
@@ -1608,8 +1622,10 @@ function MainPageContent({ onReset }) {
                     itself rather than scrolling with the directory. */}
                 {panelMode === "room" && selectedRoomCard && (
                   <RoomCard
-                    key={selectedRoomCard.roomName}
+                    key={`${selectedRoomCard.roomName}:${!!selectedRoomCard.openExpanded}`}
                     room={selectedRoomCard}
+                    saved={isSaved(selectedRoomCard.roomName)}
+                    onToggleSave={() => toggleSaved(selectedRoomCard.roomName)}
                     onClose={overlay.closeRoomCard}
                     onGetDirections={handleRoomGetDirections}
                   />
@@ -1638,6 +1654,7 @@ function MainPageContent({ onReset }) {
                   onPlaceAngle={() => {}}
                   initialYaw={entryYaw}
                   initialPitch={entryPitch}
+                  aimKey={arrival}
                   highlightedId={nextStopId}
                   highlightedMarkerId={nextElevator?.markerId ?? null}
                   autoPan={!!nextStopId}

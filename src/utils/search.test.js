@@ -6,6 +6,7 @@ import {
   searchCampus,
   pickSuggestions,
   findRoomForMarker,
+  findMarkerForRoom,
   resolveExactNodeMatch,
 } from "./search";
 
@@ -95,6 +96,26 @@ describe("findRoomForMarker", () => {
   it("finds nothing for a label with no saved room details", () => {
     expect(findRoomForMarker({ label: "Nope" }, rooms)).toBeUndefined();
     expect(findRoomForMarker({}, rooms)).toBeUndefined();
+  });
+});
+
+describe("findMarkerForRoom", () => {
+  const node = {
+    markers: [
+      { id: "m1", type: "equipment", label: "Registrar" },
+      { id: "m2", type: "room", label: "  REG-istrar " },
+      { id: "m3", type: "room", label: "203" },
+    ],
+  };
+  it("finds the room marker whose label names the room, ignoring case, spacing and punctuation", () => {
+    expect(findMarkerForRoom(node, "Registrar")?.id).toBe("m2");
+    expect(findMarkerForRoom(node, "203")?.id).toBe("m3");
+  });
+  it("finds nothing when the node has no room marker for it", () => {
+    expect(findMarkerForRoom(node, "2033")).toBeUndefined();
+    expect(findMarkerForRoom(node, "")).toBeUndefined();
+    expect(findMarkerForRoom({}, "203")).toBeUndefined();
+    expect(findMarkerForRoom(null, "203")).toBeUndefined();
   });
 });
 

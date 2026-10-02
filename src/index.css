@@ -2182,6 +2182,17 @@ img[data-icon-placeholder="emergency-exit"] {
 .directory-room-row.directory-row-selected {
   background: var(--sdca-maroon);
 }
+/* The "Saved Directories" header always wears the campus highlight (tier
+   2's dark gray): it isn't a place the visitor can be in, so it would
+   otherwise sit at tier 1 forever and never match the campus rows. */
+.directory-saved .directory-campus-row {
+  background: var(--tour-directory-selected-bg);
+}
+/* Saved rooms hang straight off a campus-tier row with no building tier
+   between, so they indent one step (like a building row), not two. */
+.directory-saved .directory-room-row {
+  padding-left: 28px;
+}
 .directory-building-row:hover,
 .directory-campus-row:hover {
   filter: brightness(1.15);
@@ -3630,17 +3641,6 @@ img[data-icon-placeholder="emergency-exit"] {
   font-size: 17px;
   color: var(--text);
 }
-.room-card-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--accent-tint);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
 .room-card-location {
   font-size: 12px;
   color: var(--text-muted);
@@ -3804,40 +3804,61 @@ img[data-icon-placeholder="emergency-exit"] {
   height: 28px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background: transparent;
+  border: 1px solid var(--white);
+  background: var(--white);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .sidebar-room-close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--gray-100);
+  border-color: var(--gray-100);
 }
-.sidebar-room-close .icon-placeholder-img {
+.sidebar-room-close .icon-placeholder-img,
+.sidebar-room-contact .icon-placeholder-img,
+.sidebar-room-actions .icon-placeholder-img {
   opacity: 1;
 }
-.sidebar-room-location {
+/* Location, link, and phone share one white card in the peek. It stretches
+   to the peek's own 16px padding rather than hugging its text, so the rows
+   line up with the title and Directions button above and below it. */
+.sidebar-room-contact {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
   background: var(--white);
   color: var(--text);
   font-size: 12px;
   font-weight: 700;
 }
-.sidebar-room-badge {
-  align-self: flex-start;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--gold);
-  color: var(--gold);
-  font-size: 11px;
-  font-weight: 700;
+.sidebar-room-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  color: var(--text);
+}
+.sidebar-room-contact-row .inline-icon-img {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.sidebar-room-contact-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+a.sidebar-room-contact-row {
+  text-decoration: none;
+}
+a.sidebar-room-contact-row:hover span,
+a.sidebar-room-contact-row:focus-visible span {
+  color: var(--accent);
+  text-decoration: underline;
 }
 .sidebar-room-actions {
   display: flex;
@@ -3863,7 +3884,38 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
 }
+/* Link, call, and save: fixed-width capsules beside Directions, which takes
+   whatever width is left, so it widens when a room has no link or no
+   contact number. The <a> (link) shares the rule with the <button>s. */
+.sidebar-room-actions .sidebar-room-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  padding: 0;
+  border: 1px solid var(--gray-700);
+  border-radius: var(--radius-pill);
+  background: var(--gray-700);
+  cursor: pointer;
+}
+.sidebar-room-actions .sidebar-room-icon-btn:hover,
+.sidebar-room-actions .sidebar-room-icon-btn:focus-visible {
+  background: var(--gray-900);
+  border-color: var(--gray-900);
+}
+.sidebar-room-icon-btn .inline-icon-img {
+  width: 16px;
+  height: 16px;
+}
+/* The description is the expanded sheet's give: it sizes to its text but
+   shrinks (down to about three lines) to keep the carousel on screen at
+   the bottom, scrolling inside its own box once the text outgrows it. Only
+   below that floor does the whole body scroll instead. */
 .sidebar-room-description {
+  flex: 0 1 auto;
+  min-height: 72px;
+  overflow-y: auto;
   margin: 0;
   padding: 10px 12px;
   border-radius: 6px;
@@ -3873,28 +3925,42 @@ img[data-icon-placeholder="emergency-exit"] {
   color: var(--white);
   white-space: pre-line;
 }
-.sidebar-room-link {
-  align-self: flex-start;
-  font-size: 13px;
-  color: var(--white);
-  text-decoration: underline;
-  word-break: break-all;
+.sidebar-room-description::-webkit-scrollbar {
+  width: 6px;
 }
-.sidebar-room-link:hover {
-  color: var(--gold);
+.sidebar-room-description::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-room-description::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.4);
+}
+.sidebar-room-description::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+/* Chromium ignores the ::-webkit-scrollbar rules above (and adds arrow
+   buttons) once scrollbar-width/-color are set, so those are only for
+   browsers without the pseudo-elements, i.e. Firefox. */
+@supports not selector(::-webkit-scrollbar) {
+  .sidebar-room-description {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+  }
 }
 .sidebar-room-department {
+  flex-shrink: 0;
   margin: 0;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.85);
 }
 /* Sized by the photo's own aspect ratio rather than stretched to fill the
-   sheet; any leftover height stays empty below it. The placeholder/loading
+   sheet, and pinned to the bottom (margin-top: auto); any leftover height
+   stays empty above it, below the description. The placeholder/loading
    states have no image to size them, so they fall back to a fixed ratio. */
 .sidebar-room-carousel {
   position: relative;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: auto;
   border-radius: 8px;
   overflow: hidden;
   background: var(--sdca-maroon-deeper);
@@ -6659,10 +6725,6 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .kiosk-room-card .room-card-title {
   font-size: 26px;
-}
-.kiosk-room-card .room-card-badge {
-  font-size: 14px;
-  margin-bottom: 8px;
 }
 .kiosk-room-card .room-card-location,
 .kiosk-room-card .room-card-department {

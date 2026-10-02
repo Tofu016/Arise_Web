@@ -41,7 +41,7 @@ export function searchNodes(query, nodes) {
 
 // Ranks room results with the same priority pattern as searchNodes: exact
 // room name first, then partial name, then a hit somewhere in the room's
-// description/department/use text — e.g. searching "registrar" finds a room
+// description/department text — e.g. searching "registrar" finds a room
 // whose Department is "Registrar's Office" even with no name match at all —
 // then the typo-tolerant matches. The long description is only ever matched
 // exactly; typos are forgiven in the short fields only.
@@ -56,8 +56,8 @@ export function searchRooms(query, searchableRooms) {
     if (nameScore === 0) return { group: GROUP_EXACT, score: 0 };
     if (nameScore < 30) return { group: GROUP_PARTIAL, score: nameScore };
 
-    const { roomDescription, department, use } = r.placard || {};
-    const shortText = [department, use].filter(Boolean);
+    const { roomDescription, department } = r.placard || {};
+    const shortText = [department].filter(Boolean);
     const textScore = Math.min(
       bestScore(q, shortText, { fuzzy: false }),
       matchScore(q, roomDescription, { fuzzy: false })
@@ -70,7 +70,7 @@ export function searchRooms(query, searchableRooms) {
   }).slice(0, 8);
 }
 
-// Rooms with actual detail records (photo/description/department/use) —
+// Rooms with actual detail records (photo/description/department) —
 // built by matching each node's "Rooms served" entries against the
 // placard dialogs. Only rooms an admin has gone through Room Edit for are
 // searchable; a room existing on a node alone isn't enough, since there'd
@@ -146,6 +146,15 @@ export function findRoomForMarker(marker, searchableRooms) {
   const key = normalize(marker.label);
   if (!key) return undefined;
   return searchableRooms.find((r) => normalize(r.roomName) === key);
+}
+
+// The other direction: the "room" marker on a node that stands for a room,
+// matched by the same name rule. Used to face that marker when a room is
+// jumped to. Undefined when the node has no marker for it.
+export function findMarkerForRoom(node, roomName) {
+  const key = normalize(roomName);
+  if (!key) return undefined;
+  return (node?.markers || []).find((m) => m.type === "room" && normalize(m.label) === key);
 }
 
 // Resolves typed text to a node by EXACT name (case/space/punctuation-

@@ -65,6 +65,14 @@ The flow a visitor goes through on the Compact layout: the start screen until it
 **Directions**:
 The from/to panel and the Route it computes. Opening it replaces whatever panel was showing, and getting directions starts the walk in one go (a Jump to the Route's first stop, then the Route is followed one stop at a time).
 
+**Contact number**:
+The optional telephone number an admin sets on a room's details in the Room Editor (`contactNumber` / `contact_number`), shown on the desktop room panel. It replaced the old free-text "Use" field.
+_Avoid_: phone number, phone
+
+**Saved room**:
+A room a signed-in, approved account has bookmarked (the save button on a room panel). It points at the room's details record, not its name, so a rename keeps it; a room with no details record can't be saved.
+_Avoid_: favorite, starred room
+
 **Signage**:
 The advertisements an admin rotates through the Compact layout's bottom band (the whitespace below the panorama, 1080 × 336 on the first kiosk). Each **Signage slide** is one image, GIF or looping video with a band-shaped crop, a time on screen, an on/off switch and an optional run window; it is **live** when switched on and inside its window. Called "Advertisements" in the admin UI only.
 _Avoid_: "ad"/"advert" in any code identifier, file path, table, endpoint or CSS class (ad blockers hide or refuse those, blanking the band or the admin's previews; the admin page's route `/admin/advertisements` is the one exception, since page URLs follow page names); banner (that's the whole band, not one slide).
