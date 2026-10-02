@@ -27,7 +27,7 @@ const TAP_SLOP_PX = 4;
 // and photos below. A room opened with search's "Go To" (room.openExpanded)
 // starts fully expanded instead. MainPage keys it on the room and that flag,
 // so each new pick starts in its own state.
-export default function RoomCard({ room, saved, onToggleSave, onClose, onGetDirections }) {
+export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, onGetDirections }) {
   const { roomName, placard, node } = room;
   const toast = useToast();
 
@@ -183,6 +183,10 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGetDire
           </div>
         )}
 
+        <button type="button" className="sidebar-room-goto" onClick={onGoTo}>
+          <IconPlaceholder name="location-pin" className="inline-icon-img" /> Go To
+        </button>
+
         <div className="sidebar-room-actions">
           <button type="button" className="primary sidebar-room-directions" onClick={onGetDirections}>
             <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Directions
@@ -242,7 +246,7 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGetDire
   );
 }
 
-function RoomPhotoCarousel({ photos, alt }) {
+export function RoomPhotoCarousel({ photos, alt }) {
   const [index, setIndex] = useState(0);
   const { url } = useSecurePhotoUrl(photos[index]);
   const multiple = photos.length > 1;

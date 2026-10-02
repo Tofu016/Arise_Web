@@ -95,7 +95,6 @@ function radialButtonTransform(index, total) {
 
 // Pending real icons — see the icon list handed back to the user.
 const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-icon-img" />;
-const DIRECTIONS_ICON = <img src={directionsIcon} alt="" className="inline-icon-img" />;
 // SVGs loaded via <img> don't inherit CSS currentColor from the host page
 // (they render in an isolated document), so a "stroke: currentColor" icon
 // can't actually follow the button's color the way the grey/white
@@ -240,13 +239,13 @@ function MainPageContent({ onReset }) {
   const { currentId, history, entryYaw, entryPitch, arrival, flyover } = nav;
 
   // Built by matching each node's "Rooms served" entries against
-  // placardDialogs. The kiosk only lists rooms an admin has gone through
-  // Room Edit for; desktop also lists the rest with a null placard (its
-  // sidebar has a "No information." state), so anything rendering a room
+  // placardDialogs. Rooms/facilities with no Room Edit record are listed too,
+  // with a null placard (desktop's sidebar has a "No information." state; the
+  // kiosk card just omits the photo/description), so anything rendering a room
   // must treat `placard` as optional.
   const { getForRoom } = usePlacardDialogs();
   const searchableRooms = useMemo(
-    () => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: !compact }),
+    () => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: true }),
     [nodes, getForRoom, compact]
   );
 
@@ -618,7 +617,7 @@ function MainPageContent({ onReset }) {
   const handleRoomMarkerClick = (marker) => {
     const match = findRoomForMarker(marker, searchableRooms);
     if (match) openRoomCard(match);
-    else if (!compact && marker.label?.trim()) openRoomCard({ roomName: marker.label.trim(), node: current, placard: null });
+    else if (marker.label?.trim()) openRoomCard({ roomName: marker.label.trim(), node: current, placard: null });
   };
 
   // Riding an elevator is a Walk, not a Jump: history is kept, so Back rides
@@ -649,6 +648,12 @@ function MainPageContent({ onReset }) {
     overlay.openElevatorPicker({ markerId: marker.id, label: marker.label, currentFloor: current.floor, destinations });
   };
 
+  // The room panel's "Go To": jumps to the room's node, facing its marker.
+  // Not goToRoom, so the panel keeps the expanded/collapsed state it has.
+  const handleRoomGoTo = () => {
+    if (selectedRoomCard) openRoomCard(selectedRoomCard);
+  };
+
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
     flow.openTo(selectedRoomCard.node);
@@ -675,31 +680,6 @@ function MainPageContent({ onReset }) {
     jump: jumpTo,
     land: landAtKioskStart,
   });
-
-  if (loadError) {
-    return (
-      <div className="main-page-status">
-        <h2>ARISE</h2>
-        <p>{loadError}</p>
-        <p className="empty-hint">
-          {loadError.includes("permission")
-            ? "This usually means you're not signed in, or your account hasn't been approved yet."
-            : "If this persists, check that the API (Arise_API) is running and reachable, and that its database has campus data."}
-        </p>
-      </div>
-    );
-  }
-
-  if (!nodes) {
-    // The kiosk start screen covers the initial data load too, so the
-    // loading screen never shows before it.
-    return (
-      <>
-        <LoadingScreen show label="Loading campus…" />
-        {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
-      </>
-    );
-  }
 
   const { arrived, nextStopId, nextStopName, nextElevator, turnInstruction, walkStarted } = progress;
   const autoWalking = directions?.autoWalking ?? false;
@@ -736,6 +716,31 @@ function MainPageContent({ onReset }) {
     speak(compact ? KIOSK_INTRO_SPEECH : DESKTOP_INTRO_SPEECH);
     return stopSpeaking;
   }, [narrating, compact]);
+
+  if (loadError) {
+    return (
+      <div className="main-page-status">
+        <h2>ARISE</h2>
+        <p>{loadError}</p>
+        <p className="empty-hint">
+          {loadError.includes("permission")
+            ? "This usually means you're not signed in, or your account hasn't been approved yet."
+            : "If this persists, check that the API (Arise_API) is running and reachable, and that its database has campus data."}
+        </p>
+      </div>
+    );
+  }
+
+  if (!nodes) {
+    // The kiosk start screen covers the initial data load too, so the
+    // loading screen never shows before it.
+    return (
+      <>
+        <LoadingScreen show label="Loading campus…" />
+        {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
+      </>
+    );
+  }
 
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
@@ -801,26 +806,33 @@ function MainPageContent({ onReset }) {
     },
   ].filter(Boolean);
 
-  // The two actions on a search result. The entry itself isn't clickable —
-  // "Go To" jumps there, "Directions" routes there. onMouseDown +
-  // preventDefault keeps the search input focused (its blur closes the panel).
+  // Clicking a room entry (not its buttons) opens that room's panel without
+  // moving there; the panel's own "Go To" does the jump.
+  const previewRoomEntry = (e, room) => {
+    if (e.target.closest("button")) return;
+    overlay.previewRoom(room);
+  };
+
+  // The two actions on a search result. "Go To" jumps there, "Directions"
+  // routes there. onMouseDown + preventDefault keeps the search input
+  // focused (its blur closes the panel).
   const renderResultActions = (onGoTo, directionsNode) => (
     <div className="search-result-actions">
       <button
         type="button"
-        className="directions-btn"
+        className="search-result-btn search-result-goto"
         onMouseDown={(e) => { e.preventDefault(); onGoTo(); }}
         title="Go to this location"
       >
-        {PLACEHOLDER("location-pin")} Go To
+        <IconPlaceholder name="location-pin" variant="white" className="inline-icon-img" /> Go To
       </button>
       <button
         type="button"
-        className="directions-btn"
+        className="search-result-btn search-result-directions"
         onMouseDown={(e) => { e.preventDefault(); flow.openTo(directionsNode); }}
         title="Get directions"
       >
-        {DIRECTIONS_ICON} Directions
+        <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Directions
       </button>
     </div>
   );
@@ -831,7 +843,7 @@ function MainPageContent({ onReset }) {
         <div className="room-search-results">
           <p className="room-search-suggestions-label">Suggested Locations</p>
           {randomSuggestions.map((r) => (
-            <div key={r.roomName} className="room-search-result-actionable">
+            <div key={r.roomName} className="room-search-result-actionable room-search-result-clickable" onMouseDown={(e) => e.preventDefault()} onClick={(e) => previewRoomEntry(e, r)}>
               <div className="room-search-result-main">
                 <span className="room-search-name">{r.roomName}</span>
                 <span className="room-search-sub">
@@ -861,7 +873,7 @@ function MainPageContent({ onReset }) {
             <>
               <p className="room-search-suggestions-label">Rooms</p>
               {roomResults.map((r) => (
-                <div key={r.roomName} className="room-search-result-actionable">
+                <div key={r.roomName} className="room-search-result-actionable room-search-result-clickable" onMouseDown={(e) => e.preventDefault()} onClick={(e) => previewRoomEntry(e, r)}>
                   <div className="room-search-result-main">
                     <span className="room-search-name">{r.roomName}</span>
                     <span className="room-search-sub">
@@ -1033,7 +1045,9 @@ function MainPageContent({ onReset }) {
       )}
 
       {!directions.path && !directions.pendingModeChoice && (
-        <button className="primary directions-go-btn" onClick={flow.get}>Get directions</button>
+        <button className="primary directions-go-btn directions-get-btn" onClick={flow.get}>
+          <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Get directions
+        </button>
       )}
 
       {directions.path && !arrived && (
@@ -1286,6 +1300,7 @@ function MainPageContent({ onReset }) {
               <KioskRoomCard
                 room={selectedRoomCard}
                 onClose={overlay.closeRoomCard}
+                onGoTo={handleRoomGoTo}
                 onGetDirections={handleRoomGetDirections}
               />
             )}
@@ -1627,6 +1642,7 @@ function MainPageContent({ onReset }) {
                     saved={isSaved(selectedRoomCard.roomName)}
                     onToggleSave={() => toggleSaved(selectedRoomCard.roomName)}
                     onClose={overlay.closeRoomCard}
+                    onGoTo={handleRoomGoTo}
                     onGetDirections={handleRoomGetDirections}
                   />
                 )}

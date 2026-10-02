@@ -33,6 +33,7 @@ export function useOverlay() {
       closeDirections: send("closeDirections"),
       walkStarted: send("walkStarted"),
       closeRoomCard: send("closeRoomCard"),
+      previewRoom: (room) => dispatch({ type: "previewRoom", room }),
       openElevatorPicker: (picker) => dispatch({ type: "openElevatorPicker", picker }),
       closeElevatorPicker: send("closeElevatorPicker"),
       moved: (move) => dispatch({ type: "moved", move }),

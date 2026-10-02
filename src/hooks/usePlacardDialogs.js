@@ -20,15 +20,21 @@ async function loadAll() {
 }
 
 export function usePlacardDialogs() {
-  const { refresh, itemsRef: docsRef } = useCollection(loadAll);
+  const { items, refresh, itemsRef: docsRef } = useCollection(loadAll);
 
+  // Depends on `items` (read through the ref) so its identity changes when
+  // the list loads or refreshes. Callers memoize room lists on getForRoom
+  // (MainPage's searchableRooms); with a stable identity they kept the
+  // placard-less list built before this fetch landed, so rooms opened with
+  // no link, contact number, description, or photo.
   const getForRoom = useCallback(
     (roomName) => {
       const key = normalizeRoomName(roomName);
       if (!key) return null;
       return docsRef.current.find((d) => normalizeRoomName(d.roomName) === key) || null;
     },
-    [docsRef]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [docsRef, items]
   );
 
   // roomName is the CURRENT/old name to look up by — when renaming,

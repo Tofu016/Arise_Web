@@ -73,6 +73,19 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
     if (open) ref.current?.focus();
   }, [open]);
 
+  // Moving forward is the overlay's own advertised keyboard action, so doing
+  // it counts as having read the instructions. A window listener because the
+  // overlay only has focus until the visitor clicks elsewhere; the key still
+  // reaches the panorama's keyboard nav, so the move happens too.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "w" || e.key === "W" || e.key === "ArrowUp") onDismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onDismiss]);
+
   if (!open) return null;
 
   return (

@@ -62,6 +62,10 @@ export function overlayReducer(state, action) {
       return { ...state, walkDialog: true, panel: null };
     case "walkStarted": // the route's first jump closed the panel; reopen it collapsed to the walk bar
       return { ...state, walkDialog: false, panel: "directions" };
+    // Opening a room's card from a search entry without moving there; the
+    // card's own "Go To" does the jump.
+    case "previewRoom":
+      return { ...state, dock: false, roomCard: action.room, panel: "room" };
     case "closeRoomCard":
       return { ...state, roomCard: null, panel: null };
     case "openElevatorPicker":

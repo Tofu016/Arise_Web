@@ -75,9 +75,9 @@ export function searchRooms(query, searchableRooms) {
 // placard dialogs. Only rooms an admin has gone through Room Edit for are
 // searchable; a room existing on a node alone isn't enough, since there'd
 // be nothing to show on its card. Deduped case-insensitively.
-// `includeWithoutDetails` (desktop only) keeps rooms with no record too,
-// with a null placard: the desktop sidebar has a "No information." state
-// for them, while the kiosk still hides anything it couldn't show.
+// `includeWithoutDetails` keeps rooms with no record too, with a null
+// placard: the desktop sidebar has a "No information." state for them and
+// the kiosk card just shows the name and location.
 export function buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails = false } = {}) {
   if (!nodes) return [];
   const out = [];

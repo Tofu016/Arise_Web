@@ -13,6 +13,42 @@
    responsive @media pass.
    ===================================================================== */
 * { box-sizing: border-box; }
+/* One slim brand-gray scrollbar everywhere, no arrow buttons. The pseudo-
+   elements are used (4px, thinner than scrollbar-width: thin allows), and
+   Chromium ignores them once scrollbar-width/-color are set, so those
+   standard properties are only a fallback for Firefox. Elements that
+   deliberately hide their scrollbar override this with higher specificity. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* The 3px transparent border + padding-box clip insets the visible 4px
+   thumb from the scrollbar's edges, so it never touches the container's
+   border or the panel edge. */
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--sdca-gray);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sdca-gray) transparent;
+  }
+}
 html, body {
   height: 100%;
   margin: 0;
@@ -242,6 +278,13 @@ img[data-icon-placeholder="emergency-exit"] {
   border-color: var(--accent);
   color: #fff;
 }
+/* Needed because .admin-sidebar-icon-btn:hover (specificity 0,2,0) otherwise
+   beats the class above and paints the near-white hover fill behind the
+   already-white icon, making it vanish. */
+.admin-sidebar-icon-btn-active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 /* Branding-asset icons are <img>s, so text color doesn't reach them —
    flatten to black then invert to white. */
 .admin-sidebar-icon-btn-active img,
@@ -394,7 +437,8 @@ img[data-icon-placeholder="emergency-exit"] {
    own gold accent (currently unused anywhere in this new layout), used
    exactly as the brand doc specifies: sparing, hairline-only, paired with
    the maroon selected state rather than replacing it. */
-.admin-sidebar-flyout-item-active {
+.admin-sidebar-flyout-item-active,
+.admin-sidebar-flyout-item-active:hover {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
@@ -2334,7 +2378,8 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .room-search-suggestions-label {
   margin: 0;
-  padding: 8px 14px 4px;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--border);
   font-family: var(--font-sans-display);
   font-size: 11px;
   font-weight: 700;
@@ -2367,18 +2412,73 @@ img[data-icon-placeholder="emergency-exit"] {
   flex-direction: column;
   gap: 2px;
 }
-/* Go To + Directions, side by side at the right of a search result. */
+/* Go To + Directions at the right of a search result. Stacked on desktop so
+   the name/sub text gets the width; the kiosk (.mobile-screen) keeps them
+   side by side. Directions matches the room panel's gold pill; Go To is the
+   accent (red) counterpart. */
+.room-search-result-actionable {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
 .search-result-actions {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
   align-self: center;
 }
-.search-result-actions .directions-btn {
-  margin-top: 0;
-  align-self: auto;
+.search-result-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  color: var(--white);
   white-space: nowrap;
+  cursor: pointer;
+  /* Same type treatment as the .primary buttons (Directions, Get directions). */
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.search-result-goto {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+.search-result-goto:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.search-result-directions {
+  background: var(--gold);
+  border: 1px solid var(--gold);
+}
+.search-result-directions:hover {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
+}
+.mobile-screen .search-result-actions {
+  flex-direction: row;
+}
+.mobile-screen .room-search-result-actionable {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.mobile-screen .search-result-btn {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+/* Desktop sidebar: the results box fills the sidebar's free height instead of
+   stopping at the 260px cap, and scrolls inside .app-sidebar-content if the
+   list outgrows it. The sidebar's own 16px padding keeps it off the edges. */
+.app-sidebar-content .room-search-results {
+  box-sizing: border-box;
+  max-height: none;
+  height: calc(100% - 6px);
+  overflow-y: auto;
 }
 .room-search-result:last-child {
   border-bottom: none;
@@ -3934,6 +4034,39 @@ a.sidebar-room-contact-row:focus-visible span {
   display: flex;
   gap: 8px;
 }
+/* Go To: white pill with black text, sitting above the Directions row. */
+.sidebar-room-goto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-size: 13px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sidebar-room-goto:hover,
+.sidebar-room-goto:focus-visible {
+  background: #ececec;
+}
+.sidebar-room-actions-stacked {
+  flex-direction: column;
+}
+.kiosk-room-card .sidebar-room-goto {
+  min-height: 64px;
+  font-size: 18px;
+  touch-action: manipulation;
+}
+.room-search-result-clickable {
+  cursor: pointer;
+}
 .sidebar-room-actions button {
   display: inline-flex;
   align-items: center;
@@ -3994,28 +4127,6 @@ a.sidebar-room-contact-row:focus-visible span {
   line-height: 1.55;
   color: var(--white);
   white-space: pre-line;
-}
-.sidebar-room-description::-webkit-scrollbar {
-  width: 6px;
-}
-.sidebar-room-description::-webkit-scrollbar-track {
-  background: transparent;
-}
-.sidebar-room-description::-webkit-scrollbar-thumb {
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.4);
-}
-.sidebar-room-description::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.6);
-}
-/* Chromium ignores the ::-webkit-scrollbar rules above (and adds arrow
-   buttons) once scrollbar-width/-color are set, so those are only for
-   browsers without the pseudo-elements, i.e. Firefox. */
-@supports not selector(::-webkit-scrollbar) {
-  .sidebar-room-description {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
-  }
 }
 .sidebar-room-department {
   flex-shrink: 0;
@@ -6812,7 +6923,9 @@ a.sidebar-room-contact-row:focus-visible span {
   margin-bottom: 0;
   margin-top: 10px;
 }
-/* Room card: photo | details, same footprint as .kiosk-dialog. */
+/* Room card: photo | details, same footprint as .kiosk-dialog. Colors and
+   type come from the desktop room panel's .sidebar-room-* rules; this only
+   sets the kiosk layout and bumps sizes for touch. */
 .kiosk-room-card {
   pointer-events: auto;
   box-sizing: border-box;
@@ -6821,16 +6934,46 @@ a.sidebar-room-contact-row:focus-visible span {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   padding: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--accent);
+  color: var(--white);
   border-radius: 14px;
   box-shadow: var(--shadow-2);
 }
 .kiosk-room-card-photo {
+  position: relative;
   min-height: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  background: var(--surface-sunken);
+  background: var(--sdca-maroon-deeper);
+}
+/* The carousel fills the photo column instead of sizing to the image. */
+.kiosk-room-card-photo .sidebar-room-carousel {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  border-radius: 0;
+}
+.kiosk-room-card-photo .sidebar-room-carousel-image {
+  height: 100%;
+  object-fit: cover;
+}
+.kiosk-room-card-photo .sidebar-room-carousel-empty,
+.kiosk-room-card-photo .sidebar-room-carousel-placeholder {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.kiosk-room-card-photo .sidebar-room-carousel-arrow {
+  width: 56px;
+  height: 56px;
+  touch-action: manipulation;
+}
+.kiosk-room-card-photo .sidebar-room-carousel-dots {
+  bottom: 14px;
+  gap: 10px;
+}
+.kiosk-room-card-photo .sidebar-room-carousel-dot {
+  width: 14px;
+  height: 14px;
 }
 .kiosk-room-card-body {
   min-height: 0;
@@ -6838,27 +6981,37 @@ a.sidebar-room-contact-row:focus-visible span {
   flex-direction: column;
   gap: 12px;
 }
+.kiosk-room-card .sidebar-room-title {
+  flex: none;
+  font-size: 26px;
+}
+.kiosk-room-card .sidebar-room-contact {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.kiosk-room-card .sidebar-room-contact-row .inline-icon-img {
+  width: 20px;
+  height: 20px;
+}
 .kiosk-room-card-text {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
 }
-.kiosk-room-card .room-card-title {
-  font-size: 26px;
-}
-.kiosk-room-card .room-card-location,
-.kiosk-room-card .room-card-department {
-  font-size: 16px;
-}
-.kiosk-room-card .room-card-description {
+.kiosk-room-card .sidebar-room-description {
+  flex: 0 0 auto;
+  overflow: visible;
   font-size: 18px;
 }
-.kiosk-room-card .room-card-actions {
-  margin-bottom: 0;
+.kiosk-room-card .sidebar-room-department {
+  font-size: 16px;
 }
-.kiosk-room-card .room-card-actions button {
+.kiosk-room-card .sidebar-room-actions button {
   min-height: 64px;
   font-size: 18px;
   touch-action: manipulation;
@@ -6981,6 +7134,21 @@ a.sidebar-room-contact-row:focus-visible span {
 .kiosk-dialog .directions-panel .directions-go-btn {
   min-height: 64px;
   font-size: 19px;
+}
+/* Get directions: same gold pill as the desktop room panel's Directions button. */
+.kiosk-dialog .directions-panel .directions-get-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: var(--white);
+}
+.kiosk-dialog .directions-panel .directions-get-btn:hover {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
 }
 .kiosk-dialog .directions-progress {
   gap: 12px;
