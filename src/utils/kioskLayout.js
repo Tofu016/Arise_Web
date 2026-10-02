@@ -20,6 +20,17 @@ export const SIGNAGE_REFERENCE_SIZE = {
 };
 export const SIGNAGE_ASPECT = SIGNAGE_REFERENCE_SIZE.width / SIGNAGE_REFERENCE_SIZE.height;
 
+// Where the kiosk dialog grid (KioskDialog / KioskRoomCard, and the walk bar
+// that replaces its keyboard) starts, as a fraction of screen height. The
+// grid is half the panorama band tall, so it ends at
+// KIOSK_DIALOG_TOP + KIOSK_PANORAMA_FRACTION / 2. Pushed below the top of the
+// band on purpose: the keyboard is the one control people type on for a
+// while, so it is kept inside the 0.95 to 1.22 m reach range (1.22 m being
+// the highest comfortable forward reach from a wheelchair) instead of
+// riding at the top of a 65" portrait screen whose bottom edge is ~0.28 m
+// off the floor. Tune this, not the components, if the mounting changes.
+export const KIOSK_DIALOG_TOP = 0.255;
+
 // Vertical center (fraction of screen height) of the panorama band itself —
 // the middle of what's actually visible between the header and bottom
 // whitespace, not the middle of the whole screen. Used to anchor the

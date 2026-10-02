@@ -1,19 +1,22 @@
 import { useMemo } from "react";
 import { buildingLabel, floorLabel, typeLabel } from "../utils/constants";
 import EntityListPanel from "./EntityListPanel";
-import { fuzzyIncludes } from "../utils/fuzzy";
+import { rankNodeMatches } from "../utils/search";
 
-export default function NodeList({ nodes, filters, selectedNodeId, onSelect }) {
+// `onSelectRoom` (Room Editor only) turns each node's rooms into pills
+// that select that room directly; clicking the rest of the row still
+// selects the node. `selectedRoom` highlights the open room's pill.
+export default function NodeList({ nodes, filters, selectedNodeId, onSelect, onSelectRoom, selectedRoom, header }) {
   const filtered = useMemo(() => {
-    return nodes.filter((n) => {
+    const inScope = nodes.filter((n) => {
       if (filters.building !== "all" && n.building !== filters.building) return false;
       if (filters.floor !== "all" && String(n.floor) !== String(filters.floor)) return false;
       if (filters.type !== "all" && n.type !== filters.type) return false;
       if (filters.photoStatus === "missing" && n.photo) return false;
       if (filters.photoStatus === "has" && !n.photo) return false;
-      if (filters.search && !fuzzyIncludes(filters.search, [n.id, n.name, ...(n.rooms || [])])) return false;
       return true;
     });
+    return rankNodeMatches(filters.search, inScope);
   }, [nodes, filters]);
 
   return (
@@ -29,10 +32,32 @@ export default function NodeList({ nodes, filters, selectedNodeId, onSelect }) {
           {n.neighbors?.length ? ` · ${n.neighbors.length} links` : " · unlinked"}
         </>
       )}
-      renderExtra={(n) =>
-        n.rooms?.length > 0 && <div className="node-row-rooms">Rooms: {n.rooms.join(", ")}</div>
-      }
+      renderExtra={(n) => {
+        if (!n.rooms?.length) return null;
+        if (!onSelectRoom) return <div className="node-row-rooms">Rooms: {n.rooms.join(", ")}</div>;
+        return (
+          <div className="node-row-room-pills">
+            {n.rooms.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={
+                  "node-row-room-pill" +
+                  (n.id === selectedNodeId && r === selectedRoom ? " node-row-room-pill-active" : "")
+                }
+                onClick={(e) => {
+                  e.stopPropagation(); // the row's own click would select the node instead
+                  onSelectRoom(n.id, r);
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        );
+      }}
       emptyMessage="No nodes match this filter."
+      header={header}
     />
   );
 }

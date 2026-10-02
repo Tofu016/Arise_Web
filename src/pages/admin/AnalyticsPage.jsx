@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAnalyticsDashboard } from "../../hooks/useAnalyticsDashboard";
 import { useFeedback, useFeedbackRatingCounts } from "../../hooks/useFeedback";
@@ -58,6 +58,14 @@ const SORT_OPTIONS = [
   { value: "rating_asc", label: "Lowest rating" },
 ];
 
+// Comments' review-status filter, keyed by the backend's `reviewed` query
+// value ("" sends nothing, so every row matches).
+const STATUS_OPTIONS = [
+  { value: "", label: "All", empty: "No feedback submitted yet in this range." },
+  { value: "0", label: "Unreviewed", empty: "No unreviewed feedback in this range." },
+  { value: "1", label: "Reviewed", empty: "No reviewed feedback in this range." },
+];
+
 const DEFAULT_RANGE_DAYS = 30;
 
 function defaultFilters() {
@@ -106,45 +114,66 @@ function RatingRangeFields({ from, to, setFrom, setTo }) {
 // distribution and Comments each layer their own rating-range filter on
 // top (see RatingRangeFields), plus Comments' own sort, since none of
 // that applies to the behavioral sections.
+//
+// Sticks to the top of the admin content scroller so the range can be
+// changed from anywhere down the page. `stuck` only adds the floating-card
+// shadow: the sentinel sits just above the bar, so it leaves the scroller
+// at the moment the bar starts sticking.
 function FilterBar({ filters, setFilters, buildings }) {
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
   const defaults = defaultFilters();
   const isDefault = Object.keys(defaults).every((key) => filters[key] === defaults[key]);
+  const sentinelRef = useRef(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === "undefined") return;
+    // Not the viewport: the admin header sits above the scroller, so against
+    // the viewport the sentinel would read as visible for the header's height
+    // after it had already scrolled out of sight.
+    const root = sentinel.closest(".admin-layout-content");
+    const observer = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), { root });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <div className="analytics-filter-bar">
-      <label className="analytics-filter-field">
-        From
-        <input type="date" value={filters.from} max={filters.to || undefined} onChange={set("from")} />
-      </label>
-      <label className="analytics-filter-field">
-        To
-        <input type="date" value={filters.to} min={filters.from || undefined} onChange={set("to")} />
-      </label>
-      <label className="analytics-filter-field">
-        Platform
-        <select value={filters.platform} onChange={set("platform")}>
-          <option value="">All</option>
-          <option value="kiosk">Kiosk</option>
-          <option value="desktop">Desktop</option>
-        </select>
-      </label>
-      <label className="analytics-filter-field">
-        Building
-        <select value={filters.building} onChange={set("building")}>
-          <option value="">All</option>
-          {buildings.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      {!isDefault && (
-        <button type="button" className="analytics-filter-clear" onClick={() => setFilters(defaultFilters())}>
-          Reset to last {DEFAULT_RANGE_DAYS} days
-        </button>
-      )}
-    </div>
+    <>
+      <div ref={sentinelRef} className="analytics-filter-sentinel" aria-hidden="true" />
+      <div className={"analytics-filter-bar analytics-filter-bar-sticky" + (stuck ? " analytics-filter-bar-stuck" : "")}>
+        <label className="analytics-filter-field">
+          From
+          <input type="date" value={filters.from} max={filters.to || undefined} onChange={set("from")} />
+        </label>
+        <label className="analytics-filter-field">
+          To
+          <input type="date" value={filters.to} min={filters.from || undefined} onChange={set("to")} />
+        </label>
+        <label className="analytics-filter-field">
+          Platform
+          <select value={filters.platform} onChange={set("platform")}>
+            <option value="">All</option>
+            <option value="kiosk">Kiosk</option>
+            <option value="desktop">Desktop</option>
+          </select>
+        </label>
+        <label className="analytics-filter-field">
+          Building
+          <select value={filters.building} onChange={set("building")}>
+            <option value="">All</option>
+            {buildings.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!isDefault && (
+          <button type="button" className="analytics-filter-clear" onClick={() => setFilters(defaultFilters())}>
+            Reset to last {DEFAULT_RANGE_DAYS} days
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -201,6 +230,7 @@ export default function AnalyticsPage() {
   const [commentRatingFrom, setCommentRatingFrom] = useState("");
   const [commentRatingTo, setCommentRatingTo] = useState("");
   const [sort, setSort] = useState("unreviewed");
+  const [reviewStatus, setReviewStatus] = useState("");
   const {
     feedback,
     total: feedbackTotal,
@@ -211,7 +241,7 @@ export default function AnalyticsPage() {
     hasMore,
     error: feedbackError,
     loadMore,
-    markReviewed,
+    setReviewed,
     // Comments is reserved for feedback with an actual written comment;
     // ratings left with no comment still count in the distribution chart
     // above, which has its own range and doesn't filter on this at all.
@@ -221,6 +251,7 @@ export default function AnalyticsPage() {
     minRating: commentRatingFrom,
     maxRating: commentRatingTo,
     hasComment: "1",
+    reviewed: reviewStatus,
     sort,
   });
 
@@ -423,10 +454,20 @@ export default function AnalyticsPage() {
         <Section
           title="Comments"
           badge={unreviewedCount > 0 && <span className="badge-count">{unreviewedCount} new</span>}
-          hint="Feedback that came with a written comment, with its own rating filter below. Every rating, commented or not, is in Rating distribution above."
+          hint="Feedback that came with a written comment, with its own status and rating filters below. Every rating, commented or not, is in Rating distribution above."
           wide
           filters={
             <>
+              <label className="analytics-filter-field">
+                Status
+                <select value={reviewStatus} onChange={(e) => setReviewStatus(e.target.value)}>
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="analytics-filter-field">
                 Sort by
                 <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -450,7 +491,9 @@ export default function AnalyticsPage() {
           error={feedbackError}
         >
           {feedback.length === 0 ? (
-            <EmptyState icon="chat-bubble">No feedback submitted yet in this range.</EmptyState>
+            <EmptyState icon="chat-bubble">
+              {STATUS_OPTIONS.find((o) => o.value === reviewStatus).empty}
+            </EmptyState>
           ) : (
             <>
               <div className="users-list">
@@ -466,14 +509,17 @@ export default function AnalyticsPage() {
                         {f.name && f.email && " · "}
                         {f.email}
                         {!f.name && !f.email && " · Anonymous"}
+                        {f.reviewed_at && ` · Reviewed ${formatDate(f.reviewed_at)}`}
                       </span>
                     </div>
                     <div className="users-row-actions">
-                      {!f.reviewed_at && (
-                        <button type="button" className="admin-btn-secondary" onClick={() => markReviewed(f.id)}>
-                          Mark reviewed
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="admin-btn-secondary"
+                        onClick={() => setReviewed(f.id, !f.reviewed_at)}
+                      >
+                        {f.reviewed_at ? "Mark unreviewed" : "Mark reviewed"}
+                      </button>
                     </div>
                   </div>
                 ))}

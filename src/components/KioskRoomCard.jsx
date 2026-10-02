@@ -1,13 +1,13 @@
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
-import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import { KIOSK_DIALOG_TOP, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 import locationIcon from "../assets/icons/location.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 
 // The kiosk view's room information card. Shares the KioskDialog footprint
-// (the top half of the panorama band, closed by a centered ✕ underneath) so
-// it sits at eye level instead of sliding up from shin height, but needs no
+// (a half-band-tall slice starting at KIOSK_DIALOG_TOP, closed by a centered
+// ✕ underneath) so it sits within reach instead of sliding up from shin height, but needs no
 // keyboard, so it's a photo | details split:
 //
 //   ┌──────────┬────────────────────┐
@@ -27,7 +27,7 @@ export default function KioskRoomCard({ room, onClose, onGetDirections }) {
     <div
       className="kiosk-dialog-layer"
       style={{
-        top: `${KIOSK_TOP_INSET * 100}%`,
+        top: `${KIOSK_DIALOG_TOP * 100}%`,
         "--kiosk-grid-height": `calc(${(KIOSK_PANORAMA_FRACTION / 2) * 100}vh - var(--kiosk-dialog-gap))`,
       }}
     >

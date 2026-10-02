@@ -1,11 +1,11 @@
 import OnScreenKeyboard from "./OnScreenKeyboard";
 import IconPlaceholder from "./IconPlaceholder";
-import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import { KIOSK_TOP_INSET, KIOSK_BOTTOM_INSET, KIOSK_PANORAMA_FRACTION, KIOSK_DIALOG_TOP } from "../utils/kioskLayout";
 
 // The kiosk view's dialog: one shared shell for every module that needs a
-// keyboard (search, directions/nearest exit, feedback). It fills the top
-// half of the panorama area — from just under the header down to the
-// panorama's vertical middle — as a 2×2 grid:
+// keyboard (search, directions/nearest exit, feedback). It fills a
+// half-band-tall slice of the panorama area, starting at KIOSK_DIALOG_TOP
+// (kioskLayout.js) so the keyboard lands in comfortable reach, as a 2×2 grid:
 //
 //   ┌──────────────┬──────────────┐
 //   │              │  (empty —    │
@@ -35,7 +35,7 @@ export default function KioskDialog({ title, titleClassName = "", keyboard = "se
       <div
         className="kiosk-dialog-layer"
         style={{
-          top: `${KIOSK_TOP_INSET * 100}%`,
+          top: `${KIOSK_DIALOG_TOP * 100}%`,
           "--kiosk-grid-height": `calc(${(KIOSK_PANORAMA_FRACTION / 2) * 100}vh - var(--kiosk-dialog-gap))`,
         }}
       >

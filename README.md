@@ -406,7 +406,10 @@ status, and Search (ID/name/room number).
 submitted through MainPage's own feedback prompt (see
 [User guide](#user-guide-)). Unreviewed entries sort first with a
 highlighted border and a running count in the heading; **Mark reviewed**
-clears that.
+clears that, and **Mark unreviewed** puts a row back in the count (to undo
+a misclick or flag one to revisit). The panel's **Status** filter narrows
+the list to All, Unreviewed or Reviewed; the "N new" badge always counts
+the unreviewed rows in the current range, whatever Status is set to.
 
 ### Photo Coverage
 

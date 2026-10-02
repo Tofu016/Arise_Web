@@ -462,24 +462,6 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
-.node-editor-search {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.node-editor-search input {
-  padding: 7px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text);
-  font-size: 13px;
-  min-width: 200px;
-}
 .node-editor-body {
   flex: 1;
   display: flex;
@@ -1341,8 +1323,30 @@ img[data-icon-placeholder="emergency-exit"] {
   gap: var(--space-md, 12px);
   margin-bottom: var(--space-sm, 8px);
 }
+/* Full width across the top of the dropdown grid: it's the control
+   reached for most, and an ID or room name needs more room than one
+   cell. Spanning a grid row rather than sitting above the grid with its
+   own margin keeps the gap below it equal to the gap between dropdown
+   rows (a margin here also lost to `.filter-panel label`'s
+   margin-bottom: 0, which is more specific, leaving no gap at all). */
 .filter-search-field {
+  grid-column: 1 / -1;
+}
+.filter-search-input-wrap {
+  position: relative;
   display: block;
+}
+.filter-search-icon {
+  position: absolute;
+  left: 10px;
+  top: calc(50% + 3px); /* + half the input's 6px margin-top */
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.filter-panel .filter-search-input-wrap input {
+  padding-left: 34px;
 }
 .position-readout {
   font-size: 12px;
@@ -2860,25 +2864,109 @@ img[data-icon-placeholder="emergency-exit"] {
   outline: none;
   border-color: var(--focus-ring);
 }
+/* Switches between the rooms on the open node; sized as real buttons
+   (not tag chips) since they're the main way to move within a node. */
 .room-edit-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .room-edit-tab {
-  padding: 5px 10px;
+  min-height: 38px;
+  padding: 8px 18px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface-sunken);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
+  font-family: inherit;
   cursor: pointer;
 }
-.room-edit-tab-active {
+.room-edit-tab:hover {
+  border-color: var(--border-strong);
+}
+.room-edit-tab-active,
+.room-edit-tab-active:hover {
   border-color: var(--accent);
   background: var(--accent-tint);
   color: var(--accent);
+  font-weight: 700;
+}
+/* Which node the open room is on, above the form. */
+.room-editor-node-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.room-editor-node-heading h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text);
+}
+.room-editor-node-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+/* Room Editor's Rooms/Nodes list switch, in the list panel's header. */
+.room-editor-list-mode {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: var(--admin-radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.room-editor-list-mode-opt {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.room-editor-list-mode-opt:hover {
+  background: var(--surface);
+}
+.room-editor-list-mode-opt-active,
+.room-editor-list-mode-opt-active:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+/* A node's rooms as pills in the Room Editor's Nodes list; each opens
+   that room, while the rest of the row still selects the node. */
+.node-row-room-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.node-row-room-pill {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.node-row-room-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.node-row-room-pill-active,
+.node-row-room-pill-active:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 .nav-tester-modal {
   display: flex;
@@ -5824,6 +5912,25 @@ a.sidebar-room-contact-row:focus-visible span {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
+}
+/* The page-wide bar stays pinned inside .admin-layout-content (the scroller)
+   so the date range is reachable from the bottom of the page. The 12px top
+   leaves a strip of the sunken page above it, so it reads as a floating
+   card rather than a header welded to the scroller edge. z-index only has
+   to clear the chart cards scrolling under it; the sidebar flyout and
+   admin modals live outside this scroller and already stack above it. */
+.analytics-filter-bar-sticky {
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+  transition: box-shadow 0.15s ease;
+}
+.analytics-filter-bar-stuck {
+  box-shadow: var(--shadow-2);
+}
+/* Zero-height marker FilterBar watches to know when the bar is stuck. */
+.analytics-filter-sentinel {
+  height: 0;
 }
 /* The Comments section's own filters, sitting inside its white card. */
 .analytics-filter-bar-inline {

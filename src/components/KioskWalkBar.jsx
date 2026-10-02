@@ -1,5 +1,5 @@
 import AutoWalkCountdown from "./AutoWalkCountdown";
-import { KIOSK_TOP_INSET, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
+import { KIOSK_DIALOG_TOP, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 import IconPlaceholder from "./IconPlaceholder";
 
 // Kiosk view only: the compact controls that replace the big directions
@@ -24,9 +24,10 @@ export default function KioskWalkBar({
   onToggleAutoWalk,
   onShowDialog,
 }) {
-  // The dialog's grid ends at half the panorama area's height; its keyboard
-  // is the lower-right cell, inset by the grid's own 12px padding.
-  const bottom = `calc(${(1 - KIOSK_TOP_INSET - KIOSK_PANORAMA_FRACTION / 2) * 100}vh + 12px)`;
+  // The dialog's grid is half the panorama area tall, starting at
+  // KIOSK_DIALOG_TOP; its keyboard is the lower-right cell, inset by the
+  // grid's own 12px padding.
+  const bottom = `calc(${(1 - KIOSK_DIALOG_TOP - KIOSK_PANORAMA_FRACTION / 2) * 100}vh + 12px)`;
 
   return (
     <div className="kiosk-walkbar" style={{ bottom }} role="region" aria-label="Walking controls">

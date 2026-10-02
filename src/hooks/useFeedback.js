@@ -7,8 +7,8 @@ export const FEEDBACK_PAGE_SIZE = 20;
 // A dedicated hook for the Analytics dashboard's Comments section, called
 // directly rather than shared through AdminLayout's Outlet context, since
 // no other admin section needs feedback data. Rows are used as the backend
-// returns them. filters: { from, to, minRating, hasComment, sort }, all
-// optional, see Feedback_Model::getAll.
+// returns them. filters: { from, to, minRating, maxRating, hasComment,
+// reviewed, sort }, all optional, see Feedback_Model::getAll.
 //
 // Paged server-side: the first page loads whenever the filters change and
 // loadMore() appends the next one. Not built on useCollection, since that
@@ -103,19 +103,29 @@ export function useFeedback(filters = {}) {
   }, [filtersKey, state.feedback.length, toast]);
 
   // Updated in place rather than refetched, so the row keeps its position
-  // and the pages already loaded stay loaded.
-  const markReviewed = useCallback(
-    async (id) => {
+  // and the pages already loaded stay loaded. That holds under a Status
+  // filter too: a row toggled out of the filter stays put (now showing its
+  // new state) until the filters change, so a misclick can be undone on
+  // the spot instead of the row vanishing.
+  const setReviewed = useCallback(
+    async (id, reviewed) => {
+      const word = reviewed ? "reviewed" : "unreviewed";
       try {
-        const data = await apiPatch(`Feedback_API/markReviewed/${id}`, {});
-        setState((s) => ({
-          ...s,
-          feedback: s.feedback.map((f) => (f.id === id ? data.feedback : f)),
-          unreviewedCount: Math.max(0, s.unreviewedCount - 1),
-        }));
-        toast.success("Feedback marked reviewed.");
+        const data = await apiPatch(`Feedback_API/${reviewed ? "markReviewed" : "markUnreviewed"}/${id}`, {});
+        setState((s) => {
+          const before = s.feedback.find((f) => f.id === id);
+          // Only a real state change moves the badge count, so a double
+          // click can't drift it.
+          const changed = before && !before.reviewed_at !== !data.feedback.reviewed_at;
+          return {
+            ...s,
+            feedback: s.feedback.map((f) => (f.id === id ? data.feedback : f)),
+            unreviewedCount: changed ? Math.max(0, s.unreviewedCount + (reviewed ? -1 : 1)) : s.unreviewedCount,
+          };
+        });
+        toast.success(`Feedback marked ${word}.`);
       } catch (err) {
-        toast.error(`Couldn't mark feedback reviewed: ${err.message}`);
+        toast.error(`Couldn't mark feedback ${word}: ${err.message}`);
       }
     },
     [toast]
@@ -131,6 +141,6 @@ export function useFeedback(filters = {}) {
     hasMore: state.feedback.length < state.total,
     error: state.error,
     loadMore,
-    markReviewed,
+    setReviewed,
   };
 }

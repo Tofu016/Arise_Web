@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
+import RoomList from "../../components/RoomList";
 import FilterPanel from "../../components/FilterPanel";
 import FilePickerButton from "../../components/FilePickerButton";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
@@ -10,6 +11,8 @@ import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
 import IconPlaceholder from "../../components/IconPlaceholder";
 import linkIcon from "../../assets/icons/link.svg";
+import { listAllRooms } from "../../utils/search";
+import { allBuildings, buildingLabel, floorLabel } from "../../utils/constants";
 
 const defaultFilters = {
   building: "all",
@@ -45,10 +48,18 @@ function isRoomNameTaken(newName, nodes, currentNodeId, currentRoomName) {
   return false;
 }
 
+const LIST_MODES = [
+  { id: "rooms", label: "Rooms" },
+  { id: "nodes", label: "Nodes" },
+];
+
 // Promoted from the old RoomEditPanel modal to a full page. Which node's
 // rooms are being edited is the SAME shared selectedNodeId every other
 // section uses — picking a node from this page's own Node List (or from
 // Node Editor/Navigation Editor earlier) all point at the same node here.
+// A room can be reached two ways: straight from the Rooms list, or through
+// its node in the Nodes list (the row, or one of its room pills). Either
+// way a selection is a (node, room) pair.
 export default function RoomEditorPage() {
   const { nodes, selectedNodeId, setSelectedNodeId, updateNode } = useOutletContext();
   const { getForRoom, saveRoomDialog } = usePlacardDialogs();
@@ -58,15 +69,24 @@ export default function RoomEditorPage() {
   const rooms = node?.rooms || [];
 
   const [filters, setFilters] = useState(defaultFilters);
+  const [listMode, setListMode] = useState("rooms");
   const [selectedRoom, setSelectedRoom] = useState(rooms[0] || null);
+  // Picking a node falls back to its first room, unless the room was
+  // picked along with it (handleSelectRoom sets both in one render).
   useEffect(() => {
-    setSelectedRoom(rooms[0] || null);
+    setSelectedRoom((cur) => (cur && rooms.includes(cur) ? cur : rooms[0] || null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node?.id]);
+
+  const handleSelectRoom = (nodeId, roomName) => {
+    setSelectedNodeId(nodeId);
+    setSelectedRoom(roomName);
+  };
 
   const existing = selectedRoom ? getForRoom(selectedRoom) : null;
 
   const [roomTitle, setRoomTitle] = useState(selectedRoom || "");
+  const [roomNodeId, setRoomNodeId] = useState(node?.id || "");
   const [description, setDescription] = useState("");
   const [department, setDepartment] = useState("");
   const [contactNumber, setContactNumber] = useState("");
@@ -88,6 +108,7 @@ export default function RoomEditorPage() {
   // the sensible reading of what Cancel means here.
   const resetFromSaved = () => {
     setRoomTitle(selectedRoom || "");
+    setRoomNodeId(node?.id || "");
     setDescription(existing?.roomDescription || "");
     setDepartment(existing?.department || "");
     setContactNumber(existing?.contactNumber || "");
@@ -104,7 +125,7 @@ export default function RoomEditorPage() {
   useEffect(() => {
     resetFromSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRoom, existing?.id]);
+  }, [selectedRoom, existing?.id, node?.id]);
 
   const { requestBlur, reblurStored, blurDialog } = useBlurReview();
   // Bumped when a stored photo is edited in place (same path, new bytes), so
@@ -175,6 +196,8 @@ export default function RoomEditorPage() {
 
     const trimmedTitle = roomTitle.trim();
     const isRenaming = trimmedTitle !== selectedRoom;
+    const targetNode = nodes.find((n) => n.id === roomNodeId) || node;
+    const isMoving = targetNode.id !== node.id;
 
     if (isRenaming) {
       if (!trimmedTitle) {
@@ -189,7 +212,14 @@ export default function RoomEditorPage() {
 
     setSaving(true);
     try {
-      if (isRenaming) {
+      if (isMoving) {
+        // Added to the new node before it leaves the old one: if the second
+        // write fails the room is listed twice (fixable here) rather than
+        // on no node at all. Its saved details are keyed by room name, not
+        // node, so they follow it with no extra write.
+        await updateNode(targetNode.id, { rooms: [...(targetNode.rooms || []), trimmedTitle] });
+        await updateNode(node.id, { rooms: (node.rooms || []).filter((r) => r !== selectedRoom) });
+      } else if (isRenaming) {
         // Update "Rooms served" first — replace the old name with the new
         // one at the same position, leaving every other room on this node
         // untouched.
@@ -219,7 +249,8 @@ export default function RoomEditorPage() {
         ocrSearchTerms: ocrTerm ? [ocrTerm] : [],
       });
 
-      if (isRenaming) setSelectedRoom(trimmedTitle);
+      if (isMoving) setSelectedNodeId(targetNode.id);
+      if (isRenaming || isMoving) setSelectedRoom(trimmedTitle);
 
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
@@ -231,15 +262,63 @@ export default function RoomEditorPage() {
     }
   };
 
+  // The Node picker's options, grouped by building in sidebar order. A
+  // node on a building that's no longer listed still needs an option, or
+  // the picker can't show the node its room is actually on.
+  const buildings = allBuildings();
+  const nodeOptionGroups = [
+    ...buildings.map((b) => ({ id: b.id, label: b.label, nodes: nodes.filter((n) => n.building === b.id) })),
+    { id: "__other", label: "Other", nodes: nodes.filter((n) => !buildings.some((b) => b.id === n.building)) },
+  ].filter((g) => g.nodes.length > 0);
+
+  // Takes the place of the list's usual counts header: which list the
+  // sidebar shows matters more on this page than how many have photos.
+  const listHeader = (
+    <div className="node-list-header">
+      <div className="room-editor-list-mode" role="group" aria-label="List">
+        {LIST_MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={"room-editor-list-mode-opt" + (listMode === m.id ? " room-editor-list-mode-opt-active" : "")}
+            aria-pressed={listMode === m.id}
+            onClick={() => setListMode(m.id)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Not memoized: room details come from usePlacardDialogs, whose list is
+  // deliberately not exposed, so no dependency changes when a save lands.
+  // Its refresh re-renders this page, which rebuilds this.
+  const allRooms = listAllRooms(nodes, getForRoom);
+
   const sidebar = (
     <div className="room-editor-sidebar">
       <FilterPanel filters={filters} onChange={setFilters} />
-      <NodeList
-        nodes={nodes}
-        filters={filters}
-        selectedNodeId={selectedNodeId}
-        onSelect={setSelectedNodeId}
-      />
+      {listMode === "rooms" ? (
+        <RoomList
+          rooms={allRooms}
+          filters={filters}
+          selectedNodeId={selectedNodeId}
+          selectedRoom={selectedRoom}
+          onSelectRoom={handleSelectRoom}
+          header={listHeader}
+        />
+      ) : (
+        <NodeList
+          nodes={nodes}
+          filters={filters}
+          selectedNodeId={selectedNodeId}
+          onSelect={setSelectedNodeId}
+          selectedRoom={selectedRoom}
+          onSelectRoom={handleSelectRoom}
+          header={listHeader}
+        />
+      )}
     </div>
   );
 
@@ -249,7 +328,7 @@ export default function RoomEditorPage() {
         <h2 className="admin-page-heading">Room Editor</h2>
 
         {!node && (
-          <p className="empty-hint">Select a node from the list on the right first.</p>
+          <p className="empty-hint">Select a room or a node from the list on the right first.</p>
         )}
 
         {node && rooms.length === 0 && (
@@ -260,6 +339,13 @@ export default function RoomEditorPage() {
 
         {node && rooms.length > 0 && (
           <div className="room-editor-form-wrap room-edit-modal">
+            <div className="room-editor-node-heading">
+              <h3>{node.name}</h3>
+              <span className="room-editor-node-meta">
+                {buildingLabel(node.building)} · {floorLabel(node.floor)} · {node.id}
+              </span>
+            </div>
+
             {rooms.length > 1 && (
               <div className="room-edit-tabs">
                 {rooms.map((r) => (
@@ -287,6 +373,25 @@ export default function RoomEditorPage() {
                 <p className="field-hint">
                   Renaming here updates both "Rooms served" on this node and this room's saved details together;
                   room names must stay unique across the whole campus.
+                </p>
+
+                <label>
+                  Node
+                  <select value={roomNodeId} onChange={(e) => setRoomNodeId(e.target.value)}>
+                    {nodeOptionGroups.map((g) => (
+                      <optgroup key={g.id} label={g.label}>
+                        {g.nodes.map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {n.name} ({floorLabel(n.floor)}, {n.id})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+                <p className="field-hint">
+                  Where this room is reached from. Choosing another node moves the room to that node's "Rooms
+                  served" on Save; its details and photos come with it.
                 </p>
 
                 <label>

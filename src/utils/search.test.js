@@ -8,6 +8,9 @@ import {
   findRoomForMarker,
   findMarkerForRoom,
   resolveExactNodeMatch,
+  rankNodeMatches,
+  listAllRooms,
+  rankRoomMatches,
 } from "./search";
 
 const nodes = [
@@ -161,5 +164,62 @@ describe("forgiving matching", () => {
     expect(findRoomForMarker({ label: "  reg istrar" }, rooms)?.roomName).toBe("Registrar");
     expect(resolveExactNodeMatch("MAIN entrance", nodes, rooms)?.id).toBe("n1");
     expect(resolveExactNodeMatch("main entrnace", nodes, rooms)).toBeNull(); // exact only
+  });
+});
+
+describe("rankNodeMatches", () => {
+  const list = [
+    { id: "COE-1F-002", name: "Lobby West", rooms: [] },
+    { id: "COE-1F-001", name: "Library Hallway", rooms: ["Library"] },
+    { id: "COE-2F-001", name: "Hallway", rooms: ["203"] },
+  ];
+
+  it("returns the list untouched for a blank query", () => {
+    expect(rankNodeMatches("  ", list)).toBe(list);
+  });
+
+  it("matches IDs, names and rooms, best match first, without truncating", () => {
+    expect(rankNodeMatches("library", list).map((n) => n.id)).toEqual(["COE-1F-001"]);
+    expect(rankNodeMatches("hallway", list).map((n) => n.id)).toEqual(["COE-2F-001", "COE-1F-001"]);
+    expect(rankNodeMatches("coe 1f", list).map((n) => n.id)).toEqual(["COE-1F-002", "COE-1F-001"]);
+    expect(rankNodeMatches("203", list).map((n) => n.id)).toEqual(["COE-2F-001"]);
+  });
+
+  it("forgives typos in letters-only queries, ranked after real matches", () => {
+    expect(rankNodeMatches("libary", list).map((n) => n.id)).toEqual(["COE-1F-001"]);
+    expect(rankNodeMatches("lobby", [...list, { id: "x", name: "Loby", rooms: [] }]).map((n) => n.id)).toEqual(["COE-1F-002", "x"]);
+  });
+});
+
+describe("listAllRooms", () => {
+  it("lists every room on every node, details or not, without deduping", () => {
+    const dupes = [...nodes, { id: "n4", name: "Annex", rooms: ["203"] }];
+    const rooms = listAllRooms(dupes, getForRoom);
+    expect(rooms.map((r) => `${r.node.id}/${r.roomName}`)).toEqual(["n1/203", "n1/2033", "n2/Registrar", "n4/203"]);
+    expect(rooms[1].placard).toEqual({});
+    expect(listAllRooms([{ id: "x", name: "X", rooms: ["Nope"] }], getForRoom)[0].placard).toBeNull();
+  });
+});
+
+describe("rankRoomMatches", () => {
+  const rooms = listAllRooms(nodes, getForRoom);
+  const names = (q) => rankRoomMatches(q, rooms).map((r) => r.roomName);
+
+  it("keeps list order for a blank query", () => {
+    expect(rankRoomMatches("", rooms)).toBe(rooms);
+  });
+
+  it("ranks exact room name, then partial, then text", () => {
+    expect(names("203")).toEqual(["203", "2033"]);
+    expect(names("math")).toEqual(["203"]);
+  });
+
+  it("finds rooms through their node's ID or name", () => {
+    expect(names("n1")).toEqual(["203", "2033"]);
+    expect(names("hallway 2")).toEqual(["Registrar"]);
+  });
+
+  it("forgives typos in the room name", () => {
+    expect(names("registar")).toEqual(["Registrar"]);
   });
 });

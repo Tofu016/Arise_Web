@@ -1,5 +1,6 @@
 import { NODE_TYPES, allBuildings, floorLabel, floorsForBuilding } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
+import IconPlaceholder from "./IconPlaceholder";
 
 export default function FilterPanel({ filters, onChange }) {
   useCustomBuildingsVersion(); // re-render when an admin-created building is added
@@ -17,9 +18,26 @@ export default function FilterPanel({ filters, onChange }) {
 
   return (
     <div className="panel filter-panel">
-      <h3>Filter</h3>
+      <h3>Search and Filter</h3>
 
       <div className="filter-panel-grid">
+        {/* Narrows the same list the dropdowns below do, so a search only
+            looks inside the chosen building/floor/type; see rankNodeMatches
+            for how matches are ordered. A full-width cell of the dropdowns'
+            own grid, so the space under it is always the grid's row gap. */}
+        <label className="filter-search-field">
+          Search
+          <span className="filter-search-input-wrap">
+            <IconPlaceholder name="search-magnifier" className="filter-search-icon" />
+            <input
+              type="search"
+              value={filters.search}
+              onChange={(e) => set("search", e.target.value)}
+              placeholder="ID, name, or room"
+            />
+          </span>
+        </label>
+
         <label>
           Building
           <select value={filters.building} onChange={(e) => set("building", e.target.value)}>

@@ -170,3 +170,60 @@ export function resolveExactNodeMatch(query, nodes, searchableRooms) {
   const roomMatch = searchableRooms.find((r) => normalize(r.roomName) === q);
   return roomMatch ? roomMatch.node : null;
 }
+
+// The admin node lists' search: every node whose ID, name or any "Rooms
+// served" entry matches, best match first (identical, then starts-with,
+// then contains, then typo-tolerant), keeping list order within a tier.
+// Unlike searchNodes it never truncates, since the admin list IS the
+// result set, and it matches IDs too, which is how admins refer to nodes.
+// A blank query leaves the list as it was.
+export function rankNodeMatches(query, nodes) {
+  const q = normalize(query);
+  if (!q) return nodes;
+  return rankBy(nodes, (n) => {
+    const score = bestScore(q, [n.id, n.name, ...(n.rooms || [])]);
+    return score === Infinity ? null : { group: GROUP_EXACT, score };
+  });
+}
+
+// Every "Rooms served" entry on every node, with or without saved details,
+// for the Room Editor's Rooms list. Unlike buildSearchableRooms it never
+// dedupes: if two nodes do list the same name, both need to be reachable
+// to fix that, so each entry is keyed by its node too (see roomKey).
+export function listAllRooms(nodes, getForRoom) {
+  const out = [];
+  for (const node of nodes || []) {
+    for (const roomName of node.rooms || []) {
+      out.push({ roomName, node, placard: getForRoom(roomName) || null });
+    }
+  }
+  return out;
+}
+
+export const roomKey = (nodeId, roomName) => `${nodeId}::${roomName}`;
+
+// The Room Editor's Rooms list search. Same tiers as searchRooms (room
+// name, then department/description text, then typo-tolerant), with the
+// room's node ID and name also counted as text so typing a node still
+// lists the rooms on it. Never truncates; a blank query keeps list order.
+export function rankRoomMatches(query, rooms) {
+  const q = normalize(query);
+  if (!q) return rooms;
+  return rankBy(rooms, (r) => {
+    const nameScore = matchScore(q, r.roomName);
+    if (nameScore === 0) return { group: GROUP_EXACT, score: 0 };
+    if (nameScore < 30) return { group: GROUP_PARTIAL, score: nameScore };
+
+    const { roomDescription, department } = r.placard || {};
+    const shortText = [department, r.node?.id, r.node?.name].filter(Boolean);
+    const textScore = Math.min(
+      bestScore(q, shortText, { fuzzy: false }),
+      matchScore(q, roomDescription, { fuzzy: false })
+    );
+    if (textScore < Infinity) return { group: GROUP_TEXT, score: textScore };
+
+    const fuzzy = Math.min(nameScore, bestScore(q, shortText));
+    if (isFuzzyScore(fuzzy)) return { group: GROUP_FUZZY, score: fuzzy };
+    return null;
+  });
+}

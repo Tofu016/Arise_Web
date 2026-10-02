@@ -15,7 +15,7 @@ const defaultFilters = {
   search: "",
 };
 
-// Toolbar (New Node/New Building/Node Preview/Search) is deliberately
+// Toolbar (New Node/New Building/Node Preview) is deliberately
 // scoped to this page only, not shared across every admin section —
 // confirmed against the wireframes, where neither Virtual Map Navigation
 // Editor nor Room Editor show it. The flowchart moved out to its own
@@ -105,16 +105,6 @@ export default function NodeEditorPage() {
             layout-only pass. Flag if this should live somewhere else
             instead. */}
         <ExportImportBar nodes={nodes} />
-
-        <label className="node-editor-search">
-          Search Node
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-            placeholder="ID, name, or room..."
-          />
-        </label>
       </div>
 
       <div className="node-editor-body">

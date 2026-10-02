@@ -4,7 +4,8 @@
 // the current filter and how many have a photo. Each caller keeps its
 // own filtering logic (the two domains filter on different fields
 // entirely), and only hands this component the already-filtered list
-// plus how to render its meta line.
+// plus how to render its meta line. `header`, when given, replaces the
+// default counts header (the Room Editor puts its Rooms/Nodes switch there).
 export default function EntityListPanel({
   label,
   allItems,
@@ -14,15 +15,18 @@ export default function EntityListPanel({
   renderMeta,
   renderExtra,
   emptyMessage,
+  header,
 }) {
   const photoCount = allItems.filter((it) => it.photo).length;
 
   return (
     <div className="panel node-list-panel">
-      <div className="node-list-header">
-        <h3>{label} ({filteredItems.length} of {allItems.length})</h3>
-        <span className="photo-progress">{photoCount}/{allItems.length} have photos</span>
-      </div>
+      {header ?? (
+        <div className="node-list-header">
+          <h3>{label} ({filteredItems.length} of {allItems.length})</h3>
+          <span className="photo-progress">{photoCount}/{allItems.length} have photos</span>
+        </div>
+      )}
       <div className="node-list">
         {filteredItems.map((item) => (
           <div
