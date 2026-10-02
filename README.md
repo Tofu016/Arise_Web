@@ -649,3 +649,7 @@ Signage slides (kiosk advertisements), from `signage_slides` via
   finishes picking a star). Licensed **CC0** (public domain, no attribution
   required). The filename keeps "CREATIVE-COMMONS-ZERO" in it on purpose so
   the license is obvious at a glance — don't rename it away from that.
+- `src/assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg`: the "How to
+  use this tour" button icon. "Question mark Pinhead icon" from Wikimedia
+  Commons, licensed **CC0**; recolored to the app's grey. Same filename
+  convention as above.

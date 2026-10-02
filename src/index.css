@@ -1711,20 +1711,6 @@ img[data-icon-placeholder="emergency-exit"] {
 .sidebar-entrances .entrance-list {
   width: 100%;
 }
-.sidebar-help-btn {
-  margin-top: 16px;
-  padding: 8px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-}
-.sidebar-help-btn:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
 .entrance-btn.active {
   border-color: var(--accent);
   background: var(--selected-bg);
@@ -4013,10 +3999,14 @@ img[data-icon-placeholder="emergency-exit"] {
    (opening upward made sense at the bottom of the screen; it would go
    off-screen at the top), and right-aligned instead of left-aligned,
    since the button now sits near the right edge rather than the left. */
+/* right: 100px clears the zoom indicator, which now owns the top-right
+   corner (.pano-wheel-zoom-indicator: 16px offset + its pill, ~70px at
+   the widest realistic level + 12px gap). Reserved even while the pill is
+   hidden at 1.0x so the button doesn't jump when zooming. */
 .floating-account-wrap-top {
   position: absolute;
   top: 16px;
-  right: 16px;
+  right: 100px;
   z-index: 30;
 }
 .floating-account-wrap-top .account-popover {
@@ -4037,27 +4027,22 @@ img[data-icon-placeholder="emergency-exit"] {
   border-color: var(--accent);
 }
 /* Positioned OUTSIDE the rail's own flex layout, so it needs its own
-   absolute position — stacked directly above where the desktop minimap
-   sits (same left offset), not beside it. 130px (the minimap's own
-   height) + 16px (the minimap's own bottom offset) + 12px gap = 158px,
-   placing this button's bottom edge just above the minimap's top edge.
-   Flush with the rail's own left edge (16px) — no longer needs to clear
-   the rail's width, since this button moved out of the rail entirely.
-   (The directions button that used to sit here moved into the sidebar's
-   search bar, so feedback is now the base of this stack.) */
+   absolute position: rightmost of the bottom-right safety row (feedback,
+   Nearest Exit, How to use, laid out right to left), in the corner the zoom indicator used to
+   occupy. The minimap now sits alone in the bottom-left. */
 .floating-feedback-btn {
   position: absolute;
-  bottom: 158px;
-  left: 16px;
+  bottom: 16px;
+  right: calc(16px + env(safe-area-inset-right));
   z-index: 30;
 }
-/* One step further up the same stack — 158px (feedback button's own
-   offset) + 44px + 12px = 214px. Same left offset and gap convention as
-   the rest of this bottom-left safety cluster. */
+/* One step further left along the same row: 16px (feedback button's own
+   offset) + 44px + 12px = 72px. Same bottom offset and gap convention as
+   the rest of this bottom-right safety cluster. */
 .floating-nearest-exit-btn {
   position: absolute;
-  bottom: 214px;
-  left: 16px;
+  bottom: 16px;
+  right: calc(72px + env(safe-area-inset-right));
   z-index: 30;
   background: var(--success);
   border-color: var(--success);
@@ -4065,6 +4050,14 @@ img[data-icon-placeholder="emergency-exit"] {
 .floating-nearest-exit-btn:hover {
   border-color: var(--success);
   filter: brightness(1.1);
+}
+/* One more step left along the same row: 72px (Nearest Exit's offset) +
+   44px + 12px = 128px. */
+.floating-help-btn {
+  position: absolute;
+  bottom: 16px;
+  right: calc(128px + env(safe-area-inset-right));
+  z-index: 30;
 }
 .account-popover {
   position: absolute;
@@ -4138,17 +4131,18 @@ img[data-icon-placeholder="emergency-exit"] {
 .floating-title-wrap {
   position: absolute;
   top: 16px;
-  /* 140px gutters on both sides (not 0/0) — this pill previously relied
+  /* 200px gutters on both sides (not 0/0) — this pill previously relied
      on a viewport-relative max-width (55vw on .floating-title-pill) to
      avoid the left rail (.floating-rail, 44px button + 16px offset) and
      the top-right account button (.floating-account-wrap-top, up to
-     ~100px for the "Admin" label + 16px offset), but 55vw ignores both
+     ~100px for the "Admin" label + 100px offset to clear the zoom
+     indicator, so the gutters are now 200px), but 55vw ignores both
      of those and can overlap either one on a moderate window width with
      a long node name. Explicit, equal gutters keep this both genuinely
      centered (an asymmetric gutter shifts the centered content off
      screen-center by half the difference) and guaranteed clear of both side elements. */
-  left: 140px;
-  right: 140px;
+  left: 200px;
+  right: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7324,12 +7318,13 @@ html.kiosk-mode body {
   opacity: 0.85;
   box-shadow: var(--shadow-2);
 }
-/* Desktop scroll-wheel zoom indicator: bottom-right corner of the panorama
-   screen, clear of the top-right account button and the bottom-left
-   minimap/rail stack (see .floating-account-wrap-top, .floating-rail). */
+/* Desktop scroll-wheel zoom indicator: top-right corner of the panorama
+   screen, with the account button to its left (see
+   .floating-account-wrap-top) and the safety button row in the bottom-right. top: 22px vertically centers the ~32px pill on the 44px
+   account button (16px + 6px). */
 .pano-wheel-zoom-indicator {
   position: absolute;
-  bottom: 16px;
+  top: 22px;
   right: calc(16px + env(safe-area-inset-right));
   z-index: 20;
 }

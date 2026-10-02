@@ -25,6 +25,7 @@ import DirectoryAccordion from "../components/DirectoryAccordion";
 import directionsIcon from "../assets/icons/directions.svg";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import powerIcon from "../assets/icons/power.svg";
+import questionMarkIcon from "../assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
@@ -1593,10 +1594,6 @@ function MainPageContent({ onReset }) {
                         selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}
                       />
-
-                      <button type="button" className="sidebar-help-btn" onClick={replayIntro}>
-                        {PLACEHOLDER("question-help")} How to use this tour
-                      </button>
                     </div>
                   )}
 
@@ -1688,9 +1685,8 @@ function MainPageContent({ onReset }) {
                   </div>
                 </div>
 
-                {/* Client-requested: bottom-left, stacked directly above
-                    where the desktop minimap sits (same stacking
-                    convention as the rest of this cluster). */}
+                {/* Client-requested: rightmost of the bottom-right safety row
+                    (feedback, Nearest Exit, How to use). */}
                 <button
                   className="floating-rail-btn floating-feedback-btn"
                   onClick={overlay.openFeedback}
@@ -1699,8 +1695,8 @@ function MainPageContent({ onReset }) {
                   {PLACEHOLDER("chat-bubble")}
                 </button>
 
-                {/* Nearest Exit: same bottom-left safety stack, one more
-                    step up from feedback, so it's reachable without
+                {/* Nearest Exit: same bottom-right safety row, one more
+                    step left of feedback, so it's reachable without
                     opening the menu first. */}
                 <button
                   className="floating-rail-btn floating-nearest-exit-btn"
@@ -1710,7 +1706,20 @@ function MainPageContent({ onReset }) {
                   <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />
                 </button>
 
-                {/* Moved out of the rail and up to the top-right — its own
+                {/* How to use this tour: left end of the same bottom-right row,
+                    one more step left of Nearest Exit. Replays the intro
+                    overlays. */}
+                <button
+                  className="floating-rail-btn floating-help-btn"
+                  onClick={replayIntro}
+                  title="How to use this tour"
+                  aria-label="How to use this tour"
+                >
+                  <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                </button>
+
+                {/* Moved out of the rail and up to the top-right, just left of the
+                    zoom indicator — its own
                     popover now needs to open DOWNWARD instead of upward
                     (see .floating-account-wrap-top override), since it's no
                     longer sitting at the bottom of the screen where opening
