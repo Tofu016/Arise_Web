@@ -16,9 +16,8 @@ import ArrivalModal from "../components/ArrivalModal";
 import FeedbackPanel from "../components/FeedbackPanel";
 import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
-import Coachmark from "../components/Coachmark";
-import HelpModal from "../components/HelpModal";
 import DesktopIntroOverlay from "../components/DesktopIntroOverlay";
+import KioskIntroOverlay from "../components/KioskIntroOverlay";
 import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
@@ -32,7 +31,6 @@ import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png
 import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useAnalytics } from "../hooks/useAnalytics";
-import { useOnboardingHints } from "../hooks/useOnboardingHints";
 import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
 import { useKioskSession, useKioskZoomLock, useKioskInspectLock } from "../hooks/useKioskSession";
@@ -43,7 +41,8 @@ import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findMarkerForRoom, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
 import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
-import { speak } from "../utils/tts";
+import { speak, stopSpeaking } from "../utils/tts";
+import { DESKTOP_INTRO_SPEECH, KIOSK_INTRO_SPEECH } from "../utils/introScript";
 import {
   floorsForBuilding,
   findKioskEntranceShortcuts,
@@ -165,32 +164,33 @@ function MainPageContent({ onReset }) {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
 
-  // First-run coachmarks (see hooks/useOnboardingHints.js). Kiosk-only: it
-  // shows them one at a time (activeId) — see the render below. The desktop
-  // regular view has no starting-instructions sequence at all (empty order),
-  // so it never accumulates any activeId/activeIds to show.
-  const kioskDockBtnRef = useRef(null);
-  const onboarding = useOnboardingHints(compact ? ["move", "dock"] : []);
+  // Kiosk's own session-start walkthrough (KioskIntroOverlay), the touch
+  // counterpart of DesktopIntroOverlay below. Not persisted: MainPageContent
+  // remounts on every kiosk reset, so each new visitor sees it.
+  const [kioskIntroSeen, setKioskIntroSeen] = useState(false);
 
   // Desktop's own session-start walkthrough (DesktopIntroOverlay) — a single
-  // upfront splash instead of the kiosk's sequential coachmarks, since the
-  // desktop view has no per-button callouts to point at (see onboarding
-  // above). Deliberately not persisted, same reasoning as the coachmarks:
-  // every fresh page load is a new visitor's first impression.
+  // upfront splash, same shape as the kiosk's above. Deliberately not
+  // persisted: every fresh page load is a new visitor's first impression.
   const [desktopIntroSeen, setDesktopIntroSeen] = useState(false);
   // Same idea, for the app sidebar's own walkthrough (SidebarIntroOverlay) —
   // a separate seen flag per overlay (each covers a different region and
   // starts hidden independently), but a single shared dismiss: clicking
   // either one closes both at once instead of leaving the other still up.
   const [sidebarIntroSeen, setSidebarIntroSeen] = useState(false);
+  // Set only by the help button replaying the overlays, never by the
+  // session-start display: the narration is an opt-in extra, and a visitor
+  // shouldn't get speech they didn't ask for.
+  const [narrateIntro, setNarrateIntro] = useState(false);
   const dismissIntro = () => {
+    setNarrateIntro(false);
     setDesktopIntroSeen(true);
     setSidebarIntroSeen(true);
   };
   // "How to use this tour" (the sidebar's own help button) replays both
-  // overlays instead of opening the old HelpModal now that they exist —
-  // HelpModal stays in use for the kiosk's radial-dock help item below.
+  // overlays.
   const replayIntro = () => {
+    setNarrateIntro(true);
     setDesktopIntroSeen(false);
     setSidebarIntroSeen(false);
   };
@@ -203,22 +203,6 @@ function MainPageContent({ onReset }) {
   const handleEndSession = () => {
     if (feedbackGiven) overlay.openEndSessionThanks();
     else overlay.openFromDock("feedback");
-  };
-
-  // A dismissed hint fades out rather than vanishing — held mounted (with
-  // the CSS transition running) for FADE_MS before the real dismiss()
-  // actually drops it from the queue. A hint that stops matching WITHOUT
-  // going through here (its target got covered by other UI opening, e.g.
-  // the menu) just disappears instantly instead, by no longer being
-  // rendered at all — see the render below.
-  const FADE_MS = 250; // matches .coachmark-banner/.coachmark-pointer's CSS transition
-  const [closingHintIds, setClosingHintIds] = useState([]);
-  const fadeOutHint = (id) => {
-    setClosingHintIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setTimeout(() => {
-      onboarding.dismiss(id);
-      setClosingHintIds((prev) => prev.filter((x) => x !== id));
-    }, FADE_MS);
   };
 
   // What's on screen over the panorama — the floating panel, the mobile/kiosk
@@ -236,15 +220,6 @@ function MainPageContent({ onReset }) {
     floorPick: floorPickBuilding,
     roomCard: selectedRoomCard,
   } = overlay;
-
-  // A hint's own control being actually used is as good a "got it" as
-  // tapping the tooltip's button — dismiss it the moment that happens,
-  // rather than leaving it to reappear (once nothing else is covering the
-  // screen again) until it's explicitly dismissed.
-  useEffect(() => {
-    if (mobileDockOpen) onboarding.dismiss("dock");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mobileDockOpen, onboarding.dismiss]);
 
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
@@ -450,9 +425,6 @@ function MainPageContent({ onReset }) {
     if (outcome === "ignored") return;
     if (outcome === "moved") {
       afterMove(action);
-      // Walking somewhere is the "move" coachmark's own instruction
-      // actually followed — fade it out rather than waiting for "Got it".
-      fadeOutHint("move");
     } else overlay.heldForFlyover();
   };
 
@@ -749,19 +721,21 @@ function MainPageContent({ onReset }) {
   // The idle prompt covers the panorama too, so it hides the hotspot previews as well.
   const overlayOpen = coversPanorama || isIdle;
 
-  // Coachmarks only make sense once the visitor is actually looking at a
-  // photo with nothing else already open over it — and, on the kiosk, only
-  // once they're past the start/building/floor screens.
+  // The intro overlays only make sense once the visitor is actually looking
+  // at a photo with nothing else already open over it — and, on the kiosk,
+  // only once they're past the start/building/floor screens.
   const hintsAllowed = initialLoadDone && !!current && !overlayOpen && !kiosk.awaitingStart;
 
-  // Text and target per hint id — kiosk-only now (see onboarding above).
-  const hintCoachmarkProps = {
-    move: {
-      raised: true,
-      text: "Touch and drag to look around. Tap a glowing arrow to walk that way.",
-    },
-    dock: { targetRef: kioskDockBtnRef, text: "Tap here for search, directions and more." },
-  };
+  // Reads the visible intro overlay aloud when it was replayed from the help
+  // button; the cleanup stops the speech the moment the overlay closes (or
+  // anything else covers it, which unmounts it).
+  const introVisible = hintsAllowed && !(compact ? kioskIntroSeen : desktopIntroSeen);
+  const narrating = narrateIntro && introVisible;
+  useEffect(() => {
+    if (!narrating) return;
+    speak(compact ? KIOSK_INTRO_SPEECH : DESKTOP_INTRO_SPEECH);
+    return stopSpeaking;
+  }, [narrating, compact]);
 
   // Show the person's actual name, not their email — falls back to email
   // only if they skipped the optional name field at registration.
@@ -817,7 +791,13 @@ function MainPageContent({ onReset }) {
       key: "help",
       icon: PLACEHOLDER("question-help"),
       title: "How to use this tour",
-      onClick: () => overlay.openFromDock("help"),
+      // Replays the intro overlay; collapsing the dock first so the
+      // overlay's hintsAllowed condition (nothing else open) is met.
+      onClick: () => {
+        overlay.dismiss();
+        setNarrateIntro(true);
+        setKioskIntroSeen(false);
+      },
     },
   ].filter(Boolean);
 
@@ -1275,6 +1255,17 @@ function MainPageContent({ onReset }) {
               <KioskSignage slides={signage.slides} settings={signage.settings} />
             </div>
 
+            {/* Session-start walkthrough over the panorama band only, so the
+                header and signage stay visible — see KioskIntroOverlay.jsx. */}
+            <KioskIntroOverlay
+              open={hintsAllowed && compact && !kioskIntroSeen}
+              onDismiss={() => {
+                setNarrateIntro(false);
+                setKioskIntroSeen(true);
+              }}
+              style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
+            />
+
             {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (
               <NearbyRoomsPanel
                 rooms={nearbyRooms}
@@ -1313,7 +1304,6 @@ function MainPageContent({ onReset }) {
                 style={{ top: `${KIOSK_PANORAMA_CENTER * 100}%` }}
               >
                 <button
-                  ref={kioskDockBtnRef}
                   type="button"
                   className={"mobile-side-fab" + (mobileDockOpen ? " mobile-side-fab--open" : " mobile-side-fab--closed")}
                   onClick={() => (mobileDockOpen ? overlay.dismiss() : overlay.openDock())}
@@ -1801,32 +1791,6 @@ function MainPageContent({ onReset }) {
       {overlay.endSessionThanks && (
         <KioskThanks onDone={() => endSessionAndReset("feedback")} onResume={overlay.closeEndSessionThanks} />
       )}
-
-      <HelpModal
-        open={overlay.help}
-        kiosk={compact}
-        onClose={overlay.closeHelp}
-        onReplay={() => {
-          onboarding.replay();
-          // Otherwise the coachmarks can't show at all until whatever
-          // panel Help itself was opened from (the desktop menu) is
-          // closed by hand too.
-          overlay.dismiss();
-        }}
-      />
-
-      {/* First-run coachmarks — see hooks/useOnboardingHints.js. Kiosk-only:
-          shown one at a time (activeId). The desktop regular view has no
-          starting-instructions sequence. */}
-      {hintsAllowed && compact &&
-        [onboarding.activeId].filter(Boolean).map((id) => (
-          <Coachmark
-            key={id}
-            {...hintCoachmarkProps[id]}
-            closing={closingHintIds.includes(id)}
-            onDismiss={() => fadeOutHint(id)}
-          />
-        ))}
 
       {isIdle && (
         <IdlePrompt

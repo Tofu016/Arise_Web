@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
+import HotspotGlyph from "./HotspotGlyph";
+import { DESKTOP_INTRO_TEXT } from "../utils/introScript";
 
 // Hand-drawn (not sourced) since nothing this specific exists in the icon
 // set or the grey/white pairs: a mouse body with one button highlighted to
@@ -30,19 +32,17 @@ function MouseIcon({ highlight }) {
   );
 }
 
-// A generic cursor arrow, animated tapping a pulsing ring to read as
-// "click this glowing spot in the photo" without needing a real panorama
-// screenshot behind it. The arrow's own tip point is drawn exactly at the
-// ring/dot's center (30,32) so it visibly lands ON the hotspot rather than
-// floating near it.
+// A generic cursor arrow, animated tapping the real-looking hotspot (see
+// HotspotGlyph) to read as "click this glowing spot in the photo" without
+// needing a real panorama screenshot behind it. The arrow's tip lands on the
+// disc's lower-right edge, off-center, so it doesn't hide the chevron.
 function HotspotClickIcon() {
   return (
     <svg className="intro-hotspot-icon" viewBox="0 0 60 60" aria-hidden="true">
-      <circle className="intro-hotspot-ring" cx="30" cy="32" r="14" fill="none" stroke="var(--white)" strokeWidth="2.5" />
-      <circle cx="30" cy="32" r="5" fill="var(--white)" />
+      <HotspotGlyph cx={27} cy={26} />
       <path
         className="intro-hotspot-cursor"
-        d="M30 32 L30 48 L34 45 L37.5 53 L41 51.5 L37.5 44 L44 44 Z"
+        d="M34 34 L34 50 L38 47 L41.5 55 L45 53.5 L41.5 46 L48 46 Z"
         fill="var(--white)"
         stroke="var(--ink)"
         strokeWidth="1.5"
@@ -60,11 +60,11 @@ function KeyCap({ label, wide }) {
 }
 
 // Full-screen, session-start walkthrough for the desktop (non-kiosk) view.
-// Unlike the coachmarks (useOnboardingHints.js), which point at specific
+// Unlike per-button callouts, which point at specific
 // on-screen buttons one at a time, this is a single upfront splash covering
 // the panorama's own mouse/keyboard controls, dismissed by a click anywhere
 // (or Escape) rather than a per-tip "Got it". Deliberately not persisted,
-// same reasoning as the coachmarks: every fresh page load is a new
+// same reasoning as KioskIntroOverlay: every fresh page load is a new
 // visitor's first impression, so it shows again on its own.
 export default function DesktopIntroOverlay({ open, onDismiss }) {
   const ref = useRef(null);
@@ -95,19 +95,19 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
           <div className="desktop-intro-icon">
             <MouseIcon highlight="left" />
           </div>
-          <p>Click and drag to look around.</p>
+          <p>{DESKTOP_INTRO_TEXT.drag}</p>
         </div>
         <div className="desktop-intro-tip">
           <div className="desktop-intro-icon">
             <HotspotClickIcon />
           </div>
-          <p>Click a glowing hotspot to move to that spot.</p>
+          <p>{DESKTOP_INTRO_TEXT.hotspot}</p>
         </div>
         <div className="desktop-intro-tip">
           <div className="desktop-intro-icon">
             <MouseIcon highlight="scroll" />
           </div>
-          <p>Scroll the wheel to zoom in and out.</p>
+          <p>{DESKTOP_INTRO_TEXT.zoom}</p>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
               </div>
             </div>
           </div>
-          <p>A / D to look left and right, W to move forward, S to go back.</p>
+          <p>{DESKTOP_INTRO_TEXT.wasd}</p>
         </div>
         <div className="desktop-intro-key-group">
           <div className="desktop-intro-icon">
@@ -134,7 +134,7 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
               <KeyCap label="Ctrl" wide />
             </div>
           </div>
-          <p>Shift to zoom in, Ctrl to zoom out.</p>
+          <p>{DESKTOP_INTRO_TEXT.shiftCtrl}</p>
         </div>
       </div>
 

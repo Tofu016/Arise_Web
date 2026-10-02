@@ -9,3 +9,8 @@ export function speak(text, { rate = 1, pitch = 1, volume = 1 } = {}) {
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
+
+export function stopSpeaking() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+}

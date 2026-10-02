@@ -2578,48 +2578,6 @@ img[data-icon-placeholder="emergency-exit"] {
   text-align: center;
   margin: 0 0 12px 0;
 }
-/* Help modal (HelpModal.jsx): the same tips the first-run coachmarks cover,
-   reachable at any time afterward from the menu/dock. */
-.help-modal {
-  width: 380px;
-  max-width: 92vw;
-}
-.help-tip-list {
-  list-style: none;
-  margin: 0 0 16px 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.help-tip-list li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--text);
-}
-.help-tip-icon {
-  flex: none;
-  width: 32px;
-  text-align: center;
-  font-size: 18px;
-}
-.help-replay-btn {
-  width: 100%;
-  padding: 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--accent);
-  background: none;
-  color: var(--accent);
-  /* Regular weight, sentence case — this is an outline/secondary button
-     (no fill), not a primary CTA, so it doesn't take the bold+uppercase
-     Montserrat treatment .primary buttons get (see BRAND.md "Type" —
-     that treatment is reserved for primary CTAs). It previously carried
-     font-weight: 700 alone, a bold/Title-Case hybrid that matched
-     neither the primary nor the secondary button style. */
-  cursor: pointer;
-}
 .preview-screen-empty {
   color: var(--text-muted);
   font-size: 13px;
@@ -7381,106 +7339,6 @@ html.kiosk-mode body {
   color: var(--text-muted);
   font-size: 14px;
 }
-/* ---------- First-run coachmarks (Coachmark.jsx): a short queue of tips
-   shown the first time a visitor lands, above everything on the panorama
-   screen but below the kiosk's own pre-tour screens (590/600), which
-   already gate interaction on their own. Never dims the screen — whatever
-   a hint points at (or anything else) stays directly usable while it's up.
-   `.coachmark-closing` plays the fade-out the JS side holds it mounted
-   for; anything that disappears WITHOUT that class (a hint whose target
-   got covered by other UI, e.g. the menu opening) does so instantly, by
-   simply no longer being rendered at all — no transition to play. */
-.coachmark-banner,
-.coachmark-pointer {
-  transition: opacity 0.25s ease;
-}
-.coachmark-closing {
-  opacity: 0;
-  pointer-events: none;
-}
-.coachmark-banner {
-  position: fixed;
-  left: 50%;
-  bottom: 8%;
-  transform: translateX(-50%);
-  z-index: 580;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  max-width: min(90vw, 420px);
-  padding: 12px 18px;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-2);
-  color: var(--text);
-  font-size: 15px;
-  pointer-events: auto;
-}
-/* Kiosk's "move" hint: raised to the same center its own dialogs use
-   (KIOSK_CARD_CENTER — where the dialog grid's two rows of quadrants
-   meet) instead of sitting near the bottom. `top` is set inline. */
-.coachmark-banner-raised {
-  bottom: auto;
-  transform: translate(-50%, -50%);
-}
-/* A hint with a target (the hamburger, the desktop's menu/directions
-   buttons): a callout next to it, with a thin angled arrow connecting the
-   two — see .coachmark-pointer-arrow, a full-viewport SVG overlay that
-   draws the line in real screen coordinates (JS works out both ends).
-   Above the target by default; `-below` (JS decides, when there isn't
-   room above — e.g. the desktop menu button sits right at the top of the
-   screen) puts it below instead. Either way the callout itself shifts
-   sideways only as far as the screen edge forces it. */
-.coachmark-pointer {
-  position: fixed;
-  z-index: 580;
-  max-width: 260px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-2);
-  color: var(--text);
-  font-size: 15px;
-  text-align: center;
-  pointer-events: auto;
-  transform: translate(-50%, -100%);
-}
-.coachmark-pointer-below {
-  transform: translate(-50%, 0);
-}
-/* align="left" (Coachmark.jsx): pinned to a fixed left offset instead of
-   centered over its target, so no horizontal centering transform. */
-.coachmark-pointer-left {
-  transform: translate(0, -100%);
-}
-.coachmark-pointer-left.coachmark-pointer-below {
-  transform: translate(0, 0);
-}
-.coachmark-pointer-arrow {
-  position: fixed;
-  inset: 0;
-  z-index: 580;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-.coachmark-got-it {
-  flex: none;
-  padding: 6px 16px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
 /* Desktop WASD/arrow-key nav: W/Up found no hotspot ahead. */
 .pano-nothing-ahead-hint {
   position: absolute;
@@ -8348,7 +8206,7 @@ html.kiosk-mode body {
 }
 .intro-hotspot-ring {
   transform-origin: 30px 32px;
-  animation: intro-hotspot-ring-pulse 1.6s ease-out infinite;
+  animation: intro-hotspot-ring-pulse 2s ease-out infinite;
 }
 /* Anchored at the arrow's own tip point (30,32 — see the path in
    DesktopIntroOverlay.jsx), which is drawn exactly on the ring/dot's
@@ -8359,8 +8217,8 @@ html.kiosk-mode body {
   animation: intro-hotspot-cursor-tap 1.6s ease-in-out infinite;
 }
 @keyframes intro-hotspot-ring-pulse {
-  0% { transform: scale(0.85); opacity: 1; }
-  60%, 100% { transform: scale(1.25); opacity: 0; }
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 @keyframes intro-hotspot-cursor-tap {
   0%, 55% { transform: scale(1); }
@@ -8386,6 +8244,88 @@ html.kiosk-mode body {
   .desktop-intro-tip,
   .desktop-intro-key-group {
     width: 150px;
+  }
+}
+
+/* =====================================================================
+   Kiosk intro overlay (KioskIntroOverlay.jsx): the touch counterpart of
+   .desktop-intro-overlay, same dark tint and white-only palette, reusing
+   its logo, dismiss line and hotspot ring. Positioned by the parent over
+   the panorama band (inline top/bottom), so it needs no inset of its own.
+   Sizes are scaled up from the desktop ones for arm's-length reading.
+   ===================================================================== */
+.kiosk-intro-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 24px;
+  background: rgba(10, 8, 8, 0.78);
+  color: var(--white);
+  text-align: center;
+  cursor: pointer;
+  animation: modal-overlay-in 0.2s ease;
+}
+.kiosk-intro-overlay:focus {
+  outline: none;
+}
+.kiosk-intro-tips {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+}
+.kiosk-intro-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 560px;
+}
+.kiosk-intro-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88px;
+}
+.kiosk-intro-icon-svg {
+  width: 88px;
+  height: 88px;
+}
+.kiosk-intro-drag-dot {
+  animation: kiosk-intro-drag 1.8s ease-in-out infinite;
+}
+@keyframes kiosk-intro-drag {
+  0%, 100% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+}
+.kiosk-intro-menu-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--accent);
+}
+.kiosk-intro-tip p {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.35;
+  color: var(--white);
+}
+.kiosk-intro-dismiss {
+  font-size: 22px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-intro-overlay,
+  .kiosk-intro-drag-dot {
+    animation: none;
   }
 }
 

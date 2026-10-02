@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import directionsIconWhite from "../assets/icons/directions-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
+import { SIDEBAR_INTRO_TEXT } from "../utils/introScript";
 
 // The white variant of each icon actually used by the sidebar buttons below
 // it (search-magnifier, question-help are grey by default there — see
@@ -23,11 +24,11 @@ import IconPlaceholder from "./IconPlaceholder";
 // the app's core functions this walkthrough covers, same "emergency-exit"
 // icon as that button.
 const TIPS = [
-  { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: "Nearest Exit shows the fastest way outside from wherever you are." },
-  { icon: <IconPlaceholder name="search-magnifier" variant="white" className="inline-icon-img" />, text: "Search for a room, building, or place by name." },
-  { icon: <img src={directionsIconWhite} alt="" className="inline-icon-img" />, text: "Get directions to any room." },
-  { icon: <IconPlaceholder name="directory" variant="white" className="inline-icon-img" />, text: "Browse the directory below to jump to any building or room." },
-  { icon: <IconPlaceholder name="question-help" variant="white" className="inline-icon-img" />, text: "Come back here anytime to replay these tips." },
+  { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.exit },
+  { icon: <IconPlaceholder name="search-magnifier" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.search },
+  { icon: <img src={directionsIconWhite} alt="" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directions },
+  { icon: <IconPlaceholder name="directory" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directory },
+  { icon: <IconPlaceholder name="question-help" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.help },
 ];
 
 // The desktop app sidebar's own session-start walkthrough — a companion to
