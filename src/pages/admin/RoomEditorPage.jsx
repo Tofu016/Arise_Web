@@ -340,7 +340,10 @@ export default function RoomEditorPage() {
         {node && rooms.length > 0 && (
           <div className="room-editor-form-wrap room-edit-modal">
             <div className="room-editor-node-heading">
-              <h3>{node.name}</h3>
+              <h3>
+                {selectedRoom && <span className="room-editor-node-room">{selectedRoom}</span>}
+                <span className="room-editor-node-name">({node.name})</span>
+              </h3>
               <span className="room-editor-node-meta">
                 {buildingLabel(node.building)} · {floorLabel(node.floor)} · {node.id}
               </span>

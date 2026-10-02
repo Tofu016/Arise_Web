@@ -435,7 +435,7 @@ band is 1080 x 336 px on the 1080 x 1920 kiosk; with nothing live it stays
 plain white, as before.
 
 - **Add advertisement** opens a dialog: drop in (or choose) a JPG, PNG, GIF,
-  WebP, MP4 or WebM file, up to 40 MB locally (the server's own
+  WebP, MP4 or WebM file, up to 100 MB (the server's own
   `upload_max_filesize` is the real limit). Videos play muted and loop.
 - **Crop**: a box with the band's exact shape sits over the file, and
   everything outside it is dimmed. Drag the box to move it and drag a

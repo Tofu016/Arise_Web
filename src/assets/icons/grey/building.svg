@@ -1,12 +1,3 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <rect x="4" y="3" width="16" height="19" fill="#635d5f"/>
-  <rect x="7" y="6" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="10.8" y="6" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="14.6" y="6" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="7" y="10.2" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="10.8" y="10.2" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="14.6" y="10.2" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="7" y="14.4" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="14.6" y="14.4" width="2.4" height="2.4" fill="#ffffff"/>
-  <rect x="10.4" y="17" width="3.2" height="5" fill="#ffffff"/>
+  <path fill="#635d5f" fill-rule="evenodd" d="M4 3h16v19H4Z M7 6h2.4v2.4H7Z M10.8 6h2.4v2.4h-2.4Z M14.6 6h2.4v2.4h-2.4Z M7 10.2h2.4v2.4H7Z M10.8 10.2h2.4v2.4h-2.4Z M14.6 10.2h2.4v2.4h-2.4Z M7 14.4h2.4v2.4H7Z M14.6 14.4h2.4v2.4h-2.4Z M10.4 17h3.2v5h-3.2Z"/>
 </svg>

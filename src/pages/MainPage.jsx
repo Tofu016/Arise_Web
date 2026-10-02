@@ -986,6 +986,12 @@ function MainPageContent({ onReset }) {
     );
   };
 
+  // These two fields are textareas only so a long place name can wrap onto a
+  // second line; the query itself is still a single line, so Enter is ignored.
+  const blockEnter = (e) => {
+    if (e.key === "Enter") e.preventDefault();
+  };
+
   const directionsContent = directions && (
     <>
       <div className="directions-panel-header">
@@ -999,11 +1005,13 @@ function MainPageContent({ onReset }) {
 
       <label className="sidebar-field-label">
         From
-        <input
-          type="text"
+        <textarea
+          className="directions-field"
+          rows={2}
           value={directions.fromQuery}
           onChange={(e) => flow.editField("from", e.target.value)}
           onFocus={() => flow.focusField("from")}
+          onKeyDown={blockEnter}
           inputMode={compact ? "none" : undefined}
           placeholder="Starting point"
         />
@@ -1012,12 +1020,14 @@ function MainPageContent({ onReset }) {
 
       <label className="sidebar-field-label">
         To
-        <input
-          type="text"
+        <textarea
+          className="directions-field"
+          rows={2}
           ref={toFieldRef}
           value={directions.toQuery}
           onChange={(e) => flow.editField("to", e.target.value)}
           onFocus={() => flow.focusField("to")}
+          onKeyDown={blockEnter}
           inputMode={compact ? "none" : undefined}
           placeholder="Destination"
         />

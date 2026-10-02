@@ -166,7 +166,7 @@ export default function OnScreenKeyboard({ layout = "search" }) {
             <button
               key={k}
               type="button"
-              className="onscreen-keyboard-key"
+              className={"onscreen-keyboard-key" + (/\d/.test(k) ? " onscreen-keyboard-number" : "")}
               onMouseDown={(e) => { e.preventDefault(); press(k); }}
             >
               {upper ? k.toUpperCase() : k}

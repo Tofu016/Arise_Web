@@ -238,9 +238,16 @@ img[data-icon-placeholder="emergency-exit"] {
    is any one of its sub-items, a standalone icon when it's the current
    page itself. */
 .admin-sidebar-icon-btn-active {
-  background: var(--selected-bg);
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: #fff;
+}
+/* Branding-asset icons are <img>s, so text color doesn't reach them —
+   flatten to black then invert to white. */
+.admin-sidebar-icon-btn-active img,
+.admin-sidebar-flyout-item-active img {
+  filter: brightness(0) invert(1);
+  opacity: 1;
 }
 /* Positioning wrapper for one rail icon + its hover preview — see
    .admin-sidebar-icon-preview below. */
@@ -388,8 +395,8 @@ img[data-icon-placeholder="emergency-exit"] {
    exactly as the brand doc specifies: sparing, hairline-only, paired with
    the maroon selected state rather than replacing it. */
 .admin-sidebar-flyout-item-active {
-  background: var(--selected-bg);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
   font-weight: 700;
   border-left: 3px solid var(--gold);
   padding-left: 11px;
@@ -1687,7 +1694,8 @@ img[data-icon-placeholder="emergency-exit"] {
   margin-bottom: 0;
 }
 .sidebar-field-label input,
-.sidebar-field-label select {
+.sidebar-field-label select,
+.sidebar-field-label .directions-field {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -1697,6 +1705,14 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--surface-sunken);
   color: var(--text);
   font-size: 13px;
+}
+/* A textarea so long place names wrap to two lines; fixed at two rows, no
+   manual resize, and the font/box-sizing a plain textarea doesn't inherit. */
+.sidebar-field-label .directions-field {
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.3;
+  resize: none;
 }
 .sidebar-divider {
   height: 1px;
@@ -2907,6 +2923,14 @@ img[data-icon-placeholder="emergency-exit"] {
   margin: 0;
   font-size: 18px;
   color: var(--text);
+}
+/* Room name then node name side by side; inline spans (not nowrap) so a
+   long pair breaks onto a new line instead of overflowing the panel. */
+.room-editor-node-heading h3 {
+  overflow-wrap: anywhere;
+}
+.room-editor-node-room {
+  margin-right: 8px;
 }
 .room-editor-node-meta {
   font-size: 12px;
@@ -4871,6 +4895,13 @@ a.sidebar-room-contact-row:focus-visible span {
   box-shadow: var(--shadow-2);
   transition: transform 0.08s ease, opacity 0.08s ease, background 0.15s ease, border-color 0.15s ease;
 }
+/* The back icon asset is drawn pointing right; mirror it here rather than
+   editing the shared grey/white icon files. Covers the kiosk dock's Back
+   button and the desktop title pill's one. */
+.kiosk-dock-back-btn img,
+.floating-title-back img {
+  transform: scaleX(-1);
+}
 .kiosk-dock-back-btn:active,
 .kiosk-end-session-btn:active {
   transform: scale(0.94);
@@ -5713,6 +5744,30 @@ a.sidebar-room-contact-row:focus-visible span {
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
+/* Digits take the brand dark gray (--sdca-gray, the grey icon set's color),
+   so the number row reads as its own group; white on it is AA. */
+.onscreen-keyboard-number {
+  background: var(--sdca-gray);
+  border-color: var(--sdca-gray);
+  color: var(--white);
+}
+/* Clear, Enter and Backspace are the keys that change the field wholesale or
+   move on, so they take the brand maroon (white on maroon is AA per
+   BRAND.md); pressed goes to the darker maroon since the default :active is
+   maroon too. */
+.onscreen-keyboard-clear,
+.onscreen-keyboard-enter,
+.onscreen-keyboard-backspace {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+.onscreen-keyboard-clear:active,
+.onscreen-keyboard-enter:active,
+.onscreen-keyboard-backspace:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 .onscreen-keyboard-bottom-row {
   gap: 8px;
 }
@@ -5915,8 +5970,8 @@ a.sidebar-room-contact-row:focus-visible span {
 }
 /* The page-wide bar stays pinned inside .admin-layout-content (the scroller)
    so the date range is reachable from the bottom of the page. The 12px top
-   leaves a strip of the sunken page above it, so it reads as a floating
-   card rather than a header welded to the scroller edge. z-index only has
+   leaves a strip of the sunken page above it, so it reads as a card
+   rather than a header welded to the scroller edge. z-index only has
    to clear the chart cards scrolling under it; the sidebar flyout and
    admin modals live outside this scroller and already stack above it. */
 .analytics-filter-bar-sticky {
@@ -5925,8 +5980,10 @@ a.sidebar-room-contact-row:focus-visible span {
   z-index: 5;
   transition: box-shadow 0.15s ease;
 }
+/* Tight and faint on purpose: just enough edge to separate the bar from the
+   cards scrolling under it, not a floating-panel drop shadow. */
 .analytics-filter-bar-stuck {
-  box-shadow: var(--shadow-2);
+  box-shadow: 0 1px 3px rgba(32, 27, 27, 0.12);
 }
 /* Zero-height marker FilterBar watches to know when the bar is stuck. */
 .analytics-filter-sentinel {
@@ -6957,7 +7014,8 @@ a.sidebar-room-contact-row:focus-visible span {
 .kiosk-dialog .directions-panel .sidebar-field-label {
   font-size: 15px;
 }
-.kiosk-dialog .directions-panel .sidebar-field-label input {
+.kiosk-dialog .directions-panel .sidebar-field-label input,
+.kiosk-dialog .directions-panel .sidebar-field-label .directions-field {
   padding: 14px 16px;
   font-size: 19px;
   margin-top: 6px;

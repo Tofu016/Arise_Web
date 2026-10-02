@@ -249,7 +249,8 @@ describe("files", () => {
   });
 
   it("refuses a file over the size limit before uploading it", () => {
-    expect(signageFileProblem({ type: "video/mp4", size: 50 * 1024 * 1024 })).toMatch(/50\.0 MB/);
+    expect(signageFileProblem({ type: "video/mp4", size: 101 * 1024 * 1024 })).toMatch(/101\.0 MB/);
+    expect(signageFileProblem({ type: "video/mp4", size: 100 * 1024 * 1024 })).toBe(null);
   });
 
   it("names uploads uniquely from a storage-safe title", () => {

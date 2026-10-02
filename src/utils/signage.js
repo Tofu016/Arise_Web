@@ -15,10 +15,10 @@ import { SIGNAGE_ASPECT } from "./kioskLayout";
 
 export const SIGNAGE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 export const SIGNAGE_VIDEO_TYPES = ["video/mp4", "video/webm"];
-// The local XAMPP php.ini default; production allows more (see the API's
-// DEPLOY.md). Checked here only to fail fast with a clear message instead
-// of after a long upload; the server's own limit is the real one.
-export const SIGNAGE_MAX_BYTES = 40 * 1024 * 1024;
+// The server's php.ini upload_max_filesize/post_max_size must be at least
+// this (see the API's DEPLOY.md). Checked here only to fail fast with a clear
+// message instead of after a long upload; the server's own limit is the real one.
+export const SIGNAGE_MAX_BYTES = 100 * 1024 * 1024;
 
 export function isVideoPath(path) {
   return /\.(mp4|webm)$/i.test(path || "");

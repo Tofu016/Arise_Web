@@ -114,11 +114,10 @@ function RatingRangeFields({ from, to, setFrom, setTo }) {
 // distribution and Comments each layer their own rating-range filter on
 // top (see RatingRangeFields), plus Comments' own sort, since none of
 // that applies to the behavioral sections.
-//
 // Sticks to the top of the admin content scroller so the range can be
-// changed from anywhere down the page. `stuck` only adds the floating-card
-// shadow: the sentinel sits just above the bar, so it leaves the scroller
-// at the moment the bar starts sticking.
+// changed from anywhere down the page. `stuck` only adds the shadow: the
+// sentinel sits just above the bar, so it leaves the scroller at the
+// moment the bar starts sticking.
 function FilterBar({ filters, setFilters, buildings }) {
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
   const defaults = defaultFilters();
