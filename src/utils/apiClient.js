@@ -10,6 +10,8 @@
 // `success`, throwing the server's own `error` (or the caller's
 // fallback message) when it is false.
 
+import { getKioskToken } from "./kioskToken";
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
 
 // For callers that can't go through apiRequest (e.g. navigator.sendBeacon,
@@ -31,15 +33,26 @@ function authHeaders(headers = {}) {
 async function readJson(response, fallbackError) {
   const data = await response.json();
   if (!data.success) {
-    throw new Error(data.error || fallbackError);
+    const err = new Error(data.error || fallbackError);
+    err.status = response.status;
+    throw err;
   }
   return data;
+}
+
+// The kiosk's own token identifies the device to Kiosks_API's kiosk-side
+// actions. Sent only there, so every other request keeps its simple headers.
+function requestHeaders(path) {
+  const headers = authHeaders({ "Content-Type": "application/json" });
+  const kioskToken = path.startsWith("Kiosks_API/") ? getKioskToken() : null;
+  if (kioskToken) headers["X-Kiosk-Token"] = kioskToken;
+  return headers;
 }
 
 async function apiRequest(method, path, body, fallbackError = "Request failed.") {
   const response = await fetch(`${API_BASE_URL}/${path}`, {
     method,
-    headers: authHeaders({ "Content-Type": "application/json" }),
+    headers: requestHeaders(path),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   return readJson(response, fallbackError);

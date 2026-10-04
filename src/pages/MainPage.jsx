@@ -11,7 +11,9 @@ import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskFloorScreen from "../components/KioskFloorScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskOriginChoice from "../components/KioskOriginChoice";
-import { findKioskNode } from "../utils/kioskLocation";
+import KioskPairingScreen from "../components/KioskPairingScreen";
+import { useKioskIdentity } from "../hooks/useKioskIdentity";
+import { usePairingGesture } from "../hooks/usePairingGesture";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
@@ -126,6 +128,9 @@ function MainPageContent({ onReset }) {
   // screen, then exploring
   // — see utils/kioskSession.js. Desktop skips straight to exploring.
   const kiosk = useKioskSession(compact);
+  // Set by an admin through the hidden pairing gesture; without it the
+  // origin modal simply has no "Kiosk Location" (see KioskPairingScreen).
+  const kioskIdentity = useKioskIdentity(compact);
   useKioskZoomLock(compact);
   useKioskInspectLock(compact);
 
@@ -670,7 +675,11 @@ function MainPageContent({ onReset }) {
     requestDirectionsTo(selectedRoomCard.node);
   };
 
-  const kioskNode = useMemo(() => findKioskNode(nodes), [nodes]);
+  const kioskNode = kioskIdentity.kiosk?.nodeId ? byId[kioskIdentity.kiosk.nodeId] ?? null : null;
+
+  // Taps on the logo, the node name and the advertisement band feed the
+  // hidden pairing gesture; its last step opens the pairing screen.
+  const tapForPairing = usePairingGesture(() => overlay.showPanel("pairing"));
 
   // Every mobile Building dialog / kiosk campus-building-floor screen pick —
   // see hooks/useKioskPicks.js. Every pick here is a fresh start (jump).
@@ -1233,9 +1242,14 @@ function MainPageContent({ onReset }) {
             className="tour-shell-header tour-shell-header--centered kiosk-shell-header"
             style={{ height: `${KIOSK_TOP_INSET * 100}%` }}
           >
-            <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
+            <img
+              src={sdcaLogo}
+              alt="St. Dominic College of Asia"
+              className="tour-shell-logo"
+              onClick={() => tapForPairing("logo")}
+            />
             {current && !kioskDialogOpen && (
-              <div className="mobile-title-pill">
+              <div className="mobile-title-pill" onClick={() => tapForPairing("title")}>
                 <span>{current.name}</span>
               </div>
             )}
@@ -1294,9 +1308,14 @@ function MainPageContent({ onReset }) {
 
             {/* ---------- Bottom band: the admin's advertisements (signage),
                 filling the whitespace left below the panorama, which stays
-                plain white when none is live. Purely visual: nothing in it is
-                interactive, and every dialog and backdrop stacks above it. */}
-            <div className="kiosk-signage-band" style={{ height: `${KIOSK_BOTTOM_INSET * 100}%` }}>
+                plain white when none is live. Shows no controls; its only
+                touch is the last step of the hidden pairing gesture, and
+                every dialog and backdrop stacks above it. */}
+            <div
+              className="kiosk-signage-band"
+              style={{ height: `${KIOSK_BOTTOM_INSET * 100}%` }}
+              onClick={() => tapForPairing("signage")}
+            >
               <KioskSignage slides={signage.slides} settings={signage.settings} />
             </div>
 
@@ -1429,6 +1448,15 @@ function MainPageContent({ onReset }) {
                 KioskDialog grid. Account and the Building picker have no
                 text entry and stay small centered .modal-overlay/.modal
                 boxes, auto-sized to their own content. ---------- */}
+            {panelMode === "pairing" && (
+              <KioskPairingScreen
+                kiosk={kioskIdentity.kiosk}
+                onPair={kioskIdentity.pair}
+                onUnpair={kioskIdentity.unpair}
+                onClose={overlay.closePanel}
+              />
+            )}
+
             {panelMode === "search" && (
               <KioskDialog title="Search" onClose={overlay.closePanel}>
                 <div className="mobile-search-row">

@@ -11,6 +11,7 @@ import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
 import SignagePage from "./pages/admin/SignagePage";
+import KiosksPage from "./pages/admin/KiosksPage";
 import PublicTourPage from "./pages/PublicTourPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -88,6 +89,7 @@ export default function App() {
                 file paths and class names avoid "ad" (see utils/signage.js):
                 this is an in-app route, not a request ad blockers filter. */}
             <Route path="advertisements" element={<SignagePage />} />
+            <Route path="kiosks" element={<KiosksPage />} />
             {/* Any other /admin/* path (a stale bookmark to a renamed page,
                 e.g. the old /admin/users) would otherwise render the admin
                 shell around an empty content area. */}

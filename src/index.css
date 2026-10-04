@@ -8624,7 +8624,8 @@ html.kiosk-mode body {
   right: 0;
   bottom: 0;
   overflow: hidden;
-  pointer-events: none;
+  /* Receives taps for the hidden pairing gesture (see MainPage's tapForPairing). */
+  pointer-events: auto;
 }
 .kiosk-signage {
   position: absolute;
@@ -9461,4 +9462,62 @@ html.kiosk-mode body {
 .signage-editor-actions .primary:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Admin Kiosks page (KiosksPage.jsx): the one-time pairing code readout. */
+.kiosks-code-value {
+  margin: 0 0 12px 0;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+.kiosks-form select,
+.kiosks-form input[type="text"] {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Kiosk pairing screen (KioskPairingScreen.jsx): a compact modal, a big code
+   field over a number pad. */
+.kiosk-pairing-modal {
+  width: 380px;
+  max-width: 92vw;
+  text-align: center;
+}
+.kiosk-pairing-modal h3 {
+  margin: 0 0 12px;
+}
+.kiosk-pairing-status {
+  margin: 0 0 16px;
+}
+.kiosk-pairing-code {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.kiosk-pairing-modal .onscreen-keyboard {
+  box-shadow: none;
+}
+.kiosk-pairing-modal .onscreen-keyboard-key {
+  max-width: none;
+  height: 64px;
+  font-size: 24px;
+}
+.kiosk-pairing-modal .onscreen-keyboard-bottom-row .onscreen-keyboard-key {
+  flex: 1;
+}
+.kiosk-pairing-modal .form-actions {
+  justify-content: center;
+  margin-top: 14px;
+}
+.kiosk-pairing-modal .form-actions button {
+  min-height: 52px;
+  min-width: 120px;
+  font-size: 16px;
 }

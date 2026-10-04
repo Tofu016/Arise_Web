@@ -20,7 +20,7 @@ import { insertAt, backspaceAt, shouldCapitalize } from "../utils/textEdit";
 // Every key uses onMouseDown + preventDefault, not onClick — this is
 // what stops the browser from blurring the currently-focused field the
 // instant a key is tapped.
-const SCOPE_SELECTOR = ".kiosk-dialog";
+const SCOPE_SELECTOR = ".kiosk-dialog, .kiosk-pairing-modal";
 const FIELD_SELECTOR = "textarea, input:not([type]), input[type=text], input[type=email], input[type=search]";
 // Two configurations, chosen by the dialog that hosts the keyboard:
 //   "search"  (default: search, directions) letters, digits, dash and
@@ -28,7 +28,9 @@ const FIELD_SELECTOR = "textarea, input:not([type]), input[type=text], input[typ
 //             there is no shift and no enter key.
 //   "text"    (feedback) the full key set with shift and enter; only the first
 //             letter and the first after . ! ? are capitalized on their own.
+//   "numeric" (kiosk pairing code) a 3x4 keypad: 1-9, then Clear, 0, backspace.
 const SEARCH_ROWS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm-'"].map((r) => r.split(""));
+const NUMERIC_ROWS = ["123", "456", "789"].map((r) => r.split(""));
 const TEXT_ROWS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm", "@.-_,?'!"].map((r) => r.split(""));
 
 function setFieldValue(el, value) {
@@ -60,7 +62,10 @@ function editField(el, edit) {
 
 export default function OnScreenKeyboard({ layout = "search" }) {
   const text = layout === "text";
-  const rows = text ? TEXT_ROWS : SEARCH_ROWS;
+  const numeric = layout === "numeric";
+  let rows = SEARCH_ROWS;
+  if (text) rows = TEXT_ROWS;
+  else if (numeric) rows = NUMERIC_ROWS;
   const capMode = text ? "sentences" : "words";
   const rootRef = useRef(null);
   const fieldRef = useRef(null);
@@ -194,13 +199,23 @@ export default function OnScreenKeyboard({ layout = "search" }) {
         >
           Clear
         </button>
-        <button
-          type="button"
-          className="onscreen-keyboard-key onscreen-keyboard-space"
-          onMouseDown={(e) => { e.preventDefault(); press(" "); }}
-        >
-          Space
-        </button>
+        {numeric ? (
+          <button
+            type="button"
+            className="onscreen-keyboard-key onscreen-keyboard-number onscreen-keyboard-zero"
+            onMouseDown={(e) => { e.preventDefault(); press("0"); }}
+          >
+            0
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="onscreen-keyboard-key onscreen-keyboard-space"
+            onMouseDown={(e) => { e.preventDefault(); press(" "); }}
+          >
+            Space
+          </button>
+        )}
         {text && (
           <button
             type="button"

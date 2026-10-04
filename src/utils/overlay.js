@@ -7,7 +7,7 @@
 // dialog.
 
 export const initialOverlay = {
-  panel: null, // null | "menu" | "search" | "room" | "directions" | "account"
+  panel: null, // null | "menu" | "search" | "room" | "directions" | "account" | "pairing"
   dock: false, // mobile/kiosk: the radial menu is expanded
   feedback: false,
   buildingMenu: false,
@@ -140,6 +140,7 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
   const kioskDialogOpen =
     !!compact &&
     (state.panel === "search" ||
+      state.panel === "pairing" ||
       (state.panel === "directions" && !!directions && !arrived && !walkBarShown) ||
       state.feedback ||
       state.endSessionThanks);

@@ -65,7 +65,10 @@ const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("picture-fram
 // Advertisements: the kiosk's bottom-band media (signage). Kiosk-wide, not
 // part of either tour's content, so it stands alone too.
 const ADVERTISEMENTS = { path: "advertisements", icon: PLACEHOLDER("megaphone"), label: "Advertisements" };
-const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS];
+// Kiosks: the physical kiosk devices and where each stands on the map.
+// Kiosk-wide like Advertisements, so it stands alone too.
+const KIOSKS = { path: "kiosks", icon: PLACEHOLDER("kiosk"), label: "Kiosks" };
+const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS, KIOSKS];
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,
