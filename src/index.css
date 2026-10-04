@@ -9675,6 +9675,110 @@ html.kiosk-mode .signage-row-thumb:hover:active {
   color: var(--danger-text);
 }
 
+/* Desktop Nearest Exit: the sidebar's content area is the ordinary
+   directions form on the sidebar's own background, and the lower ~30% turns
+   red (.emergency-band). The band bleeds out to the sidebar's true edges by
+   undoing .app-sidebar's 16px padding. The search row is hidden so nothing
+   but the emergency view competes for attention; the header's close button
+   ends the route. */
+.app-sidebar-emergency .app-sidebar-search {
+  display: none;
+}
+.app-sidebar-emergency .app-sidebar-content {
+  flex: 1 1 0;
+}
+.app-sidebar-emergency .directions-panel {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--white);
+}
+.app-sidebar-emergency .directions-panel-header {
+  justify-content: center;
+  position: relative;
+}
+.app-sidebar-emergency .directions-panel-header h3 {
+  font-size: 18px;
+  color: var(--white);
+}
+/* White disc so the grey close icon reads against the dark sidebar. */
+.app-sidebar-emergency .directions-panel-header .close-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--white);
+  border: none;
+  outline: none;
+}
+.app-sidebar-emergency .directions-panel-header .close-btn:hover {
+  background: var(--surface-sunken);
+}
+/* Room for the 34px close button so the scroll area's top edge cannot clip it. */
+.app-sidebar-emergency .directions-panel-header {
+  min-height: 38px;
+}
+.app-sidebar-emergency .directions-field {
+  height: 36px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.app-sidebar-emergency .sidebar-field-label,
+.app-sidebar-emergency .directions-progress-text,
+.app-sidebar-emergency .field-hint {
+  color: var(--white);
+}
+.emergency-band {
+  /* 40% is the floor, not a cap: the band grows to fit every contact so it
+     never scrolls, and the form above gives up the space instead. */
+  flex: 0 0 auto;
+  min-height: 40%;
+  box-sizing: border-box;
+  margin: 0 -16px -16px;
+  padding: 14px 16px;
+  background: var(--accent);
+  color: var(--white);
+}
+.emergency-band-title {
+  margin: 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans-display);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+.emergency-band-title strong {
+  font-weight: 700;
+}
+.emergency-band-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.emergency-band-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.emergency-band-list strong {
+  font-size: 14px;
+}
+
 /* Emergency Coverage admin page. */
 /* Same page shell as .signage-page and .analytics-page: 20px padding on the
    sunken background, with each section in a white .signage-card. */

@@ -18,7 +18,7 @@ import { usePairingGesture } from "../hooks/usePairingGesture";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
-import EmergencyNotice from "../components/EmergencyNotice";
+import EmergencyNotice, { EmergencyContactsBand } from "../components/EmergencyNotice";
 import FeedbackPanel from "../components/FeedbackPanel";
 import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
@@ -1153,10 +1153,15 @@ function MainPageContent({ onReset }) {
     if (e.key === "Enter") e.preventDefault();
   };
 
+  // Desktop Nearest Exit: the sidebar itself turns into the emergency view
+  // (title, the two fields, buttons, red contacts band) instead of the
+  // ordinary Directions card, the same way an open room takes the sidebar.
+  const emergencySidebar = !compact && panelMode === "directions" && !!directions?.emergency && !arrived;
+
   const directionsContent = directions && (
     <>
       <div className="directions-panel-header">
-        <h3>Directions</h3>
+        <h3>{emergencySidebar ? "Emergency Exit" : "Directions"}</h3>
         {!compact && (
           <button className="close-btn" onClick={flow.close}>
             {PLACEHOLDER("close")}
@@ -1173,7 +1178,7 @@ function MainPageContent({ onReset }) {
         </span>
         <textarea
           className="directions-field"
-          rows={2}
+          rows={emergencySidebar ? 1 : 2}
           ref={fromFieldRef}
           value={directions.fromQuery}
           onChange={(e) => flow.editField("from", e.target.value)}
@@ -1189,7 +1194,7 @@ function MainPageContent({ onReset }) {
         To
         <textarea
           className="directions-field"
-          rows={2}
+          rows={emergencySidebar ? 1 : 2}
           ref={toFieldRef}
           value={directions.toQuery}
           onChange={(e) => flow.editField("to", e.target.value)}
@@ -1203,7 +1208,9 @@ function MainPageContent({ onReset }) {
 
       {directions.error && <p className="directions-error">{directions.error}</p>}
 
-      {directions.emergency && <EmergencyNotice emergency={directions.emergency} hasRoute={!!directions.path} />}
+      {directions.emergency && (
+        <EmergencyNotice emergency={directions.emergency} hasRoute={!!directions.path} showContacts={!emergencySidebar} />
+      )}
 
       {directions.pendingModeChoice && (
         <div className="directions-mode-choice">
@@ -1718,7 +1725,13 @@ function MainPageContent({ onReset }) {
               {/* An open room card is a bottom sheet over the directory (see
                   RoomCard.jsx), not a separate sidebar mode, so the
                   directory stays browsable behind its collapsed peek. */}
-              <aside className={`app-sidebar ${panelMode === "room" && selectedRoomCard ? "app-sidebar-with-room" : ""}`}>
+              <aside
+                className={
+                  "app-sidebar" +
+                  (panelMode === "room" && selectedRoomCard ? " app-sidebar-with-room" : "") +
+                  (emergencySidebar ? " app-sidebar-emergency" : "")
+                }
+              >
                 {/* The sidebar's own session-start walkthrough — see
                     SidebarIntroOverlay.jsx and the sidebarIntroSeen state
                     above. Shares dismissIntro with DesktopIntroOverlay
@@ -1853,6 +1866,8 @@ function MainPageContent({ onReset }) {
                     </div>
                   )}
                 </div>
+
+                {emergencySidebar && <EmergencyContactsBand />}
 
                 {/* Outside .app-sidebar-content so it anchors to the sidebar
                     itself rather than scrolling with the directory. */}
