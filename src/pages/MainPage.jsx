@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
@@ -27,7 +27,6 @@ import KioskIntroOverlay from "../components/KioskIntroOverlay";
 import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
-import directionsIcon from "../assets/icons/directions.svg";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import powerIcon from "../assets/icons/power.svg";
 import questionMarkIcon from "../assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg";
@@ -240,6 +239,28 @@ function MainPageContent({ onReset }) {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [accountMenuOpen]);
+
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const [desktopMenuPos, setDesktopMenuPos] = useState(null);
+  const desktopFabRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!desktopMenuOpen) return;
+    const place = () => {
+      const r = desktopFabRef.current?.getBoundingClientRect();
+      // Clear of the sidebar entirely, not just of the FAB, which sits inside its padding.
+      const sidebarRight = desktopFabRef.current?.closest(".app-sidebar")?.getBoundingClientRect().right;
+      if (r) setDesktopMenuPos({ top: r.top, left: (sidebarRight ?? r.right) + 16 });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [desktopMenuOpen]);
+  useEffect(() => {
+    if (!desktopMenuOpen) return;
+    const onKey = (e) => e.key === "Escape" && setDesktopMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [desktopMenuOpen]);
 
   const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
 
@@ -820,6 +841,136 @@ function MainPageContent({ onReset }) {
     },
   ].filter(Boolean);
 
+  // Desktop menu FAB (right of the sidebar search bar): same actions as the
+  // Compact layout dock minus Search, which the sidebar already shows, and
+  // plus Directions, which used to sit inside the search bar. The buttons
+  // stack downward from the FAB's own level, over the panorama.
+  const desktopMenuItems = [
+    {
+      key: "directions",
+      icon: PLACEHOLDER("directions"),
+      title: "Get directions",
+      onClick: () => {
+        overlay.closeBuildingMenu();
+        flow.open();
+      },
+    },
+    {
+      key: "building",
+      icon: PLACEHOLDER("building"),
+      title: "Choose a building",
+      onClick: () => overlay.openFromDock("building"),
+    },
+    {
+      key: "nearest-exit",
+      icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />,
+      title: "Nearest Exit",
+      onClick: () => {
+        overlay.closeBuildingMenu();
+        flow.openNearestExit();
+      },
+      className: "desktop-menu-btn--exit",
+    },
+    {
+      key: "feedback",
+      icon: PLACEHOLDER("chat-bubble"),
+      title: "Give feedback",
+      onClick: overlay.openFeedback,
+    },
+    {
+      key: "help",
+      icon: <img src={questionMarkIcon} alt="" className="inline-icon-img" />,
+      title: "How to use this tour",
+      onClick: replayIntro,
+    },
+  ];
+
+  // Shared by the Compact layout's Building modal and the desktop sidebar's
+  // building selector; only the chrome around the list differs.
+  const renderBuildingList = () => (
+    <div className="mobile-building-list">
+      {mainCampusEntrance && (
+        <div className="mobile-entrance-shortcuts mobile-entrance-shortcuts-top">
+          <button
+            type="button"
+            className="mobile-entrance-btn"
+            onClick={() => handleMobileEntrancePick(mainCampusEntrance.building, mainCampusEntrance.id)}
+          >
+            Main Campus Entrance
+          </button>
+        </div>
+      )}
+      {allBuildings().map((b) => {
+        const floors = [...new Set(nodes.filter((n) => n.building === b.id).map((n) => Number(n.floor)))].sort(
+          (x, y) => x - y
+        );
+        const expanded = floorPickBuilding === b.id;
+        const isHere = b.id === current?.building;
+        // Main Campus's shared entrance already has its own entry above the
+        // building list (mainCampusEntrance) — showing it again per-building
+        // here would repeat the same node three times (GD1/GD2/GD3). A
+        // single-building campus (e.g. Digital Campus) has no such top-level
+        // entry to fall back on, so its own campus entrance stays here.
+        const entranceShortcuts = findKioskEntranceShortcuts(nodes, b.id, campusForBuilding).filter(
+          (s) => !(s.key === "campus" && campusForBuilding(b.id) === "main")
+        );
+        return (
+          <div key={b.id}>
+            <button
+              type="button"
+              className={
+                "mobile-building-option" +
+                (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "") +
+                (isHere ? " mobile-building-option-here" : "")
+              }
+              disabled={floors.length === 0}
+              aria-expanded={expanded}
+              onClick={() => overlay.setFloorPick(expanded ? null : b.id)}
+            >
+              {b.label}
+              {isHere && <span className="mobile-building-here-badge">You are here</span>}
+            </button>
+            {expanded && (
+              <>
+                {entranceShortcuts.length > 0 && (
+                  <div className="mobile-entrance-shortcuts">
+                    {entranceShortcuts.map((s) => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        className="mobile-entrance-btn"
+                        onClick={() => handleMobileEntrancePick(b.id, s.nodeId)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mobile-floor-subtitle">Floor</div>
+                <div className="mobile-floor-grid">
+                  {floors.map((f) => {
+                    const isCurrentFloor = isHere && f === Number(current?.floor);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
+                        onClick={() => handleMobileFloorPick(b.id, f)}
+                        aria-label={floorLabel(f)}
+                      >
+                        {f === -1 ? "UG" : f}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   // Clicking a room entry (not its buttons) opens that room's panel without
   // moving there; the panel's own "Go To" does the jump.
   const previewRoomEntry = (e, room) => {
@@ -1132,7 +1283,7 @@ function MainPageContent({ onReset }) {
           <p className="field-hint">
             {nextElevator
               ? "The elevator is glowing in the photo. Tap it and pick the highlighted floor, or use the button above."
-              : "Follow the green hotspot in the photo: it marks the correct path to your destination."}
+              : "Follow the yellow hotspot in the photo: it marks the correct path to your destination."}
           </p>
         </div>
       )}
@@ -1553,87 +1704,7 @@ function MainPageContent({ onReset }) {
                       {PLACEHOLDER("close")}
                     </button>
                   </div>
-                  <div className="mobile-building-list">
-                    {mainCampusEntrance && (
-                      <div className="mobile-entrance-shortcuts mobile-entrance-shortcuts-top">
-                        <button
-                          type="button"
-                          className="mobile-entrance-btn"
-                          onClick={() => handleMobileEntrancePick(mainCampusEntrance.building, mainCampusEntrance.id)}
-                        >
-                          Main Campus Entrance
-                        </button>
-                      </div>
-                    )}
-                    {allBuildings().map((b) => {
-                      const floors = [...new Set(nodes.filter((n) => n.building === b.id).map((n) => Number(n.floor)))].sort(
-                        (x, y) => x - y
-                      );
-                      const expanded = floorPickBuilding === b.id;
-                      const isHere = b.id === current?.building;
-                      // Main Campus's shared entrance already has its own entry above the
-                      // building list (mainCampusEntrance) — showing it again per-building
-                      // here would repeat the same node three times (GD1/GD2/GD3). A
-                      // single-building campus (e.g. Digital Campus) has no such top-level
-                      // entry to fall back on, so its own campus entrance stays here.
-                      const entranceShortcuts = findKioskEntranceShortcuts(nodes, b.id, campusForBuilding).filter(
-                        (s) => !(s.key === "campus" && campusForBuilding(b.id) === "main")
-                      );
-                      return (
-                        <div key={b.id}>
-                          <button
-                            type="button"
-                            className={
-                              "mobile-building-option" +
-                              (buildingFilter === b.id || expanded ? " mobile-building-option-active" : "") +
-                              (isHere ? " mobile-building-option-here" : "")
-                            }
-                            disabled={floors.length === 0}
-                            aria-expanded={expanded}
-                            onClick={() => overlay.setFloorPick(expanded ? null : b.id)}
-                          >
-                            {b.label}
-                            {isHere && <span className="mobile-building-here-badge">You are here</span>}
-                          </button>
-                          {expanded && (
-                            <>
-                              {entranceShortcuts.length > 0 && (
-                                <div className="mobile-entrance-shortcuts">
-                                  {entranceShortcuts.map((s) => (
-                                    <button
-                                      key={s.key}
-                                      type="button"
-                                      className="mobile-entrance-btn"
-                                      onClick={() => handleMobileEntrancePick(b.id, s.nodeId)}
-                                    >
-                                      {s.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="mobile-floor-subtitle">Floor</div>
-                              <div className="mobile-floor-grid">
-                                {floors.map((f) => {
-                                  const isCurrentFloor = isHere && f === Number(current?.floor);
-                                  return (
-                                    <button
-                                      key={f}
-                                      type="button"
-                                      className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
-                                      onClick={() => handleMobileFloorPick(b.id, f)}
-                                      aria-label={floorLabel(f)}
-                                    >
-                                      {f === -1 ? "UG" : f}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {renderBuildingList()}
                 </div>
               </div>
             )}
@@ -1669,7 +1740,10 @@ function MainPageContent({ onReset }) {
                       inputMode="search"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => overlay.showPanel("search")}
+                      onFocus={() => {
+                        overlay.closeBuildingMenu();
+                        overlay.showPanel("search");
+                      }}
                       onBlur={overlay.blurSearch}
                       placeholder="Search St. Dominic:"
                       aria-label="Search"
@@ -1679,6 +1753,7 @@ function MainPageContent({ onReset }) {
                       className="floating-search-icon"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
+                        overlay.closeBuildingMenu();
                         overlay.showPanel("search");
                         searchInputRef.current?.focus();
                       }}
@@ -1686,16 +1761,47 @@ function MainPageContent({ onReset }) {
                     >
                       {PLACEHOLDER("search-magnifier")}
                     </button>
-                    <button
-                      type="button"
-                      className="floating-search-directions-icon"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={flow.open}
-                      title="Get directions"
-                    >
-                      <img src={directionsIcon} alt="" className="inline-icon-img" />
-                    </button>
                   </div>
+
+                  {/* Desktop menu FAB, right of the search bar. Its buttons
+                      are position: fixed (see desktopMenuPos) because
+                      .app-sidebar clips overflow, and they have to spill
+                      out over the panorama. */}
+                  <button
+                    ref={desktopFabRef}
+                    type="button"
+                    className="desktop-menu-fab"
+                    onClick={() => setDesktopMenuOpen((o) => !o)}
+                    aria-label={desktopMenuOpen ? "Close menu" : "Open menu"}
+                    aria-expanded={desktopMenuOpen}
+                    title={desktopMenuOpen ? "Close menu" : "Menu"}
+                  >
+                    {desktopMenuOpen
+                      ? <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
+                      : MENU_ICON_WHITE}
+                  </button>
+                  {desktopMenuOpen && desktopMenuPos && (
+                    <>
+                      <div className="desktop-menu-backdrop" onClick={() => setDesktopMenuOpen(false)} />
+                      <div className="desktop-menu-stack" style={{ top: desktopMenuPos.top, left: desktopMenuPos.left }}>
+                        {desktopMenuItems.map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            className={"desktop-menu-btn" + (item.className ? ` ${item.className}` : "")}
+                            onClick={() => {
+                              setDesktopMenuOpen(false);
+                              item.onClick();
+                            }}
+                            title={item.title}
+                            aria-label={item.title}
+                          >
+                            {item.icon}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* No dedicated toggle for this anymore (the hamburger's
@@ -1706,14 +1812,30 @@ function MainPageContent({ onReset }) {
                     search bar above) so it stays put while the accordion
                     scrolls underneath it, instead of scrolling away with
                     the rest of the directory's rows. */}
-                {panelMode !== "search" && panelMode !== "directions" && (
+                {panelMode !== "search" && panelMode !== "directions" && !buildingMenuOpen && (
                   <h3 className="directory-title">Directory</h3>
                 )}
 
                 <div className="app-sidebar-content">
                   {panelMode === "search" && searchResultsContent}
 
-                  {panelMode !== "search" && panelMode !== "directions" && (
+                  {/* The building selector: the Compact layout's modal, shown
+                      here in the sidebar instead. Takes the directory's slot
+                      while open; search and directions still win (opening
+                      either closes it). */}
+                  {buildingMenuOpen && panelMode !== "search" && panelMode !== "directions" && (
+                    <div className="sidebar-card sidebar-building-panel">
+                      <div className="preview-header">
+                        <h3>Choose a building</h3>
+                        <button className="close-btn" onClick={overlay.closeBuildingMenu} aria-label="Close">
+                          {PLACEHOLDER("close")}
+                        </button>
+                      </div>
+                      {renderBuildingList()}
+                    </div>
+                  )}
+
+                  {!buildingMenuOpen && panelMode !== "search" && panelMode !== "directions" && (
                     <div className="sidebar-card sidebar-card-directory">
                       <DirectoryAccordion
                         rooms={searchableRooms}
@@ -1817,49 +1939,11 @@ function MainPageContent({ onReset }) {
                   </div>
                 </div>
 
-                {/* Client-requested: rightmost of the bottom-right safety row
-                    (feedback, Nearest Exit, How to use). */}
-                <button
-                  className="floating-rail-btn floating-feedback-btn"
-                  onClick={overlay.openFeedback}
-                  title="Give feedback"
-                >
-                  {PLACEHOLDER("chat-bubble")}
-                </button>
-
-                {/* Nearest Exit: same bottom-right safety row, one more
-                    step left of feedback, so it's reachable without
-                    opening the menu first. */}
-                <button
-                  className="floating-rail-btn floating-nearest-exit-btn"
-                  onClick={flow.openNearestExit}
-                  title="Nearest Exit"
-                >
-                  <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />
-                </button>
-
-                {/* How to use this tour: left end of the same bottom-right row,
-                    one more step left of Nearest Exit. Replays the intro
-                    overlays. */}
-                <button
-                  className="floating-rail-btn floating-help-btn"
-                  onClick={replayIntro}
-                  title="How to use this tour"
-                  aria-label="How to use this tour"
-                >
-                  <img src={questionMarkIcon} alt="" className="inline-icon-img" />
-                </button>
-
-                {/* Moved out of the rail and up to the top-right, just left of the
-                    zoom indicator — its own
-                    popover now needs to open DOWNWARD instead of upward
-                    (see .floating-account-wrap-top override), since it's no
-                    longer sitting at the bottom of the screen where opening
-                    upward made sense. */}
+                {/* Top-left corner; its popover opens downward. */}
                 {/* Hidden entirely for a logged-out visitor — same
                     reasoning as the Compact layout's account button above. */}
                 {user && (
-                  <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
+                  <div className="floating-account-wrap floating-account-wrap-corner" ref={accountMenuRef}>
                     {accountMenuOpen && (
                       <div className="account-popover">
                         <span className="account-popover-name" title={displayName}>{displayName}</span>

@@ -17,10 +17,12 @@ function toEdges(neighborRows) {
   const hotspots = {};
   const neighbors = (neighborRows || []).map((n) => {
     hotspots[n.neighbor_id] = {
-      yaw: n.yaw,
-      pitch: n.pitch,
-      defaultYaw: n.default_yaw ?? null,
-      defaultPitch: n.default_pitch ?? null,
+      // The API sends MySQL floats as strings; angle math (`yaw + 180`) would
+      // concatenate instead of add.
+      yaw: Number(n.yaw),
+      pitch: Number(n.pitch),
+      defaultYaw: n.default_yaw == null ? null : Number(n.default_yaw),
+      defaultPitch: n.default_pitch == null ? null : Number(n.default_pitch),
     };
     return n.neighbor_id;
   });

@@ -18,7 +18,7 @@ import { SIDEBAR_INTRO_TEXT } from "../utils/introScript";
 // this overlay's dark background it rendered as its real (dark) color and
 // was effectively invisible. directions-white.svg is a plain, genuinely
 // white icon instead, same fix pattern as the grey/white icon pairs
-// elsewhere. Nearest Exit itself renders as .floating-nearest-exit-btn over
+// elsewhere. Nearest Exit itself lives in the menu FAB's buttons, which spill over
 // the panorama, not inside .app-sidebar — listed here anyway (first, same
 // safety-first ordering as the kiosk's own radialItems) since it's one of
 // the app's core functions this walkthrough covers, same "emergency-exit"

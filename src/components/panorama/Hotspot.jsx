@@ -14,8 +14,10 @@ const HOTSPOT_RENDER_ORDER = 10;
 // Gap between the hotspot ring and its preview card, as a share of the original.
 const PREVIEW_GAP_FRACTION = 0.5;
 
-// Period of the hotspot's outer-ring pulse.
+// Period of the hotspot's outer-ring pulse. The highlighted (next step)
+// hotspot pulses much faster and wider so it can't be missed.
 const RING_PULSE_SECONDS = 2;
+const HIGHLIGHT_RING_PULSE_SECONDS = 0.7;
 
 // A clickable wayfinding arrow toward a linked node, with a sneak-peek
 // preview of where it leads. What the preview shows and when (facing,
@@ -80,18 +82,16 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   };
 
   // 3D materials can't read CSS custom properties — these mirror the brand
-  // tokens: --accent (SDCA maroon), --success, and --text-subtle for the
-  // dimmed/placing state.
-  const color = dimmed ? "#8c8180" : highlighted ? "#2e7d46" : "#a12124";
-  // The arrow inside the hotspot always uses the design system's on-accent
-  // contrast colour (--accent-contrast === #fff). White reads clearly on
-  // every hotspot fill — maroon, success green and the
-  // dimmed grey — and matches how the app already paints icons and text
-  // that sit on an accent-coloured surface, so the arrow stays visually
-  // tied to the hotspot rather than looking like a separate element.
+  // tokens: --accent (SDCA maroon), --sdca-gold for the route's next step,
+  // and --text-subtle for the dimmed/placing state.
+  const color = dimmed ? "#8c8180" : highlighted ? "#c9a24b" : "#a12124";
+  // The arrow always uses the design system's on-accent contrast colour
+  // (--accent-contrast === #fff), which keeps it tied to the hotspot on every
+  // fill: maroon, gold and the dimmed grey.
   const arrowColor = "#ffffff";
   const groupRef = useRef();
   const pulseRef = useRef();
+  const dotRef = useRef();
   const previewRef = useRef(); // the preview card; scaled every frame, see useFrame
   const cameraDir = useMemo(() => new THREE.Vector3(), []);
   const hotspotDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch)).normalize(), [yaw, pitch]);
@@ -140,9 +140,14 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
     // Pulse ring: every RING_PULSE_SECONDS an extra copy of the ring
     // expands outward and fades, then restarts.
     if (pulseRef.current) {
-      const phase = (clock.elapsedTime % RING_PULSE_SECONDS) / RING_PULSE_SECONDS;
-      pulseRef.current.scale.setScalar(1 + phase * 0.6);
-      pulseRef.current.material.opacity = ringOpacity * (1 - phase);
+      const period = highlighted ? HIGHLIGHT_RING_PULSE_SECONDS : RING_PULSE_SECONDS;
+      const phase = (clock.elapsedTime % period) / period;
+      pulseRef.current.scale.setScalar(1 + phase * (highlighted ? 1.8 : 0.6));
+      pulseRef.current.material.opacity = (highlighted ? 1 : ringOpacity) * (1 - phase);
+    }
+    // Highlighted disc throbs in step with the ring.
+    if (dotRef.current && highlighted) {
+      dotRef.current.scale.setScalar(1 + 0.18 * Math.sin((clock.elapsedTime * 2 * Math.PI) / HIGHLIGHT_RING_PULSE_SECONDS));
     }
     // Billboard the whole marker toward the camera so the always-visible
     // disc / ring / arrow never turn edge-on as the visitor looks around.
@@ -177,7 +182,7 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
           sphere as soon as you look well away from the hotspot, and the depth
           test then cut that part off. The marker is always meant to be in
           front of the image, so it never needs the test. */}
-      <mesh renderOrder={HOTSPOT_RENDER_ORDER}>
+      <mesh ref={dotRef} renderOrder={HOTSPOT_RENDER_ORDER}>
         <circleGeometry args={[dotRadius, 40]} />
         <meshBasicMaterial color={color} transparent opacity={dotOpacity} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
       </mesh>

@@ -231,8 +231,20 @@ export default function PanoramaNav({
   useEffect(() => {
     onLiveChangeRef.current?.(live);
   }, [live, scene.sceneKey]);
-  const highlightedHotspot = scene.hotspots.find((h) => h.id === highlightedId) || null;
-  const highlightedMarker = scene.markers.find((m) => m.id === highlightedMarkerId) || null;
+  // The highlight props already describe the NEXT stop the moment a move is
+  // made, while the screen still shows the scene being left until the new one
+  // loads. Following them at once would drop the highlight (gold + pulse) off
+  // the hotspot just pressed, and a slow load would show it reverting to its
+  // normal colour. So only follow the props while live; while a move is
+  // loading, keep the last live ones, until the new scene swaps in.
+  const [held, setHeld] = useState({ id: highlightedId, markerId: highlightedMarkerId });
+  if (live && (held.id !== highlightedId || held.markerId !== highlightedMarkerId)) {
+    setHeld({ id: highlightedId, markerId: highlightedMarkerId });
+  }
+  const shownHighlightId = live ? highlightedId : held.id;
+  const shownHighlightMarkerId = live ? highlightedMarkerId : held.markerId;
+  const highlightedHotspot = scene.hotspots.find((h) => h.id === shownHighlightId) || null;
+  const highlightedMarker = scene.markers.find((m) => m.id === shownHighlightMarkerId) || null;
   const panTarget = highlightedHotspot || highlightedMarker;
 
   // An arrival that stays on the scene already on screen loads no texture,
@@ -295,7 +307,7 @@ export default function PanoramaNav({
           label={h.name}
           photo={h.photo}
           dimmed={placing}
-          highlighted={!placing && h.id === highlightedId}
+          highlighted={!placing && h.id === shownHighlightId}
           fov={fov}
           alwaysPreview={alwaysShowPreview && !placing}
           // Also hidden while a move is loading: `!live` means the screen is
@@ -316,7 +328,7 @@ export default function PanoramaNav({
           type={m.type}
           dimmed={placing}
           selected={m.id === selectedMarkerId}
-          highlighted={!placing && m.id === highlightedMarkerId}
+          highlighted={!placing && m.id === shownHighlightMarkerId}
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
           onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}

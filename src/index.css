@@ -133,7 +133,8 @@ button.primary {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
-.admin-back-link:hover {
+:where(html:not(.kiosk-mode)) .admin-back-link:hover,
+html.kiosk-mode .admin-back-link:hover:active {
   border-color: var(--accent);
   color: var(--text);
 }
@@ -167,7 +168,8 @@ button.primary {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.admin-header-nav-btn:hover {
+:where(html:not(.kiosk-mode)) .admin-header-nav-btn:hover,
+html.kiosk-mode .admin-header-nav-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -257,7 +259,8 @@ img[data-icon-placeholder="emergency-exit"] {
   width: 1.25em;
   height: 1.25em;
 }
-.admin-sidebar-icon-btn:hover {
+:where(html:not(.kiosk-mode)) .admin-sidebar-icon-btn:hover,
+html.kiosk-mode .admin-sidebar-icon-btn:hover:active {
   background: var(--surface-hover);
   border-color: var(--border);
 }
@@ -273,7 +276,8 @@ img[data-icon-placeholder="emergency-exit"] {
 /* Needed because .admin-sidebar-icon-btn:hover (specificity 0,2,0) otherwise
    beats the class above and paints the near-white hover fill behind the
    already-white icon, making it vanish. */
-.admin-sidebar-icon-btn-active:hover {
+:where(html:not(.kiosk-mode)) .admin-sidebar-icon-btn-active:hover,
+html.kiosk-mode .admin-sidebar-icon-btn-active:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -317,8 +321,9 @@ img[data-icon-placeholder="emergency-exit"] {
   visibility: hidden;
   transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
 }
-.admin-sidebar-rail-item:hover .admin-sidebar-icon-preview,
-.admin-sidebar-rail-item:focus-within .admin-sidebar-icon-preview {
+.admin-sidebar-rail-item:focus-within .admin-sidebar-icon-preview,
+:where(html:not(.kiosk-mode)) .admin-sidebar-rail-item:hover .admin-sidebar-icon-preview,
+html.kiosk-mode .admin-sidebar-rail-item:hover:active .admin-sidebar-icon-preview {
   opacity: 1;
   visibility: visible;
   transform: translateX(0);
@@ -393,7 +398,8 @@ img[data-icon-placeholder="emergency-exit"] {
   padding: 4px 8px;
   margin-bottom: 8px;
 }
-.admin-sidebar-close:hover {
+:where(html:not(.kiosk-mode)) .admin-sidebar-close:hover,
+html.kiosk-mode .admin-sidebar-close:hover:active {
   color: var(--text);
 }
 /* New with the group restructuring — shows which group's flyout is
@@ -422,7 +428,8 @@ img[data-icon-placeholder="emergency-exit"] {
   text-decoration: none;
   color: var(--text);
 }
-.admin-sidebar-flyout-item:hover {
+:where(html:not(.kiosk-mode)) .admin-sidebar-flyout-item:hover,
+html.kiosk-mode .admin-sidebar-flyout-item:hover:active {
   background: var(--surface-hover);
 }
 /* A thin gold hairline on the active item — genuinely applying the brand's
@@ -430,7 +437,8 @@ img[data-icon-placeholder="emergency-exit"] {
    exactly as the brand doc specifies: sparing, hairline-only, paired with
    the maroon selected state rather than replacing it. */
 .admin-sidebar-flyout-item-active,
-.admin-sidebar-flyout-item-active:hover {
+:where(html:not(.kiosk-mode)) .admin-sidebar-flyout-item-active:hover,
+html.kiosk-mode .admin-sidebar-flyout-item-active:hover:active {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
@@ -501,7 +509,8 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.node-editor-toolbar > button:hover {
+:where(html:not(.kiosk-mode)) .node-editor-toolbar > button:hover,
+html.kiosk-mode .node-editor-toolbar > button:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -744,7 +753,8 @@ img[data-icon-placeholder="emergency-exit"] {
   font-size: 13px;
   cursor: pointer;
 }
-.user-panel-page .user-panel-create-btn:hover {
+:where(html:not(.kiosk-mode)) .user-panel-page .user-panel-create-btn:hover,
+html.kiosk-mode .user-panel-page .user-panel-create-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -931,7 +941,8 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.file-picker-btn:hover {
+:where(html:not(.kiosk-mode)) .file-picker-btn:hover,
+html.kiosk-mode .file-picker-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1009,7 +1020,8 @@ img[data-icon-placeholder="emergency-exit"] {
   color: var(--accent-contrast);
   font-weight: 700;  cursor: pointer;
 }
-.toolbar button.primary:hover {
+:where(html:not(.kiosk-mode)) .toolbar button.primary:hover,
+html.kiosk-mode .toolbar button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1058,7 +1070,8 @@ img[data-icon-placeholder="emergency-exit"] {
      list past one screenful. */
   flex-shrink: 0;
 }
-.node-row:hover {
+:where(html:not(.kiosk-mode)) .node-row:hover,
+html.kiosk-mode .node-row:hover:active {
   background: var(--surface-hover);
 }
 .node-row.selected {
@@ -1342,7 +1355,8 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.form-actions button:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .form-actions button:hover:not(:disabled),
+html.kiosk-mode .form-actions button:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
 .form-actions .primary {
@@ -1350,7 +1364,8 @@ img[data-icon-placeholder="emergency-exit"] {
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
-.form-actions .primary:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .form-actions .primary:hover:not(:disabled),
+html.kiosk-mode .form-actions .primary:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1358,6 +1373,11 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--danger);
   border-color: var(--danger);
   color: var(--accent-contrast);
+}
+:where(html:not(.kiosk-mode)) .form-actions .danger:hover:not(:disabled),
+html.kiosk-mode .form-actions .danger:hover:active:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }
 .export-import-bar {
   display: flex;
@@ -1417,6 +1437,11 @@ img[data-icon-placeholder="emergency-exit"] {
   font-weight: 700;
   cursor: pointer;
   font-size: 12px;
+}
+:where(html:not(.kiosk-mode)) .export-import-bar button.primary:hover,
+html.kiosk-mode .export-import-bar button.primary:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 .main-page-status {
   display: flex;
@@ -1482,7 +1507,8 @@ img[data-icon-placeholder="emergency-exit"] {
   align-items: center;
   justify-content: center;
 }
-.sidebar-rail-btn:hover {
+:where(html:not(.kiosk-mode)) .sidebar-rail-btn:hover,
+html.kiosk-mode .sidebar-rail-btn:hover:active {
   border-color: var(--accent);
 }
 .sidebar-rail-spacer {
@@ -1495,6 +1521,11 @@ img[data-icon-placeholder="emergency-exit"] {
   font-weight: 700;
   font-size: 13px;
   border-color: var(--accent);
+}
+:where(html:not(.kiosk-mode)) .sidebar-rail-account:hover,
+html.kiosk-mode .sidebar-rail-account:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 /* ---------- Expanded sidebar ---------- */
 .sidebar-top-row {
@@ -1517,7 +1548,8 @@ img[data-icon-placeholder="emergency-exit"] {
   align-self: flex-start;
   margin-top: 4px;
 }
-.sidebar-toggle-btn:hover {
+:where(html:not(.kiosk-mode)) .sidebar-toggle-btn:hover,
+html.kiosk-mode .sidebar-toggle-btn:hover:active {
   border-color: var(--accent);
 }
 .sidebar-card {
@@ -1547,7 +1579,8 @@ img[data-icon-placeholder="emergency-exit"] {
   text-decoration: none;
   cursor: pointer;
 }
-.sidebar-admin-btn:hover {
+:where(html:not(.kiosk-mode)) .sidebar-admin-btn:hover,
+html.kiosk-mode .sidebar-admin-btn:hover:active {
   background: var(--selected-bg);
 }
 .sidebar-account-row {
@@ -1663,7 +1696,8 @@ img[data-icon-placeholder="emergency-exit"] {
   text-transform: uppercase;
   cursor: pointer;
 }
-.directions-btn:hover {
+:where(html:not(.kiosk-mode)) .directions-btn:hover,
+html.kiosk-mode .directions-btn:hover:active {
   background: var(--accent-tint);
 }
 .directions-panel {
@@ -1709,7 +1743,8 @@ img[data-icon-placeholder="emergency-exit"] {
   font-size: 13px;
   cursor: pointer;
 }
-.directions-go-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .directions-go-btn:hover:not(:disabled),
+html.kiosk-mode .directions-go-btn:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1721,7 +1756,8 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.directions-go-btn:not(.primary):hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .directions-go-btn:not(.primary):hover:not(:disabled),
+html.kiosk-mode .directions-go-btn:not(.primary):hover:active:not(:disabled) {
   background: var(--accent-tint);
   border-color: var(--accent);
 }
@@ -1733,7 +1769,8 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--gold);
   border-color: var(--gold);
 }
-.directions-get-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .directions-get-btn:hover:not(:disabled),
+html.kiosk-mode .directions-get-btn:hover:active:not(:disabled) {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
 }
@@ -1826,7 +1863,8 @@ img[data-icon-placeholder="emergency-exit"] {
   text-transform: uppercase;
   text-align: left;
 }
-.entrance-btn:hover {
+:where(html:not(.kiosk-mode)) .entrance-btn:hover,
+html.kiosk-mode .entrance-btn:hover:active {
   background: var(--accent-tint);
 }
 .entrance-btn-sub {
@@ -2018,6 +2056,97 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .app-sidebar-search {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-sidebar-search .floating-search-bar {
+  flex: 1;
+  min-width: 0;
+}
+/* Red circle with the white hamburger; its buttons are .desktop-menu-btn
+   in .desktop-menu-stack, position: fixed so the sidebar's overflow clip
+   cannot cut them off. */
+.desktop-menu-fab {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+}
+:where(html:not(.kiosk-mode)) .desktop-menu-fab:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.desktop-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+}
+.desktop-menu-stack {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.desktop-menu-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  color: var(--sdca-gray);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  animation: radial-btn-bounce-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+.desktop-menu-btn:nth-child(1) { animation-delay: 0s; }
+.desktop-menu-btn:nth-child(2) { animation-delay: 0.03s; }
+.desktop-menu-btn:nth-child(3) { animation-delay: 0.06s; }
+.desktop-menu-btn:nth-child(4) { animation-delay: 0.09s; }
+.desktop-menu-btn:nth-child(5) { animation-delay: 0.12s; }
+.desktop-menu-btn--exit {
+  background: var(--success);
+}
+:where(html:not(.kiosk-mode)) .desktop-menu-btn--exit:hover {
+  filter: brightness(0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-menu-btn { animation: none; }
+}
+/* The building selector, in the sidebar in place of the directory. The
+   floor circles are smaller than the kiosk's 92px so three still fit the
+   sidebar's width. */
+/* Bounded to the sidebar content area so the list scrolls inside the card
+   (header stays put) instead of depending on an outer scroller. */
+.sidebar-building-panel {
+  max-height: 100%;
+  overflow: hidden;
+}
+.sidebar-building-panel .mobile-building-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.sidebar-building-panel .mobile-floor-btn {
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
 }
 .app-sidebar-content {
   flex: 1;
@@ -2162,18 +2291,22 @@ img[data-icon-placeholder="emergency-exit"] {
 .directory-saved .directory-room-row {
   padding-left: 28px;
 }
-.directory-building-row:hover,
-.directory-campus-row:hover {
-  filter: brightness(1.15);
+:where(html:not(.kiosk-mode)) .directory-building-row:hover,
+:where(html:not(.kiosk-mode)) .directory-campus-row:hover,
+html.kiosk-mode .directory-building-row:hover:active,
+html.kiosk-mode .directory-campus-row:hover:active {
+  filter: brightness(0.9);
 }
 /* Room hover: a crisp, static maroon highlight (no blur) in the same color
    as the selected highlight — a hard inset outline over a maroon wash. */
-.directory-room-row:hover {
+:where(html:not(.kiosk-mode)) .directory-room-row:hover,
+html.kiosk-mode .directory-room-row:hover:active {
   background: rgba(161, 33, 36, 0.4);
   box-shadow: inset 0 0 0 1px var(--sdca-maroon);
 }
-.directory-room-row.directory-row-selected:hover {
-  background: var(--sdca-maroon);
+:where(html:not(.kiosk-mode)) .directory-room-row.directory-row-selected:hover,
+html.kiosk-mode .directory-room-row.directory-row-selected:hover:active {
+  background: var(--accent-hover);
 }
 .directory-empty-hint {
   margin: 0;
@@ -2353,7 +2486,8 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--accent);
   border: 1px solid var(--accent);
 }
-.search-result-goto:hover {
+:where(html:not(.kiosk-mode)) .search-result-goto:hover,
+html.kiosk-mode .search-result-goto:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -2361,7 +2495,8 @@ img[data-icon-placeholder="emergency-exit"] {
   background: var(--gold);
   border: 1px solid var(--gold);
 }
-.search-result-directions:hover {
+:where(html:not(.kiosk-mode)) .search-result-directions:hover,
+html.kiosk-mode .search-result-directions:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
 }
@@ -2388,7 +2523,8 @@ img[data-icon-placeholder="emergency-exit"] {
 .room-search-result:last-child {
   border-bottom: none;
 }
-.room-search-result:hover {
+:where(html:not(.kiosk-mode)) .room-search-result:hover,
+html.kiosk-mode .room-search-result:hover:active {
   background: var(--surface-hover);
 }
 .room-search-name {
@@ -2506,7 +2642,8 @@ img[data-icon-placeholder="emergency-exit"] {
      off-scale third weight. */
   font-weight: 700;
 }
-.elevator-picker-option:hover {
+:where(html:not(.kiosk-mode)) .elevator-picker-option:hover,
+html.kiosk-mode .elevator-picker-option:hover:active {
   background: var(--accent-tint);
 }
 .elevator-picker-option-route {
@@ -2656,6 +2793,11 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+}
+:where(html:not(.kiosk-mode)) .warning-modal button.primary:hover,
+html.kiosk-mode .warning-modal button.primary:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 .add-building-modal {
   width: 1000px;
@@ -2871,11 +3013,13 @@ img[data-icon-placeholder="emergency-exit"] {
   font-family: inherit;
   cursor: pointer;
 }
-.room-edit-tab:hover {
+:where(html:not(.kiosk-mode)) .room-edit-tab:hover,
+html.kiosk-mode .room-edit-tab:hover:active {
   border-color: var(--border-strong);
 }
 .room-edit-tab-active,
-.room-edit-tab-active:hover {
+:where(html:not(.kiosk-mode)) .room-edit-tab-active:hover,
+html.kiosk-mode .room-edit-tab-active:hover:active {
   border-color: var(--accent);
   background: var(--accent-tint);
   color: var(--accent);
@@ -2932,11 +3076,13 @@ img[data-icon-placeholder="emergency-exit"] {
   font-family: inherit;
   cursor: pointer;
 }
-.room-editor-list-mode-opt:hover {
+:where(html:not(.kiosk-mode)) .room-editor-list-mode-opt:hover,
+html.kiosk-mode .room-editor-list-mode-opt:hover:active {
   background: var(--surface);
 }
 .room-editor-list-mode-opt-active,
-.room-editor-list-mode-opt-active:hover {
+:where(html:not(.kiosk-mode)) .room-editor-list-mode-opt-active:hover,
+html.kiosk-mode .room-editor-list-mode-opt-active:hover:active {
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
@@ -2959,12 +3105,14 @@ img[data-icon-placeholder="emergency-exit"] {
   font-family: inherit;
   cursor: pointer;
 }
-.node-row-room-pill:hover {
+:where(html:not(.kiosk-mode)) .node-row-room-pill:hover,
+html.kiosk-mode .node-row-room-pill:hover:active {
   border-color: var(--accent);
   color: var(--accent);
 }
 .node-row-room-pill-active,
-.node-row-room-pill-active:hover {
+:where(html:not(.kiosk-mode)) .node-row-room-pill-active:hover,
+html.kiosk-mode .node-row-room-pill-active:hover:active {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -3151,7 +3299,8 @@ img[data-icon-placeholder="emergency-exit"] {
   justify-content: space-between;
   gap: 6px;
 }
-.add-link-result:hover {
+:where(html:not(.kiosk-mode)) .add-link-result:hover,
+html.kiosk-mode .add-link-result:hover:active {
   background: var(--surface-hover);
 }
 .add-link-box > button {
@@ -3247,7 +3396,8 @@ img[data-icon-placeholder="emergency-exit"] {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
-.account-admin-link:hover {
+:where(html:not(.kiosk-mode)) .account-admin-link:hover,
+html.kiosk-mode .account-admin-link:hover:active {
   border-color: var(--accent);
 }
 .main-page-brand-row {
@@ -3551,7 +3701,8 @@ img[data-icon-placeholder="emergency-exit"] {
   text-transform: uppercase;
   cursor: pointer;
 }
-.auth-card button[type="submit"]:hover {
+:where(html:not(.kiosk-mode)) .auth-card button[type="submit"]:hover,
+html.kiosk-mode .auth-card button[type="submit"]:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -3666,7 +3817,8 @@ img[data-icon-placeholder="emergency-exit"] {
   color: var(--text);
   cursor: pointer;
 }
-.role-select-option:hover {
+:where(html:not(.kiosk-mode)) .role-select-option:hover,
+html.kiosk-mode .role-select-option:hover:active {
   background: var(--surface-hover);
 }
 .role-select-option-active {
@@ -3754,7 +3906,8 @@ img[data-icon-placeholder="emergency-exit"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.room-card-actions button:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .room-card-actions button:hover:not(:disabled),
+html.kiosk-mode .room-card-actions button:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
 .room-card-actions button.primary {
@@ -3762,7 +3915,8 @@ img[data-icon-placeholder="emergency-exit"] {
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
-.room-card-actions button.primary:hover {
+:where(html:not(.kiosk-mode)) .room-card-actions button.primary:hover,
+html.kiosk-mode .room-card-actions button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -3858,8 +4012,9 @@ img[data-icon-placeholder="emergency-exit"] {
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.55);
 }
-.sidebar-room-handle:hover::before,
-.sidebar-room-handle:focus-visible::before {
+.sidebar-room-handle:focus-visible::before,
+:where(html:not(.kiosk-mode)) .sidebar-room-handle:hover::before,
+html.kiosk-mode .sidebar-room-handle:hover:active::before {
   background: var(--white);
 }
 .sidebar-room-body {
@@ -3906,7 +4061,8 @@ img[data-icon-placeholder="emergency-exit"] {
   align-items: center;
   justify-content: center;
 }
-.sidebar-room-close:hover {
+:where(html:not(.kiosk-mode)) .sidebar-room-close:hover,
+html.kiosk-mode .sidebar-room-close:hover:active {
   background: var(--gray-100);
   border-color: var(--gray-100);
 }
@@ -3950,8 +4106,9 @@ img[data-icon-placeholder="emergency-exit"] {
 a.sidebar-room-contact-row {
   text-decoration: none;
 }
-a.sidebar-room-contact-row:hover span,
-a.sidebar-room-contact-row:focus-visible span {
+a.sidebar-room-contact-row:focus-visible span,
+:where(html:not(.kiosk-mode)) a.sidebar-room-contact-row:hover span,
+html.kiosk-mode a.sidebar-room-contact-row:hover:active span {
   color: var(--accent);
   text-decoration: underline;
 }
@@ -3977,8 +4134,9 @@ a.sidebar-room-contact-row:focus-visible span {
   text-transform: uppercase;
   cursor: pointer;
 }
-.sidebar-room-goto:hover,
-.sidebar-room-goto:focus-visible {
+.sidebar-room-goto:focus-visible,
+:where(html:not(.kiosk-mode)) .sidebar-room-goto:hover,
+html.kiosk-mode .sidebar-room-goto:hover:active {
   background: #ececec;
 }
 .sidebar-room-actions-stacked {
@@ -4012,7 +4170,8 @@ a.sidebar-room-contact-row:focus-visible span {
   border: 1px solid var(--gold);
   color: var(--white);
 }
-.sidebar-room-actions button.sidebar-room-directions:hover {
+:where(html:not(.kiosk-mode)) .sidebar-room-actions button.sidebar-room-directions:hover,
+html.kiosk-mode .sidebar-room-actions button.sidebar-room-directions:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
 }
@@ -4031,8 +4190,9 @@ a.sidebar-room-contact-row:focus-visible span {
   background: var(--gray-700);
   cursor: pointer;
 }
-.sidebar-room-actions .sidebar-room-icon-btn:hover,
-.sidebar-room-actions .sidebar-room-icon-btn:focus-visible {
+.sidebar-room-actions .sidebar-room-icon-btn:focus-visible,
+:where(html:not(.kiosk-mode)) .sidebar-room-actions .sidebar-room-icon-btn:hover,
+html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   background: var(--gray-900);
   border-color: var(--gray-900);
 }
@@ -4116,7 +4276,8 @@ a.sidebar-room-contact-row:focus-visible span {
   align-items: center;
   justify-content: center;
 }
-.sidebar-room-carousel-arrow:hover {
+:where(html:not(.kiosk-mode)) .sidebar-room-carousel-arrow:hover,
+html.kiosk-mode .sidebar-room-carousel-arrow:hover:active {
   background: rgba(32, 27, 27, 0.8);
 }
 .sidebar-room-carousel-prev { left: 8px; }
@@ -4163,33 +4324,25 @@ a.sidebar-room-contact-row:focus-visible span {
   justify-content: center;
   box-shadow: var(--shadow-1);
 }
-.floating-rail-btn:hover {
+:where(html:not(.kiosk-mode)) .floating-rail-btn:hover,
+html.kiosk-mode .floating-rail-btn:hover:active {
   border-color: var(--accent);
 }
 .floating-account-wrap {
   position: relative;
   pointer-events: auto;
 }
-/* The button moved from the bottom of the left rail up to the top-right
-   corner — its popover needs to open DOWNWARD now instead of upward
-   (opening upward made sense at the bottom of the screen; it would go
-   off-screen at the top), and right-aligned instead of left-aligned,
-   since the button now sits near the right edge rather than the left. */
-/* right: 100px clears the zoom indicator, which now owns the top-right
-   corner (.pano-wheel-zoom-indicator: 16px offset + its pill, ~70px at
-   the widest realistic level + 12px gap). Reserved even while the pill is
-   hidden at 1.0x so the button doesn't jump when zooming. */
-.floating-account-wrap-top {
+/* Top-left corner of the panorama. The popover opens DOWNWARD, left-aligned,
+   since opening upward from the top edge would go off screen. */
+.floating-account-wrap-corner {
   position: absolute;
-  top: 16px;
-  right: 100px;
+  top: calc(16px + env(safe-area-inset-top));
+  left: calc(16px + env(safe-area-inset-left));
   z-index: 30;
 }
-.floating-account-wrap-top .account-popover {
+.floating-account-wrap-corner .account-popover {
   bottom: auto;
   top: calc(100% + 8px);
-  left: auto;
-  right: 0;
 }
 .floating-account-btn {
   width: auto;
@@ -4204,6 +4357,11 @@ a.sidebar-room-contact-row:focus-visible span {
   text-transform: uppercase;
   font-size: 13px;
   border-color: var(--accent);
+}
+:where(html:not(.kiosk-mode)) .floating-account-btn:hover,
+html.kiosk-mode .floating-account-btn:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 /* Positioned OUTSIDE the rail's own flex layout, so it needs its own
    absolute position: rightmost of the bottom-right safety row (feedback,
@@ -4226,9 +4384,10 @@ a.sidebar-room-contact-row:focus-visible span {
   background: var(--success);
   border-color: var(--success);
 }
-.floating-nearest-exit-btn:hover {
+:where(html:not(.kiosk-mode)) .floating-nearest-exit-btn:hover,
+html.kiosk-mode .floating-nearest-exit-btn:hover:active {
   border-color: var(--success);
-  filter: brightness(1.1);
+  filter: brightness(0.9);
 }
 /* One more step left along the same row: 72px (Nearest Exit's offset) +
    44px + 12px = 128px. */
@@ -4271,7 +4430,7 @@ a.sidebar-room-contact-row:focus-visible span {
 }
 .floating-search-bar input {
   width: 100%;
-  padding: 15px 96px 15px 22px;
+  padding: 15px 52px 15px 22px;
   border-radius: var(--radius-pill);
   border: none;
   background: transparent;
@@ -4284,8 +4443,7 @@ a.sidebar-room-contact-row:focus-visible span {
 .floating-search-bar input::placeholder {
   color: var(--tour-search-placeholder);
 }
-.floating-search-icon,
-.floating-search-directions-icon {
+.floating-search-icon {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -4302,26 +4460,17 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
 }
 .floating-search-icon {
-  right: 52px;
-}
-.floating-search-directions-icon {
   right: 16px;
 }
 .floating-title-wrap {
   position: absolute;
   top: 16px;
-  /* 200px gutters on both sides (not 0/0) — this pill previously relied
-     on a viewport-relative max-width (55vw on .floating-title-pill) to
-     avoid the left rail (.floating-rail, 44px button + 16px offset) and
-     the top-right account button (.floating-account-wrap-top, up to
-     ~100px for the "Admin" label + 100px offset to clear the zoom
-     indicator, so the gutters are now 200px), but 55vw ignores both
-     of those and can overlap either one on a moderate window width with
-     a long node name. Explicit, equal gutters keep this both genuinely
-     centered (an asymmetric gutter shifts the centered content off
-     screen-center by half the difference) and guaranteed clear of both side elements. */
-  left: 200px;
-  right: 200px;
+  /* 140px gutters on both sides (not 0/0): the pill must clear the
+     top-left account button (~90px "Admin" label + 16px offset). Equal
+     gutters keep it genuinely centered (an asymmetric gutter shifts the
+     centered content off screen-center by half the difference). */
+  left: 140px;
+  right: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4375,7 +4524,8 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   padding: 2px 6px;
 }
-.flyover-cancel:hover {
+:where(html:not(.kiosk-mode)) .flyover-cancel:hover,
+html.kiosk-mode .flyover-cancel:hover:active {
   color: var(--text);
 }
 .flyover-map {
@@ -4428,6 +4578,11 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   font-size: 14px;
 }
+:where(html:not(.kiosk-mode)) .flyover-skip:hover,
+html.kiosk-mode .flyover-skip:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 .floating-title-pill {
   pointer-events: auto;
   display: flex;
@@ -4477,7 +4632,8 @@ a.sidebar-room-contact-row:focus-visible span {
   font-size: 14px;
   padding: 0;
 }
-.floating-title-back:hover {
+:where(html:not(.kiosk-mode)) .floating-title-back:hover,
+html.kiosk-mode .floating-title-back:hover:active {
   color: var(--text);
 }
 /* The back.svg asset itself is drawn pointing right (a ">" chevron) — a
@@ -4556,21 +4712,23 @@ a.sidebar-room-contact-row:focus-visible span {
   white-space: nowrap;
 }
 /* The route's next step, when it's a marker (an elevator landing) — the
-   same green as a highlighted hotspot, pulsing so it reads as "tap here". */
+   same gold as a highlighted hotspot, pulsing hard so it reads as "tap here". */
 .pano-marker-highlighted .pano-marker-dot {
-  animation: pano-marker-pulse 1.4s ease-in-out infinite;
+  animation: pano-marker-pulse 0.7s ease-out infinite;
 }
 .pano-marker-highlighted .pano-marker-label {
-  background: #2e7d46;
+  background: var(--sdca-gold);
+  color: #1a1a1a;
 }
 @keyframes pano-marker-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(46, 125, 70, 0.9); }
-  50% { box-shadow: 0 0 0 3px #fff, 0 0 0 14px rgba(46, 125, 70, 0.25); }
+  0% { box-shadow: 0 0 0 3px #fff, 0 0 0 4px rgba(201, 162, 75, 1); transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { box-shadow: 0 0 0 3px #fff, 0 0 0 26px rgba(201, 162, 75, 0); transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .pano-marker-highlighted .pano-marker-dot {
     animation: none;
-    box-shadow: 0 0 0 3px #fff, 0 0 0 7px #2e7d46;
+    box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--sdca-gold);
   }
 }
 /* ---------- Face review panel ---------- */
@@ -4658,7 +4816,8 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   margin: -6px 0 4px 0;
 }
-.rescan-faces-btn:hover {
+:where(html:not(.kiosk-mode)) .rescan-faces-btn:hover,
+html.kiosk-mode .rescan-faces-btn:hover:active {
   border-color: var(--accent);
 }
 .rescan-faces-btn:disabled {
@@ -4786,7 +4945,8 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease;
 }
-.nearby-rooms-item:hover {
+:where(html:not(.kiosk-mode)) .nearby-rooms-item:hover,
+html.kiosk-mode .nearby-rooms-item:hover:active {
   background: rgba(255, 255, 255, 0.1);
 }
 .nearby-rooms-item:active {
@@ -5184,7 +5344,8 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   text-align: left;
 }
-.mobile-building-option:hover {
+:where(html:not(.kiosk-mode)) .mobile-building-option:hover,
+html.kiosk-mode .mobile-building-option:hover:active {
   background: var(--surface-hover);
 }
 .mobile-building-option:active {
@@ -5280,7 +5441,8 @@ a.sidebar-room-contact-row:focus-visible span {
   font-size: 12px;
   align-self: flex-end;
 }
-.flowchart-reset-btn:hover {
+:where(html:not(.kiosk-mode)) .flowchart-reset-btn:hover,
+html.kiosk-mode .flowchart-reset-btn:hover:active {
   border-color: var(--accent);
 }
 .flowchart-canvas {
@@ -5301,7 +5463,8 @@ a.sidebar-room-contact-row:focus-visible span {
   stroke: var(--border-strong);
 }
 .flowchart-canvas .react-flow__edge.selected .react-flow__edge-path,
-.flowchart-canvas .react-flow__edge:hover .react-flow__edge-path {
+:where(html:not(.kiosk-mode)) .flowchart-canvas .react-flow__edge:hover .react-flow__edge-path,
+html.kiosk-mode .flowchart-canvas .react-flow__edge:hover:active .react-flow__edge-path {
   stroke: var(--accent);
 }
 .flowchart-canvas .react-flow__handle {
@@ -5320,7 +5483,8 @@ a.sidebar-room-contact-row:focus-visible span {
   border-bottom: 1px solid var(--border);
   fill: var(--text);
 }
-.flowchart-canvas .react-flow__controls-button:hover {
+:where(html:not(.kiosk-mode)) .flowchart-canvas .react-flow__controls-button:hover,
+html.kiosk-mode .flowchart-canvas .react-flow__controls-button:hover:active {
   background: var(--surface-hover);
 }
 .flowchart-node {
@@ -5490,7 +5654,8 @@ a.sidebar-room-contact-row:focus-visible span {
   cursor: pointer;
   text-align: left;
 }
-.tour-sidebar-section-header:hover {
+:where(html:not(.kiosk-mode)) .tour-sidebar-section-header:hover,
+html.kiosk-mode .tour-sidebar-section-header:hover:active {
   background: rgba(255, 255, 255, 0.08);
 }
 .tour-sidebar-section-thumb {
@@ -5554,7 +5719,8 @@ a.sidebar-room-contact-row:focus-visible span {
   text-align: left;
   cursor: pointer;
 }
-.tour-sidebar-stop-item:hover {
+:where(html:not(.kiosk-mode)) .tour-sidebar-stop-item:hover,
+html.kiosk-mode .tour-sidebar-stop-item:hover:active {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
@@ -5596,7 +5762,8 @@ a.sidebar-room-contact-row:focus-visible span {
   text-align: left;
   cursor: pointer;
 }
-.tour-sidebar-loose-stop-item:hover {
+:where(html:not(.kiosk-mode)) .tour-sidebar-loose-stop-item:hover,
+html.kiosk-mode .tour-sidebar-loose-stop-item:hover:active {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
@@ -5806,7 +5973,8 @@ a.sidebar-room-contact-row:focus-visible span {
   padding: 2px;
   transition: transform 0.1s ease;
 }
-.feedback-star:hover {
+:where(html:not(.kiosk-mode)) .feedback-star:hover,
+html.kiosk-mode .feedback-star:hover:active {
   transform: scale(1.15);
 }
 .feedback-panel-thanks {
@@ -6674,7 +6842,8 @@ a.sidebar-room-contact-row:focus-visible span {
   color: var(--accent-contrast);
   cursor: pointer;
 }
-.origin-choice-option:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .origin-choice-option:hover:not(:disabled),
+html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -7069,7 +7238,8 @@ a.sidebar-room-contact-row:focus-visible span {
   border: 1px solid var(--gold);
   color: var(--white);
 }
-.kiosk-dialog .directions-panel .directions-get-btn:hover {
+:where(html:not(.kiosk-mode)) .kiosk-dialog .directions-panel .directions-get-btn:hover,
+html.kiosk-mode .kiosk-dialog .directions-panel .directions-get-btn:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
 }
@@ -7213,7 +7383,8 @@ a.sidebar-room-contact-row:focus-visible span {
   text-transform: uppercase;
   cursor: pointer;
 }
-.kiosk-walkbar-dialog-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .kiosk-walkbar-dialog-btn:hover:not(:disabled),
+html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
 .kiosk-walkbar-dialog-btn:disabled {
@@ -7513,13 +7684,11 @@ html.kiosk-mode body {
   opacity: 0.85;
   box-shadow: var(--shadow-2);
 }
-/* Desktop scroll-wheel zoom indicator: top-right corner of the panorama
-   screen, with the account button to its left (see
-   .floating-account-wrap-top) and the safety button row in the bottom-right. top: 22px vertically centers the ~32px pill on the 44px
-   account button (16px + 6px). */
+/* Desktop scroll-wheel zoom indicator: bottom-right corner of the panorama
+   screen. */
 .pano-wheel-zoom-indicator {
   position: absolute;
-  top: 22px;
+  bottom: 16px;
   right: calc(16px + env(safe-area-inset-right));
   z-index: 20;
 }
@@ -7752,10 +7921,14 @@ html.kiosk-mode body {
   border-radius: var(--admin-radius);
   font-weight: 700;
 }
-.admin-layout button.danger:hover,
-.admin-layout .form-actions .danger:hover,
-.admin-layout .custom-building-row button.danger:hover,
-.admin-layout .link-actions button.danger:hover {
+:where(html:not(.kiosk-mode)) .admin-layout button.danger:hover,
+:where(html:not(.kiosk-mode)) .admin-layout .form-actions .danger:hover,
+:where(html:not(.kiosk-mode)) .admin-layout .custom-building-row button.danger:hover,
+:where(html:not(.kiosk-mode)) .admin-layout .link-actions button.danger:hover,
+html.kiosk-mode .admin-layout button.danger:hover:active,
+html.kiosk-mode .admin-layout .form-actions .danger:hover:active,
+html.kiosk-mode .admin-layout .custom-building-row button.danger:hover:active,
+html.kiosk-mode .admin-layout .link-actions button.danger:hover:active {
   background: var(--admin-danger-hover);
   border-color: var(--admin-danger-hover);
   color: var(--white);
@@ -7775,7 +7948,8 @@ html.kiosk-mode body {
   letter-spacing: 0.03em;
   cursor: pointer;
 }
-.admin-btn-secondary:hover {
+:where(html:not(.kiosk-mode)) .admin-btn-secondary:hover,
+html.kiosk-mode .admin-btn-secondary:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
@@ -7790,7 +7964,8 @@ html.kiosk-mode body {
   font-weight: 700;
   cursor: pointer;
 }
-.admin-btn-text:hover {
+:where(html:not(.kiosk-mode)) .admin-btn-text:hover,
+html.kiosk-mode .admin-btn-text:hover:active {
   background: var(--surface-hover);
   border-color: var(--border);
   color: var(--text);
@@ -7805,7 +7980,8 @@ html.kiosk-mode body {
   border: 1px solid var(--border);
   color: var(--text);
 }
-.admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover {
+:where(html:not(.kiosk-mode)) .admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover,
+html.kiosk-mode .admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
@@ -7862,7 +8038,8 @@ html.kiosk-mode body {
   border-radius: var(--admin-radius);
   font-size: 16px;
 }
-.admin-layout .close-btn:hover {
+:where(html:not(.kiosk-mode)) .admin-layout .close-btn:hover,
+html.kiosk-mode .admin-layout .close-btn:hover:active {
   background: var(--surface-hover);
 }
 .admin-layout .error-box {
@@ -7970,7 +8147,8 @@ html.kiosk-mode body {
      state kicks in. */
   border-color: var(--border);
 }
-.node-row:hover {
+:where(html:not(.kiosk-mode)) .node-row:hover,
+html.kiosk-mode .node-row:hover:active {
   border-color: var(--border-strong);
 }
 .link-list {
@@ -8011,7 +8189,8 @@ html.kiosk-mode body {
   font-weight: 700;
   font-size: 13px;
 }
-.add-link-btn:hover {
+:where(html:not(.kiosk-mode)) .add-link-btn:hover,
+html.kiosk-mode .add-link-btn:hover:active {
   background: var(--surface-hover);
   border-color: var(--accent);
   color: var(--accent);
@@ -8027,7 +8206,8 @@ html.kiosk-mode body {
   padding: 6px 14px;
   border-radius: var(--admin-radius);
 }
-.starting-view-row .link-actions button:not(.danger):hover {
+:where(html:not(.kiosk-mode)) .starting-view-row .link-actions button:not(.danger):hover,
+html.kiosk-mode .starting-view-row .link-actions button:not(.danger):hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -8117,7 +8297,8 @@ html.kiosk-mode body {
   color: var(--text-muted);
   cursor: pointer;
 }
-.toast-close:hover {
+:where(html:not(.kiosk-mode)) .toast-close:hover,
+html.kiosk-mode .toast-close:hover:active {
   color: var(--text-body);
 }
 .toast-success {
@@ -8608,7 +8789,8 @@ html.kiosk-mode body {
   font-family: inherit;
   cursor: pointer;
 }
-.signage-add-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .signage-add-btn:hover:not(:disabled),
+html.kiosk-mode .signage-add-btn:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -8731,11 +8913,13 @@ html.kiosk-mode body {
   opacity: 0;
   pointer-events: none;
 }
-.signage-segmented-opt:hover {
+:where(html:not(.kiosk-mode)) .signage-segmented-opt:hover,
+html.kiosk-mode .signage-segmented-opt:hover:active {
   background: var(--surface);
 }
 .signage-segmented-opt--on,
-.signage-segmented-opt--on:hover {
+:where(html:not(.kiosk-mode)) .signage-segmented-opt--on:hover,
+html.kiosk-mode .signage-segmented-opt--on:hover:active {
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
@@ -8774,7 +8958,8 @@ html.kiosk-mode body {
   font-family: inherit;
   cursor: pointer;
 }
-.signage-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .signage-btn:hover:not(:disabled),
+html.kiosk-mode .signage-btn:hover:active:not(:disabled) {
   border-color: var(--border-strong);
   background: var(--surface-hover);
 }
@@ -8788,7 +8973,8 @@ html.kiosk-mode body {
   color: var(--accent-contrast);
   font-weight: 700;
 }
-.signage-btn--accent:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .signage-btn--accent:hover:not(:disabled),
+html.kiosk-mode .signage-btn--accent:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -8805,7 +8991,8 @@ html.kiosk-mode body {
   text-transform: none;
   letter-spacing: normal;
 }
-.signage-link-btn:hover {
+:where(html:not(.kiosk-mode)) .signage-link-btn:hover,
+html.kiosk-mode .signage-link-btn:hover:active {
   text-decoration: underline;
 }
 
@@ -8938,7 +9125,8 @@ html.kiosk-mode body {
   background: none;
   cursor: pointer;
 }
-.signage-icon-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode)) .signage-icon-btn:hover:not(:disabled),
+html.kiosk-mode .signage-icon-btn:hover:active:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border);
 }
@@ -8968,7 +9156,8 @@ html.kiosk-mode body {
   background: var(--surface-sunken);
   cursor: pointer;
 }
-.signage-row-thumb:hover {
+:where(html:not(.kiosk-mode)) .signage-row-thumb:hover,
+html.kiosk-mode .signage-row-thumb:hover:active {
   border-color: var(--accent);
 }
 .signage-row-main {

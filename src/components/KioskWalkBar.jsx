@@ -42,7 +42,7 @@ export default function KioskWalkBar({
       <p className="kiosk-walkbar-hint">
         {isElevator
           ? "The elevator is glowing in the photo. Tap it, or use the button below."
-          : "Follow the green hotspot: it marks the correct path to your destination."}
+          : "Follow the yellow hotspot: it marks the correct path to your destination."}
       </p>
       {emergency && (
         <p className="kiosk-walkbar-hint kiosk-walkbar-emergency">
