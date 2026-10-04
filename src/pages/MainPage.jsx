@@ -139,7 +139,7 @@ function MainPageContent({ onReset }) {
   // browser/tab session (see useAnalytics.js). stage_reached fires on every
   // kiosk.stage change; desktop never leaves "exploring", so this also
   // covers desktop's synthetic session-start event on mount.
-  const analytics = useAnalytics(compact ? "kiosk" : "desktop");
+  const analytics = useAnalytics({ compact, paired: !!kioskIdentity.kiosk, ready: kioskIdentity.ready });
   useEffect(() => {
     analytics.stageReached(kiosk.stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1013,7 +1013,12 @@ function MainPageContent({ onReset }) {
       </div>
 
       <label className="sidebar-field-label">
-        From
+        <span className="directions-from-label">
+          From
+          {!compact && directions.fromId && directions.fromId === currentId && (
+            <span className="you-are-here-pill">You are here</span>
+          )}
+        </span>
         <textarea
           className="directions-field"
           rows={2}

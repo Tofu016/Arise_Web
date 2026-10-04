@@ -152,7 +152,7 @@ function FilterBar({ filters, setFilters, buildings }) {
           <select value={filters.platform} onChange={set("platform")}>
             <option value="">All</option>
             <option value="kiosk">Kiosk</option>
-            <option value="desktop">Desktop</option>
+            <option value="web">Web</option>
           </select>
         </label>
         <label className="analytics-filter-field">
@@ -295,8 +295,9 @@ export default function AnalyticsPage() {
       <header className="analytics-page-header">
         <h2 className="admin-page-heading">Analytics</h2>
         <p className="analytics-page-intro">
-          Kiosk and desktop visitor behavior, plus feedback comments. A kiosk session runs from the first tap past the
-          attract screen until an idle restart or the post-feedback reset; a desktop session runs until feedback or 30
+          Kiosk and web visitor behavior, plus feedback comments. Only a paired kiosk counts as a kiosk; every other
+          visit, even one showing the kiosk layout, is a web session. A kiosk session runs from the first tap past the
+          attract screen until an idle restart or the post-feedback reset; a web session runs until feedback or 30
           minutes without activity.
         </p>
       </header>
@@ -338,8 +339,8 @@ export default function AnalyticsPage() {
         <Section
           title="Session funnel"
           hint={
-            filters.platform === "desktop"
-              ? "Desktop has no campus/building/floor gate, so it starts already exploring."
+            filters.platform === "web"
+              ? "Web sessions have no campus/building/floor gate to drop out at, so they start already exploring."
               : "Kiosk sessions only, where the campus/building/floor gate makes drop-off meaningful."
           }
           loading={funnel.loading}

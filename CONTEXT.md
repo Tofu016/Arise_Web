@@ -62,6 +62,10 @@ _Avoid_: mobile layout
 **Kiosk session**:
 The flow a visitor goes through on the Compact layout: the start screen until it is tapped, then the building screen until a building is picked, then exploring. It ends by remounting the visitor view (finished feedback, or "Start over" on the idle prompt), which drops all visitor state. Desktop skips it.
 
+**Paired kiosk**:
+A physical kiosk device an admin registered on the Kiosks page and paired once, by a hidden tap gesture and a one-time code. Only a paired kiosk's sessions count as kiosk sessions in Analytics; every other session, even one showing the Compact layout, is a web session. Unpaired views also lack the "Kiosk Location" starting point.
+_Avoid_: desktop session (say web session)
+
 **Directions**:
 The from/to panel and the Route it computes. Opening it replaces whatever panel was showing, and getting directions starts the walk in one go (a Jump to the Route's first stop, then the Route is followed one stop at a time).
 
