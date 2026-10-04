@@ -118,7 +118,7 @@ export default function MainPage() {
 
 function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
-  const { user, profile, role, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const compact = useCompactLayout();
   // The bottom band's advertisements (signage); only the Compact layout has
   // that band, so desktop never fetches them.
@@ -746,9 +746,7 @@ function MainPageContent({ onReset }) {
         <h2>ARISE</h2>
         <p>{loadError}</p>
         <p className="empty-hint">
-          {loadError.includes("permission")
-            ? "This usually means you're not signed in, or your account hasn't been approved yet."
-            : "If this persists, check that the API (Arise_API) is running and reachable, and that its database has campus data."}
+          If this persists, check that the API (Arise_API) is running and reachable, and that its database has campus data.
         </p>
       </div>
     );
@@ -765,12 +763,8 @@ function MainPageContent({ onReset }) {
     );
   }
 
-  // Show the person's actual name, not their email — falls back to email
-  // only if they skipped the optional name field at registration.
-  const displayName = profile?.name || user?.email || "";
-  const initials = displayName
-    ? displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-    : "?";
+  // Only a signed-in admin has an account, so this is the admin's name.
+  const displayName = user?.name || user?.email || "";
 
   // Compact-layout radial menu items — icon-only, fanned out around the
   // FAB (see .mobile-radial-menu). Each opens its own centered modal,
@@ -1829,9 +1823,7 @@ function MainPageContent({ onReset }) {
                     {accountMenuOpen && (
                       <div className="account-popover">
                         <span className="account-popover-name" title={displayName}>{displayName}</span>
-                        {role === "admin" && (
-                          <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
-                        )}
+                        <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
                         <button onClick={signOut} className="subtle account-signout">Sign out</button>
                       </div>
                     )}
@@ -1840,7 +1832,7 @@ function MainPageContent({ onReset }) {
                       onClick={() => setAccountMenuOpen((o) => !o)}
                       title={displayName}
                     >
-                      {role === "admin" ? "Admin" : initials}
+                      Admin
                     </button>
                   </div>
                 )}

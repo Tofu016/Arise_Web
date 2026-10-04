@@ -85,6 +85,22 @@ export default function FeedbackPanel({ onClose, onFinished, onSubmitted, kiosk 
           </label>
         </div>
 
+        {/* Honeypot: off-screen rather than display:none, which some bots
+            skip. Named so a browser will not autofill it. */}
+        <div className="feedback-hp" aria-hidden="true">
+          <label>
+            Leave this field empty
+            <input
+              type="text"
+              name="hp_contact_url"
+              tabIndex={-1}
+              autoComplete="off"
+              value={f.contactUrl}
+              onChange={(e) => f.editField("contactUrl", e.target.value)}
+            />
+          </label>
+        </div>
+
         {f.error && (
           <div className="error-box">
             <p>{f.error}</p>

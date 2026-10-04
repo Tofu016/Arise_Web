@@ -74,7 +74,7 @@ The optional telephone number an admin sets on a room's details in the Room Edit
 _Avoid_: phone number, phone
 
 **Saved room**:
-A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room Editor drops it from the list. (The API's per-account `SavedRooms_API` list, which points at the room's details record instead, is the mobile app's and is not used here.)
+A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room Editor drops it from the list.
 _Avoid_: favorite, starred room
 
 **Signage**:

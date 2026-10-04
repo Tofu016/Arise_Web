@@ -95,7 +95,7 @@ const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS,
 // sub-items to show, so forcing an extra "expand, then pick the one and
 // only option" step would just be a needless click with no benefit.
 export default function AdminLayout() {
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { pathname } = useLocation();
   const nodesState = useNodes();
   // Elevators are their own small collection (see useElevators.js) rather
@@ -113,7 +113,7 @@ export default function AdminLayout() {
   // route of its own to match directly.
   const isActivePath = (path) => pathname === `/admin/${path}` || pathname.startsWith(`/admin/${path}/`);
 
-  const displayName = profile?.name || user?.email || "";
+  const displayName = user?.name || user?.email || "";
 
   return (
     <div className="admin-layout">

@@ -4,7 +4,8 @@
 // rating and hoverRating are tracked separately from the drag bookkeeping.
 //
 // State: { rating, hoverRating, dragging, lastStar, comment, name, email,
-//          submitting, submitted, error }
+//          contactUrl, submitting, submitted, error }
+//   contactUrl  the honeypot's value, always "" for a real visitor
 //   lastStar  the star the drag last touched, kept after the drag ends so
 //             shouldPlaySfx can still see it while endDrag is deciding
 
@@ -17,6 +18,7 @@ export function initial() {
     comment: "",
     name: "",
     email: "",
+    contactUrl: "",
     submitting: false,
     submitted: false,
     error: "",
@@ -72,12 +74,17 @@ export function validate(state) {
   return state.rating < 1 ? "Please select a rating." : "";
 }
 
-export function buildPayload(state) {
+// hp_contact_url is the honeypot (see Rate_limit::HONEYPOT_FIELD on the
+// server): a hidden input no person fills, so it is sent only when something
+// did. visitor_id is what the server's 30 second limit counts against.
+export function buildPayload(state, visitorId) {
   return {
     rating: state.rating,
     comment: state.comment.trim() || undefined,
     name: state.name.trim() || undefined,
     email: state.email.trim() || undefined,
+    hp_contact_url: state.contactUrl || undefined,
+    visitor_id: visitorId,
   };
 }
 

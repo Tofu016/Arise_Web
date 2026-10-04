@@ -97,6 +97,12 @@ describe("buildPayload", () => {
       rating: 5, comment: "nice", name: undefined, email: undefined,
     });
   });
+
+  it("carries the visitor id, and the honeypot only when something filled it", () => {
+    const state = { ...form.initial(), rating: 3 };
+    expect(form.buildPayload(state, "abc")).toMatchObject({ visitor_id: "abc", hp_contact_url: undefined });
+    expect(form.buildPayload({ ...state, contactUrl: "http://spam" }, "abc").hp_contact_url).toBe("http://spam");
+  });
 });
 
 describe("submit transitions", () => {

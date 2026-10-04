@@ -25,8 +25,7 @@ export default function Login() {
       navigate(redirectTo, { replace: true });
     } catch (err) {
       // The backend already returns plain, human-readable error strings
-      // (e.g. "Invalid email or password.") — no Firebase-error-code
-      // translation needed the way friendlyAuthError() used to provide.
+      // (e.g. "Invalid email or password.").
       setError(err.message);
     } finally {
       setSubmitting(false);
@@ -74,7 +73,7 @@ export default function Login() {
           </form>
 
           <p className="auth-switch">
-            <Link to="/forgot-password">Forgot password?</Link> · <Link to="/forgot-email">Forgot email?</Link>
+            <Link to="/forgot-password">Forgot password?</Link>
           </p>
           <p className="auth-switch">
             Need an account? <Link to="/register">Register</Link>

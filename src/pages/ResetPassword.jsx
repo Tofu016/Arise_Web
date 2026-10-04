@@ -3,15 +3,15 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import IconPlaceholder from "../components/IconPlaceholder";
 
-// New page — there was no equivalent of this in the original app at
+// New page, there was no equivalent of this in the original app at
 // all. Firebase's sendPasswordResetEmail() sends people to Firebase's
 // own hosted reset page by default, so a custom in-app "enter your new
 // password" page was never actually needed before now. The reset link
 // Auth_API::forgotPassword queues points at /reset-password?token=...,
 // which needed a real route and page to actually receive it.
 //
-// A successful reset does NOT log the user in — see
-// AuthContext.jsx's own resetPassword comment for why — so this ends
+// A successful reset does NOT log the user in, see
+// AuthContext.jsx's own resetPassword comment for why, so this ends
 // with a link back to /login, not an automatic redirect into the app.
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -50,7 +50,7 @@ export default function ResetPassword() {
   };
 
   // A missing token means someone navigated here directly rather than
-  // through a real emailed link — nothing to actually reset against.
+  // through a real emailed link, nothing to actually reset against.
   if (!token) {
     return (
       <div className="auth-page">

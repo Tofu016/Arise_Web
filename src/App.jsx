@@ -17,7 +17,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import ForgotEmail from "./pages/ForgotEmail";
 import RequireAuth from "./components/RequireAuth";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -49,11 +48,9 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/forgot-email" element={<ForgotEmail />} />
-          {/* Genuinely public — no RequireAuth wrapper at all, same as
-              /login etc. above. This is the whole point of the Virtual
-              Tour: showcasing the campus to visitors who aren't registered
-              users, not just approved account holders. */}
+          {/* Genuinely public: no RequireAuth wrapper at all, same as
+              /login above. This is the whole point of the Virtual Tour:
+              showcasing the campus to visitors, who have no accounts. */}
           <Route path="/tour" element={<PublicTourPage />} />
           {/* Genuinely public — no RequireAuth wrapper at all, same as
               /login and /tour above. Indoor navigation no longer requires
@@ -70,7 +67,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <RequireAuth requireRole="admin">
+              <RequireAuth>
                 <AdminLayout />
               </RequireAuth>
             }

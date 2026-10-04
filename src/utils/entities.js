@@ -209,16 +209,16 @@ export function sectionPatchBody(patch) {
   return pick(patch, { label: "label", coverPhoto: "cover_photo_path" });
 }
 
-// ---- User ----
+// ---- Admin ----
 
-// `uid` aliases the backend's `id`, matching the naming the app has always
-// used (UserPanelPage and AuthContext both compare on it).
-export function toUser(row) {
+// An admin account as the User Panel shows it. `uid` aliases the backend's
+// `id`, matching the naming the panel uses to spot the signed-in admin.
+export function toAdmin(row) {
   return {
     uid: row.id,
     email: row.email,
     name: row.name,
-    role: row.role,
+    status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

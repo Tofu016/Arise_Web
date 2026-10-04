@@ -4,10 +4,10 @@ import { useAuth } from "../context/useAuth";
 import IconPlaceholder from "../components/IconPlaceholder";
 
 // A generic, identical confirmation message is shown regardless of whether
-// the email actually has an account — revealing "no account with that
+// the email actually has an account, revealing "no account with that
 // email" would let anyone probe for which addresses are registered
 // (account enumeration). The backend's own forgotPassword endpoint always
-// succeeds either way — see AuthContext.jsx's forgotPassword comment —
+// succeeds either way, see AuthContext.jsx's forgotPassword comment -
 // so there's no separate "not found" case to swallow here anymore.
 const GENERIC_SENT_MESSAGE =
   "If an account exists for that email, a password reset link has been sent. Check your inbox (and spam folder).";
@@ -63,7 +63,7 @@ export default function ForgotPassword() {
         )}
 
         <p className="auth-switch">
-          <Link to="/login">Back to sign in</Link> · <Link to="/forgot-email">Forgot your email instead?</Link>
+          <Link to="/login">Back to sign in</Link>
         </p>
       </div>
 

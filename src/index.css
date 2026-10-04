@@ -709,7 +709,7 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 /* ---------- User Panel page (Phase 5) ---------- */
 /* Promoted from the old users-panel-modal; reuses the shared list/row
-   styling (.users-list, .users-row, .role-select, etc.), with this
+   styling (.users-list, .users-row, etc.), with this
    page's own refinements scoped under .user-panel-* below. No
    full-width Filter+Node List sidebar here, unlike the other three pages
    — this page isn't node-centric at all, so that sidebar wouldn't be
@@ -797,53 +797,6 @@ img[data-icon-placeholder="emergency-exit"] {
   outline: none;
   border-color: var(--focus-ring);
 }
-.user-panel-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.user-panel-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.user-panel-filter-chip:hover {
-  border-color: var(--border-strong);
-}
-.user-panel-filter-chip-active,
-.user-panel-filter-chip-active:hover {
-  border-color: var(--accent);
-  background: var(--selected-bg);
-  color: var(--accent);
-  font-weight: 700;
-}
-.user-panel-filter-count {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-}
-/* Replaces the old "N pending" badge beside the heading: the count now
-   lives on the filter that actually shows those accounts, and stays
-   highlighted while any are waiting so it's still the first thing seen. */
-.user-panel-filter-chip-alert .user-panel-filter-count {
-  background: var(--warning);
-  color: var(--white);
-}
 /* Scoped to this page: .users-row/.users-row-main are shared with the
    Analytics and Photo Coverage lists, which keep their own look. */
 .user-panel-page .user-panel-row {
@@ -851,9 +804,6 @@ img[data-icon-placeholder="emergency-exit"] {
   padding: var(--space-md) var(--space-lg);
   background: var(--surface);
   border-radius: var(--admin-radius);
-}
-.user-panel-row.users-row-pending {
-  background: var(--warning-surface);
 }
 .user-panel-row-name {
   display: flex;
@@ -882,45 +832,13 @@ img[data-icon-placeholder="emergency-exit"] {
   font-weight: 700;
   line-height: 18px;
 }
-.user-panel-tag-pending {
-  background: var(--warning);
-  color: var(--white);
-}
-.user-panel-row .role-select-btn {
-  min-width: 96px;
-  font-family: inherit;
-  justify-content: space-between;
-  background: var(--surface);
-}
-/* Green, not maroon: Approve sits right beside Delete on pending rows,
-   and the two must never read as the same kind of action. */
-.user-panel-approve-btn {
-  height: 30px;
-  padding: 0 14px;
-  border-radius: var(--admin-radius);
-  border: 1px solid var(--success);
-  background: var(--success);
-  color: var(--white);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.user-panel-approve-btn:hover {
-  filter: brightness(0.9);
-}
-.user-panel-approve-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  filter: none;
-}
-.user-panel-row .users-row-delete {
+.user-panel-row .users-row-actions button {
   font-family: inherit;
   height: 30px;
   padding: 0 12px;
   font-size: 12px;
 }
-/* ---------- New Account dialog (CreateUserDialog.jsx) ---------- */
+/* ---------- New Account dialog (CreateAdminDialog.jsx) ---------- */
 /* One stacked column: each label sits on its own line above its input.
    Before, the bare <label>s had no block styling, so Email/Name/Password
    flowed inline as one run of text and unstyled native inputs. */
@@ -968,59 +886,6 @@ img[data-icon-placeholder="emergency-exit"] {
 .create-user-field input:focus {
   outline: none;
   border-color: var(--focus-ring);
-}
-.create-user-roles {
-  margin: 0;
-  padding: 0;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  min-width: 0;
-}
-.create-user-roles legend {
-  padding: 0;
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-.create-user-role {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--admin-radius);
-  border: 1px solid var(--border);
-  cursor: pointer;
-}
-.create-user-role:hover {
-  border-color: var(--border-strong);
-}
-.create-user-role-active,
-.create-user-role-active:hover {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
-.create-user-role input {
-  margin: 3px 0 0;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-}
-.create-user-role-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.create-user-role-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-.create-user-role-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.4;
 }
 .admin-layout .create-user-modal .error-box {
   margin-bottom: 0;
@@ -9535,4 +9400,14 @@ html.kiosk-mode body {
   min-height: 52px;
   min-width: 120px;
   font-size: 16px;
+}
+
+/* Feedback honeypot (see FeedbackPanel.jsx): out of sight and out of the
+   layout flow, but still rendered, since some bots skip display:none. */
+.feedback-hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }

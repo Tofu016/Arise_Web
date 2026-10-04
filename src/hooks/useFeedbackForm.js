@@ -2,6 +2,7 @@ import { useState } from "react";
 import * as form from "../utils/feedbackForm";
 import { apiPost } from "../utils/apiClient";
 import { playSfx } from "../utils/sfx";
+import { getVisitorId } from "../utils/visitorId";
 import starSelectSfx from "../assets/sounds/star-sfx-CREATIVE-COMMONS-ZERO.wav";
 
 // Wraps the pure transitions in utils/feedbackForm.js and owns the seams
@@ -12,7 +13,7 @@ import starSelectSfx from "../assets/sounds/star-sfx-CREATIVE-COMMONS-ZERO.wav";
 // Returns the state fields plus:
 //   handleStarPointerDown/Move, endStarDrag   wire onto the star row
 //   selectStar, hoverStar, clearHover         tap/mouse-hover on one star
-//   editField(field, value)                   comment/name/email
+//   editField(field, value)                   comment/name/email/contactUrl
 //   submit(event)                             validates, posts, updates state
 export function useFeedbackForm({ onSubmitted } = {}) {
   const [state, setState] = useState(form.initial);
@@ -49,7 +50,7 @@ export function useFeedbackForm({ onSubmitted } = {}) {
     }
     setState(form.submitStart);
     try {
-      const { feedback } = await apiPost("Feedback_API/submit", form.buildPayload(state));
+      const { feedback } = await apiPost("Feedback_API/submit", form.buildPayload(state, getVisitorId()));
       setState(form.submitSuccess);
       onSubmitted?.(feedback);
     } catch (err) {

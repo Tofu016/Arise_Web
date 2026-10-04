@@ -16,7 +16,8 @@ reads/writes the same live MySQL database over a REST API, authenticated with
 bearer tokens rather than cookies or a client-side SDK.
 
 **MainPage (`/`) is genuinely public — no account required.** Only `/admin`
-requires a login, and specifically an `admin`-role account. This is a
+requires a login, and only admins have accounts: there are no other kinds of
+account. This is a
 deliberate design choice, not an oversight: the indoor navigator is meant to
 be usable by any walk-up visitor, the same way the Virtual Campus Tour
 (`/tour`) already was.
@@ -28,7 +29,7 @@ be usable by any walk-up visitor, the same way the Virtual Campus Tour
 - [Quick start](#quick-start)
 - [Backend setup](#backend-setup)
 - [Security & authentication](#security--authentication)
-- [Accounts & roles](#accounts--roles)
+- [Accounts](#accounts)
 - [How the data is organized](#how-the-data-is-organized)
 - [Admin guide (`/admin`)](#admin-guide-admin)
 - [User guide (`/`)](#user-guide-)
@@ -55,7 +56,7 @@ Open the printed localhost URL:
 - `/` — the public indoor viewer. No login needed.
 - `/tour` — the public Virtual Campus Tour. No login needed either.
 - `/admin` — the editor, for building and maintaining the campus graph.
-  Requires an `admin`-role account.
+  Requires an admin account.
 
 This frontend talks to `Arise_API` over HTTP — it needs to actually be
 running (see [Backend setup](#backend-setup)) for anything data-related to work at
@@ -85,8 +86,10 @@ CodeIgniter 3, MySQL) needs to be set up and running first:
      `htdocs`. See [Security & authentication](#security--authentication)
      for why this matters.
 6. **Seed the first admin** — see `Arise_API`'s own `SEED.md`. A fresh
-   database has no accounts at all; someone has to become the first admin by
-   hand before the User Panel can promote anyone else.
+   database has no accounts at all, and nobody can approve a registration yet, so
+   the first admin is created from the command line (`php index.php
+   Admins_CLI create` in `Arise_API`); after that, admins add each other from
+   the User Panel and approve registrations there.
 
 Full details — including the two `.htaccess` files this setup genuinely
 needs (one for CORS on the uploads folder, one for Apache to forward the
@@ -104,15 +107,14 @@ attaches as an `Authorization: Bearer <token>` header on every authenticated
 request. The server only ever stores a SHA-256 hash of the token, never the
 raw value — even a fully exposed database wouldn't hand over anything
 directly usable. Tokens expire after 8 hours. Resetting a password
-invalidates every existing session for that account, in case the old
-password was itself compromised.
+for an admin invalidates every existing session for that account, in case the
+old password was itself compromised.
 
 **Passwords** are hashed with PHP's `password_hash()` (bcrypt-based) —
 never stored, logged, or returned in plaintext anywhere.
 
-**Role-based authorization**, not just "logged in or not" — every sensitive
-API endpoint checks for a specific role (`admin`, or `approved` meaning
-`user`/`admin`), not merely a valid token.
+**Admin-only writes** — every sensitive API endpoint requires a valid admin
+token. Only admins can sign in, so a valid token is the whole check.
 
 **File uploads are validated by actual content, not filename.** A file
 claiming to be `photo.jpg` gets its real header bytes checked
@@ -140,19 +142,16 @@ uploads and for the protected-photo streaming endpoint.
 **SQL injection protection** — CodeIgniter's query builder parameterizes
 queries by default throughout the backend.
 
-**Anti-enumeration on password reset** — the forgot-password endpoint always
-returns the same generic response whether or not the email actually belongs
-to a real account, so it can't be used to probe which addresses are
-registered.
+**Anti-enumeration on login** — a wrong email and a wrong password get the
+same error, so login can't be used to probe which addresses have accounts.
 
 **CORS is scoped to specific origins**, not a wildcard — read from
 `CORS_ORIGIN` in `Arise_API`'s `.env` (a comma-separated list is allowed) by
 `MY_Controller.php`. (The public tour/signage media in `uploads/` allow any
 origin, via that folder's own `.htaccess`.)
 
-**Registration is domain-restricted** — only `@sdca.edu.ph` addresses can
-register at all, enforced server-side, not just as a client-side check
-someone could bypass by calling the API directly.
+**Accounts are domain-restricted** — only `@sdca.edu.ph` addresses can be
+given an admin account, enforced server-side when an admin creates one.
 
 **A structural note on CSRF**: since this is a bearer-token API rather than
 cookie-based sessions, CSRF (a browser automatically attaching credentials to
@@ -160,19 +159,47 @@ a cross-site request) is much less of a concern here — a token has to be
 explicitly read from `localStorage` and attached by this app's own code,
 it's never sent automatically the way a cookie would be.
 
+### Rate limits and abuse protection
+
+The public endpoints (the ones a visitor or a script can call without an
+account) are the ones guarded. All limits live in `Arise_API`'s
+`application/libraries/Rate_limit.php`, enforced by
+`MY_Controller::enforceRateLimit()`, and are counted in the `rate_limit_hits`
+table. Subjects (IP, email, visitor id, session id) are stored only as
+SHA-256 hashes. A refused request gets HTTP 429 with a `retry_after` (seconds)
+the form shows as its error. Every check is server-side: the client's hidden
+field and visitor id only make the checks accurate, they are not the defence.
+
+| Endpoint | Current measures |
+| --- | --- |
+| `Auth_API/login` | Failed attempts only are counted, per IP and per email: 10 failures in 15 minutes locks that IP, or that email, out for the rest of the window. The check runs before the password is looked at, so a correct guess during a lockout still gets a 429. Same generic error for a wrong email and a wrong password. Both limits are the same size on purpose, so a stranger cannot lock a real admin out faster than they could guess. |
+| `Feedback_API/submit` | Honeypot field `hp_contact_url` (hidden off-screen in `FeedbackPanel.jsx`): a filled one gets a normal-looking success and nothing is stored. One submission per visitor every 30 seconds, keyed on the browser's `visitor_id` (a UUID in localStorage), or the IP when none was sent. A loose backstop of 30 submissions per IP per 10 minutes for a script that rotates visitor ids. Only a submission that passes validation counts toward the limits. |
+| `Analytics_API/track` | Per IP: 600 requests per minute (wide, since every kiosk and phone on campus shares addresses). Per session: 30 requests per minute (a real session sends about four). The IP check runs before any parsing. Unchanged: UUID session id required, 50 events per batch, event shapes and string lengths whitelisted, platform decided by the server from the kiosk token. |
+| `Kiosks_API/pair` | Unchanged: 5 wrong codes per IP in 10 minutes locks pairing out (`kiosk_pair_failures`). Codes are 8 digits, single use, expire after 30 minutes, and only their hash is stored. The same error for a wrong and an expired code. |
+| `Auth_API/register` | Counted per IP, every request: 5 per hour. A new account is `pending` and cannot sign in until an admin approves it. |
+| `Auth_API/forgotPassword` | Counted per IP (10 per hour) and per email (3 per hour), so neither one inbox nor many can be flooded. Always answers success, so it cannot be used to find which emails have accounts. The reset link is single use and expires after 1 hour. |
+
+The hit log is purged by `php index.php Cron_API purgeExpired`, the same
+scheduled task that purges expired login tokens; rows older than a day are
+never read by any limit.
+
 ### Known, still-open security gaps
 
 Worth being upfront about, not glossed over:
 
-- **No rate limiting on login** — nothing currently stops repeated
-  password-guessing against a real account.
+- **No captcha anywhere.** Deliberately left out for now: it needs a real
+  domain and outbound internet from the kiosks. The honeypot and rate limits
+  stand in for it. If feedback spam gets past them, add an invisible captcha
+  that is only shown after the honeypot or limits look suspicious.
+- **Public read endpoints and admin writes have no request cap.** Only the
+  four public actions in the table above are limited.
+- **Login lockout can be triggered by a stranger.** Ten bad guesses at an
+  admin's email lock that email out for up to 15 minutes. The alternative,
+  no per-email limit, leaves a slow distributed guess open.
 - **CodeIgniter's own error display** (`db_debug`) is on whenever `CI_ENV`
   isn't `production`, and then shows raw PHP/SQL errors directly in a
   failure response. Set `CI_ENV=production` on any real server. Even then
   `log_threshold` is `0`, so errors aren't logged privately either.
-- **Registration doesn't verify the mailbox**: only the `@sdca.edu.ph`
-  suffix is checked, so an admin approving an account can't tell a real
-  student from an invented address.
 - **`IndoorUploads_API/serve` is public** (see above).
 - **No HTTPS** — everything currently runs over plain HTTP, since this is
   still local/dev hosting with no real domain yet. Auth tokens travel in
@@ -189,38 +216,42 @@ beyond a local machine.
 
 ---
 
-## Accounts & roles
+## Accounts
 
 **`/` (indoor navigator) and `/tour` (Virtual Campus Tour) are genuinely
-public — no account needed at all.** Only `/admin` requires signing in, and
-specifically the `admin` role. Three roles exist:
+public — no account needed at all.** Only `/admin` requires signing in. Only
+admins have accounts, with no other role. Anyone with an `@sdca.edu.ph` email
+can register at `/register`, but that account is **pending**: it cannot sign
+in until an admin approves it in the User Panel. The system sends email
+(registration, approval, password reset) through CodeIgniter's email library;
+see `Arise_API`'s `.env.example` for PHP `mail()` versus SMTP.
 
-| Role | Can do |
-|---|---|
-| `pending` | Nothing yet — sees an "awaiting approval" screen. Default for every new account. |
-| `user` | Nothing beyond what a public visitor can already do — `/` and `/tour` don't require this role at all anymore. Exists mainly as a stepping stone role for anyone waiting on `admin` access. |
-| `admin` | The full `/admin` editor, including the User Panel. |
+**The first admin**: a fresh database has none, so it is created on the server
+with `php index.php Admins_CLI create` (see `Arise_API`'s `SEED.md`). The same
+tool, `Admins_CLI setPassword`, is the way back in if every admin has lost
+their password.
 
-**Registering**: `/register` requires an `@sdca.edu.ph` email — checked
-client-side immediately, and enforced again server-side (can't be bypassed by
-calling the API directly).
+**Adding admins**: from `/admin`, open **User Panel** and use **+ New Account**
+(name, `@sdca.edu.ph` email, password of at least 8 characters). The new admin
+can sign in immediately at `/login`.
 
-**Getting approved to `admin`**: every new account starts as `pending` and
-needs an existing admin to promote them — from `/admin`, open **User Panel**
-(its Pending filter shows how many are waiting). Pending rows have an
-**Approve** button, which makes the account a `user`; every row also has a
-role dropdown for promoting to `admin` or changing the role later. An admin
-can't demote themselves, and the last remaining admin can't be demoted.
-**+ New Account** creates an account directly (any role) instead of waiting
-for someone to register.
+**Approving a registration**: a self-registered account shows a **Pending** tag
+in **User Panel**. **Approve** lets it sign in and emails its owner; **Reject**
+deletes the request.
 
-**Deleting an account**: the same panel has a **Delete** button per row.
-Confirms before deleting; an admin can't delete their own account from here.
+**A lost password**: the sign-in page's **Forgot password?** emails a reset link
+(valid 1 hour, single use) to an approved account. Using it signs that admin out
+everywhere. If email is not delivering, `Admins_CLI setPassword` sets one from
+the server's command line. With PHP `mail()` the message often lands in spam.
 
-**Signing out**: a signed-in visitor on `/` gets an account button (top right
-of the panorama on the desktop layout) whose popover has **Sign out**, plus an
-**Admin Panel** link for admins; a logged-out visitor sees no account
-button at all. `/admin` has its own account chip in its toolbar.
+**Deleting an account**: the same panel has a **Delete** button per approved row.
+Confirms before deleting; an admin can't delete their own account from here, so
+at least one admin always remains.
+
+**Signing out**: a signed-in admin on `/` gets an account button (top right
+of the panorama on the desktop layout) whose popover has **Sign out** and an
+**Admin Panel** link; a visitor who isn't signed in sees no account button at
+all. `/admin` has its own account chip in its toolbar.
 
 ---
 
@@ -236,12 +267,16 @@ document database.
   nested fields on the node itself).
 - **Elevators** — `elevators` table (see "Point-of-interest markers").
 - **Buildings** — `buildings` table.
-- **Accounts** — `users`, `auth_tokens`, `password_resets`, and
-  `email_queue` (outgoing registration/approval/reset mail, drained by a
-  CLI cron job). `saved_rooms` holds each account's bookmarked rooms (used only by the mobile app).
+- **Accounts** — `admins` (email, name, password hash, `status` of `pending` or
+  `approved`), `auth_tokens` (hashed login tokens) and `password_resets` (hashed
+  reset tokens). Nothing else: no visitor accounts, and no email queue; mail is
+  sent straight from the request.
 - **Kiosks** — `kiosks` (one row per registered kiosk device and the node
   it stands at; only hashes of its pairing code and token are stored) and
   `kiosk_pair_failures` (rate limit on wrong pairing codes).
+- **Rate limits** — `rate_limit_hits` (bucket, hashed subject, time), the
+  log behind the limits on login, feedback and analytics (see "Rate limits
+  and abuse protection").
 - **Analytics** — `analytics_sessions` and `analytics_events`: one row per
   visitor session (`kiosk` only when it comes from a paired kiosk, `web`
   for everything else) and one per tracked action.
@@ -321,10 +356,8 @@ Under **Virtual Map → Node Editor**:
      node representing this node's whole campus (GD1/GD2/GD3 share one;
      Digital Campus has its own), driving the cross-campus minimap and a
      Kiosk floor-screen shortcut. Only one per campus — saving a second one
-     on the same campus replaces the first. (The API's replace rule knows
-     only GD1/GD2/GD3 as a shared campus; a campus an admin builds by
-     setting a building's campus in the Building dialog is not yet
-     enforced server-side.)
+     on the same campus replaces the first. The API applies this to GD1/GD2/GD3
+     plus any buildings grouped under one campus in the Building dialog.
    - **Rooms served** — type a room number/name and hit Enter or click Add.
      A room can only be attached to one node campus-wide (checked by this
      form, not by the API).
@@ -536,8 +569,8 @@ plain white, as before.
 ## User guide (`/`)
 
 The public page: no login needed, no editing controls, just the tour. A
-signed-in account just additionally gets an account button (see
-[Accounts & roles](#accounts--roles)).
+signed-in admin just additionally gets an account button (see
+[Accounts](#accounts)).
 
 It has two layouts of the same app. The **desktop layout** (a sidebar beside
 the panorama) is shown on a normal landscape screen. The **Compact layout**
@@ -735,17 +768,11 @@ Signage slides (kiosk advertisements), from `signage_slides` via
   Fire Exit node by number of connections, so a building whose stairs
   nodes aren't typed as Fire Exit isn't covered, and there's no
   alternate-route handling if a path is blocked.
-- **Email needs real SMTP settings** — registration, approval and password
-  reset correctly queue an email, and the `Cron_API processEmails` CLI job
-  sends them, but nothing is sent until real `SMTP_*` values are set in
-  `Arise_API`'s `.env` and that job is scheduled (see its `DEPLOY.md`).
-- **No rate limiting** on login, registration, forgot-password or feedback
-  (see [Known, still-open security gaps](#known-still-open-security-gaps)).
 - **The mobile app is a fully separate codebase**; changes in this repo
-  never affect it directly. `Arise_API` already has pieces made for it
-  (downscaled JPEG copies of indoor photos on request, per-account saved
-  rooms), but
-  this README describes the web app only.
+  never affect it directly. `Arise_API` serves it downscaled JPEG copies of
+  indoor photos on request, but this README describes the web app only. It
+  must not rely on user login, registration or saved rooms: the API no
+  longer has them.
 - See [Known, still-open security gaps](#known-still-open-security-gaps)
   above for what's outstanding before this could reasonably go live to real
   users on a real domain.

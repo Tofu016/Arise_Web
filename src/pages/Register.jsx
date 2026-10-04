@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
 const ALLOWED_DOMAIN = "@sdca.edu.ph";
 
 export default function Register() {
-  const navigate = useNavigate();
   const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -13,6 +12,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,14 +20,14 @@ export default function Register() {
 
     const trimmedEmail = email.trim().toLowerCase();
 
-    // Client-side check for immediate feedback — the real enforcement is
+    // Client-side check for immediate feedback, the real enforcement is
     // server-side (register() in Auth_API), same domain rule, checked
     // again regardless of what happens here.
     if (!trimmedEmail.endsWith(ALLOWED_DOMAIN)) {
       setError(`Only ${ALLOWED_DOMAIN} email addresses can register.`);
       return;
     }
-    // 8, not 6 — matches the backend's actual minimum exactly, so a
+    // 8, not 6, matches the backend's actual minimum exactly, so a
     // password that clears this check is guaranteed to clear the
     // server's too, rather than passing here and failing there with a
     // confusing, inconsistent error.
@@ -42,11 +42,10 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      // New accounts start as "pending" — an admin has to approve/assign a
-      // real role before this account can actually use anything (see
-      // RequireAuth's "awaiting approval" screen).
+      // Registering does not sign anyone in: the account is pending until
+      // an admin approves it.
       await register(trimmedEmail, password, name.trim());
-      navigate("/", { replace: true });
+      setRegistered(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -61,8 +60,8 @@ export default function Register() {
           Join <span className="auth-accent">ARISE</span>
         </h1>
         <p>
-          Create an account to start exploring campus in 360°: search rooms,
-          walk through buildings, and get step-by-step directions.
+          Request an account for the ARISE admin editor. An administrator
+          reviews every request before it can sign in.
         </p>
       </div>
 
@@ -71,6 +70,12 @@ export default function Register() {
           <h2>Create an account</h2>
           <p className="field-hint">Registration requires an {ALLOWED_DOMAIN} email address.</p>
 
+          {registered ? (
+            <p className="auth-info">
+              Account created. It is pending approval by an administrator; you will get an email once it is
+              approved, and then you can <Link to="/login">sign in</Link>.
+            </p>
+          ) : (
           <form onSubmit={handleSubmit}>
             <label>
               Name
@@ -114,6 +119,7 @@ export default function Register() {
               {submitting ? "Creating account…" : "Register"}
             </button>
           </form>
+          )}
 
           <p className="auth-switch">
             Already have an account? <Link to="/login">Log in</Link>

@@ -9,7 +9,7 @@ import {
   toSection,
   sectionCreateBody,
   sectionPatchBody,
-  toUser,
+  toAdmin,
   toDialog,
   normalizeRoomName,
   dialogPatchBody,
@@ -231,13 +231,13 @@ describe("tour sections", () => {
   });
 });
 
-describe("users", () => {
+describe("admins", () => {
   it("aliases id as uid", () => {
-    expect(toUser({ id: 9, email: "e", name: "n", role: "admin", created_at: "c", updated_at: "u" })).toEqual({
+    expect(toAdmin({ id: 9, email: "e", name: "n", status: "pending", created_at: "c", updated_at: "u" })).toEqual({
       uid: 9,
       email: "e",
       name: "n",
-      role: "admin",
+      status: "pending",
       createdAt: "c",
       updatedAt: "u",
     });
