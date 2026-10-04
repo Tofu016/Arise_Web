@@ -2006,6 +2006,10 @@ html.kiosk-mode .entrance-btn:hover:active {
   --tour-body-pad: 20px;
   --tour-sidebar-width: 340px;
   --tour-modal-inset-left: calc(var(--tour-body-pad) + var(--tour-sidebar-width));
+  /* The sidebar stretches the full body height, so its height is the
+     viewport minus the header and the body's top and bottom padding. The
+     campus map modal is sized off it. */
+  --tour-sidebar-height: calc(100vh - var(--tour-header-height) - 2 * var(--tour-body-pad));
 }
 .tour-shell-body {
   flex: 1;
@@ -4551,11 +4555,11 @@ html.kiosk-mode .flyover-cancel:hover:active {
   white-space: nowrap;
   pointer-events: none;
 }
-/* Gold fill takes the near-black text, per the button rule of picking
-   white or #1a1a1a by whichever reads better. */
+/* White on the gold fill: the branding rule is white text over amber, not
+   a contrast-picked near-black. */
 .flyover-pin-label-destination {
   background: var(--gold);
-  color: #1a1a1a;
+  color: #fff;
 }
 .flyover-note {
   font-size: 12px;
@@ -4582,6 +4586,118 @@ html.kiosk-mode .flyover-cancel:hover:active {
 html.kiosk-mode .flyover-skip:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+}
+/* ---------- Campus map (desktop panorama, bottom-left) ---------- */
+/* A thumbnail tile: a pale map-like surface darkened toward the bottom so
+   the white layer icon and building label read on it. */
+.campus-map-btn {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 27;
+  /* Square, 20% of the app sidebar's height. */
+  width: calc(var(--tour-sidebar-height) * 0.2);
+  height: calc(var(--tour-sidebar-height) * 0.2);
+  overflow: hidden;
+  padding: 0 12px 12px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  box-shadow: var(--shadow-1);
+  background:
+    linear-gradient(to bottom, rgba(32, 27, 27, 0) 25%, rgba(32, 27, 27, 0.78) 100%),
+    linear-gradient(135deg, #e4e8dc 0%, #cfd8c4 45%, #dfe3d6 100%);
+  color: var(--white);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-sans-display);
+}
+.campus-map-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* The darkening that keeps the icon and label readable over the map. */
+.campus-map-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(32, 27, 27, 0) 35%, rgba(32, 27, 27, 0.8) 100%);
+  pointer-events: none;
+}
+.campus-map-btn-icon,
+.campus-map-btn-label {
+  position: relative;
+  z-index: 1;
+}
+:where(html:not(.kiosk-mode)) .campus-map-btn:hover,
+html.kiosk-mode .campus-map-btn:hover:active {
+  border-color: var(--gold);
+}
+.campus-map-btn-icon {
+  width: 28px;
+  height: 28px;
+  display: block;
+  /* The icon keeps the bottom-left corner; only the label wraps. */
+  flex-shrink: 0;
+}
+/* Bottom-aligned with the icon, so extra lines stack upward and the icon
+   never moves. */
+.campus-map-btn-label {
+  min-width: 0;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+/* Scoped to .main-page-screen (the panorama), so the scrim covers only the
+   panorama and the modal is centered in it. */
+.campus-map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.campus-map-modal {
+  position: relative;
+  /* Square, much larger than the corner tile: 75% of the sidebar's height. */
+  width: calc(var(--tour-sidebar-height) * 0.75);
+  height: calc(var(--tour-sidebar-height) * 0.75);
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  background: var(--surface);
+}
+.campus-map-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+}
+.campus-map-close .inline-icon-img {
+  width: 12px;
+  height: 12px;
 }
 .floating-title-pill {
   pointer-events: auto;
@@ -4718,7 +4834,7 @@ html.kiosk-mode .floating-title-back:hover:active {
 }
 .pano-marker-highlighted .pano-marker-label {
   background: var(--sdca-gold);
-  color: #1a1a1a;
+  color: #fff;
 }
 @keyframes pano-marker-pulse {
   0% { box-shadow: 0 0 0 3px #fff, 0 0 0 4px rgba(201, 162, 75, 1); transform: scale(1); }

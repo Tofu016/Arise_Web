@@ -4,6 +4,8 @@ import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
 import RoomCard from "../components/RoomCard";
 import FlyoverPanel from "../components/FlyoverPanel";
+import CampusMapModal from "../components/CampusMapModal";
+import CampusMapPreview from "../components/CampusMapPreview";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
 import KioskCampusScreen from "../components/KioskCampusScreen";
@@ -40,7 +42,7 @@ import { useOverlay } from "../hooks/useOverlay";
 import { useCompactLayout } from "../hooks/useCompactLayout";
 import { useKioskSession, useKioskZoomLock, useKioskInspectLock } from "../hooks/useKioskSession";
 import { blocksIdle, coverage } from "../utils/overlay";
-import { allBuildings, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
+import { allBuildings, buildingDisplayName, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findMarkerForRoom, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
@@ -229,6 +231,7 @@ function MainPageContent({ onReset }) {
     roomCard: selectedRoomCard,
   } = overlay;
 
+  const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
   useEffect(() => {
@@ -1953,6 +1956,26 @@ function MainPageContent({ onReset }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Bottom-left: layer button showing the current building,
+                    opening the campus map in the middle of the panorama. */}
+                <button
+                  type="button"
+                  className="campus-map-btn"
+                  onClick={() => setCampusMapOpen(true)}
+                  aria-label="Open campus map"
+                  title="Campus map"
+                >
+                  <CampusMapPreview campusId={campusForBuilding(current.building)} />
+                  <IconPlaceholder name="map-layers" variant="white" className="campus-map-btn-icon" />
+                  <span className="campus-map-btn-label">{buildingDisplayName(current.building)}</span>
+                </button>
+                {campusMapOpen && (
+                  <CampusMapModal
+                    currentCampusId={campusForBuilding(current.building)}
+                    onClose={() => setCampusMapOpen(false)}
+                  />
+                )}
 
                 {/* Top-left corner; its popover opens downward. */}
                 {/* Hidden entirely for a logged-out visitor — same

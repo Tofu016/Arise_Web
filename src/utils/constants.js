@@ -57,6 +57,27 @@ export function allCampuses() {
   }));
 }
 
+// How a campus is named on screen: a campus of several buildings reads as
+// "GD1/GD2/GD3 Building", a solo-building campus (Digital Campus) keeps its
+// own name. Unlike allCampuses().label, "main" is not special-cased, so the
+// name follows the buildings rather than a hardcoded "Main Campus".
+export function campusDisplayName(campusId) {
+  const members = allBuildings().filter((b) => campusForBuilding(b.id) === campusId);
+  if (members.length === 0) return campusId;
+  if (members.length === 1) return members[0].label;
+  return `${members.map((b) => b.label).join("/")} Building`;
+}
+
+// One building's on-screen name: "GD1 Building" for a building inside a
+// multi-building campus, the bare label for a solo-building campus
+// (Digital Campus).
+export function buildingDisplayName(buildingId) {
+  const label = buildingLabel(buildingId);
+  const campusId = campusForBuilding(buildingId);
+  const siblings = allBuildings().filter((b) => campusForBuilding(b.id) === campusId);
+  return siblings.length > 1 ? `${label} Building` : label;
+}
+
 // Matches the actual Unity node-name vocabulary from the source model.
 // Colours keep their wayfinding hue (blue hallway, green entrance, red
 // fire-exit, \u2026) but are darkened/desaturated to read on the light,
