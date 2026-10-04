@@ -5,21 +5,18 @@
 // oversized photo) is genuinely gone with this change, a deliberate
 // trade-off, not an oversight.
 //
-// Exists because the backend's own upload validation
-// (IndoorUploads_API/TourUploads_API's validateAndGetExtension) only
-// accepts jpg/png/gif/webp — a HEIC photo straight off an iPhone camera,
-// for instance, would otherwise be rejected outright, since HEIC isn't
-// in that accepted set at all.
+// Exists because the backend's own upload validation (Photo_store's
+// MIME_TO_EXT) only accepts jpg/png/gif/webp — a HEIC photo straight off an
+// iPhone camera, for instance, would otherwise be rejected outright, since
+// HEIC isn't in that accepted set at all.
 //
 // Defaults to WebP, not JPEG — smaller files at equivalent visual
-// quality, and the backend already accepted it (webp was already in
-// validateAndGetExtension's own accepted list from the start). WEB ONLY,
-// deliberately: the mobile app's PanoramaViewer decodes panorama bytes
-// via jpeg-js specifically, a JPEG-only decoder (see useSecurePhotoPixels
-// in the mobile codebase) — a WebP file would fail to decode there
-// entirely. This is safe only because mobile is still fully separate,
-// still on Firebase; this needs revisiting before mobile ever connects
-// to this same upload pipeline.
+// quality, and the backend already accepted it. The mobile app's
+// PanoramaViewer decodes panorama bytes via jpeg-js specifically, a
+// JPEG-only decoder (see useSecurePhotoPixels in the mobile codebase), so a
+// stored WebP can't be handed to it as-is; IndoorUploads_API::serve()
+// covers that by returning a downscaled JPEG copy on request
+// (format=jpeg, see Photo_preview).
 export function convertImage(file, outputType = "image/webp", quality = 0.9) {
   return new Promise((resolve, reject) => {
     // Already the target format — skip re-encoding entirely. Re-encoding

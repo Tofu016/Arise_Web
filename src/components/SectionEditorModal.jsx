@@ -115,7 +115,7 @@ export default function SectionEditorModal({ onClose }) {
             <span className="field-hint">
               {uploadState === "uploading" && "Uploading…"}
               {uploadState === "done" && "✓ Uploaded"}
-              {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
+              {uploadState === "error" && "⚠ Upload failed: check your connection."}
               {uploadState === "idle" && !coverPath && "No cover photo set yet."}
             </span>
             {coverPath && (

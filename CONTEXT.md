@@ -15,10 +15,10 @@ A category of stored photo (node panorama, room photo, room 360, tour panorama, 
 _Avoid_: photo type, upload type
 
 **Public photo**:
-A photo anyone can view without signing in (the tour kinds).
+A photo served straight from disk to anyone (the tour kinds and signage).
 
 **Protected photo**:
-A photo only viewable after a role check (the indoor kinds).
+A photo stored outside the web server's reach and streamed only through the serve endpoint (the indoor kinds). The endpoint does not check who is asking, since `/` is public: "protected" describes where the file lives, not who may view it.
 
 **Blur review**:
 The admin step where a new node panorama is manually blurred before it is published; until confirmed, the upload is held in a temporary area.
@@ -74,7 +74,7 @@ The optional telephone number an admin sets on a room's details in the Room Edit
 _Avoid_: phone number, phone
 
 **Saved room**:
-A room a signed-in, approved account has bookmarked (the save button on a room panel). It points at the room's details record, not its name, so a rename keeps it; a room with no details record can't be saved.
+A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room Editor drops it from the list. (The API's per-account `SavedRooms_API` list, which points at the room's details record instead, is the mobile app's and is not used here.)
 _Avoid_: favorite, starred room
 
 **Signage**:

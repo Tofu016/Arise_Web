@@ -122,7 +122,7 @@ export default function NodeFlowchartPage() {
 
   // Persists the final position once a drag actually finishes — not on
   // every intermediate onNodesChange event during the drag itself, which
-  // would mean a Firestore write on every single pixel of movement.
+  // would mean an API request on every single pixel of movement.
   const handleNodeDragStop = useCallback(
     (_event, node) => {
       updateNode?.(node.id, { flowchartPosition: { x: node.position.x, y: node.position.y } });

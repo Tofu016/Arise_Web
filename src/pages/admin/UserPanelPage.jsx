@@ -10,15 +10,16 @@ const ROLE_LABELS = { pending: "Pending", user: "User", admin: "Admin" };
 
 function formatJoined(createdAt) {
   if (!createdAt) return "N/A";
-  // Firestore Timestamp (has .toDate()) vs. a plain ISO string, just in case.
+  // The API sends a plain date string; the toDate() branch is a leftover from
+  // the Firestore Timestamp the old backend produced.
   const date = typeof createdAt.toDate === "function" ? createdAt.toDate() : new Date(createdAt);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleDateString();
 }
 
 // Inline <svg>, not an <img>, so the caret picks up the button's own
-// currentColor (muted when enabled, faded with it when disabled); see
-// SESSION.md's note on <img> SVGs not inheriting currentColor.
+// currentColor (muted when enabled, faded with it when disabled); an SVG
+// loaded through <img> renders in its own document and ignores currentColor.
 function Caret() {
   return (
     <svg className="role-select-caret" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
@@ -82,8 +83,8 @@ function RoleSelect({ value, onChange, disabled, title }) {
 // of the four migrations. Calls useUsers() directly here rather than
 // adding it to AdminLayout's shared Outlet context — unlike nodes/
 // selectedNodeId, no other section needs user data, so sharing it
-// globally would just mean every page pays for a Firestore subscription
-// only this one page actually uses.
+// globally would just mean every page pays for a users fetch only this
+// one page actually uses.
 //
 // Layout: the page's one primary action (New Account) sits in the header
 // row opposite the title, the same place a reader looks for it on any

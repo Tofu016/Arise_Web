@@ -2,8 +2,8 @@ import { elevatorAdjacency } from "./elevators";
 
 // Fire exits (transitionExit) are for emergencies only, so ordinary routing
 // never passes THROUGH one. It can still start or end on one: a visitor
-// standing at a fire exit has to be able to route away from it. Emergency
-// routing, which would use them, isn't built yet.
+// standing at a fire exit has to be able to route away from it. The one
+// route that does end at one is "Nearest Exit" (findNearestExit below).
 const EMERGENCY_ONLY_TYPES = ["transitionExit"];
 
 // A neighbor edge that changes floor through a Stairs (transition) node.

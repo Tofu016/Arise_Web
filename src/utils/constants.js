@@ -2,10 +2,9 @@ import { getCustomBuildings, getServerBuildingNames } from "./buildingStore";
 
 // GD1/GD2/GD3 share the same "Main Campus" coordinates — they're a single
 // physical location (already interconnected via the node graph), not
-// three separate campuses. Only GD1's entrance node actually surfaces the
-// cross-campus minimap (per the minimap feature's own scoping — one
-// representative entry point per cluster, not one per building), but all
-// three carry the coordinate for data consistency.
+// three separate campuses. Only the node flagged as the campus entrance
+// (one per campus, see `campusEntrance`) surfaces the cross-campus minimap,
+// but all three carry the coordinate for data consistency.
 const MAIN_CAMPUS_LAT = 14.45890388620473;
 const MAIN_CAMPUS_LNG = 120.95932439713594;
 

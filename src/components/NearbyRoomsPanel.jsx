@@ -1,7 +1,7 @@
 // Kiosk-only: a card in the top-left corner, underneath the header band,
 // listing the nearest rooms/facilities to the visitor's current node.
-// `style` carries the caller's vertical placement (see MainPage.jsx). Read-only for now; `onSelect` is wired up by the caller
-// once the interaction model is settled.
+// `style` carries the caller's vertical placement (see MainPage.jsx).
+// `onSelect` is called with the tapped entry (MainPage opens its room card).
 export default function NearbyRoomsPanel({ rooms, currentFloor, onSelect, style }) {
   if (!rooms || rooms.length === 0) return null;
 

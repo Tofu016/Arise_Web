@@ -115,7 +115,7 @@ export default function PreviewTour({ nodes, startNodeId, onClose }) {
             <p>
               No photo found for <strong>{current.name}</strong>.<br />
               {current.photo
-                ? <>Its photo reference (<code>{current.photo}</code>) didn't load. The file may have been moved, deleted, or never actually uploaded to Storage.</>
+                ? <>Its photo reference (<code>{current.photo}</code>) didn't load. The file may have been moved, deleted, or never actually uploaded.</>
                 : "This node has no photo set yet."}
             </p>
             <button className="primary" onClick={() => setShowWarning(false)}>OK, continue</button>

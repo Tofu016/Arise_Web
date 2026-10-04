@@ -98,8 +98,8 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
 
   // Rebuilds ONLY when the scope itself changes (building/floor) — NOT
   // when `nodes` updates for any other reason. This was a real bug:
-  // saving a dragged position writes to Firestore, which the admin
-  // editor's own listener picks up, producing a brand-new `nodes` array
+  // saving a dragged position patches the node through the API, after
+  // which useNodes reloads and produces a brand-new `nodes` array
   // — which, if it were in this effect's dependencies, would re-trigger
   // a full rebuild and reset the viewport on every single drag, right
   // after the position that drag just saved. `nodes` is deliberately
@@ -124,7 +124,7 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
 
   // Persists the final position once a drag actually finishes — not on
   // every intermediate onNodesChange event during the drag itself, which
-  // would mean a Firestore write on every single pixel of movement.
+  // would mean an API request on every single pixel of movement.
   const handleNodeDragStop = useCallback(
     (_event, node) => {
       onUpdateNode?.(node.id, { flowchartPosition: { x: node.position.x, y: node.position.y } });

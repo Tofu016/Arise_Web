@@ -236,8 +236,8 @@ export default function RoomEditorPage() {
 
       // saveRoomDialog looks the existing record up by the OLD name
       // (selectedRoom) — passing the new name in the patch renames it in
-      // place, same document, not a new one, since the document's own
-      // Firestore ID was never tied to the room name to begin with.
+      // place, same record, not a new one, since the record's own id is
+      // never tied to the room name.
       await saveRoomDialog(selectedRoom, {
         roomName: trimmedTitle,
         roomDescription: description.trim(),
@@ -448,7 +448,7 @@ export default function RoomEditorPage() {
                   <span className="field-hint">
                     {uploadState === "uploading" && "Uploading…"}
                     {uploadState === "done" && "✓ Uploaded"}
-                    {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
+                    {uploadState === "error" && "⚠ Upload failed: check your connection."}
                     {uploadState === "idle" && !photoPath && "No photo set yet."}
                   </span>
                 </label>
@@ -484,7 +484,7 @@ export default function RoomEditorPage() {
                   <span className="field-hint">
                     {upload360State === "uploading" && "Uploading…"}
                     {upload360State === "done" && "✓ Uploaded"}
-                    {upload360State === "error" && "⚠ Upload failed: check Storage rules/connection."}
+                    {upload360State === "error" && "⚠ Upload failed: check your connection."}
                     {upload360State === "idle" && !photo360Path && "No 360° photo set yet."}
                   </span>
                 </label>

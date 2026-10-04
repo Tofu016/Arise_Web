@@ -23,8 +23,7 @@ function newSessionId() {
 
 // Compact layout (the kiosk view): a fresh id every mount — MainPageContent
 // only remounts on a real session boundary (feedback given, or the idle
-// countdown's "start over"), see SESSION.md's Analytics planning notes.
-// Otherwise no such remount exists, so the id is read from sessionStorage
+// countdown's "start over"). Otherwise no such remount exists, so the id is read from sessionStorage
 // (survives a refresh, starts fresh in a new tab) and the session is closed
 // server-side by inactivity timeout instead of an explicit end event.
 function sessionIdFor(compact) {

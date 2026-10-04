@@ -12,12 +12,10 @@ import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import chevronDownWhite from "../assets/icons/chevron-down-white.svg";
 
-// Shows a Storage path's photo, resolved via useSecurePhotoUrl the same
-// secure-fetch way the rest of the app already does — that call still
-// works for an anonymous visitor here specifically because
-// tourpanorama/tourcover/tourmarker each have their own genuinely public
-// Storage rule (see storage.rules), unlike every other photo path in
-// this app.
+// Shows a stored photo's path, resolved via useSecurePhotoUrl the same way
+// the rest of the app does. tourpanorama/tourcover/tourmarker are public
+// photo kinds (see utils/photoStore.js), so they resolve to a plain static
+// URL served by Apache, with no fetch or token involved.
 function SecureImg({ path, alt, className }) {
   const { url } = useSecurePhotoUrl(path);
   if (!url) return null;

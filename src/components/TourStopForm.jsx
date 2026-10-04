@@ -19,8 +19,9 @@ const emptyDraft = () => ({
 // a tour stop has no building/floor/type/rooms-served. Its photo goes
 // through the manual blur review (useBlurReview) before it's uploaded, but
 // not NodeForm.jsx's server-side holding-area flow. Neighbor-linking is likewise not
-// edited here — same separation as the indoor system, where Navigation
-// Edit is the sole place that's managed.
+// edited here — same separation as the indoor system, where Virtual Map
+// Navigation Editor is the sole place that's managed. Here it is Campus Tour
+// Navigation Editor.
 export default function TourStopForm({ mode, stop, stops, sections, onSave, onCancel, onDelete }) {
   const [draft, setDraft] = useState(() =>
     mode === "edit" ? { ...stop } : emptyDraft()
@@ -191,7 +192,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         <span className="field-hint">
           {uploadState === "uploading" && "Uploading…"}
           {uploadState === "done" && "✓ Uploaded"}
-          {uploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
+          {uploadState === "error" && "⚠ Upload failed: check your connection."}
           {uploadState === "idle" && !draft.photo && "No photo set yet."}
         </span>
       </label>

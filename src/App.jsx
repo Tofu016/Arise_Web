@@ -65,7 +65,7 @@ export default function App() {
           {/* Nested under one shared layout — useNodes() is called once in
               AdminLayout and passed down to whichever section is active via
               Outlet context, rather than each section independently
-              re-subscribing to the same Firestore data and losing track of
+              re-fetching the same node data and losing track of
               the current selection on every navigation. */}
           <Route
             path="/admin"

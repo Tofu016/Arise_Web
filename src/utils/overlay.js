@@ -3,7 +3,7 @@
 //
 // One exclusive panel slot (Maps-style: only one of menu/search/room/
 // directions/account at a time) plus overlays that stand on their own and can
-// coexist with it: the mobile dock, the feedback panel, and the building
+// coexist with it: the Compact layout's dock, the feedback panel, and the building
 // dialog.
 
 export const initialOverlay = {

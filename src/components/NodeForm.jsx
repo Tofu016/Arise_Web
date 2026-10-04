@@ -331,7 +331,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             <p className="directions-error">
               ⚠ Declared as leading to {unwiredDeclaredFloors.map(floorLabel).join(", ")}, but no neighbor link of
               this node actually reaches {unwiredDeclaredFloors.length === 1 ? "that floor" : "those floors"} yet.
-              Wire it up in Navigation Editor, or it isn't really routable.
+              Wire it up in Virtual Map Navigation Editor, or it isn't really routable.
             </p>
           )}
           {undeclaredNeighborFloors.length > 0 && (
@@ -358,7 +358,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           {currentStart && currentStart.id !== draft.id
             ? `, saving this replaces ${currentStart.id}.`
             : "."}
-          {" "}Camera view is set in Navigation Editor.
+          {" "}Camera view is set in Virtual Map Navigation Editor.
         </span>
       </div>
 
@@ -444,7 +444,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         />
         <span className="field-hint">
           {draft.photo
-            ? "Set automatically once you pick a file below. Only edit this by hand to link an existing upload (its full path, as shown on the admin Photos page)."
+            ? "Set automatically once you pick a file below. Only edit this by hand to link an existing upload (its full path, as shown in the Photos list on the Photo Coverage page)."
             : "No photo set yet: pick a file below."}
         </span>
       </label>

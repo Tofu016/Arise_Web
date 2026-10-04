@@ -3,9 +3,9 @@ import { Handle, Position } from "@xyflow/react";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { buildingLabel, floorLabel } from "../utils/constants";
 
-// Each node fetches its own photo independently through the same secure
-// pipeline used everywhere else in the admin (getBytes() through Storage
-// Security Rules, not a public download URL) — parallel fetches across
+// Each node fetches its own photo independently through the same photo
+// pipeline used everywhere else in the admin (useSecurePhotoUrl, which asks
+// for a small thumbnail copy) — parallel fetches across
 // however many nodes are in the selected building/floor.
 //
 // Deliberately a flat <img>, not the interactive 360° sphere viewer

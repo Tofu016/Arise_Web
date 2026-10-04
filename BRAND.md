@@ -11,7 +11,7 @@ There is no CSS framework. Styling lives in three layers, imported in
 
 | File | Role |
 |------|------|
-| `src/styles/fonts.css` | `@font-face` for the three brand families (self-hosted) |
+| `src/styles/fonts.css` | `@font-face` for the brand font, Century Gothic (self-hosted) |
 | `src/styles/tokens.css` | **all** design tokens — the single source of truth |
 | `src/index.css` | every component's rules, referencing the tokens |
 
@@ -55,15 +55,17 @@ on light surfaces and over 360° photos. Adjust them there, not in tokens.
 
 ## Type
 
-Self-hosted (see `public/fonts/README.md` for the `.woff2` drop-in — the app
-falls back to system fonts until the files are added):
+One self-hosted family, **Century Gothic** (400, 400 italic, 600, 700; see
+`public/fonts/README.md` for the `.woff2` files), with `Apple Gothic` / `URW
+Gothic` / `Segoe UI` / Arial as fallbacks. The three display/body tokens all
+resolve to it, so the roles below differ by weight and treatment, not family:
 
-| Token | Family | Where |
-|-------|--------|-------|
-| `--font-serif-display` | Source Serif 4 | editorial hero statements only (`.auth-left-panel h1`, `.main-page-picker h1`) |
-| `--font-sans-display` | Montserrat (700–800, uppercase, +tracking) | nav, section titles, primary CTAs |
-| `--font-sans-body` | Source Sans 3 | all body copy (set on `body`) |
-| `--font-mono` | JetBrains Mono | code / IDs |
+| Token | Where |
+|-------|-------|
+| `--font-serif-display` | editorial hero statements only (`.auth-left-panel h1`, at 600) |
+| `--font-sans-display` | nav, section titles, primary CTAs (`.primary`: 700, uppercase, +0.04em tracking) |
+| `--font-sans-body` | all body copy (set on `body`) |
+| `--font-mono` | code / IDs: JetBrains Mono if installed, else Courier New (not self-hosted) |
 
 ## Shell
 

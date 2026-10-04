@@ -4,8 +4,8 @@ import { fetchProtectedPhoto, uploadPhoto } from "./photoStore";
 
 // The blur-review lifecycle for a node panorama. A photo is never
 // reachable through the normal viewing path until an admin confirms it,
-// so a brand-new upload sits in a temporary, admin-only holding area
-// until then. Two ways in, one way out:
+// so a brand-new upload sits in a temporary holding area
+// (panoramas-review/, uploadable only by an admin) until then. Two ways in, one way out:
 //
 //   startReview(file, ...)     brand-new upload → temp copy + review
 //   reviewExisting(path)       reopen a published photo → review, no temp

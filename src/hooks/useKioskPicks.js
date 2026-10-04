@@ -1,7 +1,7 @@
 import { campusForBuilding } from "../utils/constants";
 import { pickBuildingStart, pickFloorStart, kioskBuildingHasChoice, buildingsForCampus } from "../utils/navigation";
 
-// Every "kiosk verb + Jump" composition off the mobile Building dialog and
+// Every "kiosk verb + Jump" composition off the Compact layout's Building dialog and
 // the Kiosk session's campus/building/floor screens — see
 // hooks/useKioskSession.js for the stages themselves and utils/navigation.js
 // for the pure picks (pickBuildingStart, pickFloorStart,

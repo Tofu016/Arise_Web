@@ -5,7 +5,7 @@ import { createLimiter } from "./concurrencyLimiter";
 // Every photo the app stores, in one table: which backend endpoint takes
 // it, which storage-path prefix it lands under, and whether that prefix is
 // public (a plain static file, no auth) or protected (served only through
-// IndoorUploads_API's serve() endpoint after a role check). Uploading and
+// IndoorUploads_API's serve() endpoint, which checks nobody). Uploading and
 // resolving a photo are the two halves of one rule, so both read this
 // table — adding a kind means adding one row.
 //

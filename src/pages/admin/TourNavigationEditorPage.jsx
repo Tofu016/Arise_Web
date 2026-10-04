@@ -260,7 +260,7 @@ export default function TourNavigationEditorPage() {
                 />
                 <span className="field-hint">
                   {markerUploadState === "uploading" && "Uploading…"}
-                  {markerUploadState === "error" && "⚠ Upload failed: check Storage rules/connection."}
+                  {markerUploadState === "error" && "⚠ Upload failed: check your connection."}
                   {newMarkerPhotos.length === 0 && markerUploadState !== "uploading" && "No photos picked yet: at least one is required."}
                 </span>
                 {newMarkerPhotos.length > 0 && (

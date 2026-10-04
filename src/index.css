@@ -80,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-/* Primary call-to-action treatment — guide: Montserrat 700, uppercase,
+/* Primary call-to-action treatment — display font at 700, uppercase,
    wide tracking. Colour comes from the scoped rules further down. */
 .primary,
 button.primary {
@@ -1483,7 +1483,7 @@ img[data-icon-placeholder="emergency-exit"] {
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
-  /* Cancel the global .primary rule's uppercase/tracked Montserrat
+  /* Cancel the global .primary rule's uppercase/tracked display-font
      treatment in this one context: a form-actions row already sits its
      buttons side by side in the same font, same case, same size — only
      background/border/color differ. Layering the bold-uppercase-display

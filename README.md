@@ -58,7 +58,7 @@ Open the printed localhost URL:
   Requires an `admin`-role account.
 
 This frontend talks to `Arise_API` over HTTP — it needs to actually be
-running (see that repo's own README) for anything data-related to work at
+running (see [Backend setup](#backend-setup)) for anything data-related to work at
 all. Nothing here talks to Firebase.
 
 ---
@@ -68,19 +68,22 @@ all. Nothing here talks to Firebase.
 This repo is the frontend only. `Arise_API` (a separate repo — PHP,
 CodeIgniter 3, MySQL) needs to be set up and running first:
 
-1. **XAMPP** (Apache + MySQL), matching PHP 7.4.
+1. **XAMPP** (Apache + MySQL), with PHP 7.4 or newer (CodeIgniter 3.1.13
+   supports up to PHP 8.1).
 2. **Clone `Arise_API` into `htdocs`**, `composer install` inside it.
 3. **Import `schema.sql`** into a fresh `arise_web` MySQL database.
-4. **Copy `application/config/database.php.example`** to `database.php`,
-   fill in your local MySQL credentials.
-5. **Create the two upload folders**:
-   - `Arise_API/uploads/` — public Virtual Tour photos, served directly by
-     Apache.
-   - A `protected-uploads/` folder **one level above `htdocs`**, not inside
-     `Arise_API` at all — indoor node/room photos, deliberately kept outside
-     anywhere Apache can serve directly. See
-     [Security & authentication](#security--authentication) for why this
-     matters.
+4. **Copy `.env.example` to `.env`** and fill in your local MySQL
+   credentials. There is no `database.php.example`: `database.php` reads
+   its values from `.env`.
+5. **Upload folders**:
+   - `Arise_API/uploads/` — public Virtual Tour photos and kiosk
+     advertisement media, served directly by Apache.
+   - `protected-uploads/` — indoor node/room photos, deliberately kept
+     outside anywhere Apache can serve directly. With `PROTECTED_UPLOAD_ROOT`
+     blank in `.env` it defaults to two directories above `Arise_API`'s
+     `index.php`, which on XAMPP is `C:/xampp/protected-uploads/`, outside
+     `htdocs`. See [Security & authentication](#security--authentication)
+     for why this matters.
 6. **Seed the first admin** — see `Arise_API`'s own `SEED.md`. A fresh
    database has no accounts at all; someone has to become the first admin by
    hand before the User Panel can promote anyone else.
@@ -88,7 +91,8 @@ CodeIgniter 3, MySQL) needs to be set up and running first:
 Full details — including the two `.htaccess` files this setup genuinely
 needs (one for CORS on the uploads folder, one for Apache to forward the
 `Authorization` header, which it silently drops otherwise) — live in
-`Arise_API`'s own README/DEPLOY.md.
+`Arise_API`'s own `DEPLOY.md` and `PRODUCTION.md` (the API repo has no
+README.md; `readme.rst` is CodeIgniter's own).
 
 ---
 
@@ -118,12 +122,15 @@ type, never from whatever the uploader's filename claims, which closes off
 a real path to uploading and then executing malicious code on the server.
 
 **Indoor photos are stored genuinely outside the web-servable folder** —
-`protected-uploads/`, one level above `htdocs` entirely, not just blocked via
-a `.htaccess` rule that has to stay correctly configured. Viewing goes
-through a PHP endpoint that streams the bytes back directly; there's no
-direct URL to any indoor photo file at all. (Virtual Tour photos are
-different — deliberately, fully public, served straight by Apache, since
-`/tour` itself has no login boundary to protect in the first place.)
+`protected-uploads/`, outside `htdocs` entirely by default, not just blocked
+via a `.htaccess` rule that has to stay correctly configured. Viewing goes
+through a PHP endpoint (`IndoorUploads_API/serve`) that streams the bytes
+back directly; there's no direct URL to any indoor photo file at all. That
+endpoint deliberately does **not** check who is asking, because `/` is
+public: anyone who knows a photo path can fetch it, including a blur-review
+upload that hasn't been published yet. Only uploading is admin-only.
+(Virtual Tour photos and kiosk advertisement media are different:
+fully public, served straight by Apache.)
 
 **Directory traversal protection** — every user-supplied filename/path
 segment is validated against a strict character allowlist and explicitly
@@ -138,8 +145,10 @@ returns the same generic response whether or not the email actually belongs
 to a real account, so it can't be used to probe which addresses are
 registered.
 
-**CORS is scoped to a specific origin**, not a wildcard — configured in
-`Arise_API`'s own `MY_Controller.php`.
+**CORS is scoped to specific origins**, not a wildcard — read from
+`CORS_ORIGIN` in `Arise_API`'s `.env` (a comma-separated list is allowed) by
+`MY_Controller.php`. (The public tour/signage media in `uploads/` allow any
+origin, via that folder's own `.htaccess`.)
 
 **Registration is domain-restricted** — only `@sdca.edu.ph` addresses can
 register at all, enforced server-side, not just as a client-side check
@@ -157,9 +166,14 @@ Worth being upfront about, not glossed over:
 
 - **No rate limiting on login** — nothing currently stops repeated
   password-guessing against a real account.
-- **CodeIgniter's own error display** (`db_debug`) can still show raw
-  PHP/SQL errors directly in a failure response in some cases, rather than
-  logging them privately.
+- **CodeIgniter's own error display** (`db_debug`) is on whenever `CI_ENV`
+  isn't `production`, and then shows raw PHP/SQL errors directly in a
+  failure response. Set `CI_ENV=production` on any real server. Even then
+  `log_threshold` is `0`, so errors aren't logged privately either.
+- **Registration doesn't verify the mailbox**: only the `@sdca.edu.ph`
+  suffix is checked, so an admin approving an account can't tell a real
+  student from an invented address.
+- **`IndoorUploads_API/serve` is public** (see above).
 - **No HTTPS** — everything currently runs over plain HTTP, since this is
   still local/dev hosting with no real domain yet. Auth tokens travel in
   request headers, which matters more once this is ever exposed to a real
@@ -192,18 +206,21 @@ client-side immediately, and enforced again server-side (can't be bypassed by
 calling the API directly).
 
 **Getting approved to `admin`**: every new account starts as `pending` and
-needs an existing admin to promote them — from `/admin`, click **👤 User
-Panel** (its Pending filter shows how many are waiting). Pending rows have an
+needs an existing admin to promote them — from `/admin`, open **User Panel**
+(its Pending filter shows how many are waiting). Pending rows have an
 **Approve** button, which makes the account a `user`; every row also has a
-role dropdown for promoting to `admin` or changing the role later.
+role dropdown for promoting to `admin` or changing the role later. An admin
+can't demote themselves, and the last remaining admin can't be demoted.
+**+ New Account** creates an account directly (any role) instead of waiting
+for someone to register.
 
 **Deleting an account**: the same panel has a **Delete** button per row.
 Confirms before deleting; an admin can't delete their own account from here.
 
-**Signing out**: available from the account chip in `/admin`'s toolbar. (The
-account chip that used to sit on MainPage's own sidebar is gone now that `/`
-doesn't require an account at all — a logged-out visitor simply has nothing
-account-related to show there.)
+**Signing out**: a signed-in visitor on `/` gets an account button (top right
+of the panorama on the desktop layout) whose popover has **Sign out**, plus an
+**Admin Panel** link for admins; a logged-out visitor sees no account
+button at all. `/admin` has its own account chip in its toolbar.
 
 ---
 
@@ -217,7 +234,17 @@ document database.
   `node_markers`, and `node_rooms` hold the graph edges, point-of-interest
   markers, and served-room list respectively (each a separate table, not
   nested fields on the node itself).
+- **Elevators** — `elevators` table (see "Point-of-interest markers").
 - **Buildings** — `buildings` table.
+- **Accounts** — `users`, `auth_tokens`, `password_resets`, and
+  `email_queue` (outgoing registration/approval/reset mail, drained by a
+  CLI cron job). `saved_rooms` holds each account's bookmarked rooms (used only by the mobile app).
+- **Kiosks** — `kiosks` (one row per registered kiosk device and the node
+  it stands at; only hashes of its pairing code and token are stored) and
+  `kiosk_pair_failures` (rate limit on wrong pairing codes).
+- **Analytics** — `analytics_sessions` and `analytics_events`: one row per
+  visitor session (`kiosk` only when it comes from a paired kiosk, `web`
+  for everything else) and one per tracked action.
 - **Tour stops / sections** — `tour_stops`, `tour_sections`,
   `tour_stop_neighbors`, `tour_stop_markers`, `tour_stop_marker_photos` — the
   Virtual Campus Tour's own equivalent structure, kept as its own,
@@ -233,9 +260,9 @@ document database.
   Virtual Tour content (`tourpanorama/`, `tourcover/`, `tourmarker/`) lives
   in `Arise_API/uploads/`, served directly by Apache. Indoor content
   (`panoramas/`, `roomphoto/`, `room360/`) lives in `protected-uploads/`,
-  outside `htdocs` entirely, served only through an authenticated-or-public
-  (depending on the content) PHP endpoint — see
-  [Security & authentication](#security--authentication).
+  outside `htdocs` entirely by default, served only through the
+  `IndoorUploads_API/serve` PHP endpoint, which doesn't check who is asking
+  — see [Security & authentication](#security--authentication).
 - **Kiosk advertisements (signage)**: `signage_slides` (one row per
   advertisement: its file, crop, time on screen, rotation position, on/off
   and optional run dates) and `signage_settings` (one row: rotation order,
@@ -251,10 +278,9 @@ edit made in `/admin` shows up for another open session on the next data
 refresh (typically triggered by navigating within the app), not
 instantaneously via a live subscription.
 
-**Legacy local files**: `public/nodes.json` and `public/panoramas/*.jpg`,
-if still present in the repo, predate even the original Firebase migration
-— a point-in-time archive from before this app had any real backend at all.
-Not read by the app.
+**Legacy local files**: `public/nodes.json` and `public/panoramas/*.jpg`
+predate even the original Firebase migration, and are no longer in the repo.
+Nothing reads them.
 
 ---
 
@@ -262,7 +288,9 @@ Not read by the app.
 
 ### Creating and editing nodes
 
-1. Click **+ New node** (or select an existing one from the list to edit it).
+Under **Virtual Map → Node Editor**:
+
+1. Click **+ New Node** (or select an existing one from the list to edit it).
 2. Fill in:
    - **ID** — auto-filled as soon as you pick Building/Floor/Type (e.g.
      `gd1_f2_hallway01`), and stays editable if you'd rather give it a more
@@ -272,15 +300,18 @@ Not read by the app.
    - **Name** — a human-readable label, e.g. "Hallway near Rm 203".
    - **Building** / **Floor** — pick from the dropdowns. Floors offered are
      specific to the selected building.
-   - **Type** — hallway, lobby, entrance, transition (main stairs),
-     transition exit (fire stairs), open area (parking), or portal
-     (GD2 ↔ GD3 crossing).
-   - **Leads to floor(s)** — only shown for transition types. Multi-select,
+   - **Type** — Hallway, Lobby, Entrance, Stairs, Fire Exit, Open Area,
+     Parking, or Building Transition (a walkable GD2 ↔ GD3 link).
+   - **Leads to floor(s)** — only shown for Stairs and Fire Exit. Multi-select,
      since a stairs/fire-exit node can connect both up and down (e.g. a
      mid-building stairwell). Checked against the node's own neighbor
-     links (managed in Navigation Editor) and flags a warning — not a
-     blocking error, since a brand-new node has no links yet — if the two
-     disagree.
+     links (managed in Virtual Map Navigation Editor) and flags a warning —
+     not a blocking error, since a brand-new node has no links yet — if the
+     two disagree.
+   - **Starting node for this floor** — where the kiosk drops visitors who
+     pick this building floor. Only one per floor — saving a second one on
+     the same floor replaces the first. Its camera view is set in Virtual
+     Map Navigation Editor ("Set starting view").
    - **Building entrance** — only shown for entrance-type nodes. The single
      node representing this one building, offered as a Kiosk floor-screen
      shortcut. Only one per building — saving a second one on the same
@@ -290,11 +321,16 @@ Not read by the app.
      node representing this node's whole campus (GD1/GD2/GD3 share one;
      Digital Campus has its own), driving the cross-campus minimap and a
      Kiosk floor-screen shortcut. Only one per campus — saving a second one
-     on the same campus replaces the first.
+     on the same campus replaces the first. (The API's replace rule knows
+     only GD1/GD2/GD3 as a shared campus; a campus an admin builds by
+     setting a building's campus in the Building dialog is not yet
+     enforced server-side.)
    - **Rooms served** — type a room number/name and hit Enter or click Add.
-     A room can only be attached to one node campus-wide.
-   - **360° photo filename** / **Choose 360° photo file** — see below.
-   - **Neighbors** — managed in **🧭 Test navigation**, not this form.
+     A room can only be attached to one node campus-wide (checked by this
+     form, not by the API).
+   - **360° photo path** / **Choose 360° photo file** — see below.
+   - **Neighbors** — managed in **Virtual Map Navigation Editor**, not this
+     form.
 3. Click **Create node** / **Save changes**. Validation errors show inline
    and block saving until fixed.
 4. **Delete** (edit mode only) removes the node and automatically cleans it
@@ -302,12 +338,13 @@ Not read by the app.
 
 ### Adding a 360° photo to a node
 
-Click **Choose 360° photo file** and pick the image. Unlike the old,
-directly-uploads-and-publishes flow, this now goes through a manual privacy
-review first:
+Click **Choose 360° photo file** and pick the image. It goes through a
+manual privacy review before it is published:
 
-1. The photo uploads to a temporary, admin-only holding area — not visible
-   to anyone until confirmed.
+1. The photo uploads to a temporary holding area (`panoramas-review/`) that
+   isn't linked to the node until confirmed. Uploading is admin-only, but
+   the holding area is not access-controlled for viewing (see
+   [Security & authentication](#security--authentication)).
 2. A review panel opens where you can click-and-drag directly on the photo
    to mark any face or other sensitive area — each marked region gets
    pixelated. (There's no automatic face detection; marking is entirely
@@ -320,41 +357,45 @@ WebP (smaller files at equivalent quality — see the note below), and stored
 in the protected, non-public location described in
 [Security & authentication](#security--authentication).
 
-**A real, known limitation worth knowing**: uploaded photos convert to WebP
-now, not JPEG. This genuinely breaks the *mobile app's* panorama viewer
-specifically, since its rendering pipeline decodes photos with a
-JPEG-only library — this is safe only because the mobile app is still a
-fully separate codebase on its own, older backend. If mobile ever connects
-to this same upload pipeline, this needs revisiting first.
+**Worth knowing**: uploaded photos convert to WebP, not JPEG. The *mobile
+app's* panorama viewer decodes only JPEG, so `IndoorUploads_API/serve`
+can return a downscaled JPEG copy on request (`&format=jpeg`, optionally
+`&width=`), cached on the server. The web app asks for it only for the Node Flowchart's
+small thumbnails and otherwise gets the original.
 
-**Editing an already-published photo**: click **✏️ Edit blur regions on
+**Editing an already-published photo**: click **Edit blur regions on
 this photo** to reopen it for adding or adjusting blur regions, without
 needing to re-upload from scratch.
 
 ### Linking neighbors & hotspots
 
-- The **Neighbors** picker (in **🧭 Test navigation**, not the node form)
-  lists other nodes on the same building + floor (portal nodes always
-  shown). Check a node to link it — links are bidirectional.
+- In **Virtual Map Navigation Editor** (not the node form), the **Links**
+  box has **+ Add Links**, a search of other nodes by name or ID. Pick one to
+  link it and then click on the panorama where its arrow should sit — links
+  are bidirectional. The **Links added** list beside it has **Reposition**,
+  **Clear default view** and **Remove** per link.
 - Positioning the clickable arrow itself:
-  1. Walk into the node you want to position an arrow in.
-  2. Use the placement tool to click on the panorama sphere where the arrow
-     toward a given neighbor should sit, or leave it unset — unset hotspots
-     default to evenly spaced arrows.
-  3. Positions save automatically.
+  1. Select the node you want to position an arrow in.
+  2. Add or **Reposition** a link, and click on the panorama sphere where
+     the arrow toward that neighbor should sit. A link that was never
+     positioned defaults to evenly spaced arrows.
+  3. Optionally save a **default view**: the camera direction a visitor
+     lands facing when arriving through that particular link.
 - **Renaming a node's ID** automatically updates every other node's neighbor
   list to match.
 
 ### Point-of-interest markers (rooms, facilities, exits, hydrants, elevators)
 
-Fixed labels that stay put in the panorama — 🚪 Room, 📍 Facility, 🚨
-Emergency Exit, 🧯 Fire Hydrant/Extinguisher. These four are purely
-informational: nothing happens when a visitor clicks one.
+Fixed labels that stay put in the panorama: Room, Facility, Emergency Exit,
+Fire Hydrant / Extinguisher. Clicking a Room marker opens that room's panel
+(it shows "No information." if the label matches no room details); the
+other three are purely informational: nothing happens when a visitor
+clicks one.
 
-**🛗 Elevator** is the one exception, in two ways. First, it navigates:
-clicking one in the public viewer actually rides the visitor to another
-floor (straight there when it only serves one other floor, or a small
-floor picker otherwise) — every other marker type is purely informational.
+**Elevator** is the one marker that navigates, and it differs in a second
+way too. First, clicking one in the public viewer actually rides the
+visitor to another floor (straight there when it only serves one other
+floor, or a small floor picker otherwise).
 Second, its data isn't stored on the marker at all. An elevator is its own
 record (an `elevators` table: an **Elevator ID**, a **Label**, a
 **Building**, and the **Accessible floors** it actually stops at — real
@@ -364,8 +405,8 @@ read live from that one record, so two landings of the same elevator can
 never disagree about which floors it serves. See "Getting directions"
 below for how this feeds into stairs-vs-elevator routing.
 
-Managed from **🧭 Test navigation**, in two steps:
-1. **Create the elevator once** — in the sidebar's **Markers** section,
+Managed from **Virtual Map Navigation Editor**, in two steps:
+1. **Create the elevator once** — in the **Markers** box (**+ Add Markers**),
    picking marker type Elevator offers "+ New elevator…", which asks for
    an Elevator ID, a Label, and every floor it serves. This creates the
    `elevators` record, scoped to whichever building the current node is
@@ -384,43 +425,73 @@ Managed from **🧭 Test navigation**, in two steps:
 
 ### Managing buildings & floors
 
-Three verified buildings by default — GD1, GD2, GD3. Add more via
-**+ New building** in the toolbar; a name and floor count is all that's
-needed. Custom buildings can be deleted from the same dialog (the original
-three can't be); deleting warns first if any nodes currently use it.
+Three built-in buildings — GD1, GD2, GD3. Add more via **+ New Building**
+in the Node Editor toolbar: a name and floor count are required, and you can
+also join an existing campus (otherwise the building is its own campus) and
+click a map location (used for the cross-campus Flyover). The same dialog's
+**Existing Building/s** list lets you **Edit** a building's name, floors and
+campus, **Move nodes** from one building to another, and delete custom
+buildings (the built-in three can't be deleted); deleting warns first if any
+nodes currently use it.
 
 ### Filtering & finding nodes
 
-The **Filter** panel narrows the node list by Building, Floor, Type, Photo
-status, and Search (ID/name/room number).
+The **Search and Filter** panel narrows the node list by Building, Floor,
+Type, Photo status (all, missing, or has a photo filename), and a search
+(ID/name/room number).
 
-### Preview tour & navigation testing
+### Node preview & the other Virtual Map pages
 
-- **▶ Preview tour** — a linear walkthrough of every node with Prev/Next.
-- **🧭 Test navigation** — click-to-walk testing; also where hotspots and
-  markers get positioned, exactly as a visitor would experience them.
+- **Node Preview** (Node Editor toolbar) — a linear walkthrough of every
+  node with Prev/Next.
+- **Virtual Map Navigation Editor** — click-to-walk through the graph as a
+  visitor would; also where links (hotspots), markers, elevators, default
+  views and each node's starting view get positioned.
+- **Node Flowchart** — the node graph for a building and floor drawn as a
+  draggable flowchart; dragging a node saves its position.
+- **Room Editor** — each room's details (description, contact number, link,
+  photos, 360° view), shown on the room panel and used by search.
+- **Campus Tour** group: **Tour Stops** and **Campus Tour Navigation
+  Editor**, the equivalents for the outdoor Virtual Campus Tour.
 
-### Feedback
+### Analytics
 
-**💬 Feedback** — every rating + optional comment (and optional name/email)
-submitted through MainPage's own feedback prompt (see
-[User guide](#user-guide-)). Unreviewed entries sort first with a
-highlighted border and a running count in the heading; **Mark reviewed**
-clears that, and **Mark unreviewed** puts a row back in the count (to undo
-a misclick or flag one to revisit). The panel's **Status** filter narrows
-the list to All, Unreviewed or Reviewed; the "N new" badge always counts
-the unreviewed rows in the current range, whatever Status is set to.
+**Analytics** — session and behavior tracking for `/`: sessions over time,
+the session funnel, building heatmap, top destinations and searches, most
+common routes, walk vs. jump, rating distribution and when people visit,
+filterable by date range, platform and building. Only sessions from a
+**paired kiosk** count as kiosk sessions; every other session, even one
+showing the Compact layout, is a web session. Its **Comments** section is
+where feedback (rating + optional comment, and optional name/email, from
+the feedback prompt on `/`) is reviewed: unreviewed entries sort first with
+a highlighted border and a running count; **Mark reviewed** clears that,
+and **Mark unreviewed** puts a row back in the count. The **Status** filter
+narrows the list to All, Unreviewed or Reviewed; the "N new" badge always
+counts the unreviewed rows in the current range, whatever Status is set to.
+
+### Kiosks
+
+**Kiosks** (`/admin/kiosks`) — the physical kiosk devices. **Add** one with
+a name and the map node it stands at; the page shows a one-time pairing
+code (8 digits, valid 30 minutes). On the device, tap the logo five times,
+then the node name five times, then the bottom band five times, and type the
+code on the pairing screen. A paired device is recognised from then on (its
+token is kept on the device, only a hash on the server). **Unpair** revokes
+it and issues a new code; wrong codes are rate-limited per IP. Only a
+paired kiosk's sessions count as kiosk sessions in Analytics, and only a
+paired kiosk offers a "Kiosk Location" starting point.
 
 ### Photo Coverage
 
-**📊 Photo Coverage** — a read-only summary of which nodes and tour stops
+**Photo Coverage** — a read-only summary of which nodes and tour stops
 still don't have a photo uploaded at all, with the specific missing ones
 listed by name/building/floor, not just a bare count.
 
-### Photos
+### Photos (on the Photo Coverage page)
 
-**🖼️ Photos** — every photo uploaded anywhere in the system (node
-panoramas, room photos, tour stops, section covers, marker photos), scanned
+The **Photos** list lower on the same page — every photo uploaded anywhere
+in the system (node panoramas, room photos, tour stops, section covers,
+marker photos, advertisement media), scanned
 directly off disk and checked against what's actually referenced in the
 database. Each shows **In use** or **Orphaned**; only orphaned files can be
 deleted. The backend independently re-checks "is this still in use" at the
@@ -464,71 +535,103 @@ plain white, as before.
 
 ## User guide (`/`)
 
-The public page — no login, no account, no editing controls, just the tour.
+The public page: no login needed, no editing controls, just the tour. A
+signed-in account just additionally gets an account button (see
+[Accounts & roles](#accounts--roles)).
 
-### Getting around
+It has two layouts of the same app. The **desktop layout** (a sidebar beside
+the panorama) is shown on a normal landscape screen. The **Compact layout**
+(a stacked, touch-first layout with a radial menu and on-screen keyboard)
+is shown on any narrow screen and on any portrait screen taller than 1.3×
+its width, which is also what the portrait kiosk screens get.
 
-- Loads straight into a starting entrance's 360° photo.
-- **Search** — type a room number or name; results appear below, each with
-  a **➜ Directions** option alongside the direct-jump result itself.
-  - **On-screen keyboard**: a ⌨️ button next to the search bar reveals an
-    in-app keyboard — built specifically for touchscreen kiosk displays,
-    where the device's own OS keyboard sometimes doesn't reliably
-    auto-appear. It's a manual toggle, not automatic, so it doesn't show up
-    redundantly on a phone whose native keyboard already works fine.
-- **Building** / **Entrances** — switch buildings, or jump to any listed
-  entrance as a new starting point.
-- **In the photo** — click and drag to look around, click a glowing arrow to
-  walk to the connected location. Marker icons (🚪📍🚨🧯) are informational
-  only; 🛗 Elevator is the exception — click one to ride to another floor.
-- **← Back** — retraces your steps one node at a time.
-- **🧭 Directions** — opens the directions panel starting from wherever you
-  currently are; pick a destination to get step-by-step directions.
-- **Visited places** — a collapsible strip (bottom-right on desktop) of
-  every node visited so far this session, each with a real thumbnail; click
-  one to jump straight back. Genuinely session-only — nothing persists past
-  a page reload.
-- **💬 Give feedback** — bottom-left (desktop) / top bar (mobile) — opens a
-  short form: a star rating, an optional comment, and optional name/email.
-  Entirely optional and skippable.
-- **"Done exploring?" prompt** — after about 15 seconds of no activity, a
+### Getting around (desktop layout)
+
+- Loads straight into a starting entrance's 360° photo, with two short
+  walkthroughs on first load (how to look around and move, then what the
+  sidebar does). The **How to use this tour** button (bottom right) replays
+  them.
+- **Search** (top of the sidebar) — type a room number or name; results
+  appear below, each with **Go To** and **Directions** buttons. The icon
+  beside the search box opens **Directions** directly.
+- **Directory** (sidebar, when nothing else is open) — an accordion of
+  every room by building; picking a room opens its panel. Rooms saved with
+  the panel's save button are collected in a **Saved Directories** group.
+- **Room panel** — the room's description, photos, contact number and link,
+  with **Go To**, **Directions**, and a save button. Saved rooms live only in
+  that browser's localStorage, by room name: no account, nothing sent to the
+  API, and renaming a room in the Room Editor drops it from the saved list.
+- **In the photo** — click and drag to look around, scroll to zoom, click a
+  glowing arrow to walk to the connected location. The keyboard works too:
+  A/D or the arrow keys turn, W walks to the nearest arrow on screen, S goes
+  back, Shift zooms in and Control zooms out. Click a Room marker to open
+  that room's panel; Elevator markers ride to another floor; the other
+  marker types are informational.
+- **Back** — retraces your steps one node at a time.
+- **Nearest Exit** (bottom right) — one tap routes you by stairs to the
+  closest Fire Exit node and starts walking. See "Getting directions".
+- **Give feedback** (bottom right) — a short form: a star rating, an
+  optional comment, and optional name/email. Entirely optional and
+  skippable.
+- **"Done exploring?" prompt** — after about 60 seconds with no activity, a
   centered, locked prompt offers **Keep exploring** or **Give feedback**.
   Only dismissible via one of those two buttons — clicking outside it does
-  nothing, and it's fully suppressed whenever any other panel is already
-  open.
-- **On a portrait touchscreen display**, the panorama's field of view
-  widens automatically compared to a landscape screen, to avoid the
-  otherwise-narrower horizontal view a portrait aspect ratio would produce
-  from the same fixed camera angle.
+  nothing, and it's suppressed whenever any other panel is already open.
+  On the Compact layout it also offers **Start over** and restarts on its
+  own after a countdown.
+
+### Compact layout and the Kiosk session
+
+On the Compact layout a visitor first goes through a **Kiosk session**: a
+start screen ("Tap to Start"), then a campus screen, then (for a campus with
+more than one building) a building screen, then a floor screen, then
+exploring. Search, directions, feedback, Nearest Exit and help are on the
+radial menu; the on-screen keyboard appears in dialogs with text fields
+(built for touchscreen kiosks where the device's own keyboard doesn't
+reliably appear). The session ends, and the view resets for the next
+visitor, when feedback is finished or on "Start over". The white band
+under the panorama plays the live advertisements (see Advertisements
+above). On a **paired kiosk** the origin choice for directions also offers
+"Kiosk Location".
+
+On a portrait touchscreen the panorama's field of view widens automatically
+compared to a landscape screen, to avoid the otherwise-narrower horizontal
+view a portrait aspect ratio would produce from the same camera angle.
 
 ### Getting directions to a room
 
-1. Search for a room or place.
-2. Click **➜ Directions** next to the result.
+1. Search for a room or place (or open the **Directions** icon and type).
+2. Click **Directions** next to the result.
 3. A **Directions** panel opens with editable **From**/**To** fields.
 4. Click **Get directions**. If the destination is on a different floor
    AND both a stairs-only and an elevator-only route exist (and actually
-   differ), the panel asks **🪜 Take the stairs** or **🛗 Take the
-   elevator** — each labeled with its stop count — before computing the
-   route. When only one of the two is possible, there's nothing to ask and
-   the route starts right away.
-5. Click **Start walking**, then **Walk to `<next stop>` →** (an elevator
-   step instead reads **🛗 Ride elevator to `<floor>` →**) to advance one
-   step at a time. A stairs step glows the matching arrow green; an
-   elevator step instead glows the elevator's own landing marker — tap
-   either it or the button.
+   differ), the panel asks **Take the stairs** or **Take the elevator**
+   (the elevator is labeled "step-free") — each labeled with its stop
+   count — before computing the route. When only one of the two is
+   possible, there's nothing to ask and the route starts right away.
+5. The walk starts in one go: you jump to the route's first stop (with
+   **Start walking** shown first if you aren't standing on it). Then
+   **Walk to `<next stop>`** (an elevator step instead reads **Take the
+   elevator** to `<floor>`) advances one step at a time, with a turn
+   instruction such as "Turn left toward" past the first stop. **Auto-walk**
+   advances by itself every few seconds. A stairs step glows the matching
+   arrow green; an elevator step instead glows the elevator's own landing
+   marker — tap either it or the button.
 6. Progress tracks ("Stop 2 of 5") with an arrival message at the end. Going
    off-route recalculates automatically from wherever you ended up — an
    elevator-mode route only re-routes through another elevator connection,
    never silently falling back to stairs, since the elevator may have been
    the whole point of picking that mode.
-7. **✕** cancels guidance at any time.
+7. The close button cancels guidance at any time.
 
 **Emergency exits are excluded from routing.** A 🚨 Fire Exit-type node is
-never routed *through* — it's for emergency use, not everyday wayfinding
-(an emergency-routing mode that would actually use them isn't built yet).
+never routed *through* — it's for emergency use, not everyday wayfinding.
 It can still be a route's own start or end point (searching for a fire
-exit and asking for directions FROM it still works).
+exit and asking for directions FROM it still works). The one route that
+leads to one is **Nearest Exit**: it finds the closest Fire Exit node
+(breadth-first, by stairs only) and always takes the stairs-only path, never
+an elevator, since an elevator is not an evacuation route. It reports "No
+emergency exit reachable by stairs from here." when there is none.
 
 **How stairs vs. elevator routing actually works, and its real limit**: the
 node graph has no per-edge "this is a stairs connection" flag — an edge is
@@ -617,8 +720,9 @@ Signage slides (kiosk advertisements), from `signage_slides` via
 
 - **Directions are shortest-hop, not shortest-distance** — the route finder
   counts number of connections, not physical distance.
-- **No step-by-step turn instructions** — directions guide node-by-node with
-  a highlighted arrow, not compass-style text.
+- **Turn instructions are coarse** — "Go straight through" / "Turn left
+  toward" and so on, computed from the arrow you just came through and the
+  next one, not true compass or distance guidance.
 - **Orphan/unlinked-node validation** is limited to a lightweight "unlinked"
   tag, not a full connectivity check.
 - **Room-level destinations** route to the *node* serving a room, not a
@@ -627,18 +731,21 @@ Signage slides (kiosk advertisements), from `signage_slides` via
   "kind" of its own, so excluding stairs-only edges for elevator mode
   relies entirely on the Stairs node-type convention being followed when
   the graph is authored. See "Getting directions to a room" above.
-- **Fire exits have no emergency-routing mode yet** — they're excluded from
-  ordinary routing (see above), but nothing routes visitors TO one during
-  an actual emergency; that's future work, not built.
-- **Email isn't actually delivering yet** — registration and password reset
-  correctly queue an email, but SMTP credentials are still placeholder
-  values, pending a decision on using SendGrid vs. the institution's own
-  mail server.
-- **The mobile app is a fully separate codebase**, still on its original
-  Firebase backend — none of the MySQL/`Arise_API` work described in this
-  README applies to it yet. See [Security & authentication](#security--authentication)
-  for the specific WebP/JPEG compatibility issue that would need resolving
-  before mobile could connect to this same photo pipeline.
+- **Nearest Exit is stairs-only and node-based** — it routes to the closest
+  Fire Exit node by number of connections, so a building whose stairs
+  nodes aren't typed as Fire Exit isn't covered, and there's no
+  alternate-route handling if a path is blocked.
+- **Email needs real SMTP settings** — registration, approval and password
+  reset correctly queue an email, and the `Cron_API processEmails` CLI job
+  sends them, but nothing is sent until real `SMTP_*` values are set in
+  `Arise_API`'s `.env` and that job is scheduled (see its `DEPLOY.md`).
+- **No rate limiting** on login, registration, forgot-password or feedback
+  (see [Known, still-open security gaps](#known-still-open-security-gaps)).
+- **The mobile app is a fully separate codebase**; changes in this repo
+  never affect it directly. `Arise_API` already has pieces made for it
+  (downscaled JPEG copies of indoor photos on request, per-account saved
+  rooms), but
+  this README describes the web app only.
 - See [Known, still-open security gaps](#known-still-open-security-gaps)
   above for what's outstanding before this could reasonably go live to real
   users on a real domain.

@@ -72,7 +72,7 @@ import { useLiveSignage } from "../hooks/useSignage";
 import KioskSignage from "../components/KioskSignage";
 import { useAuth } from "../context/useAuth";
 
-// Mobile/kiosk control dock: how far each radial icon sits from the
+// Compact-layout control dock: how far each radial icon sits from the
 // FAB's center (RADIAL_RADIUS, in px) and how much of a clock-face arc
 // they're fanned across (RADIAL_SPREAD_DEG, in degrees) — swept only
 // across the FAB's left side, like the 7-through-11 o'clock positions,
@@ -134,11 +134,12 @@ function MainPageContent({ onReset }) {
   useKioskZoomLock(compact);
   useKioskInspectLock(compact);
 
-  // Analytics session: one per kiosk mount (a mount IS a session — see
-  // SESSION.md's Analytics planning notes) or one per desktop
-  // browser/tab session (see useAnalytics.js). stage_reached fires on every
-  // kiosk.stage change; desktop never leaves "exploring", so this also
-  // covers desktop's synthetic session-start event on mount.
+  // Analytics session: one per Compact-layout mount (a mount IS a session)
+  // or one per browser tab on the desktop layout (see useAnalytics.js).
+  // Whether it counts as "kiosk" or "web" is the server's call, from the
+  // paired kiosk token. stage_reached fires on every kiosk.stage change;
+  // desktop never leaves "exploring", so this also covers desktop's
+  // synthetic session-start event on mount.
   const analytics = useAnalytics({ compact, paired: !!kioskIdentity.kiosk, ready: kioskIdentity.ready });
   useEffect(() => {
     analytics.stageReached(kiosk.stage);
@@ -150,7 +151,7 @@ function MainPageContent({ onReset }) {
   }, [kiosk.campus, kiosk.building]);
 
   // Every kiosk reset is a session boundary, so the session is closed here
-  // with why it ended. Desktop closes its own session on feedback (see
+  // with why it ended. The desktop layout closes its own session on feedback (see
   // useAnalytics' feedbackSubmitted), so it must not send a second end
   // against the fresh id it has already rotated to.
   const endSessionAndReset = (reason) => {
@@ -211,7 +212,7 @@ function MainPageContent({ onReset }) {
     else overlay.openFromDock("feedback");
   };
 
-  // What's on screen over the panorama — the floating panel, the mobile/kiosk
+  // What's on screen over the panorama — the floating panel, the Compact layout
   // dock, feedback, a room's 360 view, the building dialog, the walk bar —
   // lives in one module; see utils/overlay.js. Blurring the search input
   // (blurSearch) deliberately does NOT collapse the dock: that fires on every
@@ -355,7 +356,7 @@ function MainPageContent({ onReset }) {
     }
   }, [compact, nodes, byId, kiosk.stage, kiosk.campus, kiosk.building, kioskFloors, kioskEntranceShortcuts, kioskCampusEntrance]);
 
-  // The mobile Building dialog's fixed top shortcut is Main Campus's
+  // The Compact layout's Building dialog's fixed top shortcut is Main Campus's
   // entrance specifically, regardless of what the (separate) kiosk session
   // state currently has picked.
   const mainCampusEntrance = useMemo(() => findMainCampusEntrance(nodes, campusForBuilding), [nodes]);
@@ -681,7 +682,7 @@ function MainPageContent({ onReset }) {
   // hidden pairing gesture; its last step opens the pairing screen.
   const tapForPairing = usePairingGesture(() => overlay.showPanel("pairing"));
 
-  // Every mobile Building dialog / kiosk campus-building-floor screen pick —
+  // Every Compact-layout Building dialog / kiosk campus-building-floor screen pick —
   // see hooks/useKioskPicks.js. Every pick here is a fresh start (jump).
   const {
     handleMobileFloorPick,
@@ -771,7 +772,7 @@ function MainPageContent({ onReset }) {
     ? displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
     : "?";
 
-  // Mobile/kiosk radial menu items — icon-only, fanned out around the
+  // Compact-layout radial menu items — icon-only, fanned out around the
   // FAB (see .mobile-radial-menu). Each opens its own centered modal,
   // same pattern as FeedbackPanel. Back lives as its own stacked button
   // (kiosk-dock-back-btn, above the dock) rather than a radial item, so it's
@@ -1822,7 +1823,7 @@ function MainPageContent({ onReset }) {
                     longer sitting at the bottom of the screen where opening
                     upward made sense. */}
                 {/* Hidden entirely for a logged-out visitor — same
-                    reasoning as the mobile account button above. */}
+                    reasoning as the Compact layout's account button above. */}
                 {user && (
                   <div className="floating-account-wrap floating-account-wrap-top" ref={accountMenuRef}>
                     {accountMenuOpen && (
