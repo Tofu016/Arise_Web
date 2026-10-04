@@ -105,7 +105,7 @@ describe("findRoomForMarker", () => {
 describe("findMarkerForRoom", () => {
   const node = {
     markers: [
-      { id: "m1", type: "equipment", label: "Registrar" },
+      { id: "m1", type: "facility", label: "Registrar" },
       { id: "m2", type: "room", label: "  REG-istrar " },
       { id: "m3", type: "room", label: "203" },
     ],

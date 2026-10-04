@@ -3,9 +3,9 @@ import PanoramaNav from "./PanoramaNav";
 // The parts of a graph editor page (NavigationEditorPage, TourNavigationEditorPage)
 // that are byte-for-byte identical between the indoor and Campus Tour sides,
 // since both share the same walking/linking/placing mechanic via
-// useGraphEditor. Markers and the title-row subtitle are genuinely
-// different per page (typed room markers vs. equipment+photos, floor/building
-// vs. section) and stay in each page.
+// useGraphEditor. Markers (indoor only) and the title-row subtitle are
+// genuinely different per page (floor/building vs. section) and stay in each
+// page.
 //
 // Every component here takes the whole `editor` returned by useGraphEditor —
 // both pages already hold it in the same shape, so passing it whole costs

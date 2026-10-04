@@ -17,6 +17,7 @@ import { usePairingGesture } from "../hooks/usePairingGesture";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
+import EmergencyNotice from "../components/EmergencyNotice";
 import FeedbackPanel from "../components/FeedbackPanel";
 import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
@@ -1046,6 +1047,8 @@ function MainPageContent({ onReset }) {
 
       {directions.error && <p className="directions-error">{directions.error}</p>}
 
+      {directions.emergency && <EmergencyNotice emergency={directions.emergency} hasRoute={!!directions.path} />}
+
       {directions.pendingModeChoice && (
         <div className="directions-mode-choice">
           <p className="field-hint">This route changes floors. How do you want to get there?</p>
@@ -1062,7 +1065,7 @@ function MainPageContent({ onReset }) {
         </div>
       )}
 
-      {!directions.path && !directions.pendingModeChoice && (
+      {!directions.path && !directions.pendingModeChoice && !directions.emergency && (
         <button className="primary directions-go-btn directions-get-btn" onClick={flow.get}>
           <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Get directions
         </button>
@@ -1105,6 +1108,11 @@ function MainPageContent({ onReset }) {
                   : <>{PLACEHOLDER("play")} Auto-walk (every {AUTO_WALK_STEP_SECONDS}s)</>}
                 {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
               </button>
+              {directions.emergency && (
+                <button className="directions-go-btn" onClick={flow.reportBlocked}>
+                  This way is blocked
+                </button>
+              )}
             </>
           )}
           <p className="field-hint">
@@ -1119,7 +1127,9 @@ function MainPageContent({ onReset }) {
 
   return (
     <div className={"main-page-layout" + (compact ? "" : " tour-shell")}>
-      {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={flow.close} />}
+      {directions?.path && arrived && (
+        <ArrivalModal kiosk={compact} emergency={!!directions.emergency} onDone={flow.close} />
+      )}
       {compact && overlay.originChoice && (
         <KioskOriginChoice
           destinationName={overlay.originChoice.name}
@@ -1499,6 +1509,8 @@ function MainPageContent({ onReset }) {
                 onWalk={flow.walkToNext}
                 onToggleAutoWalk={() => flow.toggleAutoWalk()}
                 onShowDialog={() => overlay.setWalkDialog(true)}
+                emergency={directions.emergency}
+                onBlocked={flow.reportBlocked}
               />
             )}
 

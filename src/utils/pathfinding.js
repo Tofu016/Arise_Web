@@ -1,12 +1,12 @@
 import { elevatorAdjacency } from "./elevators";
 
-// Fire exits (transitionExit) are for emergencies only, so ordinary routing
+// Fire exits (fire_exit) are for emergencies only, so ordinary routing
 // never passes THROUGH one. It can still start or end on one: a visitor
-// standing at a fire exit has to be able to route away from it. The one
-// route that does end at one is "Nearest Exit" (findNearestExit below).
-const EMERGENCY_ONLY_TYPES = ["transitionExit"];
+// standing at a fire exit has to be able to route away from it. Emergency
+// routing, which does pass through them, lives in evacuation.js.
+const EMERGENCY_ONLY_TYPES = ["fire_exit"];
 
-// A neighbor edge that changes floor through a Stairs (transition) node.
+// A neighbor edge that changes floor through a Stairs (stairs) node.
 // This is the only signal for "this edge is a stairs edge", because
 // node_neighbors has no traversal-kind column (an edge is just two ids). A
 // floor-changing edge an admin drew between two plain hallway nodes,
@@ -16,7 +16,7 @@ function isStairsEdge(byId, a, b) {
   const nodeA = byId[a];
   const nodeB = byId[b];
   if (!nodeA || !nodeB || nodeA.floor === nodeB.floor) return false;
-  return nodeA.type === "transition" || nodeB.type === "transition";
+  return nodeA.type === "stairs" || nodeB.type === "stairs";
 }
 
 // Shortest path over the walkable graph, restricted by how a floor change
@@ -64,35 +64,6 @@ export function findPath(nodes, fromId, toId, mode = "any") {
     }
   }
   return null; // no route between these two nodes under this mode
-}
-
-// Nearest fire exit (transitionExit) from a starting node, for the
-// "Nearest Exit" emergency feature. Stairs-only by construction: it walks
-// neighbor edges the same way "stairs" mode does (no elevatorAdjacency), so
-// it can never route an evacuee through an elevator ride, which is a real
-// fire-safety rule, not just a pathfinding preference. Stops at the first
-// transitionExit node it reaches, so (matching findPath's "never pass
-// through one" rule) it can't return an exit reached by cutting through a
-// different exit first. Returns that node's id, or null if none is
-// reachable without an elevator.
-export function findNearestExit(nodes, fromId) {
-  if (!fromId) return null;
-  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  if (!byId[fromId]) return null;
-  if (byId[fromId].type === "transitionExit") return fromId;
-
-  const visited = new Set([fromId]);
-  const queue = [fromId];
-  while (queue.length > 0) {
-    const id = queue.shift();
-    for (const nb of byId[id]?.neighbors || []) {
-      if (visited.has(nb) || !byId[nb]) continue;
-      visited.add(nb);
-      if (byId[nb].type === "transitionExit") return nb;
-      queue.push(nb);
-    }
-  }
-  return null;
 }
 
 // Turn-by-turn instruction ("Go straight through" / "Turn left toward" /

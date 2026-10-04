@@ -307,7 +307,7 @@ export default function NavigationEditorPage() {
           <div className="navigation-editor-list-col">
             <h5>Markers added ({markers.length})</h5>
             <div className="link-list navigation-editor-scroll-list">
-              {markers.length === 0 && <p className="empty-hint">No markers yet: rooms, facilities, exits, hydrants.</p>}
+              {markers.length === 0 && <p className="empty-hint">No markers yet: rooms, facilities, emergency exits, fire extinguishers.</p>}
               {markers.map((m) => {
                 const info = markerTypeInfo(m.type);
                 const isRenaming = renamingMarkerId === m.id;

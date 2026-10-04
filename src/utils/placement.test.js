@@ -87,11 +87,11 @@ describe("placing", () => {
 
   it("placing a new marker appends it at the clicked angle, keeping whatever the domain put on it", () => {
     const existing = { id: 1, label: "old", yaw: 0, pitch: 0 };
-    const s = startPlacingMarker(initialSession(), { id: "m_new", type: "equipment", label: "X-ray", photos: ["p.jpg"] });
+    const s = startPlacingMarker(initialSession(), { id: "m_new", type: "room", label: "X-ray" });
     const { session, action } = place(s, { markers: [existing] }, angle);
     expect(action).toEqual({
       type: "markers",
-      markers: [existing, { id: "m_new", type: "equipment", label: "X-ray", photos: ["p.jpg"], ...angle }],
+      markers: [existing, { id: "m_new", type: "room", label: "X-ray", ...angle }],
     });
     expect(session.placingMarker).toBeNull();
   });

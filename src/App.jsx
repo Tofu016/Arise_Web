@@ -10,6 +10,7 @@ import TourStopsPage from "./pages/admin/TourStopsPage";
 import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
+import EmergencyCoveragePage from "./pages/admin/EmergencyCoveragePage";
 import SignagePage from "./pages/admin/SignagePage";
 import KiosksPage from "./pages/admin/KiosksPage";
 import PublicTourPage from "./pages/PublicTourPage";
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="node-flowchart" element={<NodeFlowchartPage />} />
             <Route path="virtual-map-navigation-editor" element={<NavigationEditorPage />} />
             <Route path="room-editor" element={<RoomEditorPage />} />
+            <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />
             <Route path="user-panel" element={<UserPanelPage />} />
             <Route path="tour-stops" element={<TourStopsPage />} />
             <Route path="campus-tour-navigation-editor" element={<TourNavigationEditorPage />} />

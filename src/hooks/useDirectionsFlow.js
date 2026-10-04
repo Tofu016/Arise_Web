@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useDirections, useAutoWalk } from "./useDirections";
 import * as route from "../utils/directionsRoute";
-import { findNearestExit } from "../utils/pathfinding";
 import { searchCampus } from "../utils/search";
 import { speak } from "../utils/tts";
 import { floorLabel } from "../utils/constants";
@@ -97,28 +96,24 @@ export function useDirectionsFlow({
     overlay.closeDirections();
   };
 
-  // "Nearest Exit": finds the closest transitionExit node by stairs (see
-  // findNearestExit) and routes straight to it, no From/To typing needed —
-  // one tap in an emergency. Reuses the same panel/state as a normal
-  // route once the destination is resolved, so progress, auto-walk, and
-  // arrival all work the same way as any other directions flow.
+  // "Nearest Exit": routes from where the visitor stands to the nearest Safe
+  // point (see utils/evacuation.js), no From/To typing needed: one tap in an
+  // emergency. Reuses the same panel/state as a normal route once the
+  // destination is resolved, so progress, auto-walk, and arrival all work
+  // the same way as any other directions flow. With no route the panel opens
+  // anyway, carrying the error and the emergency contacts.
   const openNearestExit = () => {
     if (!current || !nodes) return;
-    const exitId = findNearestExit(nodes, currentId);
-    if (!exitId) {
-      setDirections({ ...route.openDirections(current), error: "No emergency exit reachable by stairs from here." });
-      overlay.openDirections();
-      clearSearch();
-      return;
-    }
-    const exitNode = nodes.find((n) => n.id === exitId);
-    const opened = route.openDirectionsTo(current, exitNode);
-    const next = route.getEmergencyDirections(opened, nodes);
+    const next = route.getEmergencyDirections(route.openDirections(current), nodes);
     setDirections(next);
     overlay.openDirections();
     clearSearch();
     if (next.path) startWalking(next);
   };
+
+  // "This way is blocked": drops the next stop from the emergency route and
+  // finds another way out from here (see route.blockNextStop).
+  const reportBlocked = () => setDirections((d) => route.blockNextStop(d, nodes, currentId));
 
   const startWalking = (d = directions) => {
     if (!d?.path) return;
@@ -164,6 +159,7 @@ export function useDirectionsFlow({
     routeFrom,
     openToWithBlankOrigin,
     openNearestExit,
+    reportBlocked,
     close,
     get,
     chooseMode,

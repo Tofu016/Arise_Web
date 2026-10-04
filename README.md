@@ -281,18 +281,17 @@ document database.
   visitor session (`kiosk` only when it comes from a paired kiosk, `web`
   for everything else) and one per tracked action.
 - **Tour stops / sections** — `tour_stops`, `tour_sections`,
-  `tour_stop_neighbors`, `tour_stop_markers`, `tour_stop_marker_photos` — the
+  `tour_stop_neighbors` — the
   Virtual Campus Tour's own equivalent structure, kept as its own,
   independent set of tables rather than sharing the node graph, since the
-  two diverged enough in practice (tour stops carry photo carousels on
-  markers; nodes don't; nodes carry floor/building/leads-to-floor; tour
-  stops don't).
+  two diverged enough in practice (tour stops carry no markers; nodes
+  do, and also carry floor/building/leads-to-floor).
   - **Room details** — `placard_dialogs` and `placard_search_terms`, matched
     against AR placard scans.
 - **App feedback** — `app_feedback` table, general experience feedback from
   MainPage visitors (see [Admin guide](#admin-guide-admin)).
 - **360° photos and room photos** — real files, not database blobs. Public
-  Virtual Tour content (`tourpanorama/`, `tourcover/`, `tourmarker/`) lives
+  Virtual Tour content (`tourpanorama/`, `tourcover/`) lives
   in `Arise_API/uploads/`, served directly by Apache. Indoor content
   (`panoramas/`, `roomphoto/`, `room360/`) lives in `protected-uploads/`,
   outside `htdocs` entirely by default, served only through the
@@ -337,12 +336,23 @@ Under **Virtual Map → Node Editor**:
      specific to the selected building.
    - **Type** — Hallway, Lobby, Entrance, Stairs, Fire Exit, Open Area,
      Parking, or Building Transition (a walkable GD2 ↔ GD3 link).
-   - **Leads to floor(s)** — only shown for Stairs and Fire Exit. Multi-select,
+   - **Leads to floor(s)** — only shown for Stairs and Fire Exit (optional for
+     a Fire Exit ticked "Emergency Exit Destination Point" below, since an
+     exit door has no other floor to lead to). Multi-select,
      since a stairs/fire-exit node can connect both up and down (e.g. a
      mid-building stairwell). Checked against the node's own neighbor
      links (managed in Virtual Map Navigation Editor) and flags a warning —
      not a blocking error, since a brand-new node has no links yet — if the
      two disagree.
+   - **Emergency Exit Destination Point** — shown for Open Area, Parking,
+     Lobby, Entrance and Fire Exit. Tick it only if someone who reaches this
+     node is out of danger: Nearest Exit ends its route at ticked nodes, and
+     nothing is automatic (an unticked Open Area is not a destination). Only
+     Floor 1 and Underground nodes can be ticked, and the checkbox is
+     disabled above that. Lobby and Entrance get a red warning, because they
+     can be indoor spaces or open into one, and the system cannot tell. Tick
+     only ground-floor ones that are truly safe, never one per floor. A
+     building with nothing ticked gets no Nearest Exit route.
    - **Starting node for this floor** — where the kiosk drops visitors who
      pick this building floor. Only one per floor — saving a second one on
      the same floor replaces the first. Its camera view is set in Virtual
@@ -417,10 +427,10 @@ needing to re-upload from scratch.
 - **Renaming a node's ID** automatically updates every other node's neighbor
   list to match.
 
-### Point-of-interest markers (rooms, facilities, exits, hydrants, elevators)
+### Point-of-interest markers (rooms, facilities, emergency exits, fire extinguishers, elevators)
 
 Fixed labels that stay put in the panorama: Room, Facility, Emergency Exit,
-Fire Hydrant / Extinguisher. Clicking a Room marker opens that room's panel
+Fire Extinguisher. Clicking a Room marker opens that room's panel
 (it shows "No information." if the label matches no room details); the
 other three are purely informational: nothing happens when a visitor
 clicks one.
@@ -514,6 +524,16 @@ it and issues a new code; wrong codes are rate-limited per IP. Only a
 paired kiosk's sessions count as kiosk sessions in Analytics, and only a
 paired kiosk offers a "Kiosk Location" starting point.
 
+### Emergency Coverage
+
+Under Virtual Map. Runs the same routing as Nearest Exit from every node and
+lists what a visitor standing there would get: nodes with no route to a
+destination point, nodes whose only route rises above Floor 1, buildings with
+no destination point at all, ticked Lobby and Entrance nodes to confirm are
+really safe, and ticks that are ignored because of the node's type or floor.
+It also lists every destination point and previews the route from any node. Check it after any change to
+node types, floors or links.
+
 ### Photo Coverage
 
 **Photo Coverage** — a read-only summary of which nodes and tour stops
@@ -602,7 +622,8 @@ its width, which is also what the portrait kiosk screens get.
   marker types are informational.
 - **Back** — retraces your steps one node at a time.
 - **Nearest Exit** (bottom right) — one tap routes you by stairs to the
-  closest Fire Exit node and starts walking. See "Getting directions".
+  Emergency Exit Destination Point and starts walking. See "Getting
+  directions".
 - **Give feedback** (bottom right) — a short form: a star rating, an
   optional comment, and optional name/email. Entirely optional and
   skippable.
@@ -661,10 +682,34 @@ view a portrait aspect ratio would produce from the same camera angle.
 never routed *through* — it's for emergency use, not everyday wayfinding.
 It can still be a route's own start or end point (searching for a fire
 exit and asking for directions FROM it still works). The one route that
-leads to one is **Nearest Exit**: it finds the closest Fire Exit node
-(breadth-first, by stairs only) and always takes the stairs-only path, never
-an elevator, since an elevator is not an evacuation route. It reports "No
-emergency exit reachable by stairs from here." when there is none.
+passes through them is **Nearest Exit**, which works like this:
+
+- **Destination.** The nearest Emergency Exit Destination Point: an Open
+  Area, Parking, Lobby, Entrance or Fire Exit node on Floor 1 or Underground
+  that an admin ticked. Nothing is automatic and no type is trusted by
+  itself (a Fire Exit may be a stairwell, an Entrance or Lobby may be
+  indoors). A building with nothing ticked has no destination and gets the
+  no-route message with the emergency numbers. A visitor already standing
+  on a ticked node is told they have arrived at once.
+- **Never an elevator.** Only neighbor links are walked. Fire stairwells and
+  Stairs are passed through freely.
+- **Down before up.** A route may not rise above its ceiling: the higher of
+  the visitor's own floor and Floor 1, which is the ground floor in every
+  building. So a visitor on floor 1 is never sent up and over, while someone
+  on an underground level does climb to Floor 1, because that is the way
+  out. Only when no route within the ceiling exists
+  is going higher allowed, and the panel then warns "This route goes up."
+- **Hop-based.** Distance is a count of links plus a cost for changing floor
+  (a little down, a lot up), not meters.
+- **This way is blocked.** A button on the walking panel (and the Kiosk walk
+  bar) drops the next stop and re-routes from where the visitor stands, and
+  again as often as needed. With every way blocked, or no route at all, the
+  panel says so and shows the Bacoor City emergency numbers.
+- **Going off the route** re-aims at whichever exit is nearest from the new
+  spot, not the old one.
+
+The emergency numbers are listed in `EMERGENCY_CONTACTS` in
+`src/utils/constants.js`.
 
 **How stairs vs. elevator routing actually works, and its real limit**: the
 node graph has no per-edge "this is a stairs connection" flag — an edge is
@@ -692,7 +737,7 @@ directly — this is the shape the frontend actually works with after
   building: "gd1",                   // gd1 | gd2 | gd3 | any admin-created building id
   floor: 2,                          // -1 = UG, 1 = Ground, 2, 3, ...
   type: "hallway",
-  leadsToFloors: [],                 // set only for transition / transitionExit types
+  leadsToFloors: [],                 // set only for stairs / fire_exit types
   photo: "panoramas/gd1/gd1_f2_hallway01.webp",  // a path, not a public URL — resolved through
                                                    // the protected-photo endpoint at view time
   rooms: ["203", "204"],
@@ -764,10 +809,15 @@ Signage slides (kiosk advertisements), from `signage_slides` via
   "kind" of its own, so excluding stairs-only edges for elevator mode
   relies entirely on the Stairs node-type convention being followed when
   the graph is authored. See "Getting directions to a room" above.
-- **Nearest Exit is stairs-only and node-based** — it routes to the closest
-  Fire Exit node by number of connections, so a building whose stairs
-  nodes aren't typed as Fire Exit isn't covered, and there's no
-  alternate-route handling if a path is blocked.
+- **Nearest Exit is hop-based and only as good as the graph** — distance is
+  a count of links (plus a floor-change cost), not meters, so uneven
+  panorama spacing can make a longer walk look shorter. It knows nothing
+  about live hazards beyond what the visitor reports with "This way is
+  blocked", crowds, or travel-distance limits in the fire code. Destinations
+  only count once an admin has ticked "Emergency Exit Destination Point", and
+  whether a ticked Lobby or Entrance is really safe is the admin's judgment,
+  not something the system can check; review the Emergency Coverage page
+  after editing the graph.
 - **The mobile app is a fully separate codebase**; changes in this repo
   never affect it directly. `Arise_API` serves it downscaled JPEG copies of
   indoor photos on request, but this README describes the web app only. It

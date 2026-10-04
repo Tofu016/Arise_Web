@@ -65,12 +65,14 @@ export function useNodes() {
           // startingNode/campusEntrance/buildingEntrance aren't part of
           // create's own body (see nodeCreateBody) since they're
           // uniqueness-scoped flags the model clears elsewhere on write —
-          // sent as a follow-up patch instead, one call covering all three
-          // when any is set.
+          // sent as a follow-up patch instead, one call covering all of
+          // them when any is set. isEmergencyDestination rides along though it
+          // isn't uniqueness-scoped: create's body has no room for it.
           const flagPatch = {};
           if (item.startingNode) flagPatch.is_starting_node = 1;
           if (item.campusEntrance) flagPatch.is_campus_entrance = 1;
           if (item.buildingEntrance) flagPatch.is_building_entrance = 1;
+          if (item.isEmergencyDestination) flagPatch.is_emergency_destination = 1;
           if (Object.keys(flagPatch).length > 0) {
             await apiPatch(`Nodes_API/update/${item.id}`, flagPatch);
           }

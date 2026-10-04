@@ -79,6 +79,10 @@ export function toNode(row) {
     // a node can be both, either, or neither. At most one true per
     // building, enforced server-side.
     buildingEntrance: Number(row.is_building_entrance) === 1,
+    // An admin's statement that someone who reaches this node is out of
+    // danger: what makes it an Emergency Exit Destination Point, the end of
+    // the Nearest Exit route (see utils/evacuation.js). Unticked until set.
+    isEmergencyDestination: Number(row.is_emergency_destination) === 1,
     photo: row.photo_path || "",
     rooms: (row.rooms || []).map((r) => r.room_name),
     ...toEdges(row.neighbors),
@@ -118,6 +122,7 @@ export function nodePatchBody(patch) {
   if (patch.startingViewPitch !== undefined) body.starting_view_pitch = patch.startingViewPitch;
   if (patch.campusEntrance !== undefined) body.is_campus_entrance = patch.campusEntrance ? 1 : 0;
   if (patch.buildingEntrance !== undefined) body.is_building_entrance = patch.buildingEntrance ? 1 : 0;
+  if (patch.isEmergencyDestination !== undefined) body.is_emergency_destination = patch.isEmergencyDestination ? 1 : 0;
   if (patch.flowchartPosition !== undefined) {
     body.flowchart_position_x = patch.flowchartPosition ? patch.flowchartPosition.x : null;
     body.flowchart_position_y = patch.flowchartPosition ? patch.flowchartPosition.y : null;
@@ -159,12 +164,6 @@ export function toStop(row) {
     photo: row.photo_path || "",
     description: row.description || "",
     ...toEdges(row.neighbors),
-    markers: (row.markers || []).map((m) => ({
-      ...toMarker(m),
-      // Backend photos are objects (id, photo_path, sort_order, already in
-      // carousel order) — components only ever want plain path strings.
-      photos: (m.photos || []).map((p) => p.photo_path),
-    })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

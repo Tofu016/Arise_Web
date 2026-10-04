@@ -35,6 +35,7 @@ const GROUPS = [
       { path: "node-flowchart", icon: PLACEHOLDER("bar-chart"), label: "Node Flowchart" },
       { path: "virtual-map-navigation-editor", icon: MAP_ICON, label: "Virtual Map Navigation Editor" },
       { path: "room-editor", icon: PLACEHOLDER("door"), label: "Room Editor" },
+      { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" },
     ],
   },
   {

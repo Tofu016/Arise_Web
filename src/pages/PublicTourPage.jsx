@@ -7,13 +7,12 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
-import IconPlaceholder from "../components/IconPlaceholder";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import chevronDownWhite from "../assets/icons/chevron-down-white.svg";
 
 // Shows a stored photo's path, resolved via useSecurePhotoUrl the same way
-// the rest of the app does. tourpanorama/tourcover/tourmarker are public
+// the rest of the app does. tourpanorama/tourcover are public
 // photo kinds (see utils/photoStore.js), so they resolve to a plain static
 // URL served by Apache, with no fetch or token involved.
 function SecureImg({ path, alt, className }) {
@@ -110,62 +109,12 @@ function SectionRow({ section, stopsInSection, expanded, onToggle, currentStopId
   );
 }
 
-// The equipment marker's "Click to view photos" carousel/lightbox —
-// matches the PHINMA reference's own carousel: large image, prev/next
-// arrows, a thumbnail strip along the bottom.
-function MarkerPhotoCarousel({ marker, onClose }) {
-  const [index, setIndex] = useState(0);
-  const photos = marker.photos || [];
-  const { url } = useSecurePhotoUrl(photos[index]);
-
-  const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
-  const next = () => setIndex((i) => (i + 1) % photos.length);
-
-  return (
-    <div className="modal-overlay tour-carousel-overlay" onClick={onClose}>
-      <div className="tour-carousel" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn tour-carousel-close" onClick={onClose}>
-          <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
-        </button>
-        <div className="tour-carousel-main">
-          {photos.length > 1 && (
-            <button className="tour-carousel-arrow tour-carousel-arrow-prev" onClick={prev}>
-              <img src={chevronLeftWhite} alt="" className="inline-icon-img" />
-            </button>
-          )}
-          {url && <img src={url} alt={marker.label} className="tour-carousel-image" />}
-          {photos.length > 1 && (
-            <button className="tour-carousel-arrow tour-carousel-arrow-next" onClick={next}>
-              <img src={chevronRightWhite} alt="" className="inline-icon-img" />
-            </button>
-          )}
-        </div>
-        {photos.length > 1 && (
-          <div className="tour-carousel-thumbs">
-            {photos.map((p, i) => (
-              <button
-                key={p}
-                className={`tour-carousel-thumb ${i === index ? "tour-carousel-thumb-active" : ""}`}
-                onClick={() => setIndex(i)}
-              >
-                <SecureImg path={p} alt="" />
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="tour-carousel-label">{marker.label}</p>
-      </div>
-    </div>
-  );
-}
-
 // The public Virtual Tour page — genuinely public, not wrapped in
 // RequireAuth (see App.jsx), showcasing the campus grounds to visitors
 // who aren't registered users at all. "Literally just a tour": panorama
 // + clickable hotspots to walk between stops, a transparent header and
 // sidebar (no app chrome, matching the PHINMA/Nord Anglia references),
-// a persistent description panel, and equipment markers opening a photo
-// carousel. No search, no directions, no auto-walk, no minimap/flyover —
+// and a persistent description panel. No search, no directions, no auto-walk, no minimap/flyover —
 // none of MainPage.jsx's broader feature set applies here.
 export default function PublicTourPage() {
   const { stops, loading: stopsLoading, selectedStopId, setSelectedStopId } = useTourStops();
@@ -173,7 +122,6 @@ export default function PublicTourPage() {
 
   const [entryYaw, setEntryYaw] = useState(0);
   const [expandedSectionId, setExpandedSectionId] = useState(null);
-  const [carouselMarker, setCarouselMarker] = useState(null);
 
   const byId = useMemo(() => Object.fromEntries(stops.map((s) => [s.id, s])), [stops]);
   const uncategorizedStops = useMemo(() => stops.filter((s) => !s.section), [stops]);
@@ -222,7 +170,6 @@ export default function PublicTourPage() {
 
   const hotspots = useMemo(() => (current ? buildHotspots(current, byId) : []), [current, byId]);
 
-  const markers = current?.markers || [];
 
   // No "back" tracking here — confirmed not wanted on this page (it was
   // modeled after the indoor system's own goTo/history/back pattern in
@@ -285,9 +232,7 @@ export default function PublicTourPage() {
               key={current.id}
               url={photoUrl || ""}
               hotspots={hotspots}
-              markers={markers}
               onNavigate={goTo}
-              onEquipmentMarkerClick={setCarouselMarker}
               onError={() => {}}
               placing={false}
               onPlaceAngle={() => {}}
@@ -327,10 +272,6 @@ export default function PublicTourPage() {
               )
             )}
           </div>
-
-          {carouselMarker && (
-            <MarkerPhotoCarousel marker={carouselMarker} onClose={() => setCarouselMarker(null)} />
-          )}
         </>
       )}
     </div>

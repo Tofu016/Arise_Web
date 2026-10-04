@@ -1,4 +1,5 @@
 import { findPath, getTurnInstruction } from "./pathfinding";
+import { findEvacuationRoute } from "./evacuation";
 import { resolveExactNodeMatch } from "./search";
 import { elevatorRideBetween, arrivalYawFromLanding } from "./elevators";
 
@@ -19,6 +20,13 @@ import { elevatorRideBetween, arrivalYawFromLanding } from "./elevators";
 //                      only route available), null for a same-floor route.
 //                      Kept so an off-route reroute honors it instead of
 //                      quietly swapping an elevator route for stairs.
+//   emergency         null for an ordinary route. For a "Nearest Exit" route:
+//                      { blocked, ascends }: the node ids the
+//                      visitor reported impassable, and whether the route
+//                      has to rise above the ground floor (see
+//                      evacuation.js). While set,
+//                      re-routing aims at the nearest exit again instead of
+//                      the fixed destination, and any edit to From/To drops it.
 //
 // Every function returns the next state and returns the same object when
 // nothing changed, so a caller can skip a re-render by identity.
@@ -37,6 +45,7 @@ function blank(current, kind) {
     autoWalking: false,
     pendingModeChoice: null,
     transportMode: null,
+    emergency: null,
   };
 }
 
@@ -70,7 +79,7 @@ const idKey = (field) => (field === "from" ? "fromId" : "toId");
 // Typing into a From/To field: the typed text no longer resolves to a
 // node, and any computed path is stale.
 export function editField(d, field, value) {
-  return { ...d, [queryKey(field)]: value, [idKey(field)]: null, editingField: field, path: null, error: "" };
+  return { ...d, [queryKey(field)]: value, [idKey(field)]: null, editingField: field, path: null, error: "", emergency: null };
 }
 
 export function focusField(d, field) {
@@ -78,14 +87,14 @@ export function focusField(d, field) {
 }
 
 export function pickNodeField(d, field, node) {
-  return { ...d, [queryKey(field)]: node.name, [idKey(field)]: node.id, editingField: null };
+  return { ...d, [queryKey(field)]: node.name, [idKey(field)]: node.id, editingField: null, emergency: null };
 }
 
 // A ROOM result: the navigable target is still the room's own node
 // (pathfinding operates over nodes), but the field shows the room's name,
 // since that's what was searched for and picked.
 export function pickRoomField(d, field, room) {
-  return { ...d, [queryKey(field)]: room.roomName, [idKey(field)]: room.node.id, editingField: null };
+  return { ...d, [queryKey(field)]: room.roomName, [idKey(field)]: room.node.id, editingField: null, emergency: null };
 }
 
 // The text of whichever From/To field is being edited, for suggestions.
@@ -142,22 +151,64 @@ export function getDirections(d, nodes, searchableRooms) {
   return mixed ? found(mixed, null) : noRoute;
 }
 
-// The "Nearest Exit" route: fromId/toId are already resolved (toId is
-// whatever findNearestExit picked), so unlike getDirections this skips
-// name-resolution AND the stairs/elevator question entirely — it always
-// takes the stairs-only path, since offering an elevator as an evacuation
-// route would defeat the point of the feature.
+// The "Nearest Exit" route: from d.fromId to the nearest destination point (see
+// evacuation.js), skipping name resolution and the stairs/elevator question
+// entirely: an elevator is never offered as an evacuation route. The
+// destination is chosen here, not by the caller, so every re-route (after
+// wandering off, or after a way is reported blocked) can pick a new exit.
+// With no route the panel is left open with the error, and the caller's
+// panel shows the emergency contacts alongside it.
 export function getEmergencyDirections(d, nodes) {
-  if (!d?.fromId || !d?.toId) {
-    return { ...d, path: null, pendingModeChoice: null, error: "Could not find a route to the nearest exit from here." };
-  }
-  const path = findPath(nodes, d.fromId, d.toId, "stairs");
-  if (!path) {
-    return { ...d, path: null, pendingModeChoice: null, error: "No stairs-only route to an exit found from here." };
-  }
+  const blocked = d?.emergency?.blocked ?? [];
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  const sameFloor = byId[d.fromId]?.floor === byId[d.toId]?.floor;
-  return { ...d, path, stepIndex: 0, error: "", pendingModeChoice: null, transportMode: sameFloor ? null : "stairs" };
+  const base = {
+    ...d,
+    fromQuery: byId[d?.fromId]?.name ?? d?.fromQuery ?? "",
+    toId: null,
+    toQuery: "",
+    path: null,
+    stepIndex: 0,
+    pendingModeChoice: null,
+    transportMode: null,
+  };
+
+  const result = d?.fromId ? findEvacuationRoute(nodes, d.fromId, { blocked }) : null;
+  if (!result) {
+    return {
+      ...base,
+      error: blocked.length
+        ? "No other way out was found from here."
+        : "No safe way out was found from here.",
+      emergency: { blocked, ascends: false },
+    };
+  }
+
+  const destination = byId[result.destinationId];
+  const changesFloor = result.path.some((id) => byId[id].floor !== destination.floor);
+  return {
+    ...base,
+    toId: destination.id,
+    toQuery: destination.name,
+    path: result.path,
+    error: "",
+    transportMode: changesFloor ? "stairs" : null,
+    emergency: { blocked, ascends: result.ascends },
+  };
+}
+
+// "This way is blocked": the visitor reports the next stop impassable
+// (smoke, fire, a locked door). It is excluded for the rest of this
+// emergency route and the way out is recomputed from where they stand.
+// With every way out blocked there is no route, and the panel says so.
+export function blockNextStop(d, nodes, currentId) {
+  if (!d?.emergency || !d.path) return d;
+  const here = d.path.includes(currentId) ? currentId : d.path[d.stepIndex];
+  const blockedId = d.path[d.path.indexOf(here) + 1];
+  if (!blockedId) return d;
+  return getEmergencyDirections(
+    { ...d, fromId: here, emergency: { ...d.emergency, blocked: [...new Set([...d.emergency.blocked, blockedId])] } },
+    nodes
+  );
 }
 
 // The visitor picked "stairs" or "elevator" from pendingModeChoice.
@@ -187,6 +238,10 @@ export function syncToPosition(d, currentId, nodes) {
   if (!d?.path || !currentId) return d;
   const idx = d.path.indexOf(currentId);
   if (idx !== -1) return idx === d.stepIndex ? d : { ...d, stepIndex: idx };
+
+  // Off an emergency route: aim at whichever exit is nearest from here, not
+  // the old one, which may now be the wrong way.
+  if (d.emergency) return getEmergencyDirections({ ...d, fromId: currentId }, nodes);
 
   const path = reroute(nodes, currentId, d.toId, d.transportMode);
   if (!path) {

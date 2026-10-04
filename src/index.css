@@ -5556,95 +5556,6 @@ a.sidebar-room-contact-row:focus-visible span {
   padding: 0;
 }
 
-/* ---------- Equipment marker photo carousel ---------- */
-.tour-carousel-overlay {
-  z-index: 200;
-}
-.tour-carousel {
-  position: relative;
-  width: 860px;
-  max-width: 94vw;
-  background: #0f0f0f;
-  border-radius: 10px;
-  padding: 16px;
-}
-.tour-carousel-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  color: #fff;
-  z-index: 2;
-}
-.tour-carousel-main {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 480px;
-  max-height: 60vh;
-}
-.tour-carousel-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 6px;
-}
-.tour-carousel-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  font-size: 22px;
-  cursor: pointer;
-  z-index: 2;
-}
-.tour-carousel-arrow:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-.tour-carousel-arrow-prev {
-  left: 10px;
-}
-.tour-carousel-arrow-next {
-  right: 10px;
-}
-.tour-carousel-thumbs {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-.tour-carousel-thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid transparent;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0;
-  cursor: pointer;
-}
-.tour-carousel-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.tour-carousel-thumb-active {
-  border-color: #fff;
-}
-.tour-carousel-label {
-  margin: 12px 0 0 0;
-  text-align: center;
-  color: #fff;
-  font-size: 13px;
-}
-
 /* =====================================================================
    On-screen keyboard — a custom, in-app virtual keyboard for the indoor
    MainPage search bar. Built specifically for touchscreen monitors
@@ -9410,4 +9321,116 @@ html.kiosk-mode body {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+/* Nearest Exit safety text (EmergencyNotice) and the kiosk walk bar's
+   short version of it. Weights stay on the app's 400/700 pair. */
+.emergency-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--danger-surface);
+  border-left: 4px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--danger-text);
+  font-size: 13px;
+}
+.emergency-notice p {
+  margin: 0;
+}
+.emergency-notice-lead,
+.emergency-notice-contacts-title {
+  font-weight: 700;
+}
+.emergency-contacts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.kiosk-walkbar-emergency {
+  color: var(--danger-text);
+}
+
+/* Emergency Coverage admin page. */
+.emergency-coverage-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.emergency-coverage-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 320px;
+}
+.emergency-coverage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.emergency-coverage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.emergency-coverage-card-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.emergency-coverage-card-count {
+  font-size: 22px;
+  font-weight: 700;
+}
+.emergency-coverage-card-warn {
+  color: var(--danger-text);
+}
+.emergency-coverage-callout {
+  padding: 10px 12px;
+  background: var(--warning-surface);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.emergency-coverage-callout-bad {
+  background: var(--danger-surface);
+  border-left-color: var(--danger-border);
+  color: var(--danger-text);
+}
+.emergency-coverage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.emergency-coverage-table th,
+.emergency-coverage-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.emergency-coverage-preview ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+/* Warning shown on Lobby and Entrance nodes in the Node form: ticking one
+   of these as an Emergency Exit Destination Point is a judgment the system
+   cannot check. */
+.emergency-destination-warning {
+  padding: 10px 12px;
+  background: var(--danger-surface);
+  border-left: 4px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--danger-text);
+  font-size: 13px;
 }

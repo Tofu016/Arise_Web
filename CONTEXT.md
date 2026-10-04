@@ -11,7 +11,7 @@ An indoor panorama point (building, floor, type) linked to neighboring Nodes.
 An outdoor panorama point, grouped into a **Section**.
 
 **Photo kind**:
-A category of stored photo (node panorama, room photo, room 360, tour panorama, tour cover, tour marker, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
+A category of stored photo (node panorama, room photo, room 360, tour panorama, tour cover, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
 _Avoid_: photo type, upload type
 
 **Public photo**:
@@ -41,6 +41,13 @@ The single Node, per campus, an admin flags as representing that whole campus â€
 
 **Building entrance**:
 The single Node, per building, an admin flags as representing that one building â€” a node-level setting (`buildingEntrance`), restricted to `entrance`-type nodes, with only one true per building at a time. Independent of Campus entrance: a node can be both, either, or neither (GD1's building entrance and Main Campus's campus entrance are often the same node, but don't have to be). Offered as a Kiosk floor-screen shortcut; when it's the same node as the campus entrance, only the campus entrance button is shown.
+
+**Emergency Exit Destination Point**:
+A Node an admin ticked (`isEmergencyDestination`) to say that someone who reaches it is out of danger; only an `open_area`, `parking`, `lobby`, `entrance` or `fire_exit` Node on Floor 1 or Underground can be ticked. The end of a Nearest Exit Route. Nothing is automatic: an unticked Node never counts, and the system cannot check a ticked Lobby or Entrance, which may be indoors or open into another indoor space. A Fire Exit that is a stairwell is a way toward an exit, not one. A building with none ticked gets no Nearest Exit route.
+_Avoid_: "exit" on its own, "emergency exit node"
+
+**Nearest Exit**:
+The one-tap emergency Route to the closest Emergency Exit Destination Point. Never uses an elevator, passes through fire stairwells, and never rises above the higher of the visitor's own floor and Floor 1 (the ground floor in every building), so an underground level climbs to Floor 1 but someone on Floor 1 is never led up and over; rises higher only as a last resort, with a warning. The visitor can report the next stop blocked to get another way out.
 
 **Route**:
 The shortest walkable sequence of Nodes between two points, followed one stop at a time (optionally hands-free, as auto-walk).

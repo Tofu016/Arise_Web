@@ -23,6 +23,8 @@ export default function KioskWalkBar({
   onWalk,
   onToggleAutoWalk,
   onShowDialog,
+  emergency,
+  onBlocked,
 }) {
   // The dialog's grid is half the panorama area tall, starting at
   // KIOSK_DIALOG_TOP; its keyboard is the lower-right cell, inset by the
@@ -37,6 +39,13 @@ export default function KioskWalkBar({
           ? "The elevator is glowing in the photo. Tap it, or use the button below."
           : "Follow the green hotspot: it marks the correct path to your destination."}
       </p>
+      {emergency && (
+        <p className="kiosk-walkbar-hint kiosk-walkbar-emergency">
+          <strong>Use the stairs, not elevators.</strong>
+          {emergency.ascends && " This route goes up: no level or downward way was found. Call for help."}
+          {" "}Emergency hotline: <strong>161</strong>
+        </p>
+      )}
 
       <button type="button" className="primary kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
         {isElevator && <IconPlaceholder name="elevator" />} {nextStopAction} →
@@ -60,6 +69,11 @@ export default function KioskWalkBar({
         <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onShowDialog}>
           <IconPlaceholder name="clipboard-list" /> Directions
         </button>
+        {emergency && (
+          <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onBlocked}>
+            This way is blocked
+          </button>
+        )}
       </div>
     </div>
   );

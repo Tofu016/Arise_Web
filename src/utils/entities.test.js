@@ -26,7 +26,7 @@ const nodeRow = {
   photo_path: "panoramas/gd1/a.jpg",
   rooms: [{ id: 7, room_name: "101" }, { id: 8, room_name: "102" }],
   neighbors: [{ neighbor_id: "n2", yaw: 90, pitch: -5 }, { neighbor_id: "n3", yaw: 180, pitch: 0 }],
-  markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2 }],
+  markers: [{ id: 1, type: "emergency_exit", label: "Assembly Point", yaw: 10, pitch: 2 }],
   flowchart_position_x: 12,
   flowchart_position_y: 34,
   created_at: "c",
@@ -60,6 +60,16 @@ describe("building entrance", () => {
   });
 });
 
+describe("emergency destination point", () => {
+  it("reads is_emergency_destination and writes it as 1/0", () => {
+    expect(toNode({ id: "x", name: "X", is_emergency_destination: "1" }).isEmergencyDestination).toBe(true);
+    expect(toNode({ id: "x", name: "X" }).isEmergencyDestination).toBe(false);
+    expect(nodePatchBody({ isEmergencyDestination: true }).is_emergency_destination).toBe(1);
+    expect(nodePatchBody({ isEmergencyDestination: false }).is_emergency_destination).toBe(0);
+    expect("is_emergency_destination" in nodePatchBody({ name: "n" })).toBe(false);
+  });
+});
+
 describe("toNode", () => {
   it("maps a full row to the app's camelCase node", () => {
     expect(toNode(nodeRow)).toEqual({
@@ -74,6 +84,7 @@ describe("toNode", () => {
       startingViewPitch: null,
       campusEntrance: false,
       buildingEntrance: false,
+      isEmergencyDestination: false,
       photo: "panoramas/gd1/a.jpg",
       rooms: ["101", "102"],
       neighbors: ["n2", "n3"],
@@ -81,7 +92,7 @@ describe("toNode", () => {
         n2: { yaw: 90, pitch: -5, defaultYaw: null, defaultPitch: null },
         n3: { yaw: 180, pitch: 0, defaultYaw: null, defaultPitch: null },
       },
-      markers: [{ id: 1, type: "exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorId: null, accessibleFloors: [] }],
+      markers: [{ id: 1, type: "emergency_exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorId: null, accessibleFloors: [] }],
       flowchartPosition: { x: 12, y: 34 },
       createdAt: "c",
       updatedAt: "u",
@@ -173,12 +184,11 @@ describe("tour stops", () => {
     photo_path: null,
     description: null,
     neighbors: [{ neighbor_id: "s2", yaw: 1, pitch: 2 }],
-    markers: [{ id: 5, type: "info", label: "L", yaw: 3, pitch: 4, photos: [{ photo_path: "a.jpg" }, { photo_path: "b.jpg" }] }],
     created_at: "c",
     updated_at: "u",
   };
 
-  it("maps empties to empty strings and marker photos to plain paths", () => {
+  it("maps empties to empty strings", () => {
     expect(toStop(row)).toEqual({
       id: "s1",
       name: "Stop",
@@ -187,14 +197,9 @@ describe("tour stops", () => {
       description: "",
       neighbors: ["s2"],
       hotspots: { s2: { yaw: 1, pitch: 2, defaultYaw: null, defaultPitch: null } },
-      markers: [{ id: 5, type: "info", label: "L", yaw: 3, pitch: 4, photos: ["a.jpg", "b.jpg"] }],
       createdAt: "c",
       updatedAt: "u",
     });
-  });
-
-  it("marker without photos gets an empty list", () => {
-    expect(toStop({ ...row, markers: [{ id: 1, yaw: 0, pitch: 0 }] }).markers[0].photos).toEqual([]);
   });
 
   it("create drops empty optionals", () => {

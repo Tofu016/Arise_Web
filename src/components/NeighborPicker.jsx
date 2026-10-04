@@ -8,7 +8,7 @@ export default function NeighborPicker({ nodes, currentNodeId, building, floor, 
   const options = useMemo(() => {
     return nodes.filter((n) => {
       if (n.id === currentNodeId) return false;
-      if (n.type === "portal") return true;
+      if (n.type === "building_transition") return true;
       return n.building === building && n.floor === floor;
     });
   }, [nodes, currentNodeId, building, floor]);
@@ -35,7 +35,7 @@ export default function NeighborPicker({ nodes, currentNodeId, building, floor, 
             />
             <span>{n.name}</span>
             <span className="neighbor-id">{n.id}</span>
-            {n.type === "portal" && <span className="portal-tag">building transition</span>}
+            {n.type === "building_transition" && <span className="portal-tag">building transition</span>}
           </label>
         ))}
       </div>

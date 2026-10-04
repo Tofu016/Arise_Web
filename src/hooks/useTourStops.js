@@ -1,15 +1,15 @@
 import { useState, useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toStop, stopCreateBody, stopPatchBody } from "../utils/entities";
-import { STOP_GRAPH, planNeighbors, planHotspot, planDefaultView, planClearDefaultView, planMarkers, runCalls } from "../utils/graphSync";
+import { STOP_GRAPH, planNeighbors, planHotspot, planDefaultView, planClearDefaultView, runCalls } from "../utils/graphSync";
 import { useCollection } from "./useCollection";
 
 // Admin-side TourStops_API hook. Public interface (stops, loading,
 // selectedStopId, setSelectedStopId, addStop, updateStop, renameStopId,
-// deleteStop, setNeighbors, setHotspot, setMarkers) — TourStopsPage.jsx,
+// deleteStop, setNeighbors, setHotspot) — TourStopsPage.jsx,
 // TourNavigationEditorPage.jsx, TourStopForm.jsx and TourStopList.jsx use it.
 //
-// Wire mapping lives in utils/entities.js and the neighbor/hotspot/marker
+// Wire mapping lives in utils/entities.js and the neighbor/hotspot
 // diffing in utils/graphSync.js (shared with useNodes); what's left here
 // is what's specific to stops: the selection.
 
@@ -91,15 +91,6 @@ export function useTourStops() {
     [mutate]
   );
 
-  const setMarkers = useCallback(
-    (stopId, newMarkers) =>
-      mutate(() => runCalls(planMarkers(STOP_GRAPH, stopId, stopById(stopId)?.markers ?? [], newMarkers)), {
-        success: "Markers updated.",
-        errorPrefix: "Couldn't update markers",
-      }),
-    [mutate, stopById]
-  );
-
   const setDefaultView = useCallback(
     (stopId, neighborId, angle) =>
       mutate(() => runCalls(planDefaultView(STOP_GRAPH, stopId, neighborId, angle)), {
@@ -129,7 +120,6 @@ export function useTourStops() {
     deleteStop,
     setNeighbors,
     setHotspot,
-    setMarkers,
     setDefaultView,
     clearDefaultView,
   };

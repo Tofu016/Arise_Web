@@ -1,7 +1,7 @@
-import { allBuildingIds } from "./constants";
+import { allBuildingIds, EMERGENCY_DESTINATION_TYPES, GROUND_FLOOR } from "./constants";
 
 // Validates node IDs against the canonical format: {building}_f{floor}_{anything}
-// e.g. gd1_f2_hallway03, gd2_f-1_transition01
+// e.g. gd1_f2_hallway03, gd2_f-1_stairs01
 // Floor can be negative (UG = -1), so the pattern allows an optional leading "-".
 // The building segment isn't hardcoded to gd1/gd2/gd3 — it accepts any
 // building id (built-in or admin-created via "+ New building"), since a
@@ -102,9 +102,24 @@ export function validateNode(node, existingNodes, editingId = null) {
     errors.push("Floor is required.");
   }
 
-  if ((node.type === "transition" || node.type === "transitionExit") &&
+  // A Fire Exit ticked as an Emergency Exit Destination Point is a door, not a
+  // stairwell: it has no other floor to lead to, so the floors are optional
+  // there. (A ground-floor stairwell exit can still declare them.)
+  const isExitDoor = node.type === "fire_exit" && node.isEmergencyDestination;
+  if ((node.type === "stairs" || node.type === "fire_exit") && !isExitDoor &&
       (!Array.isArray(node.leadsToFloors) || node.leadsToFloors.length === 0)) {
-    errors.push("Stairs and Fire Exit nodes must specify at least one floor they lead to.");
+    errors.push(
+      "Stairs and Fire Exit nodes must specify at least one floor they lead to. " +
+      "A Fire Exit door that people walk out through can instead be ticked as an Emergency Exit Destination Point."
+    );
+  }
+
+  if (node.isEmergencyDestination) {
+    if (!EMERGENCY_DESTINATION_TYPES.includes(node.type)) {
+      errors.push("Only Open Area, Parking, Lobby, Entrance and Fire Exit nodes can be Emergency Exit Destination Points.");
+    } else if (Number(node.floor) > GROUND_FLOOR) {
+      errors.push("An Emergency Exit Destination Point must be on Floor 1 or Underground, never an upper floor.");
+    }
   }
 
   return errors;

@@ -18,13 +18,13 @@ describe("planBuildingMove", () => {
   });
 
   it("reports floors and leadsToFloors the target lacks", () => {
-    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "transition", leadsToFloors: [6] })];
+    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "stairs", leadsToFloors: [6] })];
     const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
     expect(problems).toHaveLength(2);
   });
 
   it("reports every declared floor the target lacks, not just one", () => {
-    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "transition", leadsToFloors: [6, 7] })];
+    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "stairs", leadsToFloors: [6, 7] })];
     const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
     expect(problems.find((p) => p.includes("leads to"))).toContain("6, 7");
   });

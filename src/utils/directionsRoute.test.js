@@ -7,8 +7,8 @@ const nodes = [
   node("a", ["b"]),
   node("b", ["a", "c", "e"]),
   node("c", ["b", "d"]),
-  node("d", ["c"], { markers: [{ type: "exit", label: " Assembly Point " }] }),
-  node("e", ["b"], { markers: [{ type: "exit", label: "Emergency Fire Stairs" }] }),
+  node("d", ["c"], { markers: [{ type: "emergency_exit", label: " Assembly Point " }] }),
+  node("e", ["b"], { markers: [{ type: "emergency_exit", label: "Emergency Fire Stairs" }] }),
   node("z", []), // unreachable
 ];
 const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
@@ -82,8 +82,8 @@ describe("getDirections across floors: stairs vs. elevator", () => {
   // p also has an elevator landing paired with q's.
   const floored = [
     { id: "p", name: "P", floor: 1, neighbors: ["stairs1"], markers: [elevatorMarker("m1", "E1", [1, 2])] },
-    { id: "stairs1", name: "S1", floor: 1, type: "transition", neighbors: ["p", "stairs2"] },
-    { id: "stairs2", name: "S2", floor: 2, type: "transition", neighbors: ["stairs1", "q"] },
+    { id: "stairs1", name: "S1", floor: 1, type: "stairs", neighbors: ["p", "stairs2"] },
+    { id: "stairs2", name: "S2", floor: 2, type: "stairs", neighbors: ["stairs1", "q"] },
     { id: "q", name: "Q", floor: 2, neighbors: ["stairs2"], markers: [elevatorMarker("m2", "E1", [1, 2])] },
   ];
 
@@ -117,35 +117,102 @@ describe("getEmergencyDirections", () => {
     id, type: "elevator", label: "E", yaw: 0, pitch: 0, elevatorId, accessibleFloors,
   });
   const floored = [
-    { id: "p", name: "P", floor: 1, neighbors: ["stairs1"], markers: [elevatorMarker("m1", "E1", [1, 2])] },
-    { id: "stairs1", name: "S1", floor: 1, type: "transition", neighbors: ["p", "stairs2"] },
-    { id: "stairs2", name: "S2", floor: 2, type: "transition", neighbors: ["stairs1", "x"] },
-    { id: "x", name: "X", floor: 2, type: "transitionExit", neighbors: ["stairs2"], markers: [elevatorMarker("m2", "E1", [1, 2])] },
+    { id: "p", name: "P", floor: 2, neighbors: ["stairs2"], markers: [elevatorMarker("m1", "E1", [1, 2])] },
+    { id: "stairs2", name: "S2", floor: 2, type: "stairs", neighbors: ["p", "stairs1"] },
+    { id: "stairs1", name: "S1", floor: 1, type: "stairs", neighbors: ["stairs2", "door"] },
+    {
+      id: "door", name: "Main Door", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["stairs1"],
+      markers: [elevatorMarker("m2", "E1", [1, 2])],
+    },
   ];
+  const open = (from) => route.openDirections({ id: from, name: from.toUpperCase() });
 
-  it("takes the stairs-only route without asking, even though an elevator path also exists", () => {
-    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "x", name: "X" }), fromId: "p", toId: "x" };
-    const next = route.getEmergencyDirections(d, floored);
+  it("picks the exit itself, takes the stairs without asking, and names the destination", () => {
+    const next = route.getEmergencyDirections(open("p"), floored);
     expect(next).toMatchObject({
-      path: ["p", "stairs1", "stairs2", "x"], transportMode: "stairs", pendingModeChoice: null, error: "",
+      path: ["p", "stairs2", "stairs1", "door"],
+      toId: "door",
+      toQuery: "Main Door",
+      transportMode: "stairs",
+      pendingModeChoice: null,
+      error: "",
+      emergency: { blocked: [], ascends: false },
     });
   });
 
-  it("reports when no stairs-only route to the exit exists", () => {
+  it("reports no safe way out, with the emergency state still set, when nothing reaches an exit", () => {
     const noStairs = floored.filter((n) => n.id !== "stairs1" && n.id !== "stairs2");
-    const d = { ...route.openDirectionsTo({ id: "p", name: "P" }, { id: "x", name: "X" }), fromId: "p", toId: "x" };
-    const next = route.getEmergencyDirections(d, noStairs);
+    const next = route.getEmergencyDirections(open("p"), noStairs);
     expect(next.path).toBeNull();
-    expect(next.error).toMatch(/No stairs-only route/);
+    expect(next.error).toMatch(/No safe way out/);
+    expect(next.emergency).toMatchObject({ blocked: [] });
   });
 
   it("leaves transportMode null on a same-floor exit route", () => {
     const sameFloor = [
       { id: "a", name: "A", floor: 1, neighbors: ["x1"] },
-      { id: "x1", name: "X1", floor: 1, type: "transitionExit", neighbors: ["a"] },
+      { id: "x1", name: "X1", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["a"] },
     ];
-    const d = { ...route.openDirectionsTo({ id: "a", name: "A" }, { id: "x1", name: "X1" }), fromId: "a", toId: "x1" };
-    expect(route.getEmergencyDirections(d, sameFloor)).toMatchObject({ path: ["a", "x1"], transportMode: null });
+    expect(route.getEmergencyDirections(open("a"), sameFloor)).toMatchObject({
+      path: ["a", "x1"], transportMode: null,
+    });
+  });
+
+  it("carries the ascending warning through", () => {
+    const climb = [
+      { id: "a", name: "A", floor: 1, neighbors: ["b"] },
+      { id: "b", name: "B", floor: 2, neighbors: ["a", "x"] },
+      { id: "x", name: "X", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["b"] },
+    ]; // the only way to the exit goes over floor 2
+    expect(route.getEmergencyDirections(open("a"), climb).emergency).toMatchObject({ ascends: true });
+  });
+});
+
+describe("blockNextStop and following an emergency route", () => {
+  // a - x - near, and the long way a - y - f1 - far
+  const mk = (id, neighbors, extra = {}) => ({ id, name: id.toUpperCase(), floor: 1, neighbors, ...extra });
+  const graph = [
+    mk("a", ["x", "y"]),
+    mk("x", ["a", "near"]),
+    mk("y", ["a", "f1"]),
+    mk("f1", ["y", "far"]),
+    mk("near", ["x"], { type: "fire_exit", isEmergencyDestination: true }),
+    mk("far", ["f1"], { type: "fire_exit", isEmergencyDestination: true }),
+  ];
+  const start = () => route.getEmergencyDirections(route.openDirections(graph[0]), graph);
+
+  it("routes around the stop the visitor reported blocked, from where they stand", () => {
+    expect(start().path).toEqual(["a", "x", "near"]);
+    const next = route.blockNextStop(start(), graph, "a");
+    expect(next).toMatchObject({
+      path: ["a", "y", "f1", "far"], toId: "far", stepIndex: 0, emergency: { blocked: ["x"] },
+    });
+  });
+
+  it("says so, and keeps the emergency state, once every way is blocked", () => {
+    const once = route.blockNextStop(start(), graph, "a");
+    const blockedAll = route.blockNextStop(once, graph, "a");
+    expect(blockedAll.path).toBeNull();
+    expect(blockedAll.error).toMatch(/No other way out/);
+    expect([...blockedAll.emergency.blocked].sort()).toEqual(["x", "y"]);
+  });
+
+  it("does nothing on an ordinary route, or at the end of the route", () => {
+    const ordinary = withPath(0);
+    expect(route.blockNextStop(ordinary, nodes, "a")).toBe(ordinary);
+    const atEnd = { ...start(), stepIndex: 2 };
+    expect(route.blockNextStop(atEnd, graph, "near")).toBe(atEnd);
+  });
+
+  it("re-aims at the nearest exit from a new spot when the visitor wanders off", () => {
+    const wandered = route.syncToPosition(start(), "f1", graph);
+    expect(wandered).toMatchObject({ path: ["f1", "far"], toId: "far", fromId: "f1", error: "" });
+    expect(wandered.emergency).toBeTruthy();
+  });
+
+  it("editing From or To turns it back into an ordinary route", () => {
+    expect(route.editField(start(), "to", "x").emergency).toBeNull();
+    expect(route.pickNodeField(start(), "from", graph[1]).emergency).toBeNull();
   });
 });
 

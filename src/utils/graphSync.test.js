@@ -66,14 +66,14 @@ describe("planClearDefaultView", () => {
 
 describe("planMarkers", () => {
   const current = [
-    { id: 1, type: "exit", label: "A", yaw: 0, pitch: 0 },
+    { id: 1, type: "emergency_exit", label: "A", yaw: 0, pitch: 0 },
     { id: 2, type: "info", label: "B", yaw: 5, pitch: 5 },
     { id: 3, type: "info", label: "C", yaw: 9, pitch: 9 },
   ];
 
   it("adds, repositions and removes, in that order", () => {
     const next = [
-      { id: 1, type: "exit", label: "A", yaw: 0, pitch: 0 }, // untouched
+      { id: 1, type: "emergency_exit", label: "A", yaw: 0, pitch: 0 }, // untouched
       { id: 2, type: "info", label: "B", yaw: 50, pitch: 5 }, // moved
       { id: "new", type: "info", label: "D", yaw: 1, pitch: 2 }, // added; id 3 removed
     ];
@@ -82,16 +82,6 @@ describe("planMarkers", () => {
       { method: "PATCH", path: "Nodes_API/updateMarker/2", body: { yaw: 50, pitch: 5 } },
       { method: "DELETE", path: "Nodes_API/deleteMarker/3", body: undefined },
     ]);
-  });
-
-  it("stop markers are added with their photos and no type", () => {
-    const [call] = planMarkers(STOP_GRAPH, "s1", [], [{ id: "x", type: "info", label: "L", yaw: 1, pitch: 2, photos: ["p.jpg"] }]);
-    expect(call.body).toEqual({ stop_id: "s1", label: "L", yaw: 1, pitch: 2, photos: ["p.jpg"] });
-  });
-
-  it("a stop marker with no photos is added with an empty list", () => {
-    const [call] = planMarkers(STOP_GRAPH, "s1", [], [{ id: "x", label: "L", yaw: 1, pitch: 2 }]);
-    expect(call.body.photos).toEqual([]);
   });
 
   it("does not send a label-only edit (known limit: only position is compared)", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
+import { EMERGENCY_DESTINATION_INDOOR_TYPES, EMERGENCY_DESTINATION_TYPES, GROUND_FLOOR, NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
 import { useAutoId } from "../hooks/useAutoId";
@@ -19,6 +19,7 @@ const emptyDraft = () => ({
   startingNode: false,
   campusEntrance: false,
   buildingEntrance: false,
+  isEmergencyDestination: false,
   photo: "",
   rooms: [],
   neighbors: [],
@@ -93,6 +94,17 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       if (key === "type" && value !== "entrance") {
         next.campusEntrance = false;
         next.buildingEntrance = false;
+      }
+
+      // Same for the destination tick: only some types can carry it, so
+      // changing to any other type drops it.
+      if (key === "type" && !EMERGENCY_DESTINATION_TYPES.includes(value)) {
+        next.isEmergencyDestination = false;
+      }
+      // A destination point can only be on the ground floor or below: the
+      // checkbox is disabled above it, so the tick goes too.
+      if (key === "floor" && Number(value) > GROUND_FLOOR) {
+        next.isEmergencyDestination = false;
       }
 
       // New nodes only: keep the ID in sync with Building/Floor/Type until the
@@ -326,6 +338,8 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           </div>
           <span className="field-hint">
             Stairs and fire exits often connect both up and down. Pick every floor this node actually reaches.
+            {draft.type === "fire_exit" && draft.isEmergencyDestination &&
+              " Optional here: this is an exit door people walk out through, not a stairwell."}
           </span>
           {unwiredDeclaredFloors.length > 0 && (
             <p className="directions-error">
@@ -398,6 +412,39 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
               ? `, saving this replaces ${currentCampusEntrance.id}.`
               : "."}
           </span>
+        </div>
+      )}
+
+      {EMERGENCY_DESTINATION_TYPES.includes(draft.type) && (
+        <div className="entrance-flag-field">
+          <label className="entrance-flag-toggle">
+            <input
+              type="checkbox"
+              checked={!!draft.isEmergencyDestination}
+              disabled={Number(draft.floor) > GROUND_FLOOR}
+              onChange={(e) => field("isEmergencyDestination")(e.target.checked)}
+            />
+            <span>Emergency Exit Destination Point</span>
+          </label>
+          <span className="field-hint">
+            Tick only if someone who reaches this node is out of danger. "Nearest Exit" ends its route at
+            ticked nodes. Only available on Floor 1 or Underground.
+          </span>
+          {Number(draft.floor) > GROUND_FLOOR && (
+            <p className="directions-error">
+              This node is on {floorLabel(Number(draft.floor))}. Destination points are limited to Floor 1 and
+              Underground, so this cannot be ticked.
+            </p>
+          )}
+          {EMERGENCY_DESTINATION_INDOOR_TYPES.includes(draft.type) && (
+            <div className="emergency-destination-warning" role="alert">
+              <strong>Check this carefully before ticking.</strong> A {draft.type === "lobby" ? "Lobby" : "Entrance"}{" "}
+              can be an indoor space, or open into one (a corridor, a connected building, an elevator hall),
+              where a visitor is NOT out of danger. Visitors who reach a ticked node are told to follow staff
+              instructions and the route ends there. Tick only a ground-floor node that is truly safe, never
+              one per floor.
+            </div>
+          )}
         </div>
       )}
 

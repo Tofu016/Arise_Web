@@ -38,7 +38,6 @@ describe("uploadPhoto", () => {
     ["room360", "IndoorUploads_API/room360Photo"],
     ["tourPanorama", "TourUploads_API/panorama"],
     ["tourCover", "TourUploads_API/cover"],
-    ["tourMarker", "TourUploads_API/marker"],
   ])("%s goes to %s, converted first", async (kind, endpoint) => {
     apiUpload.mockResolvedValue({ path: "p/a.webp" });
     const file = new Blob(["x"]);
@@ -65,7 +64,7 @@ describe("uploadPhoto", () => {
 });
 
 describe("loadPhoto", () => {
-  it.each(["tourpanorama/a.jpg", "tourcover/a.jpg", "tourmarker/a.jpg"])(
+  it.each(["tourpanorama/a.jpg", "tourcover/a.jpg"])(
     "%s resolves to a direct static URL with no fetch",
     async (path) => {
       const { url } = await loadPhoto(path);

@@ -8,7 +8,7 @@ import IconPlaceholder from "../IconPlaceholder";
 // NOTE: sized by the canvas's shorter side alone, while Hotspot uses
 // overlayScale (which also follows the FOV). The two are inconsistent;
 // unifying them would change how markers look, so that is a separate decision.
-// A fixed point-of-interest label (room/facility/exit/hydrant) — stays put,
+// A fixed point-of-interest label (room/facility/emergency exit/fire extinguisher) — stays put,
 // doesn't navigate anywhere when clicked. Rendered as an HTML overlay (via
 // drei's <Html>) rather than 3D geometry, since crisp text is much simpler
 // that way than building actual 3D text meshes.
@@ -21,36 +21,19 @@ import IconPlaceholder from "../IconPlaceholder";
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomClick, onEquipmentClick, onElevatorClick, dimmed, selected, highlighted }) {
+export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, dimmed, selected, highlighted }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
   // smaller still on the kiosk), scaled with the screen's shorter side.
   const canvasSize = useThree((state) => state.size);
   const uiScale = Math.min(1.5, Math.max(0.75, Math.min(canvasSize.width, canvasSize.height) / 1080));
-  // markerInfo lets a caller override the icon/color lookup entirely,
-  // rather than this component always resolving it from constants.js's
-  // MARKER_TYPES — needed for the Virtual Tour's "equipment" marker type,
-  // which isn't (and deliberately shouldn't be) in that shared array: it
-  // would otherwise incorrectly show up as a selectable type in the
-  // indoor system's own Navigation Editor marker dropdown, and without
-  // this override, markerTypeInfo("equipment") would silently fall back
-  // to "Facility"'s icon/color instead of failing loudly. Every existing
-  // caller keeps working exactly as before, since none of them pass this.
-  const info = markerInfo || markerTypeInfo(type);
+  const info = markerTypeInfo(type);
   const [hovered, setHovered] = useState(false);
 
-  // onEquipmentClick is a separate, parallel prop to onRoomClick rather
-  // than extending onRoomClick's own type==="room" gate to also cover
-  // "equipment" — MainPage.jsx already passes a working onRoomMarkerClick
-  // today; keeping these two click paths independent means nothing about
-  // that existing, working call needs to change for this new type to
-  // work, and "room click" vs "equipment click" stay clearly distinct
-  // rather than one prop silently meaning two different things.
   const isRoomClickable = type === "room" && !!onRoomClick;
-  const isEquipmentClickable = type === "equipment" && !!onEquipmentClick;
   // Elevator markers are the one type that's clickable in the public
-  // viewer without being a "room"/"equipment" special case — see
+  // viewer without being a "room" special case — see
   // MainPage.jsx's handleElevatorMarkerClick: unlike every other marker,
   // clicking one actually moves the visitor (a Jump to another floor).
   const isElevatorClickable = type === "elevator" && !!onElevatorClick;
@@ -58,11 +41,9 @@ export function Marker({ yaw, pitch, label, type, markerInfo, onClick, onRoomCli
     ? (e) => { e.stopPropagation(); onClick(); }
     : isRoomClickable
       ? (e) => { e.stopPropagation(); onRoomClick(); }
-      : isEquipmentClickable
-        ? (e) => { e.stopPropagation(); onEquipmentClick(); }
-        : isElevatorClickable
-          ? (e) => { e.stopPropagation(); onElevatorClick(); }
-          : undefined;
+      : isElevatorClickable
+        ? (e) => { e.stopPropagation(); onElevatorClick(); }
+        : undefined;
   const isClickable = !!clickHandler;
 
   const baseSize = Math.round(48 * uiScale);

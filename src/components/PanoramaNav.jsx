@@ -14,7 +14,6 @@ import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
 import noImagePanorama from "../assets/images/no-image.jpg";
-import IconPlaceholder from "./IconPlaceholder";
 
 // How long the "No location in front." hint stays up after W/Up finds
 // nothing to walk to.
@@ -33,12 +32,6 @@ function isTypingTarget(target) {
   const tag = target.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
-
-// A camera icon in the brand's premium-accent gold: the Virtual Tour's
-// "equipment" marker type. Kept here rather than in constants.js's
-// MARKER_TYPES, which would offer it in the indoor Navigation Editor's
-// marker dropdown.
-const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" variant="white" />, color: "#C9A24B" };
 
 /**
  * Props:
@@ -67,7 +60,6 @@ const EQUIPMENT_MARKER_INFO = { icon: <IconPlaceholder name="camera" variant="wh
  *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
- *  - onEquipmentMarkerClick(marker): optional — called when a type:"equipment" marker is clicked (Virtual Tour public viewer only; independent of both props above — opens that marker's photo carousel)
  *  - onElevatorMarkerClick(marker): optional — called when a type:"elevator" marker is clicked (public viewer only; independent of the props above — moves the visitor, unlike every other marker type, which is purely informational)
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
  *  - onBack: required when keyboardNav is true — called on S/Down
@@ -89,7 +81,6 @@ export default function PanoramaNav({
   onNavigate,
   onMarkerClick,
   onRoomMarkerClick,
-  onEquipmentMarkerClick,
   onElevatorMarkerClick,
   onError,
   placing,
@@ -323,13 +314,11 @@ export default function PanoramaNav({
           pitch={m.pitch}
           label={m.label}
           type={m.type}
-          markerInfo={m.type === "equipment" ? EQUIPMENT_MARKER_INFO : undefined}
           dimmed={placing}
           selected={m.id === selectedMarkerId}
           highlighted={!placing && m.id === highlightedMarkerId}
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
-          onEquipmentClick={onEquipmentMarkerClick && !placing ? () => onEquipmentMarkerClick(m) : undefined}
           onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}
         />
       ))}

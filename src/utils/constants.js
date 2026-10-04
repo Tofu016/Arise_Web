@@ -65,19 +65,47 @@ export const NODE_TYPES = [
   { id: "hallway", label: "Hallway", color: "#2f6db0" },
   { id: "lobby", label: "Lobby", color: "#b87514" },
   { id: "entrance", label: "Entrance", color: "#2e7d46" },
-  { id: "transition", label: "Stairs", color: "#8b3fb5" },
-  { id: "transitionExit", label: "Fire Exit", color: "#c62a2c" },
+  { id: "stairs", label: "Stairs", color: "#8b3fb5" },
+  { id: "fire_exit", label: "Fire Exit", color: "#c62a2c" },
   // Split from one combined "Open Area (parking)" type \u2014 not every open
   // area is a parking lot (e.g. DC's own open area isn't one), so an
   // admin needs to be able to say which this actually is.
-  { id: "openArea", label: "Open Area", color: "#6b6663" },
+  { id: "open_area", label: "Open Area", color: "#6b6663" },
   { id: "parking", label: "Parking", color: "#5b7a8a" },
   // Renamed from "Portal" to avoid reading as the mobile app's unrelated
   // AR portal feature \u2014 this is a walkable GD2<->GD3 building link.
-  { id: "portal", label: "Building Transition", color: "#ad7f00" },
+  { id: "building_transition", label: "Building Transition", color: "#ad7f00" },
 ];
 
-export const TRANSITION_TYPES = ["transition", "transitionExit"];
+export const TRANSITION_TYPES = ["stairs", "fire_exit"];
+
+// Node type ids the emergency router (utils/evacuation.js) keys off, named
+// once here so a rename of a type id touches this block and nothing else.
+export const STAIRS_TYPE = "stairs";
+export const FIRE_EXIT_TYPE = "fire_exit";
+export const BUILDING_TRANSITION_TYPE = "building_transition";
+// The ground floor. Floor 1 is the ground in every building, and Underground
+// (-1) lies below it. Emergency routing treats it as fixed: an Emergency Exit
+// Destination Point can only be on this floor or below, and a route climbs
+// above it only as a last resort.
+export const GROUND_FLOOR = 1;
+// The node types an admin can tick as an Emergency Exit Destination Point
+// (`isEmergencyDestination`): the place a Nearest Exit route ends. Nothing is
+// automatic. Whether someone who reaches the node is out of danger is the
+// admin's call alone, and no type is safe by itself.
+export const EMERGENCY_DESTINATION_TYPES = ["open_area", "parking", "lobby", "entrance", "fire_exit"];
+// The ones that are indoor spaces, or can open into one: ticking these needs
+// the most care, so the form and the coverage page warn about them.
+export const EMERGENCY_DESTINATION_INDOOR_TYPES = ["lobby", "entrance"];
+
+// Shown whenever the Nearest Exit route is on screen, so a visitor who gets
+// stuck (no route, blocked way, no way down) always has someone to call.
+export const EMERGENCY_CONTACTS = [
+  { label: "Bacoor City Priority Emergency Hotline", number: "161 or (046) 417-0207" },
+  { label: "Bureau of Fire Protection (BFP) Bacoor", number: "(046) 417-6060" },
+  { label: "Bacoor CDRRMO (Rescue)", number: "(046) 417-0727" },
+  { label: "Bacoor Police (PNP)", number: "(046) 417-6366" },
+];
 
 // Point-of-interest markers placed *within* a panorama at a fixed yaw/pitch —
 // distinct from hotspots (which navigate to a different node). These just
@@ -101,8 +129,8 @@ export const TRANSITION_TYPES = ["transition", "transitionExit"];
 export const MARKER_TYPES = [
   { id: "room", label: "Room", icon: "?", iconPlaceholder: "door", color: "#2f6db0" },
   { id: "facility", label: "Facility", icon: "?", iconPlaceholder: "location-pin", color: "#2e7d46" },
-  { id: "exit", label: "Emergency Exit", icon: "?", iconPlaceholder: "emergency-exit", color: "#c62a2c" },
-  { id: "hydrant", label: "Fire Hydrant / Extinguisher", icon: "?", iconPlaceholder: "fire-extinguisher", color: "#b5701c" },
+  { id: "emergency_exit", label: "Emergency Exit", icon: "?", iconPlaceholder: "emergency-exit", color: "#c62a2c" },
+  { id: "fire_extinguisher", label: "Fire Extinguisher", icon: "?", iconPlaceholder: "fire-extinguisher", color: "#b5701c" },
   { id: "elevator", label: "Elevator", icon: "?", iconPlaceholder: "elevator", color: "#5b3fa0" },
 ];
 
@@ -154,7 +182,7 @@ export function floorsForBuilding(buildingId) {
 }
 
 export function floorLabel(floor) {
-  return floor === -1 ? "UG" : `Floor ${floor}`;
+  return floor === -1 ? "Underground" : `Floor ${floor}`;
 }
 
 export function typeColor(typeId) {
@@ -170,19 +198,14 @@ export function buildingLabel(buildingId) {
   return allBuildings().find((b) => b.id === buildingId)?.label || buildingId;
 }
 
-// camelCase type ids (transitionExit, openArea) become snake_case for
-// readability inside a generated ID — transitionExit -> transition_exit.
-function typeToIdSlug(typeId) {
-  return typeId.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-}
-
-// Builds a { building }_f{ floor }_{ type }{ number } id and picks the next
+// Builds a { building }_f{ floor }_{ type }{ number } id (the type id is
+// already snake_case, so it goes in as is) and picks the next
 // free number for that exact building+floor+type combination, so multiple
 // hallways etc. on the same floor never collide. `excludeId` lets the caller
 // leave a node's own current id out of the "already used" check (used when
 // suggesting a rename for a node that already occupies its own slot).
 export function suggestNodeId(building, floor, type, nodes, excludeId = null) {
-  const prefix = `${building}_f${floor}_${typeToIdSlug(type)}`;
+  const prefix = `${building}_f${floor}_${type}`;
   const pattern = new RegExp(`^${prefix}(\\d+)$`);
   const used = new Set();
   for (const n of nodes) {

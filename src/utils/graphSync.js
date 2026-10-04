@@ -12,7 +12,7 @@ import { apiDelete, apiPatch, apiPost } from "./apiClient";
 //   api           API controller name
 //   ownerKey      the body key naming the owner ("node_id" / "stop_id")
 //   newMarkerBody the body for a brand-new marker beyond the owner id
-//                 (nodes send a marker `type`; stops send `photos`)
+//                 (only the node graph has markers, so only it sets this)
 export const NODE_GRAPH = {
   api: "Nodes_API",
   ownerKey: "node_id",
@@ -28,7 +28,6 @@ export const NODE_GRAPH = {
 export const STOP_GRAPH = {
   api: "TourStops_API",
   ownerKey: "stop_id",
-  newMarkerBody: (m) => ({ label: m.label, yaw: m.yaw, pitch: m.pitch, photos: m.photos || [] }),
 };
 
 const call = (method, path, body) => ({ method, path, body });

@@ -5,11 +5,7 @@ import { useRef } from "react";
 // browsers. Triggers a visually-hidden native <input type="file"> via a
 // ref; the actual file-picking dialog/behavior stays completely
 // standard, only the trigger's own appearance is replaced.
-// `multiple` is optional and defaults to unset (single-file, the
-// original behavior every existing caller relies on) — added for the
-// Virtual Tour's equipment-marker photo carousel, which needs to let an
-// admin pick several photos in one go rather than one at a time.
-export default function FilePickerButton({ onChange, accept = "image/*", disabled, label = "Choose Photo", multiple }) {
+export default function FilePickerButton({ onChange, accept = "image/*", disabled, label = "Choose Photo" }) {
   const inputRef = useRef(null);
 
   return (
@@ -20,7 +16,6 @@ export default function FilePickerButton({ onChange, accept = "image/*", disable
         accept={accept}
         onChange={onChange}
         disabled={disabled}
-        multiple={multiple}
         className="file-picker-hidden-input"
       />
       <button
