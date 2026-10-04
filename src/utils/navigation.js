@@ -27,7 +27,7 @@
 // went), a "jump" (search result/entrance/room: fresh start, clears
 // history) or a "back". Any move between two places with different real
 // coordinates is a cross-campus teleport and gets a flyover — GD1/GD2/GD3
-// share coordinates (one physical cluster), so moves between them don't.
+// are one campus (one position, see campusPosition), so moves between them don't.
 
 import { hotspotAngle } from "./hotspots";
 
@@ -159,21 +159,36 @@ export function landOnDefault(nav, nodes, buildings) {
   return { ...nav, currentId: start.id, entryYaw: start.startingViewYaw ?? 0, entryPitch: start.startingViewPitch ?? 0 };
 }
 
+// One campus has one position on the map: every building in it answers with
+// the coordinates of the first building of that campus that has any, so a
+// building whose own coordinates drifted (or were never set) cannot split a
+// campus in two. Buildings with no `campus` are their own campus.
+function campusPosition(building, buildings) {
+  const campus = building.campus ?? building.id;
+  const anchor = buildings.find((b) => (b.campus ?? b.id) === campus && b.lat != null && b.lng != null);
+  return { campus, lat: anchor?.lat, lng: anchor?.lng };
+}
+
 // The flyover descriptor for moving between two nodes, or null when it's
-// not a cross-campus move: both ends need real coordinates, and they must
-// differ.
+// not a cross-campus move: the two ends must be in different campuses, both
+// with real coordinates, and those must differ. Moves inside one campus
+// (GD1/GD2/GD3) never fly, whatever their buildings' own coordinates say.
 export function findFlyover(fromNode, toNode, buildings) {
   if (!fromNode || !toNode) return null;
   const from = buildings.find((b) => b.id === fromNode.building);
   const to = buildings.find((b) => b.id === toNode.building);
-  if (from?.lat == null || to?.lat == null) return null;
-  if (from.lat === to.lat && from.lng === to.lng) return null;
+  if (!from || !to) return null;
+  const a = campusPosition(from, buildings);
+  const b = campusPosition(to, buildings);
+  if (a.campus === b.campus) return null;
+  if (a.lat == null || b.lat == null) return null;
+  if (a.lat === b.lat && a.lng === b.lng) return null;
   return {
-    fromLat: from.lat,
-    fromLng: from.lng,
+    fromLat: a.lat,
+    fromLng: a.lng,
     fromLabel: from.label || fromNode.building,
-    toLat: to.lat,
-    toLng: to.lng,
+    toLat: b.lat,
+    toLng: b.lng,
     toLabel: to.label || toNode.building,
   };
 }
@@ -190,7 +205,9 @@ function applyMove(prev, action) {
   if (action.type === "walk") {
     return {
       ...nav,
-      history: nav.currentId ? [...nav.history, nav.currentId] : nav.history,
+      // A skip-ahead walk carries the nodes it passed over (`via`), so Back
+      // still retraces the hallway one stop at a time.
+      history: nav.currentId ? [...nav.history, nav.currentId, ...(action.via || [])] : nav.history,
       currentId: action.id,
       entryYaw: action.yaw ?? 0,
       entryPitch: action.pitch ?? 0,
@@ -235,7 +252,8 @@ export function requestLand(nav, world, action, now) {
   return { nav: applyMove(accepted, landAction), outcome: "moved", action: landAction };
 }
 
-// action: { id, yaw?, pitch?, meta? }
+// action: { id, yaw?, pitch?, via?, meta? } — `via` lists the nodes a
+// skip-ahead walk passes over, in order, for the history.
 export function requestWalk(nav, world, action, now) {
   return request(nav, world, { ...action, type: "walk" }, now);
 }

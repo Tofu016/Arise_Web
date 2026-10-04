@@ -2,8 +2,9 @@ import { buildingLabel, floorLabel } from "../utils/constants";
 import EntityListPanel from "./EntityListPanel";
 import { rankRoomMatches, roomKey } from "../utils/search";
 
-// The Room Editor's standalone room lookup: every room on campus as its own
-// row, rather than reached through its node (NodeList's pills cover that).
+// The Room and Facility Editor's standalone lookup: every room and facility
+// on campus as its own row, rather than reached through its node (NodeList's
+// pills cover that).
 // `rooms` comes from listAllRooms. Building, floor and type narrow by the
 // room's node; photo status means the room's own photo here, not the
 // node's panorama, since that's the photo this page edits.
@@ -26,7 +27,7 @@ export default function RoomList({ rooms, filters, selectedNodeId, selectedRoom,
 
   return (
     <EntityListPanel
-      label="Rooms"
+      label="Rooms and facilities"
       allItems={rooms}
       filteredItems={items}
       selectedId={selectedRoom ? roomKey(selectedNodeId, selectedRoom) : null}
@@ -34,15 +35,15 @@ export default function RoomList({ rooms, filters, selectedNodeId, selectedRoom,
         const it = byId.get(id);
         onSelectRoom(it.node.id, it.roomName);
       }}
-      renderMeta={({ node }) => (
+      renderMeta={({ node, kind }) => (
         <>
-          {buildingLabel(node.building)} · {floorLabel(node.floor)} · {node.name}
+          {kind === "facility" ? "Facility · " : ""}{buildingLabel(node.building)} · {floorLabel(node.floor)} · {node.name}
         </>
       )}
       renderExtra={({ placard }) =>
         placard?.department && <div className="node-row-meta">{placard.department}</div>
       }
-      emptyMessage={rooms.length ? "No rooms match this filter." : 'No rooms yet. Add one under "Rooms served" in Node Editor.'}
+      emptyMessage={rooms.length ? "No rooms or facilities match this filter." : 'Nothing yet. Add a room under "Rooms served" in Node Editor, or a facility marker in Virtual Map Navigation Editor.'}
       header={header}
     />
   );

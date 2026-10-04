@@ -11,6 +11,7 @@ import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskFloorScreen from "../components/KioskFloorScreen";
 import KioskDialog from "../components/KioskDialog";
 import KioskOriginChoice from "../components/KioskOriginChoice";
+import KioskModeChoice from "../components/KioskModeChoice";
 import KioskPairingScreen from "../components/KioskPairingScreen";
 import { useKioskIdentity } from "../hooks/useKioskIdentity";
 import { usePairingGesture } from "../hooks/usePairingGesture";
@@ -427,9 +428,10 @@ function MainPageContent({ onReset }) {
     }
   };
 
-  // Hotspot click, and "Walk to next stop" in directions.
-  const goTo = (id, angle) => {
-    const { outcome, action } = nav.walk(id, angle);
+  // Hotspot click, "Walk to next stop" in directions, and "Skip hallway"
+  // (`via`: the stops it passes over).
+  const goTo = (id, angle, via) => {
+    const { outcome, action } = nav.walk(id, angle, undefined, via);
     if (outcome === "ignored") return;
     if (outcome === "moved") {
       afterMove(action);
@@ -705,7 +707,7 @@ function MainPageContent({ onReset }) {
     land: landAtKioskStart,
   });
 
-  const { arrived, nextStopId, nextStopName, nextElevator, turnInstruction, walkStarted } = progress;
+  const { arrived, nextStopId, nextStopName, nextElevator, turnInstruction, walkStarted, skip } = progress;
   const autoWalking = directions?.autoWalking ?? false;
   // An elevator step is announced as the ride it is, not "Walk to <landing
   // node's name>" — the landing's node name means little to a visitor.
@@ -929,6 +931,9 @@ function MainPageContent({ onReset }) {
   // field is currently being edited.
   const renderDirectionsSuggestions = (field) => {
     if (directions?.editingField !== field) return null;
+    // Once the route is being walked the fields are just a read-out of it;
+    // typing into one drops the route, so suggestions only get in the way.
+    if (directions.path && walkStarted) return null;
     // An empty field shows suggestions immediately on open, same "don't
     // know what to search for" idea as the main search bar's own
     // randomSuggestions, so a visitor isn't stuck typing before seeing
@@ -1099,6 +1104,15 @@ function MainPageContent({ onReset }) {
               >
                 {nextElevator && PLACEHOLDER("elevator")} {nextStepAction} {CHEVRON_RIGHT_WHITE}
               </button>
+              {skip && (
+                <button
+                  className="directions-go-btn directions-skip-btn"
+                  onClick={() => { overlay.setWalkDialog(false); flow.skipAhead(); }}
+                  disabled={autoWalking}
+                >
+                  {PLACEHOLDER("skip-forward")} Skip hallway ({skip.count} stops)
+                </button>
+              )}
               <button
                 className="directions-go-btn directions-autowalk-btn"
                 onClick={() => { overlay.setWalkDialog(false); flow.toggleAutoWalk(); }}
@@ -1150,6 +1164,15 @@ function MainPageContent({ onReset }) {
             overlay.closeOriginChoice();
             flow.openToWithBlankOrigin(dest);
           }}
+        />
+      )}
+      {compact && directions?.pendingModeChoice && (
+        <KioskModeChoice
+          stairsStops={directions.pendingModeChoice.stairsPath.length}
+          elevatorStops={directions.pendingModeChoice.elevatorPath.length}
+          onStairs={() => flow.chooseMode("stairs")}
+          onElevator={() => flow.chooseMode("elevator")}
+          onCancel={flow.close}
         />
       )}
       {overlay.elevatorPicker && (
@@ -1489,7 +1512,7 @@ function MainPageContent({ onReset }) {
               </KioskDialog>
             )}
 
-            {panelMode === "directions" && directions && !arrived && !walkBarShown && (
+            {panelMode === "directions" && directions && !arrived && !walkBarShown && !directions.pendingModeChoice && (
               <KioskDialog onClose={flow.close}>
                 <div className="directions-panel">
                   {directionsContent}
@@ -1507,10 +1530,13 @@ function MainPageContent({ onReset }) {
                 autoWalking={autoWalking}
                 stepIndex={directions.stepIndex}
                 onWalk={flow.walkToNext}
+                skipCount={skip?.count ?? 0}
+                onSkip={flow.skipAhead}
                 onToggleAutoWalk={() => flow.toggleAutoWalk()}
                 onShowDialog={() => overlay.setWalkDialog(true)}
                 emergency={directions.emergency}
                 onBlocked={flow.reportBlocked}
+                onEnd={flow.close}
               />
             )}
 
@@ -1585,6 +1611,7 @@ function MainPageContent({ onReset }) {
                                   ))}
                                 </div>
                               )}
+                              <div className="mobile-floor-subtitle">Floor</div>
                               <div className="mobile-floor-grid">
                                 {floors.map((f) => {
                                   const isCurrentFloor = isHere && f === Number(current?.floor);
@@ -1594,8 +1621,9 @@ function MainPageContent({ onReset }) {
                                       type="button"
                                       className={"mobile-floor-btn" + (isCurrentFloor ? " mobile-floor-btn-here" : "")}
                                       onClick={() => handleMobileFloorPick(b.id, f)}
+                                      aria-label={floorLabel(f)}
                                     >
-                                      {floorLabel(f)}
+                                      {f === -1 ? "UG" : f}
                                     </button>
                                   );
                                 })}

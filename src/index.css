@@ -248,22 +248,14 @@ button.primary {
   vertical-align: -0.15em;
   opacity: 0.85;
 }
-/* emergency-exit (the person-running-through-a-door pictogram) keeps its
-   real artwork, but its fine detail lines all but disappear at the size
-   every other icon renders at (1em, ~17px in a rail button), made worse by
-   .icon-placeholder-img's own default 0.85 opacity above — that's built for
-   subtler glyphs, not one this thin. Targeted by IconPlaceholder's own
-   data-icon-placeholder attribute (see IconPlaceholder.jsx) rather than a
-   per-button class, so every render site (the floating button, the kiosk
-   radial dock, the sidebar overlay tip, the panorama marker) gets the same
-   fix at once: full opacity, a noticeably larger size than its neighbors,
-   and a soft dark halo (drop-shadow, not a flat outline baked into the
-   artwork) so the white linework holds up against whatever's behind it. */
+/* emergency-exit is a detailed pictogram that gets muddy at 1em, made worse
+   by .icon-placeholder-img's default 0.85 opacity. Full opacity and a larger
+   size keep it crisp; deliberately no drop-shadow/filter, since that
+   rasterizes the SVG and was what made it look blurry. */
 img[data-icon-placeholder="emergency-exit"] {
   opacity: 1;
   width: 1.25em;
   height: 1.25em;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
 }
 .admin-sidebar-icon-btn:hover {
   background: var(--surface-hover);
@@ -1333,35 +1325,32 @@ img[data-icon-placeholder="emergency-exit"] {
   display: flex;
   gap: 8px;
 }
+/* Secondary: white pill with a 2px accent outline. Every button in the row
+   carries the same bold uppercase display-font treatment as .primary, so a
+   mixed row (Cancel next to Give feedback) reads as one component. */
 .form-actions button {
   flex: 1;
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
   cursor: pointer;
   font-size: 13px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.form-actions button:hover:not(:disabled) {
+  background: var(--accent-tint);
 }
 .form-actions .primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
-  font-weight: 700;
-  /* Cancel the global .primary rule's uppercase/tracked display-font
-     treatment in this one context: a form-actions row already sits its
-     buttons side by side in the same font, same case, same size — only
-     background/border/color differ. Layering the bold-uppercase-display
-     treatment on top of that (e.g. the "Done exploring?" prompt's
-     GIVE FEEDBACK next to Keep exploring / Start over / Cancel) made one
-     button look like it belonged to a different component. The accent
-     fill plus 700 weight above is enough to read as the primary action
-     without changing font family or case. */
-  font-family: inherit;
-  text-transform: none;
-  letter-spacing: normal;
 }
-.form-actions .primary:hover {
+.form-actions .primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1662,17 +1651,20 @@ img[data-icon-placeholder="emergency-exit"] {
 .directions-btn {
   align-self: flex-start;
   margin-top: 4px;
-  padding: 3px 8px;
+  padding: 3px 12px;
   font-size: 11px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 .directions-btn:hover {
-  border-color: var(--accent);
-  color: var(--text);
+  background: var(--accent-tint);
 }
 .directions-panel {
   background: var(--surface-sunken);
@@ -1705,20 +1697,45 @@ img[data-icon-placeholder="emergency-exit"] {
   color: var(--danger-text);
   margin: 0;
 }
+/* Filled accent pill (primary). Buttons without .primary (Auto-walk, "This
+   way is blocked") fall to the outlined secondary below. */
 .directions-go-btn {
   width: 100%;
-  padding: 9px;
-  border-radius: 6px;
-}
-.directions-autowalk-btn {
-  margin-top: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text);
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 13px;
   cursor: pointer;
 }
-.directions-autowalk-btn:hover {
+.directions-go-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.directions-go-btn:not(.primary) {
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.directions-go-btn:not(.primary):hover:not(:disabled) {
+  background: var(--accent-tint);
   border-color: var(--accent);
+}
+.directions-autowalk-btn,
+.directions-skip-btn {
+  margin-top: 8px;
+}
+.directions-get-btn {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.directions-get-btn:hover:not(:disabled) {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
 }
 .directions-go-btn:disabled {
   opacity: 0.4;
@@ -1796,17 +1813,21 @@ img[data-icon-placeholder="emergency-exit"] {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
   background: var(--surface);
-  color: var(--text);
+  color: var(--accent);
   cursor: pointer;
   font-size: 14px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   text-align: left;
 }
 .entrance-btn:hover {
-  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 .entrance-btn-sub {
   font-size: 11px;
@@ -1844,13 +1865,17 @@ img[data-icon-placeholder="emergency-exit"] {
   align-items: center;
 }
 .main-page-header button {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
   cursor: pointer;
   font-size: 12px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .main-page-header-center {
   display: flex;
@@ -2465,10 +2490,14 @@ img[data-icon-placeholder="emergency-exit"] {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-sunken);
+  padding: 10px 20px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   text-align: left;
   /* 700, not 600 — the app only uses the binary 400/700 weight scale
@@ -2478,7 +2507,7 @@ img[data-icon-placeholder="emergency-exit"] {
   font-weight: 700;
 }
 .elevator-picker-option:hover {
-  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 .elevator-picker-option-route {
   border-color: #2e7d46;
@@ -2487,6 +2516,8 @@ img[data-icon-placeholder="emergency-exit"] {
 .elevator-picker-sub {
   font-size: 12px;
   font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--text-muted);
 }
 .elevator-picker-close {
@@ -2615,12 +2646,15 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .warning-modal button.primary {
   width: 100%;
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--accent);
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
+  font-family: var(--font-sans-display);
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 .add-building-modal {
@@ -2874,7 +2908,12 @@ img[data-icon-placeholder="emergency-exit"] {
   font-size: 12px;
   color: var(--text-muted);
 }
-/* Room Editor's Rooms/Nodes list switch, in the list panel's header. */
+.room-edit-tab-kind {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* Room and Facility Editor's list switch, in the list panel's header. */
 .room-editor-list-mode {
   display: inline-flex;
   padding: 3px;
@@ -3501,8 +3540,8 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .auth-card button[type="submit"] {
   margin-top: 4px;
-  padding: 10px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -3703,19 +3742,25 @@ img[data-icon-placeholder="emergency-exit"] {
 }
 .room-card-actions button {
   flex: 1;
-  padding: 8px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-  color: var(--text);
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.room-card-actions button:hover:not(:disabled) {
+  background: var(--accent-tint);
 }
 .room-card-actions button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
-  font-weight: 700;
 }
 .room-card-actions button.primary:hover {
   background: var(--accent-hover);
@@ -3955,6 +4000,10 @@ a.sidebar-room-contact-row:focus-visible span {
   padding: 8px 14px;
   border-radius: var(--radius-pill);
   font-size: 13px;
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 .sidebar-room-actions button.sidebar-room-directions {
@@ -4149,7 +4198,10 @@ a.sidebar-room-contact-row:focus-visible span {
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-contrast);
+  font-family: var(--font-sans-display);
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   font-size: 13px;
   border-color: var(--accent);
 }
@@ -4298,8 +4350,8 @@ a.sidebar-room-contact-row:focus-visible span {
   z-index: 200;
 }
 .flyover-panel {
-  width: 480px;
-  max-width: 92vw;
+  width: 560px;
+  max-width: 94vw;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -4327,11 +4379,33 @@ a.sidebar-room-contact-row:focus-visible span {
   color: var(--text);
 }
 .flyover-map {
-  height: 280px;
+  height: 340px;
+  max-height: 50vh;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
   margin-bottom: 10px;
+}
+.flyover-pin-label {
+  display: block;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-family: var(--font-sans-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Gold fill takes the near-black text, per the button rule of picking
+   white or #1a1a1a by whichever reads better. */
+.flyover-pin-label-destination {
+  background: var(--gold);
+  color: #1a1a1a;
 }
 .flyover-note {
   font-size: 12px;
@@ -4341,8 +4415,8 @@ a.sidebar-room-contact-row:focus-visible span {
 }
 .flyover-skip {
   width: 100%;
-  padding: 10px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -4833,9 +4907,9 @@ a.sidebar-room-contact-row:focus-visible span {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 3px solid var(--sdca-gray);
   background: var(--surface);
-  color: var(--text);
+  color: var(--sdca-gray);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -4876,9 +4950,9 @@ a.sidebar-room-contact-row:focus-visible span {
   height: 92px;
   margin: -46px 0 0 -46px; /* centers the 92px button on its own translate()-computed point */
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 3px solid var(--sdca-gray);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--sdca-gray);
   font-size: 44px;
   cursor: pointer;
   box-shadow: var(--shadow-2);
@@ -5034,34 +5108,53 @@ a.sidebar-room-contact-row:focus-visible span {
 }
 .mobile-entrance-btn {
   min-height: 44px;
-  padding: 0 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--accent);
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--accent);
   background: var(--surface);
   color: var(--accent);
   font-size: 15px;
+  font-family: var(--font-sans-display);
   font-weight: 700;
-  text-align: left;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
   cursor: pointer;
   touch-action: manipulation;
 }
+/* Same text styling as an expanded building's name. */
+.mobile-floor-subtitle {
+  padding: 4px 12px;
+  text-align: center;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--text);
+}
+/* Floors are circles at the same 92px as the kiosk's radial FABs, three to a
+   row in the 340px modal (3 * 92 + 2 * 8 fits its inner width). A wrapping,
+   centered flex row rather than a fixed grid so a building with more or
+   fewer floors never overflows or leaves a lopsided last row. */
 .mobile-floor-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
-  padding: 4px 12px 12px;
+  padding: 4px 0 12px;
 }
 .mobile-floor-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-height: 56px;
-  font-size: 18px;
+  flex: 0 0 auto;
+  width: 92px;
+  height: 92px;
+  padding: 0;
+  font-size: 32px;
+  font-family: var(--font-sans-display);
   font-weight: 700;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--accent);
+  border-radius: 50%;
+  border: 2px solid var(--accent);
   background: var(--surface);
   color: var(--accent);
   cursor: pointer;
@@ -6571,14 +6664,22 @@ a.sidebar-room-contact-row:focus-visible span {
 .origin-choice-option {
   min-height: 56px;
   font-size: 16px;
+  font-family: var(--font-sans-display);
   font-weight: 700;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-sunken);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
   cursor: pointer;
 }
 .origin-choice-option:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.origin-choice-modal .directions-mode-sub {
+  display: block;
 }
 .origin-choice-modal .form-actions {
   justify-content: center;
@@ -6979,7 +7080,8 @@ a.sidebar-room-contact-row:focus-visible span {
   font-size: 18px;
   line-height: 1.4;
 }
-.kiosk-dialog .directions-autowalk-btn {
+.kiosk-dialog .directions-autowalk-btn,
+.kiosk-dialog .directions-skip-btn {
   margin-top: 0;
 }
 
@@ -7049,7 +7151,8 @@ a.sidebar-room-contact-row:focus-visible span {
   font-size: 16px;
   line-height: 1.2;
 }
-.kiosk-walkbar-walk {
+.kiosk-walkbar-walk,
+.kiosk-walkbar-skip {
   width: 100%;
 }
 .kiosk-walkbar-row {
@@ -7100,11 +7203,22 @@ a.sidebar-room-contact-row:focus-visible span {
   transform: translateX(20px);
 }
 .kiosk-walkbar-dialog-btn {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-pill);
   background: var(--surface);
-  color: var(--text);
+  color: var(--accent);
+  font-family: var(--font-sans-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
+}
+.kiosk-walkbar-dialog-btn:hover:not(:disabled) {
+  background: var(--accent-tint);
+}
+.kiosk-walkbar-dialog-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* A solid backdrop behind the kiosk's whole start/building/floor sequence
@@ -7209,7 +7323,10 @@ a.sidebar-room-contact-row:focus-visible span {
   min-height: 64px;
   padding: 0 28px;
   font-size: 22px;
+  font-family: var(--font-sans-display);
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   border-radius: var(--radius-pill);
   border: 2px solid var(--accent);
   background: #fff;
@@ -7256,8 +7373,11 @@ a.sidebar-room-contact-row:focus-visible span {
 .kiosk-building-btn {
   min-height: 140px;
   font-size: 40px;
+  font-family: var(--font-sans-display);
   font-weight: 700;
-  border-radius: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
   border: 2px solid var(--accent);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -7562,6 +7682,15 @@ html.kiosk-mode body {
 .arrival-notice .idle-prompt-text {
   margin: 0;
 }
+/* The overlay lets touches through to the panorama; the card itself must
+   still take them, for the emergency notice's Done button. */
+.arrival-notice {
+  pointer-events: auto;
+}
+.arrival-notice .form-actions {
+  margin-top: 12px;
+  justify-content: center;
+}
 
 /* Pulse so the notice is hard to miss: the card breathes between its own
    look and a green tint, with a glow ring that expands and fades. */
@@ -7682,6 +7811,7 @@ html.kiosk-mode body {
 }
 .admin-layout .form-actions button {
   border-radius: var(--admin-radius);
+  border-width: 1px;
   padding: 10px 16px;
   font-size: 13px;
 }
@@ -9357,16 +9487,54 @@ html.kiosk-mode body {
 }
 
 /* Emergency Coverage admin page. */
+/* Same page shell as .signage-page and .analytics-page: 20px padding on the
+   sunken background, with each section in a white .signage-card. */
 .emergency-coverage-page {
+  padding: 20px;
+  min-height: 100%;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-lg);
 }
 .emergency-coverage-filter {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 320px;
+  min-width: 200px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.emergency-coverage-filter select {
+  height: 36px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* The search field reuses the User Panel's .user-panel-search styling. */
+.emergency-coverage-filter-search {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+.emergency-coverage-filter-search .user-panel-search {
+  max-width: none;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.emergency-coverage-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius-lg);
 }
 .emergency-coverage-summary {
   display: flex;
@@ -9378,10 +9546,10 @@ html.kiosk-mode body {
   flex-direction: column;
   gap: 2px;
   min-width: 150px;
-  padding: 10px 14px;
+  padding: var(--space-md) var(--space-lg);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--admin-radius-lg);
 }
 .emergency-coverage-card-label {
   font-size: 12px;
@@ -9417,6 +9585,37 @@ html.kiosk-mode body {
   text-align: left;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
+}
+/* Marker Management admin page; reuses the Emergency Coverage cards and table. */
+.marker-management-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  font-size: 13px;
+}
+.marker-management-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+.marker-management-problem {
+  color: var(--danger-text);
+}
+/* Button cells (both pages). The flex, if any, lives on an inner div:
+   display:flex on the td itself drops it out of the table layout and
+   detaches its bottom border from the row. */
+.emergency-coverage-table td.emergency-coverage-actions {
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+}
+.emergency-coverage-actions > div {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
 }
 .emergency-coverage-preview ol {
   margin: 0 0 8px;

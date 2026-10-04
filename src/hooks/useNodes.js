@@ -3,6 +3,8 @@ import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toNode, nodeCreateBody, nodePatchBody } from "../utils/entities";
 import { NODE_GRAPH, planNeighbors, planHotspot, planDefaultView, planClearDefaultView, planMarkers, runCalls } from "../utils/graphSync";
 import { useCollection } from "./useCollection";
+import { deleteDialogsByName } from "./usePlacardDialogs";
+import { orphanedFacilityNames } from "../utils/markers";
 
 // Admin-side Nodes_API hook. Public interface (nodes, loading,
 // selectedNodeId, addNode, updateNode, renameNodeId, deleteNode,
@@ -133,16 +135,30 @@ export function useNodes() {
     [mutate]
   );
 
+  // A facility's saved details go with its marker: once nothing else uses the
+  // name they could never be reached again. The marker change has already
+  // succeeded by then, so a failure here is logged rather than reported as a
+  // failed edit (the leftover record is harmless, just unreachable).
+  const dropOrphanedDetails = useCallback(async (before, after) => {
+    try {
+      await deleteDialogsByName(orphanedFacilityNames(before, after));
+    } catch (err) {
+      console.warn("Couldn't delete a removed facility's saved details:", err);
+    }
+  }, []);
+
   const deleteNode = useCallback(
     (id) =>
       mutate(
         async () => {
+          const before = nodesRef.current;
           await apiDelete(`Nodes_API/delete/${id}`);
           setSelectedNodeId((cur) => (cur === id ? null : cur));
+          await dropOrphanedDetails(before, before.filter((n) => n.id !== id));
         },
         { success: `Node "${id}" deleted.`, errorPrefix: "Couldn't delete node" }
       ),
-    [mutate]
+    [mutate, nodesRef, dropOrphanedDetails]
   );
 
   const setNeighbors = useCallback(
@@ -165,11 +181,15 @@ export function useNodes() {
 
   const setMarkers = useCallback(
     (nodeId, newMarkers) =>
-      mutate(() => runCalls(planMarkers(NODE_GRAPH, nodeId, nodeById(nodeId)?.markers ?? [], newMarkers)), {
-        success: "Markers updated.",
-        errorPrefix: "Couldn't update markers",
-      }),
-    [mutate, nodeById]
+      mutate(
+        async () => {
+          const before = nodesRef.current;
+          await runCalls(planMarkers(NODE_GRAPH, nodeId, nodeById(nodeId)?.markers ?? [], newMarkers));
+          await dropOrphanedDetails(before, before.map((n) => (n.id === nodeId ? { ...n, markers: newMarkers } : n)));
+        },
+        { success: "Markers updated.", errorPrefix: "Couldn't update markers" }
+      ),
+    [mutate, nodeById, nodesRef, dropOrphanedDetails]
   );
 
   const setDefaultView = useCallback(

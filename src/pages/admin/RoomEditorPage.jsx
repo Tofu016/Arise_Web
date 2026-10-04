@@ -11,7 +11,7 @@ import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
 import IconPlaceholder from "../../components/IconPlaceholder";
 import linkIcon from "../../assets/icons/link.svg";
-import { listAllRooms } from "../../utils/search";
+import { listAllRooms, namesOfKind } from "../../utils/search";
 import { allBuildings, buildingLabel, floorLabel } from "../../utils/constants";
 
 const defaultFilters = {
@@ -30,29 +30,38 @@ function normalize(name) {
   return (name || "").trim().toUpperCase();
 }
 
-// Checks whether newName is already used by any room on any node — since
-// room names are the key that links a node's "Rooms served" entry to its
-// placardDialogs record, two rooms silently sharing a name would break
-// both search and the mobile app's OCR matching, unable to tell which one
-// is the "real" match. currentNodeId/currentRoomName are excluded from the
-// check — renaming a room to the name it already has (a no-op) shouldn't
-// be flagged as a conflict with itself.
+// Checks whether newName is already used by any room or facility on any
+// node — since the name is the key that links a node's "Rooms served" entry
+// (or a facility marker's label) to its placardDialogs record, two entries
+// silently sharing a name would share one record, and break both search and
+// the mobile app's OCR matching, unable to tell which one is the "real"
+// match. currentNodeId/currentRoomName are excluded from the check — renaming
+// to the name it already has (a no-op) shouldn't conflict with itself.
 function isRoomNameTaken(newName, nodes, currentNodeId, currentRoomName) {
   const key = normalize(newName);
   for (const n of nodes) {
-    for (const r of n.rooms || []) {
-      if (n.id === currentNodeId && normalize(r) === normalize(currentRoomName)) continue;
-      if (normalize(r) === key) return true;
+    for (const kind of ["room", "facility"]) {
+      for (const r of namesOfKind(n, kind)) {
+        if (n.id === currentNodeId && normalize(r) === normalize(currentRoomName)) continue;
+        if (normalize(r) === key) return true;
+      }
     }
   }
   return false;
 }
 
 const LIST_MODES = [
-  { id: "rooms", label: "Rooms" },
+  { id: "rooms", label: "Rooms and Facilities" },
   { id: "nodes", label: "Nodes" },
 ];
 
+// A facility is a facility marker on a node, not a "Rooms served" entry, but
+// it has the same details record as a room (keyed by name, here the marker's
+// label) and the same public panel. So this page edits both: a (node, name)
+// selection is a room when the node serves that name, otherwise a facility.
+// A facility cannot move to another node here (it is placed in one node's
+// panorama), and renaming one relabels its marker instead of "Rooms served".
+//
 // Promoted from the old RoomEditPanel modal to a full page. Which node's
 // rooms are being edited is the SAME shared selectedNodeId every other
 // section uses — picking a node from this page's own Node List (or from
@@ -61,12 +70,14 @@ const LIST_MODES = [
 // its node in the Nodes list (the row, or one of its room pills). Either
 // way a selection is a (node, room) pair.
 export default function RoomEditorPage() {
-  const { nodes, selectedNodeId, setSelectedNodeId, updateNode } = useOutletContext();
+  const { nodes, selectedNodeId, setSelectedNodeId, updateNode, setMarkers } = useOutletContext();
   const { getForRoom, saveRoomDialog } = usePlacardDialogs();
   const toast = useToast();
 
   const node = nodes.find((n) => n.id === selectedNodeId) || null;
-  const rooms = node?.rooms || [];
+  const servedRooms = node?.rooms || [];
+  const facilities = node ? namesOfKind(node, "facility").filter((f) => !servedRooms.includes(f)) : [];
+  const rooms = [...servedRooms, ...facilities];
 
   const [filters, setFilters] = useState(defaultFilters);
   const [listMode, setListMode] = useState("rooms");
@@ -84,6 +95,8 @@ export default function RoomEditorPage() {
   };
 
   const existing = selectedRoom ? getForRoom(selectedRoom) : null;
+  const isFacility = !!selectedRoom && facilities.includes(selectedRoom);
+  const kindName = isFacility ? "Facility" : "Room";
 
   const [roomTitle, setRoomTitle] = useState(selectedRoom || "");
   const [roomNodeId, setRoomNodeId] = useState(node?.id || "");
@@ -196,23 +209,33 @@ export default function RoomEditorPage() {
 
     const trimmedTitle = roomTitle.trim();
     const isRenaming = trimmedTitle !== selectedRoom;
-    const targetNode = nodes.find((n) => n.id === roomNodeId) || node;
+    const targetNode = isFacility ? node : nodes.find((n) => n.id === roomNodeId) || node;
     const isMoving = targetNode.id !== node.id;
 
     if (isRenaming) {
       if (!trimmedTitle) {
-        alert("Room title can't be empty.");
+        alert(`${kindName} title can't be empty.`);
         return;
       }
       if (isRoomNameTaken(trimmedTitle, nodes, node.id, selectedRoom)) {
-        alert(`"${trimmedTitle}" is already used by another room. Room names must be unique.`);
+        alert(`"${trimmedTitle}" is already used by another room or facility. Names must be unique.`);
         return;
       }
     }
 
     setSaving(true);
     try {
-      if (isMoving) {
+      if (isFacility) {
+        // A facility's name is its marker's label. Every facility marker on
+        // this node with the old label takes the new one together, so none
+        // is left pointing at a record that no longer matches.
+        if (isRenaming) {
+          await setMarkers(
+            node.id,
+            (node.markers || []).map((m) => (m.type === "facility" && (m.label || "").trim() === selectedRoom ? { ...m, label: trimmedTitle } : m))
+          );
+        }
+      } else if (isMoving) {
         // Added to the new node before it leaves the old one: if the second
         // write fails the room is listed twice (fixable here) rather than
         // on no node at all. Its saved details are keyed by room name, not
@@ -254,7 +277,7 @@ export default function RoomEditorPage() {
 
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
-      toast.success(`Room "${trimmedTitle}" saved.`);
+      toast.success(`${kindName} "${trimmedTitle}" saved.`);
     } catch (err) {
       toast.error(err.message || "Couldn't save room details.");
     } finally {
@@ -325,15 +348,16 @@ export default function RoomEditorPage() {
   return (
     <div className="room-editor-page">
       <div className="room-editor-main">
-        <h2 className="admin-page-heading">Room Editor</h2>
+        <h2 className="admin-page-heading">Room and Facility Editor</h2>
 
         {!node && (
-          <p className="empty-hint">Select a room or a node from the list on the right first.</p>
+          <p className="empty-hint">Select a room, a facility or a node from the list on the right first.</p>
         )}
 
         {node && rooms.length === 0 && (
           <p className="empty-hint">
-            "{node.name}" has no rooms served yet. Add one under "Rooms served" in Node Editor first.
+            "{node.name}" has no rooms or facilities yet. Add a room under "Rooms served" in Node Editor, or a
+            facility marker in Virtual Map Navigation Editor, first.
           </p>
         )}
 
@@ -357,7 +381,7 @@ export default function RoomEditorPage() {
                     className={"room-edit-tab" + (r === selectedRoom ? " room-edit-tab-active" : "")}
                     onClick={() => setSelectedRoom(r)}
                   >
-                    {r}
+                    {r}{facilities.includes(r) && <span className="room-edit-tab-kind"> (facility)</span>}
                   </button>
                 ))}
               </div>
@@ -370,17 +394,19 @@ export default function RoomEditorPage() {
             <div className="room-editor-top-row">
               <div className="room-editor-top-col">
                 <label>
-                  Room title
+                  {kindName} title
                   <input type="text" value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} />
                 </label>
                 <p className="field-hint">
-                  Renaming here updates both "Rooms served" on this node and this room's saved details together;
-                  room names must stay unique across the whole campus.
+                  {isFacility
+                    ? "Renaming here updates this facility's marker label and its saved details together; "
+                    : 'Renaming here updates both "Rooms served" on this node and this room\'s saved details together; '}
+                  names must stay unique across every room and facility on campus.
                 </p>
 
                 <label>
                   Node
-                  <select value={roomNodeId} onChange={(e) => setRoomNodeId(e.target.value)}>
+                  <select value={roomNodeId} onChange={(e) => setRoomNodeId(e.target.value)} disabled={isFacility}>
                     {nodeOptionGroups.map((g) => (
                       <optgroup key={g.id} label={g.label}>
                         {g.nodes.map((n) => (
@@ -393,8 +419,9 @@ export default function RoomEditorPage() {
                   </select>
                 </label>
                 <p className="field-hint">
-                  Where this room is reached from. Choosing another node moves the room to that node's "Rooms
-                  served" on Save; its details and photos come with it.
+                  {isFacility
+                    ? "A facility stays on the node whose panorama its marker is placed in. Move the marker itself in Virtual Map Navigation Editor."
+                    : "Where this room is reached from. Choosing another node moves the room to that node's \"Rooms served\" on Save; its details and photos come with it."}
                 </p>
 
                 <label>
@@ -424,7 +451,7 @@ export default function RoomEditorPage() {
                     maxLength={50}
                   />
                 </label>
-                <p className="field-hint">Optional: shown on the room's public panel.</p>
+                <p className="field-hint">Optional: shown on the public panel.</p>
 
                 <label>
                   <img src={linkIcon} alt="" className="icon-placeholder-img" /> Link
@@ -436,7 +463,7 @@ export default function RoomEditorPage() {
                     className="room-edit-link-input"
                   />
                 </label>
-                <p className="field-hint">Optional: shown as a clickable link on the room's public panel.</p>
+                <p className="field-hint">Optional: shown as a clickable link on the public panel.</p>
               </div>
             </div>
 

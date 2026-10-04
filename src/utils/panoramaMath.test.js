@@ -4,6 +4,7 @@ import {
   isFacing,
   previewScale,
   autoPanStep,
+  autoPanToward,
   PREVIEW_MAX_SCALE,
   PREVIEW_MIN_SCALE,
   PREVIEW_FALLOFF_DEG,
@@ -245,5 +246,39 @@ describe("autoPanStep", () => {
     expect(autoPanStep(rad(120), 5)).toBeCloseTo(rad(AUTO_PAN_MAX_DEG_PER_SEC * 0.1));
     expect(autoPanStep(rad(1), 5)).toBeCloseTo(rad(AUTO_PAN_MIN_DEG_PER_SEC * 0.1));
     expect(autoPanStep(rad(0.6), 5)).toBeLessThanOrEqual(rad(0.6));
+  });
+});
+
+describe("autoPanToward", () => {
+  it("is done when already on target", () => {
+    expect(autoPanToward({ yaw: 40, pitch: -10 }, { yaw: 40.2, pitch: -10 }, 0.016)).toBeNull();
+  });
+
+  it("takes the short way round the yaw seam", () => {
+    const next = autoPanToward({ yaw: 350, pitch: 0 }, { yaw: 10, pitch: 0 }, 0.05);
+    expect(next.yaw).toBeGreaterThan(350);
+    expect(next.pitch).toBeCloseTo(0);
+  });
+
+  it("turns left when the target is anticlockwise", () => {
+    expect(autoPanToward({ yaw: 10, pitch: 0 }, { yaw: 350, pitch: 0 }, 0.05).yaw).toBeLessThan(10);
+  });
+
+  it("moves along the straight yaw/pitch line, arriving on both at once", () => {
+    const from = { yaw: 0, pitch: 0 };
+    const to = { yaw: 80, pitch: -20 };
+    const next = autoPanToward(from, to, 0.05);
+    expect(next.pitch / next.yaw).toBeCloseTo(to.pitch / to.yaw);
+  });
+
+  it("does not swing the yaw when looking nearly straight up", () => {
+    const next = autoPanToward({ yaw: 100, pitch: 85 }, { yaw: 100, pitch: -10 }, 0.05);
+    expect(next.yaw).toBeCloseTo(100);
+    expect(next.pitch).toBeLessThan(85);
+  });
+
+  it("never overshoots", () => {
+    const next = autoPanToward({ yaw: 0, pitch: 0 }, { yaw: 1, pitch: 0 }, 0.1);
+    expect(next.yaw).toBeLessThanOrEqual(1);
   });
 });

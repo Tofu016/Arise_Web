@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { toPosition, toAngles, initialCameraPosition, autoPanStep } from "../../utils/panoramaMath";
+import { toAngles, initialCameraPosition, autoPanToward } from "../../utils/panoramaMath";
 
 // Aims the camera at the entry direction of a newly swapped-in scene. The
 // Canvas outlives moves, so this can't rely on the camera's initial position.
@@ -19,14 +19,15 @@ export function CameraAim({ aimKey, yaw, pitch }) {
 }
 
 // Directions: slowly turns the view until `target` (a hotspot's yaw/pitch)
-// is centred. Eases out (speed follows the remaining angle) between a floor
-// and a ceiling in degrees per second, so it stays gentle. A drag by the
-// visitor hands control back until the target changes (a new stop or scene).
+// is centred, along a straight line in yaw/pitch (see autoPanToward). Eases out
+// (speed follows the remaining angle) between a floor and a ceiling in degrees
+// per second, so it stays gentle. A drag by the visitor hands control back
+// until the target changes (a new stop or scene).
 export function AutoPan({ target, targetKey }) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls);
   const overridden = useRef(false);
-  const scratch = useMemo(() => ({ look: new THREE.Vector3(), want: new THREE.Vector3(), axis: new THREE.Vector3() }), []);
+  const look = useMemo(() => new THREE.Vector3(), []);
 
   useEffect(() => {
     overridden.current = false;
@@ -41,15 +42,11 @@ export function AutoPan({ target, targetKey }) {
 
   useFrame((_, delta) => {
     if (!target || overridden.current || !controls) return;
-    const { look, want, axis } = scratch;
     camera.getWorldDirection(look);
-    want.set(...toPosition(target.yaw, target.pitch)).normalize();
-    const step = autoPanStep(look.angleTo(want), delta); // 0 once centred
-    if (step === 0) return;
-    axis.crossVectors(look, want);
-    if (axis.lengthSq() < 1e-8) axis.set(0, 1, 0); // facing directly away: any turn will do
-    axis.normalize();
-    camera.position.applyAxisAngle(axis, step); // the camera sits opposite its view direction
+    const next = autoPanToward(toAngles(look), target, delta);
+    if (!next) return;
+    // the camera sits opposite its view direction, at its current distance
+    camera.position.set(...initialCameraPosition(next.yaw, next.pitch, camera.position.length()));
     controls.update();
   });
   return null;

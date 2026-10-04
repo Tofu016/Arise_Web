@@ -43,6 +43,14 @@ export const KIOSK_PANORAMA_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION *
 // the idle prompt and the account and building dialogs.
 export const KIOSK_CARD_CENTER = KIOSK_TOP_INSET + KIOSK_PANORAMA_FRACTION * 0.25;
 
+// Vertical center (fraction of screen height) of the kiosk dialog grid itself
+// (the search dialog's footprint), for small prompts that belong to the
+// search flow: the "starting from" and stairs/elevator choices.
+export const KIOSK_DIALOG_CENTER = KIOSK_DIALOG_TOP + KIOSK_PANORAMA_FRACTION * 0.25;
+
 // Inline style for a .kiosk-raised-overlay (see index.css) that sets that
 // center as a CSS variable.
 export const KIOSK_RAISED_STYLE = { "--kiosk-card-center": `${KIOSK_CARD_CENTER * 100}vh` };
+
+// Same, centered on the search dialog's footprint instead.
+export const KIOSK_DIALOG_CENTER_STYLE = { "--kiosk-card-center": `${KIOSK_DIALOG_CENTER * 100}vh` };

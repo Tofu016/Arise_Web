@@ -492,8 +492,11 @@ Type, Photo status (all, missing, or has a photo filename), and a search
   views and each node's starting view get positioned.
 - **Node Flowchart** — the node graph for a building and floor drawn as a
   draggable flowchart; dragging a node saves its position.
-- **Room Editor** — each room's details (description, contact number, link,
-  photos, 360° view), shown on the room panel and used by search.
+- **Room and Facility Editor** — each room's and facility's details
+  (description, contact number, link, photos, 360° view), shown on the room
+  panel and used by search. A facility is a Facility marker; it is renamed
+  here (which relabels the marker) but placed and moved in Virtual Map
+  Navigation Editor.
 - **Campus Tour** group: **Tour Stops** and **Campus Tour Navigation
   Editor**, the equivalents for the outdoor Virtual Campus Tour.
 
@@ -613,7 +616,7 @@ its width, which is also what the portrait kiosk screens get.
 - **Room panel** — the room's description, photos, contact number and link,
   with **Go To**, **Directions**, and a save button. Saved rooms live only in
   that browser's localStorage, by room name: no account, nothing sent to the
-  API, and renaming a room in the Room Editor drops it from the saved list.
+  API, and renaming a room or facility in the Room and Facility Editor drops it from the saved list.
 - **In the photo** — click and drag to look around, scroll to zoom, click a
   glowing arrow to walk to the connected location. The keyboard works too:
   A/D or the arrow keys turn, W walks to the nearest arrow on screen, S goes

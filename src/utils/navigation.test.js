@@ -21,8 +21,8 @@ import {
 } from "./navigation";
 
 const buildings = [
-  { id: "gd1", label: "GD1", lat: 1, lng: 1 },
-  { id: "gd2", label: "GD2", lat: 1, lng: 1 }, // same cluster as GD1
+  { id: "gd1", label: "GD1", lat: 1, lng: 1, campus: "main" },
+  { id: "gd2", label: "GD2", lat: 1, lng: 1, campus: "main" }, // same campus as GD1
   { id: "far", label: "Far", lat: 5, lng: 5 },
   { id: "nocoords", label: "No coords" },
 ];
@@ -100,6 +100,11 @@ describe("walk, jump and back", () => {
   it("walk also records the pitch the visitor faced", () => {
     const { nav } = requestWalk(at("a"), world, { id: "b", yaw: 90, pitch: -12 }, tick());
     expect(nav).toMatchObject({ entryYaw: 90, entryPitch: -12 });
+  });
+
+  it("a skip-ahead walk keeps the nodes it passed over in history, in order", () => {
+    const { nav } = requestWalk(at("a"), world, { id: "b", yaw: 90, via: ["x", "y"] }, tick());
+    expect(nav).toMatchObject({ currentId: "b", history: ["a", "x", "y"], entryYaw: 90 });
   });
 
   it("jump is a fresh start: history cleared, facing forward", () => {
@@ -181,6 +186,24 @@ describe("cross-campus flyover", () => {
 
   it("is not needed within one cluster (shared coordinates)", () => {
     expect(findFlyover(byId.a, byId.c, buildings)).toBeNull();
+  });
+  it("is not needed within one campus even when a building's own coordinates differ or are missing", () => {
+    const drifted = [
+      { id: "gd1", lat: 1, lng: 1, campus: "main" },
+      { id: "gd2", lat: 1.5, lng: 1.5, campus: "main" },
+      { id: "gd3", campus: "main" },
+    ];
+    const n = (id, building) => ({ id, building });
+    expect(findFlyover(n("a", "gd1"), n("b", "gd2"), drifted)).toBeNull();
+    expect(findFlyover(n("a", "gd1"), n("c", "gd3"), drifted)).toBeNull();
+  });
+  it("a campus is placed where its first building with coordinates is", () => {
+    const campus = [
+      { id: "gd3", label: "GD3", campus: "main" },
+      { id: "gd1", label: "GD1", lat: 1, lng: 1, campus: "main" },
+      { id: "far", label: "Far", lat: 5, lng: 5 },
+    ];
+    expect(findFlyover({ building: "gd3" }, { building: "far" }, campus)).toMatchObject({ fromLat: 1, fromLng: 1, toLat: 5 });
   });
   it("is not needed when either end has no coordinates", () => {
     expect(findFlyover(byId.a, byId.n, buildings)).toBeNull();

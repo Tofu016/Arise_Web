@@ -70,6 +70,16 @@ export function searchRooms(query, searchableRooms) {
   }).slice(0, 8);
 }
 
+// The names a node offers as a given kind of destination: its "Rooms served"
+// entries, or the labels of its facility markers. A facility exists only as a
+// marker (it is not in "Rooms served"), so its label is its name; blank
+// labels are skipped and a label repeated on one node counts once.
+export function namesOfKind(node, kind) {
+  if (kind === "room") return node.rooms || [];
+  const labels = (node.markers || []).filter((m) => m.type === "facility").map((m) => (m.label || "").trim());
+  return [...new Set(labels.filter(Boolean))];
+}
+
 // Rooms with actual detail records (photo/description/department) —
 // built by matching each node's "Rooms served" entries against the
 // placard dialogs. Only rooms an admin has gone through Room Edit for are
@@ -82,14 +92,18 @@ export function buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails 
   if (!nodes) return [];
   const out = [];
   const seen = new Set();
-  for (const n of nodes) {
-    for (const roomName of n.rooms || []) {
-      const key = roomName.trim().toUpperCase();
-      if (seen.has(key)) continue;
-      const placard = getForRoom(roomName) || null;
-      if (!placard && !includeWithoutDetails) continue; // no detail record yet, not searchable here
-      seen.add(key);
-      out.push({ roomName, node: n, placard });
+  // Rooms are collected across every node before any facility, so a facility
+  // that shares a name with a room never shadows it.
+  for (const kind of ["room", "facility"]) {
+    for (const n of nodes) {
+      for (const roomName of namesOfKind(n, kind)) {
+        const key = roomName.trim().toUpperCase();
+        if (seen.has(key)) continue;
+        const placard = getForRoom(roomName) || null;
+        if (!placard && !includeWithoutDetails) continue; // no detail record yet, not searchable here
+        seen.add(key);
+        out.push({ roomName, node: n, placard, kind });
+      }
     }
   }
   return out;
@@ -148,13 +162,14 @@ export function findRoomForMarker(marker, searchableRooms) {
   return searchableRooms.find((r) => normalize(r.roomName) === key);
 }
 
-// The other direction: the "room" marker on a node that stands for a room,
-// matched by the same name rule. Used to face that marker when a room is
-// jumped to. Undefined when the node has no marker for it.
+// The other direction: the "room" or "facility" marker on a node that stands
+// for a room, matched by the same name rule. Used to face that marker when a
+// room is jumped to. Undefined when the node has no marker for it.
 export function findMarkerForRoom(node, roomName) {
   const key = normalize(roomName);
   if (!key) return undefined;
-  return (node?.markers || []).find((m) => m.type === "room" && normalize(m.label) === key);
+  const named = (node?.markers || []).filter((m) => normalize(m.label) === key);
+  return named.find((m) => m.type === "room") || named.find((m) => m.type === "facility");
 }
 
 // Resolves typed text to a node by EXACT name (case/space/punctuation-
@@ -186,15 +201,17 @@ export function rankNodeMatches(query, nodes) {
   });
 }
 
-// Every "Rooms served" entry on every node, with or without saved details,
-// for the Room Editor's Rooms list. Unlike buildSearchableRooms it never
+// Every "Rooms served" entry and every facility marker on every node, with or
+// without saved details, for the Room and Facility Editor's list. Unlike buildSearchableRooms it never
 // dedupes: if two nodes do list the same name, both need to be reachable
 // to fix that, so each entry is keyed by its node too (see roomKey).
 export function listAllRooms(nodes, getForRoom) {
   const out = [];
   for (const node of nodes || []) {
-    for (const roomName of node.rooms || []) {
-      out.push({ roomName, node, placard: getForRoom(roomName) || null });
+    for (const kind of ["room", "facility"]) {
+      for (const roomName of namesOfKind(node, kind)) {
+        out.push({ roomName, node, placard: getForRoom(roomName) || null, kind });
+      }
     }
   }
   return out;

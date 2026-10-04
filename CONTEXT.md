@@ -76,12 +76,16 @@ _Avoid_: desktop session (say web session)
 **Directions**:
 The from/to panel and the Route it computes. Opening it replaces whatever panel was showing, and getting directions starts the walk in one go (a Jump to the Route's first stop, then the Route is followed one stop at a time).
 
+**Facility**:
+A Facility marker on a Node, treated as a destination like a room: it has the same saved details (description, department, contact number, link, photos), appears in search and Saved Directories, and opens the same room panel when its marker is clicked. Unlike a room it is not in the Node's "Rooms served"; its label is its name, so renaming it relabels the marker. Rooms and facilities share one details table keyed by name, so a name can be used only once across both.
+_Avoid_: amenity, service
+
 **Contact number**:
-The optional telephone number an admin sets on a room's details in the Room Editor (`contactNumber` / `contact_number`), shown on the desktop room panel. It replaced the old free-text "Use" field.
+The optional telephone number an admin sets on a room's or facility's details in the Room and Facility Editor (`contactNumber` / `contact_number`), shown on the desktop room panel. It replaced the old free-text "Use" field.
 _Avoid_: phone number, phone
 
 **Saved room**:
-A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room Editor drops it from the list.
+A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room and Facility Editor drops it from the list.
 _Avoid_: favorite, starred room
 
 **Signage**:

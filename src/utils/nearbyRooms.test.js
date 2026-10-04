@@ -55,3 +55,14 @@ describe("findNearbyRooms", () => {
     expect(findNearbyRooms(nodes, "missing")).toEqual([]);
   });
 });
+
+describe("findNearbyRooms facilities", () => {
+  it("includes facility markers alongside rooms, by hop distance", () => {
+    const withFacility = nodes.map((n) =>
+      n.id === "n2" ? { ...n, markers: [{ id: 1, type: "facility", label: "Cafe" }, { id: 2, type: "room", label: "102" }] } : n
+    );
+    const result = findNearbyRooms(withFacility, "n1");
+    expect(result.map((r) => r.room)).toEqual(["101", "102", "201", "Cafe", "103"]);
+    expect(result.find((r) => r.room === "Cafe")).toMatchObject({ hops: 1, nodeId: "n2" });
+  });
+});

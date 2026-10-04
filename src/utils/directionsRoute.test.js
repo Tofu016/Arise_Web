@@ -340,3 +340,59 @@ describe("hasStartedWalking", () => {
     expect(route.hasStartedWalking(d(1), "b")).toBe(true);
   });
 });
+
+describe("straightRunAhead", () => {
+  // A hallway h1..h5 running due east (hotspots on yaw 90 ahead, 270 back),
+  // with h5 turning north to k, a junction at h3b, stairs at the end.
+  const hall = (id, prev, next, extra = {}) => ({
+    id, name: id, type: "hallway", floor: 1, building: "GD1",
+    neighbors: [prev, next].filter(Boolean),
+    hotspots: { ...(prev && { [prev]: { yaw: 270, pitch: -5 } }), ...(next && { [next]: { yaw: 90, pitch: -5 } }) },
+    ...extra,
+  });
+  const line = [
+    hall("h1", null, "h2"),
+    hall("h2", "h1", "h3"),
+    hall("h3", "h2", "h4"),
+    hall("h4", "h3", "h5"),
+    hall("h5", "h4", "k", { hotspots: { h4: { yaw: 270, pitch: -5 }, k: { yaw: 0, pitch: -5 } } }), // corner
+    hall("k", "h5", null),
+  ];
+  const lineById = Object.fromEntries(line.map((n) => [n.id, n]));
+  const walking = (stepIndex = 0, extra = {}) => ({ path: line.map((n) => n.id), stepIndex, ...extra });
+
+  it("runs to the first stop that is not straight through", () => {
+    const run = route.straightRunAhead(walking(0), lineById);
+    expect(run).toMatchObject({ targetId: "h5", via: ["h2", "h3", "h4"], count: 4 });
+    expect(run.angle.yaw).toBe(90); // arrives still facing along the hallway
+  });
+
+  it("is null when only one stop is ahead on the line", () => {
+    expect(route.straightRunAhead(walking(3), lineById)).toBeNull(); // h4 -> h5 is a single hop
+    expect(route.straightRunAhead(walking(4), lineById)).toBeNull(); // a corner right ahead
+  });
+
+  it("is null at the end of the route, with no route, and on an emergency route", () => {
+    expect(route.straightRunAhead(walking(5), lineById)).toBeNull();
+    expect(route.straightRunAhead(null, lineById)).toBeNull();
+    expect(route.straightRunAhead(walking(0, { emergency: { blocked: [], ascends: false } }), lineById)).toBeNull();
+  });
+
+  it("stops at a junction", () => {
+    const withBranch = { ...lineById, h3: { ...lineById.h3, neighbors: ["h2", "h4", "side"] } };
+    expect(route.straightRunAhead(walking(0), withBranch)).toMatchObject({ targetId: "h3", via: ["h2"] });
+  });
+
+  it("stops at a bend beyond the tolerance, but not within it", () => {
+    const bent = (yaw) => ({ ...lineById, h3: { ...lineById.h3, hotspots: { h2: { yaw: 270 }, h4: { yaw } } } });
+    expect(route.straightRunAhead(walking(0), bent(90 + route.STRAIGHT_RUN_TOLERANCE_DEG - 1)).targetId).toBe("h5");
+    expect(route.straightRunAhead(walking(0), bent(90 + route.STRAIGHT_RUN_TOLERANCE_DEG + 5)).targetId).toBe("h3");
+  });
+
+  it("never passes through a non-hallway node or across a floor", () => {
+    const lobby = { ...lineById, h3: { ...lineById.h3, type: "lobby" } };
+    expect(route.straightRunAhead(walking(0), lobby)).toMatchObject({ targetId: "h3" });
+    const upstairs = { ...lineById, h4: { ...lineById.h4, floor: 2 } };
+    expect(route.straightRunAhead(walking(0), upstairs).targetId).toBe("h3");
+  });
+});

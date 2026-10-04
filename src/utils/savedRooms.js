@@ -4,7 +4,7 @@ import { normalizeRoomName } from "./entities";
 // nothing sent to the API (SavedRooms_API is the mobile app's per-account
 // list and is not used here). Rooms are saved by name, since room names are
 // unique campus-wide and a room with no details record has no other id. The
-// trade-off: renaming a room in the Room Editor drops it from everyone's
+// trade-off: renaming a room in the Room and Facility Editor drops it from everyone's
 // saved list, as the old name no longer matches anything.
 //
 // Stored as a JSON array of room names, most recently saved first.

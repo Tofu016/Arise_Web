@@ -59,7 +59,7 @@ function isTypingTarget(target) {
  *  - wheelZoomable: bool — desktop view: the mouse scroll wheel zooms the panorama, with the same small level indicator (shown only away from the default 1.0x)
  *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
- *  - onRoomMarkerClick(marker): optional — called when a type:"room" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
+ *  - onRoomMarkerClick(marker): optional — called when a type:"room" or type:"facility" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onElevatorMarkerClick(marker): optional — called when a type:"elevator" marker is clicked (public viewer only; independent of the props above — moves the visitor, unlike every other marker type, which is purely informational)
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
  *  - onBack: required when keyboardNav is true — called on S/Down

@@ -84,9 +84,16 @@ describe("planMarkers", () => {
     ]);
   });
 
-  it("does not send a label-only edit (known limit: only position is compared)", () => {
+  it("sends a node marker's label edit along with its position", () => {
     const next = current.map((m) => (m.id === 1 ? { ...m, label: "renamed" } : m));
-    expect(planMarkers(NODE_GRAPH, "a", current, next)).toEqual([]);
+    expect(planMarkers(NODE_GRAPH, "a", current, next)).toEqual([
+      { method: "PATCH", path: "Nodes_API/updateMarker/1", body: { yaw: 0, pitch: 0, label: "renamed" } },
+    ]);
+  });
+
+  it("does not send a stop marker's label edit", () => {
+    const next = current.map((m) => (m.id === 1 ? { ...m, label: "renamed" } : m));
+    expect(planMarkers(STOP_GRAPH, "a", current, next)).toEqual([]);
   });
 });
 

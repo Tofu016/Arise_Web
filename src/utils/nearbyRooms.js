@@ -1,10 +1,12 @@
 import { campusForBuilding } from "./constants";
+import { namesOfKind } from "./search";
 
 // BFS hop-distance from `fromId` over the same unweighted neighbors graph
-// pathfinding.js walks, flattened into nearby rooms/facilities. A node can
-// list several rooms (entities.js's `rooms: string[]`), so distance is
-// really "hops to the node that hosts this room" — the same room name
-// reachable from multiple nodes keeps only its nearest occurrence.
+// pathfinding.js walks, flattened into nearby rooms and facilities. A node can
+// list several rooms (entities.js's `rooms: string[]`) and carry several
+// facility markers, so distance is really "hops to the node that hosts this
+// one" — the same name reachable from multiple nodes keeps only its nearest
+// occurrence.
 //
 // Same-floor rooms are unbounded by hop count by default (a floor's hallway
 // network is naturally bounded); a different-floor room only counts as
@@ -43,7 +45,7 @@ export function findNearbyRooms(nodes, fromId, { maxCrossFloorHops = 5, maxHops 
     if (dist > maxHops) continue;
     const node = byId[nodeId];
     if (node.floor !== from.floor && dist > maxCrossFloorHops) continue;
-    for (const room of node.rooms || []) {
+    for (const room of [...namesOfKind(node, "room"), ...namesOfKind(node, "facility")]) {
       const existing = nearestByRoom.get(room);
       if (!existing || dist < existing.hops) {
         nearestByRoom.set(room, { room, hops: dist, nodeId, floor: node.floor, building: node.building });

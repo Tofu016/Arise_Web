@@ -133,6 +133,24 @@ export function autoPanStep(angleRad, deltaSeconds) {
   return Math.min(angleRad, ((speed * Math.PI) / 180) * Math.min(deltaSeconds, 0.1));
 }
 
+// One frame of the directions auto-pan, as a straight line in yaw/pitch
+// space: yaw takes the short way round (never more than half a turn), pitch
+// moves linearly, and both arrive together. Turning along a great circle on
+// the sphere instead swings the yaw wildly whenever the view or the target
+// is near straight up/down, or nearly behind the visitor. Same easing as
+// autoPanStep (the "distance" is the straight-line one in yaw/pitch degrees).
+// `from`/`to` are { yaw, pitch } in degrees; returns the next { yaw, pitch },
+// or null once close enough.
+export function autoPanToward(from, to, deltaSeconds) {
+  const dYaw = ((to.yaw - from.yaw + 540) % 360) - 180;
+  const dPitch = to.pitch - from.pitch;
+  const distRad = (Math.hypot(dYaw, dPitch) * Math.PI) / 180;
+  const stepRad = autoPanStep(distRad, deltaSeconds);
+  if (stepRad === 0) return null;
+  const t = stepRad / distRad;
+  return { yaw: (from.yaw + dYaw * t + 360) % 360, pitch: from.pitch + dPitch * t };
+}
+
 // Desktop WASD/arrow-key controls: how fast A/D (or Left/Right) pan the
 // view, in degrees per second.
 export const KEYBOARD_PAN_DEG_PER_SEC = 90;

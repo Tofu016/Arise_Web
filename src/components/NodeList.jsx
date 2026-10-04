@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { buildingLabel, floorLabel, typeLabel } from "../utils/constants";
 import EntityListPanel from "./EntityListPanel";
-import { rankNodeMatches } from "../utils/search";
+import { namesOfKind, rankNodeMatches } from "../utils/search";
 
-// `onSelectRoom` (Room Editor only) turns each node's rooms into pills
-// that select that room directly; clicking the rest of the row still
+// `onSelectRoom` (Room and Facility Editor only) turns each node's rooms and
+// facilities into pills that select that one directly; clicking the rest of the row still
 // selects the node. `selectedRoom` highlights the open room's pill.
 export default function NodeList({ nodes, filters, selectedNodeId, onSelect, onSelectRoom, selectedRoom, header }) {
   const filtered = useMemo(() => {
@@ -33,11 +33,12 @@ export default function NodeList({ nodes, filters, selectedNodeId, onSelect, onS
         </>
       )}
       renderExtra={(n) => {
-        if (!n.rooms?.length) return null;
-        if (!onSelectRoom) return <div className="node-row-rooms">Rooms: {n.rooms.join(", ")}</div>;
+        if (!onSelectRoom) return n.rooms?.length ? <div className="node-row-rooms">Rooms: {n.rooms.join(", ")}</div> : null;
+        const names = [...(n.rooms || []), ...namesOfKind(n, "facility").filter((f) => !(n.rooms || []).includes(f))];
+        if (!names.length) return null;
         return (
           <div className="node-row-room-pills">
-            {n.rooms.map((r) => (
+            {names.map((r) => (
               <button
                 key={r}
                 type="button"

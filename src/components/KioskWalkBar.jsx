@@ -1,6 +1,7 @@
 import AutoWalkCountdown from "./AutoWalkCountdown";
 import { KIOSK_DIALOG_TOP, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout";
 import IconPlaceholder from "./IconPlaceholder";
+import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 
 // Kiosk view only: the compact controls that replace the big directions
 // dialog while a route is being walked, so the panorama stays visible. It
@@ -9,6 +10,7 @@ import IconPlaceholder from "./IconPlaceholder";
 // already is, and holds just the three things needed mid-route:
 //
 //   - Walk to the next stop
+//   - Skip hallway, when the route runs straight along one for 2+ stops
 //   - an Auto-walk switch
 //   - a button that brings the full directions dialog back
 //
@@ -21,10 +23,13 @@ export default function KioskWalkBar({
   autoWalking,
   stepIndex,
   onWalk,
+  skipCount,
+  onSkip,
   onToggleAutoWalk,
   onShowDialog,
   emergency,
   onBlocked,
+  onEnd,
 }) {
   // The dialog's grid is half the panorama area tall, starting at
   // KIOSK_DIALOG_TOP; its keyboard is the lower-right cell, inset by the
@@ -47,9 +52,16 @@ export default function KioskWalkBar({
         </p>
       )}
 
-      <button type="button" className="primary kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
-        {isElevator && <IconPlaceholder name="elevator" />} {nextStopAction} →
+      <button type="button" className="primary directions-go-btn kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
+        {isElevator && <IconPlaceholder name="elevator" className="inline-icon-img" />} {nextStopAction}{" "}
+        <img src={chevronRightWhite} alt="" className="inline-icon-img" />
       </button>
+
+      {skipCount > 0 && (
+        <button type="button" className="kiosk-walkbar-dialog-btn kiosk-walkbar-skip" onClick={onSkip} disabled={autoWalking}>
+          <IconPlaceholder name="skip-forward" /> Skip hallway ({skipCount} stops)
+        </button>
+      )}
 
       <div className="kiosk-walkbar-row">
         <button
@@ -66,14 +78,19 @@ export default function KioskWalkBar({
           {autoWalking && <AutoWalkCountdown key={stepIndex} />}
         </button>
 
-        <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onShowDialog}>
-          <IconPlaceholder name="clipboard-list" /> Directions
-        </button>
+        {!emergency && (
+          <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onShowDialog}>
+            <IconPlaceholder name="clipboard-list" /> Directions
+          </button>
+        )}
         {emergency && (
           <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onBlocked}>
             This way is blocked
           </button>
         )}
+        <button type="button" className="kiosk-walkbar-dialog-btn" onClick={onEnd}>
+          <IconPlaceholder name="close" /> End route
+        </button>
       </div>
     </div>
   );

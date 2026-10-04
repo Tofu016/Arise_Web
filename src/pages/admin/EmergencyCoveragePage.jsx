@@ -43,23 +43,27 @@ export default function EmergencyCoveragePage() {
 
   return (
     <div className="emergency-coverage-page">
-      <h2 className="admin-page-heading">Emergency Coverage</h2>
-      <p className="field-hint">
-        Checks that Nearest Exit works from every node. A visitor is routed to the nearest Emergency Exit
-        Destination Point: an Open Area, Parking, Lobby, Entrance or Fire Exit node on Floor 1 or Underground
-        that you ticked in the Node Editor. Nothing counts unless ticked. Routes never use elevators and never
-        climb above Floor 1 (or the visitor's own floor) unless no other way exists.
-      </p>
+      <header>
+        <h2 className="admin-page-heading">Emergency Coverage</h2>
+        <p className="signage-page-intro">
+          Checks that Nearest Exit works from every node. A visitor is routed to the nearest Emergency Exit
+          Destination Point: an Open Area, Parking, Lobby, Entrance or Fire Exit node on Floor 1 or Underground
+          that you ticked in the Node Editor. Nothing counts unless ticked. Routes never use elevators and never
+          climb above Floor 1 (or the visitor's own floor) unless no other way exists.
+        </p>
+      </header>
 
-      <label className="emergency-coverage-filter">
-        Building
-        <select value={building} onChange={(e) => setBuilding(e.target.value)}>
-          <option value="all">All buildings</option>
-          {buildings.map((b) => (
-            <option key={b} value={b}>{buildingLabel(b)}</option>
-          ))}
-        </select>
-      </label>
+      <div className="emergency-coverage-filters">
+        <label className="emergency-coverage-filter">
+          Building
+          <select value={building} onChange={(e) => setBuilding(e.target.value)}>
+            <option value="all">All buildings</option>
+            {buildings.map((b) => (
+              <option key={b} value={b}>{buildingLabel(b)}</option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="emergency-coverage-summary">
         <SummaryCard label="Destination points" count={destinations.length} />
@@ -94,7 +98,8 @@ export default function EmergencyCoveragePage() {
         </div>
       )}
 
-      <h3>Nodes that need attention</h3>
+      <section className="signage-card">
+      <div className="signage-card-head"><h3>Nodes that need attention</h3></div>
       {problems.length === 0 ? (
         <p className="field-hint">Every node in this view has a route that stays level or goes down.</p>
       ) : (
@@ -112,14 +117,16 @@ export default function EmergencyCoveragePage() {
                     ? "No route to any destination point."
                     : `Only route goes up first (${e.hops} stops to ${byId[e.destinationId]?.name ?? e.destinationId}).`}
                 </td>
-                <td><button type="button" onClick={() => openInEditor(e.id)}>Open in Node Editor</button></td>
+                <td className="emergency-coverage-actions"><button type="button" className="signage-btn" onClick={() => openInEditor(e.id)}>Open in Node Editor</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      </section>
 
-      <h3>Emergency Exit Destination Points</h3>
+      <section className="signage-card">
+      <div className="signage-card-head"><h3>Emergency Exit Destination Points</h3></div>
       {destinations.length === 0 ? (
         <p className="field-hint">None in this view.</p>
       ) : (
@@ -133,14 +140,16 @@ export default function EmergencyCoveragePage() {
                 <td>{s.name}<span className="field-hint"> {s.id}</span></td>
                 <td>{placeText(s)}</td>
                 <td>{typeLabel(s.type)}</td>
-                <td><button type="button" onClick={() => openInEditor(s.id)}>Open in Node Editor</button></td>
+                <td className="emergency-coverage-actions"><button type="button" className="signage-btn" onClick={() => openInEditor(s.id)}>Open in Node Editor</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      </section>
 
-      <h3>Preview a route</h3>
+      <section className="signage-card">
+      <div className="signage-card-head"><h3>Preview a route</h3></div>
       <label className="emergency-coverage-filter">
         Starting node
         <select value={previewId} onChange={(e) => setPreviewId(e.target.value)}>
@@ -161,6 +170,7 @@ export default function EmergencyCoveragePage() {
           {preview.ascends && <p className="directions-error">This route goes up first: no way down exists from here.</p>}
         </div>
       )}
+      </section>
     </div>
   );
 }

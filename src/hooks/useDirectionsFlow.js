@@ -14,16 +14,18 @@ import { floorLabel } from "../utils/constants";
 //                   the panel (the jump closed it) collapsed to the walk bar (kiosk)
 //   get             compute the route and start the walk in one go — no second press
 //   walkToNext      walk to the next stop, facing the way the hotspot points
+//   skipAhead       walk to the end of the straight hallway ahead in one move
 //
 // Collaborators are injected, so this knows nothing about navigation or the
 // overlay beyond these verbs:
-//   moves    { jump(id), walk(id, { yaw, defaultYaw?, defaultPitch? }) }
+//   moves    { jump(id), walk(id, { yaw, defaultYaw?, defaultPitch? }, via?) }
 //   overlay  { openDirections(), closeDirections(), walkStarted() }
 //   clearSearch()
 //
 // Returns { directions, progress, suggestions, ...verbs }:
 //   directions    the state (null when closed) — see utils/directionsRoute.js
-//   progress      { arrived, nextStopId, nextStopName, turnInstruction, walkStarted }
+//   progress      { arrived, nextStopId, nextStopName, turnInstruction, walkStarted, skip }
+//                 (skip: the straight run ahead, or null — see straightRunAhead)
 //   suggestions   { rooms, places } matching the From/To field being edited: rooms
 //                 first, places second, no duplicates, like the main search bar
 export function useDirectionsFlow({
@@ -40,9 +42,11 @@ export function useDirectionsFlow({
 }) {
   const [directions, setDirections] = useDirections(nodes, currentId);
 
+  const walkStarted = route.hasStartedWalking(directions, currentId);
   const progress = {
     ...route.routeProgress(directions, { byId, hotspots, entryYaw, nodes }),
-    walkStarted: route.hasStartedWalking(directions, currentId),
+    walkStarted,
+    skip: walkStarted ? route.straightRunAhead(directions, byId) : null,
   };
 
   const query = route.activeQuery(directions);
@@ -150,6 +154,14 @@ export function useDirectionsFlow({
   };
   useAutoWalk(directions, setDirections, walkToNext);
 
+  // "Skip hallway": one Walk to the end of the straight run, keeping the
+  // passed-over stops in the history. The route follows by position, so it
+  // simply lands on the later step.
+  const skipAhead = () => {
+    const { skip } = progress;
+    if (skip) moves.walk(skip.targetId, skip.angle, skip.via);
+  };
+
   return {
     directions,
     progress,
@@ -165,6 +177,7 @@ export function useDirectionsFlow({
     chooseMode,
     startWalking,
     walkToNext,
+    skipAhead,
     toggleAutoWalk: () => setDirections(route.toggleAutoWalk),
     editField: (field, value) => setDirections((d) => route.editField(d, field, value)),
     focusField: (field) => setDirections((d) => route.focusField(d, field)),

@@ -48,9 +48,10 @@ export function useNavigation(nodes, byId) {
     // `angle` may carry a per-edge default arrival view (defaultYaw/
     // defaultPitch), which wins over the arrow's own plain yaw/pitch —
     // same preference placement.js's walk() applies in the editors.
-    walk: (id, angle, meta) =>
+    // `via` is the nodes a skip-ahead walk passes over (see requestWalk).
+    walk: (id, angle, meta, via) =>
       perform((n, world, now) =>
-        requestWalk(n, world, { id, yaw: angle?.defaultYaw ?? angle?.yaw, pitch: angle?.defaultPitch, meta }, now)
+        requestWalk(n, world, { id, yaw: angle?.defaultYaw ?? angle?.yaw, pitch: angle?.defaultPitch, via, meta }, now)
       ),
     // Jumping lands on a fresh node, facing `view` ({ yaw, pitch }) when
     // given (a room's own marker), else the node's own starting view if it

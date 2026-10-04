@@ -5,6 +5,7 @@ import NodeEditorPage from "./pages/admin/NodeEditorPage";
 import NodeFlowchartPage from "./pages/admin/NodeFlowchartPage";
 import NavigationEditorPage from "./pages/admin/NavigationEditorPage";
 import RoomEditorPage from "./pages/admin/RoomEditorPage";
+import MarkerManagementPage from "./pages/admin/MarkerManagementPage";
 import UserPanelPage from "./pages/admin/UserPanelPage";
 import TourStopsPage from "./pages/admin/TourStopsPage";
 import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
@@ -77,7 +78,8 @@ export default function App() {
             <Route path="node-editor" element={<NodeEditorPage />} />
             <Route path="node-flowchart" element={<NodeFlowchartPage />} />
             <Route path="virtual-map-navigation-editor" element={<NavigationEditorPage />} />
-            <Route path="room-editor" element={<RoomEditorPage />} />
+            <Route path="room-and-facility-editor" element={<RoomEditorPage />} />
+            <Route path="marker-management" element={<MarkerManagementPage />} />
             <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />
             <Route path="user-panel" element={<UserPanelPage />} />
             <Route path="tour-stops" element={<TourStopsPage />} />

@@ -347,7 +347,10 @@ export default function NavigationEditorPage() {
                             <button onClick={() => startRenameMarker(m)}>Rename</button>
                           )}
                           <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
-                          <button className="danger" onClick={() => editor.removeMarker(m.id)}>Remove</button>
+                          <button className="danger" onClick={() => {
+                            const detailsNote = m.type === "facility" ? " Its saved details are deleted too, unless another room or facility uses the name." : "";
+                            if (m.type !== "facility" || window.confirm(`Remove the facility "${m.label}"?${detailsNote}`)) editor.removeMarker(m.id);
+                          }}>Remove</button>
                         </>
                       )}
                     </div>

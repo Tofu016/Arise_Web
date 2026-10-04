@@ -17,7 +17,7 @@ import IconPlaceholder from "../IconPlaceholder";
 // growing a further ~40% on hover (33px -> 46px) for a clear, responsive
 // hover state. onClick stays exactly as it was (admin editing — select a
 // marker for editing, any type). onRoomClick is new and separate: only
-// wired up for type==="room" markers, used by the public viewer to open
+// wired up for type==="room" and "facility" markers, used by the public viewer to open
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
@@ -31,7 +31,8 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
   const info = markerTypeInfo(type);
   const [hovered, setHovered] = useState(false);
 
-  const isRoomClickable = type === "room" && !!onRoomClick;
+  // A facility opens the same panel a room does (see utils/search.js).
+  const isRoomClickable = (type === "room" || type === "facility") && !!onRoomClick;
   // Elevator markers are the one type that's clickable in the public
   // viewer without being a "room" special case — see
   // MainPage.jsx's handleElevatorMarkerClick: unlike every other marker,

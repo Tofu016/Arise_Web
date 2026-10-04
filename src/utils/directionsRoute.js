@@ -2,6 +2,7 @@ import { findPath, getTurnInstruction } from "./pathfinding";
 import { findEvacuationRoute } from "./evacuation";
 import { resolveExactNodeMatch } from "./search";
 import { elevatorRideBetween, arrivalYawFromLanding } from "./elevators";
+import { hotspotAngle } from "./hotspots";
 
 // Point-to-point directions, as plain state plus transitions — no React,
 // no timers. `null` means no directions are open.
@@ -267,6 +268,56 @@ export function nextStep(d, hotspots, nodes) {
   const ride = nodes ? elevatorRideBetween(nodes, d.path[d.stepIndex], id) : null;
   if (ride) return { kind: "elevator", id, yaw: arrivalYawFromLanding(ride.toMarker), ride };
   return { kind: "walk", id };
+}
+
+// How far (degrees) a hallway node's way on may bend away from straight
+// ahead and still count as the same hallway line. Tighter than
+// getTurnInstruction's 25: hotspot yaws are placed by eye, and a wrongly
+// refused skip only costs a shorter skip, while a wrongly allowed one
+// skips a real corner.
+export const STRAIGHT_RUN_TOLERANCE_DEG = 15;
+
+const angleOff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+
+// Whether the route passes straight through `mid` between `prev` and `next`:
+// all three are on one floor and building, `mid` is a plain hallway Node
+// with no side branch (any third neighbor is a junction, where the visitor
+// should get to look around), and the hotspot on to `next` points the
+// opposite way to the hotspot back to `prev`.
+function passesStraightThrough(byId, prevId, midId, nextId) {
+  const prev = byId[prevId];
+  const mid = byId[midId];
+  const next = byId[nextId];
+  if (!prev || !mid || !next || mid.type !== "hallway") return false;
+  if (prev.floor !== mid.floor || next.floor !== mid.floor) return false;
+  if (prev.building !== mid.building || next.building !== mid.building) return false;
+  if ((mid.neighbors || []).some((id) => id !== prevId && id !== nextId)) return false;
+  const back = hotspotAngle(mid, prevId);
+  const ahead = hotspotAngle(mid, nextId);
+  if (!back || !ahead) return false;
+  return angleOff(ahead.yaw, back.yaw + 180) <= STRAIGHT_RUN_TOLERANCE_DEG;
+}
+
+// The "Skip hallway" move: how far the visitor can jump ahead along the
+// route without losing a decision. Starting from the next stop, the run keeps
+// going while each stop passed is a straight hallway Node (see
+// passesStraightThrough) and ends on the first stop that is not: a corner,
+// a junction, a door, stairs, the destination. Null when there is nothing to
+// skip (fewer than two stops ahead on the line), on an emergency route (each
+// stop is seen and can be reported blocked), or when no route is being walked.
+//
+// { targetId, via, count, angle }: `via` are the stops passed over, in order;
+// `count` the stops advanced (`via.length + 1`); `angle` is the last hop's
+// hotspot, so the visitor arrives still facing along the hallway.
+export function straightRunAhead(d, byId) {
+  if (!d?.path || d.emergency) return null;
+  const { path, stepIndex } = d;
+  let end = stepIndex + 1;
+  while (end < path.length - 1 && passesStraightThrough(byId, path[end - 1], path[end], path[end + 1])) end++;
+  const via = path.slice(stepIndex + 1, end);
+  if (via.length === 0 || end > path.length - 1) return null;
+  const angle = hotspotAngle(byId[path[end - 1]], path[end]);
+  return { targetId: path[end], via, count: via.length + 1, angle: angle && { yaw: angle.yaw, defaultYaw: angle.defaultYaw, defaultPitch: angle.defaultPitch } };
 }
 
 export function toggleAutoWalk(d) {

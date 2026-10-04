@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { apiGet, apiPost, apiPatch } from "../utils/apiClient";
+import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
 import { toDialog, normalizeRoomName, dialogPatchBody, dialogCreateBody } from "../utils/entities";
 import { useCollection } from "./useCollection";
 
@@ -17,6 +17,19 @@ import { useCollection } from "./useCollection";
 async function loadAll() {
   const data = await apiGet("PlacardDialogs_API/getAll");
   return data.dialogs.map(toDialog);
+}
+
+// Deletes the saved details of each named room or facility, when there are any.
+// For a facility whose marker was just removed: its details live in this table,
+// not on the marker, so they would otherwise be left behind unreachable.
+// Reads the list fresh rather than from a hook instance, which may be stale.
+export async function deleteDialogsByName(names) {
+  if (names.length === 0) return;
+  const dialogs = await loadAll();
+  const keys = new Set(names.map(normalizeRoomName));
+  for (const d of dialogs) {
+    if (keys.has(normalizeRoomName(d.roomName))) await apiDelete(`PlacardDialogs_API/delete/${d.id}`);
+  }
 }
 
 export function usePlacardDialogs() {

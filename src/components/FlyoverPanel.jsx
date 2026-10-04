@@ -9,6 +9,10 @@ import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 
 const AUTO_PROCEED_MS = 4000;
 
+// The default maplibre pin is ~41px tall and anchored at its tip; lifting the
+// label by that much parks it just above the pin's head instead of on it.
+const PIN_LABEL_OFFSET = [0, -42];
+
 // fitBounds is an imperative map method, not a declarative prop — this
 // needs useMap() to reach the underlying map instance directly, to
 // auto-frame both points once they're known. Bounds are computed as
@@ -28,7 +32,7 @@ function FitToRoute({ fromLat, fromLng, toLat, toLng }) {
         [west, south],
         [east, north],
       ],
-      { padding: 40 }
+      { padding: 70 }
     );
   }, [map, fromLat, fromLng, toLat, toLng]);
   return null;
@@ -123,13 +127,19 @@ export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
 
         <div className="flyover-map">
           <Map
-            initialViewState={{ longitude: fromLng, latitude: fromLat, zoom: 13 }}
+            initialViewState={{ longitude: fromLng, latitude: fromLat, zoom: 12 }}
             mapStyle={osmRasterStyle}
             style={{ width: "100%", height: "100%" }}
             attributionControl={false}
           >
             <Marker longitude={fromLng} latitude={fromLat} />
+            <Marker longitude={fromLng} latitude={fromLat} anchor="bottom" offset={PIN_LABEL_OFFSET}>
+              <span className="flyover-pin-label">You are currently here</span>
+            </Marker>
             <Marker longitude={toLng} latitude={toLat} />
+            <Marker longitude={toLng} latitude={toLat} anchor="bottom" offset={PIN_LABEL_OFFSET}>
+              <span className="flyover-pin-label flyover-pin-label-destination">Destination point</span>
+            </Marker>
             {routeGeoJson && (
               <Source type="geojson" data={routeGeoJson}>
                 <Layer

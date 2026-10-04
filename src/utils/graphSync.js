@@ -13,9 +13,12 @@ import { apiDelete, apiPatch, apiPost } from "./apiClient";
 //   ownerKey      the body key naming the owner ("node_id" / "stop_id")
 //   newMarkerBody the body for a brand-new marker beyond the owner id
 //                 (only the node graph has markers, so only it sets this)
+//   syncsLabel    whether a changed marker label is sent too (the node
+//                 backend's updateMarker takes one)
 export const NODE_GRAPH = {
   api: "Nodes_API",
   ownerKey: "node_id",
+  syncsLabel: true,
   newMarkerBody: (m) => ({
     type: m.type,
     label: m.label,
@@ -89,16 +92,18 @@ export function planClearDefaultView(graph, id, neighborId) {
   ];
 }
 
+const labelChanged = (graph, before, next) => graph.syncsLabel && next.type !== "elevator" && before.label !== next.label;
+
 // Three-way: an id only in the new list is an ADD (the backend generates
 // its own real id — a marker's client-side id only names its photos while
 // it's being picked, and is replaced by the backend's after the refresh),
-// an id in both with a different yaw/pitch is a REPOSITION, and an id
+// an id in both with a different yaw/pitch is a REPOSITION (or relabel), and an id
 // missing from the new list is a REMOVE.
 //
-// Known limit: only position is compared, so an edit to an existing
-// marker's label (or a stop marker's photos) is never sent. An elevator
-// landing's floors and label live on its `elevators` row instead (see
-// useElevators), so there's nothing elevator-specific to diff here.
+// A node marker's label is compared too, since a facility's label is the key
+// its saved details are stored under. A stop marker's label and photos are
+// never sent. An elevator landing's floors and label live on its `elevators`
+// row instead (see useElevators), so there's nothing elevator-specific to diff.
 export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const currentIds = currentMarkers.map((m) => m.id);
   const nextIds = nextMarkers.map((m) => m.id);
@@ -107,12 +112,19 @@ export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const removed = currentMarkers.filter((m) => !nextIds.includes(m.id));
   const changed = nextMarkers.filter((m) => {
     const before = currentMarkers.find((cm) => cm.id === m.id);
-    return before && (before.yaw !== m.yaw || before.pitch !== m.pitch);
+    return before && (before.yaw !== m.yaw || before.pitch !== m.pitch || labelChanged(graph, before, m));
   });
 
   return [
     ...added.map((m) => call("POST", `${graph.api}/addMarker`, { [graph.ownerKey]: id, ...graph.newMarkerBody(m) })),
-    ...changed.map((m) => call("PATCH", `${graph.api}/updateMarker/${m.id}`, { yaw: m.yaw, pitch: m.pitch })),
+    ...changed.map((m) => {
+      const before = currentMarkers.find((cm) => cm.id === m.id);
+      return call("PATCH", `${graph.api}/updateMarker/${m.id}`, {
+        yaw: m.yaw,
+        pitch: m.pitch,
+        ...(labelChanged(graph, before, m) ? { label: m.label } : {}),
+      });
+    }),
     ...removed.map((m) => call("DELETE", `${graph.api}/deleteMarker/${m.id}`)),
   ];
 }

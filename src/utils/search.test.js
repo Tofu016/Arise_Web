@@ -201,6 +201,35 @@ describe("listAllRooms", () => {
   });
 });
 
+describe("facilities", () => {
+  const withFacility = [
+    { id: "f1", name: "Hall", building: "gd1", floor: 1, rooms: ["Cafe"], markers: [
+      { id: 1, type: "facility", label: " Cafe ", yaw: 1, pitch: 1 },
+      { id: 2, type: "facility", label: "Clinic", yaw: 2, pitch: 2 },
+      { id: 3, type: "facility", label: "Clinic", yaw: 3, pitch: 3 },
+      { id: 4, type: "facility", label: "", yaw: 4, pitch: 4 },
+      { id: 5, type: "room", label: "Room 9", yaw: 5, pitch: 5 },
+    ] },
+  ];
+  const got = (name) => (name === "Clinic" ? { id: 7 } : null);
+
+  it("lists each facility label once, after the node's rooms, tagged by kind", () => {
+    expect(listAllRooms(withFacility, got).map((r) => `${r.kind}:${r.roomName}`)).toEqual(["room:Cafe", "facility:Cafe", "facility:Clinic"]);
+  });
+
+  it("makes facilities searchable, a room winning over a facility of the same name", () => {
+    const rooms = buildSearchableRooms(withFacility, got, { includeWithoutDetails: true });
+    expect(rooms.map((r) => `${r.kind}:${r.roomName}`)).toEqual(["room:Cafe", "facility:Clinic"]);
+    expect(buildSearchableRooms(withFacility, got).map((r) => r.roomName)).toEqual(["Clinic"]);
+  });
+
+  it("finds a facility marker for a jump, and a facility for its marker click", () => {
+    expect(findMarkerForRoom(withFacility[0], "clinic")?.id).toBe(2);
+    const rooms = buildSearchableRooms(withFacility, got, { includeWithoutDetails: true });
+    expect(findRoomForMarker({ label: "Clinic" }, rooms)?.kind).toBe("facility");
+  });
+});
+
 describe("rankRoomMatches", () => {
   const rooms = listAllRooms(nodes, getForRoom);
   const names = (q) => rankRoomMatches(q, rooms).map((r) => r.roomName);

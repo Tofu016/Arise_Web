@@ -34,6 +34,13 @@ export default function ArrivalModal({ kiosk, emergency = false, onDone }) {
     >
       <div className="modal arrival-notice" role="status">
         <p className="idle-prompt-text">{message}</p>
+        {/* Only the emergency notice gets a button: it is an instruction the
+            visitor must be able to acknowledge, not wait out. */}
+        {emergency && (
+          <div className="form-actions">
+            <button type="button" className="primary" onClick={onDone}>Done</button>
+          </div>
+        )}
       </div>
     </div>
   );
