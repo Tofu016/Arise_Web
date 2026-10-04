@@ -1,0 +1,37 @@
+import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+
+// Kiosk only: shown after "Directions" is tapped on a search result or room
+// card, asking where the route should start. Same raised, centered modal as
+// the other small kiosk prompts. Tapping the scrim cancels.
+//   Current Location   the node on screen right now
+//   Kiosk Location     where this kiosk physically stands
+//   Custom Location    opens the directions panel with the starting point blank
+export default function KioskOriginChoice({ destinationName, kioskAvailable, onCurrent, onKiosk, onCustom, onCancel }) {
+  return (
+    <div className="modal-overlay kiosk-raised-overlay" style={KIOSK_RAISED_STYLE} onClick={onCancel}>
+      <div
+        className="modal origin-choice-modal"
+        role="dialog"
+        aria-label="Choose a starting point"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>Directions to {destinationName}</h3>
+        <p className="origin-choice-sub">Where are you starting from?</p>
+        <div className="origin-choice-list">
+          <button type="button" className="origin-choice-option" onClick={onCurrent}>
+            Current Location On Screen
+          </button>
+          <button type="button" className="origin-choice-option" onClick={onKiosk} disabled={!kioskAvailable}>
+            Kiosk Location
+          </button>
+          <button type="button" className="origin-choice-option" onClick={onCustom}>
+            Custom Location
+          </button>
+        </div>
+        <div className="form-actions">
+          <button type="button" onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}

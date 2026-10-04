@@ -34,6 +34,8 @@ export function useOverlay() {
       walkStarted: send("walkStarted"),
       closeRoomCard: send("closeRoomCard"),
       previewRoom: (room) => dispatch({ type: "previewRoom", room }),
+      openOriginChoice: (destination) => dispatch({ type: "openOriginChoice", destination }),
+      closeOriginChoice: send("closeOriginChoice"),
       openElevatorPicker: (picker) => dispatch({ type: "openElevatorPicker", picker }),
       closeElevatorPicker: send("closeElevatorPicker"),
       moved: (move) => dispatch({ type: "moved", move }),
@@ -41,7 +43,7 @@ export function useOverlay() {
     };
   }, []);
 
-  const escapable = !!state.panel || state.dock || !!state.elevatorPicker;
+  const escapable = !!state.panel || state.dock || !!state.elevatorPicker || !!state.originChoice;
   useEffect(() => {
     if (!escapable) return;
     const onKeyDown = (e) => {

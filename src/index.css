@@ -6761,6 +6761,37 @@ a.sidebar-room-contact-row:focus-visible span {
   gap: 12px;
   color: var(--text-muted);
 }
+/* Kiosk "where are you starting from?" prompt (KioskOriginChoice.jsx). */
+.origin-choice-modal {
+  width: 440px;
+  max-width: 90vw;
+  text-align: center;
+}
+.origin-choice-sub {
+  margin: 4px 0 16px 0;
+  color: var(--text-muted);
+}
+.origin-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.origin-choice-option {
+  min-height: 56px;
+  font-size: 16px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  cursor: pointer;
+}
+.origin-choice-option:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.origin-choice-modal .form-actions {
+  justify-content: center;
+}
 .idle-prompt-text {
   margin: 0 0 16px 0;
   font-size: 16px;

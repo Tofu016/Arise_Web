@@ -10,6 +10,8 @@ import KioskCampusScreen from "../components/KioskCampusScreen";
 import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskFloorScreen from "../components/KioskFloorScreen";
 import KioskDialog from "../components/KioskDialog";
+import KioskOriginChoice from "../components/KioskOriginChoice";
+import { findKioskNode } from "../utils/kioskLocation";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
@@ -490,9 +492,12 @@ function MainPageContent({ onReset }) {
   const { directions, progress, suggestions } = flow;
 
   const toFieldRef = useRef(null);
+  const fromFieldRef = useRef(null);
   // Focus (and select, so any pre-filled text is ready to be typed over) the
   // destination field the moment the panel opens, so the visitor doesn't
-  // have to tap it first. Keyed off the open/closed transition, not
+  // have to tap it first. When the destination is already filled in and the
+  // origin is blank (the kiosk's "Custom Location"), the origin gets the
+  // focus instead. Keyed off the open/closed transition, not
   // `directions` itself, since that also changes on every keystroke as the
   // visitor types — refocusing/reselecting mid-edit would fight them. Called
   // unconditionally here (before any early returns below) since it's a hook.
@@ -500,8 +505,10 @@ function MainPageContent({ onReset }) {
   useEffect(() => {
     const isOpen = !!directions;
     if (isOpen && !directionsWasOpenRef.current) {
-      toFieldRef.current?.focus();
-      toFieldRef.current?.select();
+      const originFirst = !!directions.toId && !directions.fromId;
+      const target = originFirst ? fromFieldRef : toFieldRef;
+      target.current?.focus();
+      target.current?.select();
       // The kiosk's own on-screen keyboard (inputMode="none") means the
       // usual OS-keyboard-triggers-focus-styling path doesn't apply here,
       // so the suggestions dropdown is driven straight off `editingField`
@@ -509,7 +516,7 @@ function MainPageContent({ onReset }) {
       // time for this same render pass: expand it explicitly so
       // suggestions are already showing the instant the modal opens,
       // not only after the visitor's first tap into the field.
-      flow.focusField("to");
+      flow.focusField(originFirst ? "from" : "to");
     }
     directionsWasOpenRef.current = isOpen;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -654,10 +661,16 @@ function MainPageContent({ onReset }) {
     if (selectedRoomCard) openRoomCard(selectedRoomCard);
   };
 
+  // Kiosk: Directions first asks where to start from (see KioskOriginChoice);
+  // elsewhere it goes straight to the panel starting at the current node.
+  const requestDirectionsTo = (node) => (compact ? overlay.openOriginChoice(node) : flow.openTo(node));
+
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
-    flow.openTo(selectedRoomCard.node);
+    requestDirectionsTo(selectedRoomCard.node);
   };
+
+  const kioskNode = useMemo(() => findKioskNode(nodes), [nodes]);
 
   // Every mobile Building dialog / kiosk campus-building-floor screen pick —
   // see hooks/useKioskPicks.js. Every pick here is a fresh start (jump).
@@ -775,12 +788,6 @@ function MainPageContent({ onReset }) {
       onClick: () => overlay.openFromDock("feedback"),
     },
     {
-      key: "exit",
-      icon: <img src={directionsIcon} alt="" className="inline-icon-img" />,
-      title: "Directions",
-      onClick: flow.open, // also collapses the dock
-    },
-    {
       key: "search",
       icon: PLACEHOLDER("search-magnifier"),
       title: "Search",
@@ -829,7 +836,7 @@ function MainPageContent({ onReset }) {
       <button
         type="button"
         className="search-result-btn search-result-directions"
-        onMouseDown={(e) => { e.preventDefault(); flow.openTo(directionsNode); }}
+        onMouseDown={(e) => { e.preventDefault(); requestDirectionsTo(directionsNode); }}
         title="Get directions"
       >
         <IconPlaceholder name="directions" variant="white" className="inline-icon-img" /> Directions
@@ -917,12 +924,13 @@ function MainPageContent({ onReset }) {
   // field is currently being edited.
   const renderDirectionsSuggestions = (field) => {
     if (directions?.editingField !== field) return null;
-    // The destination field shows a starting point immediately on open,
-    // same "don't know what to search for" idea as the main search bar's
-    // own randomSuggestions, so a visitor isn't stuck typing before seeing
-    // anything. Only "to", not "from" — the visitor already knows where
-    // they're starting from (it's wherever they are).
-    if (field === "to" && !directions.toQuery.trim()) {
+    // An empty field shows suggestions immediately on open, same "don't
+    // know what to search for" idea as the main search bar's own
+    // randomSuggestions, so a visitor isn't stuck typing before seeing
+    // anything. "from" is normally pre-filled with where they are, so this
+    // only reaches it when it was left blank (the kiosk's Custom Location).
+    const fieldQuery = field === "to" ? directions.toQuery : directions.fromQuery;
+    if (!fieldQuery.trim()) {
       if (randomSuggestions.length === 0 && randomPlaceSuggestions.length === 0) return null;
       return (
         <div className="room-search-results directions-suggestions">
@@ -1000,6 +1008,7 @@ function MainPageContent({ onReset }) {
         <textarea
           className="directions-field"
           rows={2}
+          ref={fromFieldRef}
           value={directions.fromQuery}
           onChange={(e) => flow.editField("from", e.target.value)}
           onFocus={() => flow.focusField("from")}
@@ -1102,6 +1111,28 @@ function MainPageContent({ onReset }) {
   return (
     <div className={"main-page-layout" + (compact ? "" : " tour-shell")}>
       {directions?.path && arrived && <ArrivalModal kiosk={compact} onDone={flow.close} />}
+      {compact && overlay.originChoice && (
+        <KioskOriginChoice
+          destinationName={overlay.originChoice.name}
+          kioskAvailable={!!kioskNode}
+          onCancel={overlay.closeOriginChoice}
+          onCurrent={() => {
+            const dest = overlay.originChoice;
+            overlay.closeOriginChoice();
+            flow.routeFrom(current, dest);
+          }}
+          onKiosk={() => {
+            const dest = overlay.originChoice;
+            overlay.closeOriginChoice();
+            flow.routeFrom(kioskNode, dest);
+          }}
+          onCustom={() => {
+            const dest = overlay.originChoice;
+            overlay.closeOriginChoice();
+            flow.openToWithBlankOrigin(dest);
+          }}
+        />
+      )}
       {overlay.elevatorPicker && (
         <div className="modal-overlay elevator-picker-overlay" onClick={overlay.closeElevatorPicker}>
           <div className="modal elevator-picker" role="dialog" aria-label="Choose a floor" onClick={(e) => e.stopPropagation()}>

@@ -16,6 +16,7 @@ export const initialOverlay = {
   roomCard: null, // the room whose card the "room" panel shows
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
   endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
+  originChoice: null, // kiosk: the destination Node awaiting a "where from?" answer (Current / Kiosk / Custom location)
   elevatorPicker: null, // { markerId, label, currentFloor, destinations } — an elevator landing was tapped with more than one other floor to ride to (with only one, it rides straight there and this never opens)
 };
 
@@ -34,7 +35,7 @@ export function overlayReducer(state, action) {
     case "closeDock":
       return { ...state, dock: false };
     case "dismiss": // the FAB, the backdrop, Escape: collapse the dock and its panel
-      return { ...state, panel: null, dock: false, elevatorPicker: null };
+      return { ...state, panel: null, dock: false, elevatorPicker: null, originChoice: null };
     case "openFromDock": // a radial item: collapse the dock, then open its target
       return openTarget({ ...state, dock: false }, action.target);
     case "openFeedback":
@@ -68,6 +69,11 @@ export function overlayReducer(state, action) {
       return { ...state, dock: false, roomCard: action.room, panel: "room" };
     case "closeRoomCard":
       return { ...state, roomCard: null, panel: null };
+    // Replaces the panel (search or room card) that asked, like openDirections does.
+    case "openOriginChoice":
+      return { ...state, dock: false, panel: null, roomCard: null, originChoice: action.destination };
+    case "closeOriginChoice":
+      return { ...state, originChoice: null };
     case "openElevatorPicker":
       return { ...state, elevatorPicker: action.picker };
     case "closeElevatorPicker":
@@ -117,6 +123,7 @@ export function blocksIdle(state, { flyover, awaitingStart }) {
     state.endSessionThanks ||
     state.help ||
     !!state.elevatorPicker ||
+    !!state.originChoice ||
     !!flyover ||
     !!awaitingStart
   );
@@ -144,6 +151,7 @@ export function coverage(state, { compact, directions, arrived, walkStarted, fly
     state.buildingMenu ||
     state.help ||
     !!state.elevatorPicker ||
+    !!state.originChoice ||
     !!flyover;
   return { walkBarShown, kioskDialogOpen, coversPanorama };
 }

@@ -60,6 +60,31 @@ export function useDirectionsFlow({
     clearSearch();
   };
 
+  // Kiosk origin choice, "Current Location" / "Kiosk Location": route from a
+  // known node straight away, no second press. A same-node pick has no route
+  // to walk, so it says so in the panel instead of "arriving" instantly.
+  const routeFrom = (fromNode, toNode) => {
+    if (!fromNode || !nodes) return;
+    const opened = route.openDirectionsBetween(fromNode, toNode);
+    overlay.openDirections();
+    clearSearch();
+    if (fromNode.id === toNode.id) {
+      setDirections({ ...opened, error: "You are already at this location." });
+      return;
+    }
+    const next = route.getDirections(opened, nodes, searchableRooms);
+    setDirections(next);
+    if (next.path) startWalking(next);
+  };
+
+  // Kiosk origin choice, "Custom Location": the panel opens with the
+  // destination filled in and the starting point blank, awaiting a pick.
+  const openToWithBlankOrigin = (node) => {
+    setDirections(route.openDirectionsToWithBlankOrigin(node));
+    overlay.openDirections();
+    clearSearch();
+  };
+
   const open = () => {
     if (!current || !nodes) return;
     setDirections(route.openDirections(current));
@@ -136,6 +161,8 @@ export function useDirectionsFlow({
     suggestions,
     open,
     openTo,
+    routeFrom,
+    openToWithBlankOrigin,
     openNearestExit,
     close,
     get,

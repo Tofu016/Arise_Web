@@ -46,6 +46,18 @@ export function openDirectionsTo(current, node) {
   return { ...blank(current, "point"), toQuery: node.name, toId: node.id };
 }
 
+// Kiosk "Custom Location": the destination is already chosen, the starting
+// point is left blank and being edited, so its suggestions show right away.
+export function openDirectionsToWithBlankOrigin(node) {
+  return { ...blank(null, "point"), toQuery: node.name, toId: node.id, editingField: "from" };
+}
+
+// Kiosk "Current Location" / "Kiosk Location": both ends known, ready for
+// getDirections without any typing.
+export function openDirectionsBetween(fromNode, toNode) {
+  return { ...blank(fromNode, "point"), toQuery: toNode.name, toId: toNode.id };
+}
+
 // Opens an empty directions panel starting from where the visitor is; the
 // destination is picked (or typed) in the panel.
 export function openDirections(current) {

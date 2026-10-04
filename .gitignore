@@ -33,5 +33,5 @@ dist-ssr
 # Personal session-orientation notes for AI assistants (not for the team)
 SESSION.md
 ui-branding-guidelines
-arise_web_oct_1.sql
+arise_web_*.sql
 protected-uploads
