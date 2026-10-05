@@ -49,10 +49,10 @@ export default function EmergencyCoveragePage() {
     navigate("/admin/node-editor");
   };
   // Emergency exit markers and their landings are edited with the node's other
-  // markers, in the Virtual Map Navigation Editor.
+  // markers, in the Navigation Editor.
   const openInNavigationEditor = (id) => {
     setSelectedNodeId(id);
-    navigate("/admin/virtual-map-navigation-editor");
+    navigate("/admin/navigation-editor");
   };
   const landingProblems = audit.landingProblems.filter(inScope);
   const markersWithoutLanding = audit.markersWithoutLanding.filter(inScope);

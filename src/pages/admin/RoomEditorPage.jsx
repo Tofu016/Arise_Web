@@ -416,7 +416,7 @@ export default function RoomEditorPage() {
         {node && rooms.length === 0 && (
           <p className="empty-hint">
             "{node.name}" has no rooms or facilities yet. Add a room under "Rooms served" in Node Editor, or a
-            facility marker in Virtual Map Navigation Editor, first.
+            facility marker in Navigation Editor, first.
           </p>
         )}
 
@@ -479,7 +479,7 @@ export default function RoomEditorPage() {
                 </label>
                 <p className="field-hint">
                   {isFacility
-                    ? "A facility stays on the node whose panorama its marker is placed in. Move the marker itself in Virtual Map Navigation Editor."
+                    ? "A facility stays on the node whose panorama its marker is placed in. Move the marker itself in Navigation Editor."
                     : "Where this room is reached from. Choosing another node moves the room to that node's \"Rooms served\" on Save; its details and photos come with it."}
                 </p>
 

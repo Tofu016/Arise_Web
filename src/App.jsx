@@ -73,7 +73,7 @@ export default function App() {
             <Route index element={<Navigate to="node-editor" replace />} />
             <Route path="node-editor" element={<NodeEditorPage />} />
             <Route path="node-flowchart" element={<NodeFlowchartPage />} />
-            <Route path="virtual-map-navigation-editor" element={<NavigationEditorPage />} />
+            <Route path="navigation-editor" element={<NavigationEditorPage />} />
             <Route path="room-and-facility-editor" element={<RoomEditorPage />} />
             <Route path="marker-management" element={<MarkerManagementPage />} />
             <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />

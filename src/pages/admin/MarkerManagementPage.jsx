@@ -19,7 +19,7 @@ function SummaryCard({ label, count, warn }) {
 
 // Every marker on every node in one place: what exists, where, and what is
 // wrong with it. Placing and moving a marker needs the panorama, so that
-// stays in the Virtual Map Navigation Editor; this page is for auditing the
+// stays in the Navigation Editor; this page is for auditing the
 // whole campus and removing markers in bulk. Editing a label is not offered
 // because the backend call behind it only carries position (see planMarkers).
 export default function MarkerManagementPage() {
@@ -48,7 +48,7 @@ export default function MarkerManagementPage() {
 
   const openInEditor = (nodeId) => {
     setSelectedNodeId(nodeId);
-    navigate("/admin/virtual-map-navigation-editor");
+    navigate("/admin/navigation-editor");
   };
 
   const remove = async (row) => {
@@ -70,7 +70,7 @@ export default function MarkerManagementPage() {
         <h2 className="admin-page-heading">Marker Management</h2>
         <p className="signage-page-intro">
           Every point-of-interest marker across the Virtual Map, with a check for markers that are likely to be
-          mistakes. Place or move a marker in the Virtual Map Navigation Editor, where the panorama is; use this
+          mistakes. Place or move a marker in the Navigation Editor, where the panorama is; use this
           page to find problems and remove markers. An elevator marker's label and floors come from its Elevator
           record.
         </p>

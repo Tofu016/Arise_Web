@@ -43,7 +43,7 @@ export default function RoomList({ rooms, filters, selectedNodeId, selectedRoom,
       renderExtra={({ placard }) =>
         placard?.department && <div className="node-row-meta">{placard.department}</div>
       }
-      emptyMessage={rooms.length ? "No rooms or facilities match this filter." : 'Nothing yet. Add a room under "Rooms served" in Node Editor, or a facility marker in Virtual Map Navigation Editor.'}
+      emptyMessage={rooms.length ? "No rooms or facilities match this filter." : 'Nothing yet. Add a room under "Rooms served" in Node Editor, or a facility marker in Navigation Editor.'}
       header={header}
     />
   );

@@ -3,12 +3,10 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useNodes } from "../hooks/useNodes";
 import { useElevators } from "../hooks/useElevators";
 import { useAuth } from "../context/useAuth";
-import mapIcon from "../assets/icons/map.svg";
 import accountIcon from "../assets/icons/account.svg";
 import locationIcon from "../assets/icons/location.svg";
 import IconPlaceholder from "../components/IconPlaceholder";
 
-const MAP_ICON = <img src={mapIcon} alt="" className="admin-sidebar-icon-img" />;
 const ACCOUNT_ICON = <img src={accountIcon} alt="" className="admin-sidebar-icon-img" />;
 const LOCATION_ICON = <img src={locationIcon} alt="" className="admin-sidebar-icon-img" />;
 // Pending real icons — see the icon list handed back to the user.
@@ -20,7 +18,7 @@ const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="admin-side
 // all, since user management genuinely doesn't belong to any one group.
 //
 // Group-level icons deliberately avoid reusing any of their own
-// sub-items' icons (Virtual Map's own "Virtual Map Navigation Editor"
+// sub-items' icons (Virtual Map's own "Navigation Editor"
 // already uses 🗺️, for instance) so the rail and the expanded flyout
 // never show the same icon meaning two different things at two different
 // levels.
@@ -31,8 +29,8 @@ const GROUPS = [
     label: "Virtual Map",
     items: [
       { path: "node-editor", icon: PLACEHOLDER("home-house"), label: "Node Editor" },
-      { path: "node-flowchart", icon: PLACEHOLDER("bar-chart"), label: "Node Flowchart" },
-      { path: "virtual-map-navigation-editor", icon: MAP_ICON, label: "Virtual Map Navigation Editor" },
+      { path: "node-flowchart", icon: PLACEHOLDER("workflow"), label: "Node Flowchart" },
+      { path: "navigation-editor", icon: PLACEHOLDER("route"), label: "Navigation Editor" },
       { path: "room-and-facility-editor", icon: PLACEHOLDER("door"), label: "Room and Facility Editor" },
       { path: "marker-management", icon: LOCATION_ICON, label: "Marker Management" },
       { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" },

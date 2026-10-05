@@ -33,7 +33,7 @@ How the app chooses a route:
 1. Sign in to `/admin` with an admin account.
 2. Get the floor plan or walk the building. For each building, write down the places a person can reach and **truly be out of danger**: fire doors to the street or a yard, an outdoor assembly area, a parking lot, a ground-floor lobby that is itself safe. Leave out anything that only leads into another indoor space.
 3. Note every staircase and fire stairwell that connects the floors, and which floors each one reaches.
-4. Open **Virtual Map** in the sidebar. You will use three pages: **Node Editor**, **Virtual Map Navigation Editor** and **Emergency Coverage**.
+4. Open **Virtual Map** in the sidebar. You will use three pages: **Node Editor**, **Navigation Editor** and **Emergency Coverage**.
 
 ## 4. Step 1: Make sure each destination has a node
 
@@ -67,11 +67,11 @@ Rules:
 - **Lobby and Entrance show a red warning.** These can be indoor spaces, or open into one (a corridor, a connected building, an elevator hall), where a visitor is **not** out of danger. The system cannot check this. If you tick one, visitors are told they have reached their exit and to follow staff instructions, so tick only a ground-floor Lobby or Entrance that is truly safe, never one per floor.
 - A visitor already standing on a ticked node who taps Nearest Exit is told they have arrived straight away.
 
-## 6. Step 3: Connect everything in Virtual Map Navigation Editor
+## 6. Step 3: Connect everything in Navigation Editor
 
 A route can only use links between nodes, so a missing link means a missing way out.
 
-1. Open **Virtual Map Navigation Editor** and select a node.
+1. Open **Navigation Editor** and select a node.
 2. In the **Links** box use **+ Add Links**, pick the neighbor, then click on the panorama where its arrow should sit. Links go both ways.
 3. Check each of these chains is fully linked:
    - Every hallway on a floor to the stairs or fire stairwell node on that floor.
@@ -82,7 +82,7 @@ A route can only use links between nodes, so a missing link means a missing way 
 
 ### Step 3b: Add the Emergency Exit markers
 
-In **Virtual Map Navigation Editor**, on the node beside each fire stairwell door:
+In **Navigation Editor**, on the node beside each fire stairwell door:
 
 1. Choose **+ Add Markers**, type **Emergency Exit**.
 2. Tick the **landings**: every node on another floor of the same building where those hidden stairs come out. List every floor the stairwell reaches, for example Floor 2 and Floor 1 from Floor 3. The lowest is used first. The others are only used when a visitor reports "This way is blocked", so a skipped floor means no way round a blocked landing.
@@ -137,10 +137,10 @@ Re-open **Emergency Coverage** and clear every warning whenever you:
 
 - add or remove a building, floor, stairwell or exit door;
 - change a node's **Type**, **Floor** or **Building**;
-- add, remove or re-wire links in the **Virtual Map Navigation Editor**;
+- add, remove or re-wire links in the **Navigation Editor**;
 - move nodes between buildings.
 
-Also re-check after any construction that closes a door or stairwell. The app has no way to know a door is shut for the day: remove the link in the **Virtual Map Navigation Editor** (or untick the node) until it reopens, and restore it afterward.
+Also re-check after any construction that closes a door or stairwell. The app has no way to know a door is shut for the day: remove the link in the **Navigation Editor** (or untick the node) until it reopens, and restore it afterward.
 
 ## 10. Quick checklist per building
 

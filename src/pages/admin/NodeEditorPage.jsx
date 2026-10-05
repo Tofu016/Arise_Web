@@ -23,7 +23,7 @@ const defaultFilters = {
 // toolbar at all.
 //
 // Neighbor-linking is no longer edited here at all — NodeForm had its
-// NeighborPicker removed; Virtual Map Navigation Editor is now the sole
+// NeighborPicker removed; Navigation Editor is now the sole
 // place that's managed, per the redesign.
 export default function NodeEditorPage() {
   const {

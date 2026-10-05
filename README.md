@@ -330,7 +330,7 @@ Under **Virtual Map → Node Editor**:
      real type (often a Hallway) and carries an **Emergency Exit marker**
      instead (see "Point-of-interest markers").
    - **Floors reached**: shown for Stairs, read-only: the floors the node's
-     own neighbor links reach (managed in Virtual Map Navigation Editor), so
+     own neighbor links reach (managed in Navigation Editor), so
      there is no second list to keep in step with them.
    - **Emergency Exit Destination Point**: shown for Open Area, Parking,
      Lobby and Entrance, and for any node carrying an Emergency Exit marker
@@ -361,7 +361,7 @@ Under **Virtual Map → Node Editor**:
      A room can only be attached to one node campus-wide (checked by this
      form, not by the API).
    - **360° photo path** / **Choose 360° photo file** — see below.
-   - **Neighbors** — managed in **Virtual Map Navigation Editor**, not this
+   - **Neighbors** — managed in **Navigation Editor**, not this
      form.
 3. Click **Create node** / **Save changes**. Validation errors show inline
    and block saving until fixed.
@@ -401,7 +401,7 @@ needing to re-upload from scratch.
 
 ### Linking neighbors & hotspots
 
-- In **Virtual Map Navigation Editor** (not the node form), the **Links**
+- In **Navigation Editor** (not the node form), the **Links**
   box has **+ Add Links**, a search of other nodes by name or ID. Pick one to
   link it and then click on the panorama where its arrow should sit — links
   are bidirectional. The **Links added** list beside it has **Reposition**,
@@ -437,7 +437,7 @@ first). The node keeps its own type, so a hallway stays a hallway and is
 walked through by ordinary directions; only Nearest Exit uses the
 landings. A marker with no landings is a fire door that leads straight
 outside, and its node is ticked as an Emergency Exit Destination Point.
-Managed from **Virtual Map Navigation Editor**: pick marker type Emergency
+Managed from **Navigation Editor**: pick marker type Emergency
 Exit, tick the landings (the lowest is used first, the rest are the way
 round a blocked one), then **Place on panorama**. **Edit landings** changes
 them later. **Emergency Coverage** reports a landing that is missing, in
@@ -457,7 +457,7 @@ read live from that one record, so two landings of the same elevator can
 never disagree about which floors it serves. See "Getting directions"
 below for how this feeds into stairs-vs-elevator routing.
 
-Managed from **Virtual Map Navigation Editor**, in two steps:
+Managed from **Navigation Editor**, in two steps:
 1. **Create the elevator once** — in the **Markers** box (**+ Add Markers**),
    picking marker type Elevator offers "+ New elevator…", which asks for
    an Elevator ID, a Label, and every floor it serves. This creates the
@@ -496,7 +496,7 @@ Type, Photo status (all, missing, or has a photo filename), and a search
 
 - **Node Preview** (Node Editor toolbar) — a linear walkthrough of every
   node with Prev/Next.
-- **Virtual Map Navigation Editor** — click-to-walk through the graph as a
+- **Navigation Editor** — click-to-walk through the graph as a
   visitor would; also where links (hotspots), markers, elevators, default
   views and each node's starting view get positioned.
 - **Node Flowchart** — the node graph for a building and floor drawn as a

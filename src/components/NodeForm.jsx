@@ -229,7 +229,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   };
 
   // The floors a Stairs node actually reaches, read from its neighbor links
-  // (edited only in Virtual Map Navigation Editor), so there is no second list
+  // (edited only in Navigation Editor), so there is no second list
   // to keep in step with them. Informational: a brand-new node has none yet.
   const stairsFloors =
     draft.type === "stairs"
@@ -308,7 +308,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           <label>Floors reached</label>
           <span className="field-hint">
             {stairsFloors.length > 0 ? stairsFloors.map(floorLabel).join(", ") : "None yet."} Read from this
-            node's links, which are set in Virtual Map Navigation Editor. A fire stairwell is not a Stairs
+            node's links, which are set in Navigation Editor. A fire stairwell is not a Stairs
             node: it is an Emergency Exit marker on an ordinary node.
           </span>
         </div>
@@ -328,7 +328,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           {currentStart && currentStart.id !== draft.id
             ? `, saving this replaces ${currentStart.id}.`
             : "."}
-          {" "}Camera view is set in Virtual Map Navigation Editor.
+          {" "}Camera view is set in Navigation Editor.
         </span>
       </div>
 

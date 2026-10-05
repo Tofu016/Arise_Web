@@ -35,7 +35,7 @@ facing the way you walked.
 
 ## Admin override
 
-The Virtual Map Navigation Editor's link list shows each link as "manual
+The Navigation Editor's link list shows each link as "manual
 default view" or "automatic default view". **Override** / **Change default
 view** captures a manual view (precedence 1); **Back to automatic** clears it.
 The editor arrives through a link the same way a visitor does, so it previews

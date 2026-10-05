@@ -275,7 +275,7 @@ export default function NavigationEditorPage() {
     return (
       <div className="navigation-editor-page">
         <div className="navigation-editor-main">
-          <h2 className="admin-page-heading">Virtual Map Navigation Editor</h2>
+          <h2 className="admin-page-heading">Navigation Editor</h2>
           <p className="empty-hint">Select a node from the list on the right to start linking it up.</p>
         </div>
         {sidebar}
@@ -286,7 +286,7 @@ export default function NavigationEditorPage() {
   return (
     <div className="navigation-editor-page">
       <div className="navigation-editor-main">
-        <h2 className="admin-page-heading">Virtual Map Navigation Editor</h2>
+        <h2 className="admin-page-heading">Navigation Editor</h2>
 
         <GraphEditorBanners editor={editor}>
           {settingStartingView && (
