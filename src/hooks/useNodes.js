@@ -12,8 +12,8 @@ import { orphanedFacilityNames } from "../utils/markers";
 // this once and shares it via Outlet context across the editor pages.
 //
 // Wire mapping lives in utils/entities.js and the neighbor/hotspot/marker
-// diffing in utils/graphSync.js (shared with useTourStops); what's left
-// here is what's specific to nodes: rooms, and the selection.
+// diffing in utils/graphSync.js; what's left here is what's specific to
+// nodes: rooms, and the selection.
 
 async function loadAll() {
   const data = await apiGet("Nodes_API/getAll");

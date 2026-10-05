@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
-// Full-screen loading overlay, shared by MainPage.jsx and
-// PublicTourPage.jsx — both need identical behavior (branded background,
-// spinner, smooth fade-out), so this lives as its own component rather
-// than being duplicated in each page.
+// Full-screen loading overlay used by MainPage.jsx — branded background,
+// spinner, smooth fade-out — kept as its own component rather than
+// inlined, so any other page needing the same entrance gets it for free.
 //
 // Manages its own delayed unmount internally: when `show` flips to
 // false, this stays mounted just long enough to finish its own CSS

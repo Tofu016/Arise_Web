@@ -5,7 +5,6 @@ vi.mock("./apiClient", () => ({ apiPost: vi.fn(), apiPatch: vi.fn(), apiDelete: 
 import { apiPost, apiPatch, apiDelete } from "./apiClient";
 import {
   NODE_GRAPH,
-  STOP_GRAPH,
   planNeighbors,
   planHotspot,
   planDefaultView,
@@ -28,13 +27,6 @@ describe("planNeighbors", () => {
     ]);
   });
 
-  it("addresses tour stops by stop_id on their own API", () => {
-    const [call] = planNeighbors(STOP_GRAPH, "s1", [], ["s2"]);
-    expect(call.path).toBe("TourStops_API/addNeighbor");
-    expect(call.body).toMatchObject({ stop_id: "s1", neighbor_id: "s2" });
-    expect(call.body.node_id).toBeUndefined();
-  });
-
   it("plans nothing when nothing changed", () => {
     expect(planNeighbors(NODE_GRAPH, "a", ["b"], ["b"])).toEqual([]);
   });
@@ -42,8 +34,8 @@ describe("planNeighbors", () => {
 
 describe("planHotspot", () => {
   it("updates a link's angle", () => {
-    expect(planHotspot(STOP_GRAPH, "s1", "s2", { yaw: 10, pitch: -4 })).toEqual([
-      { method: "PATCH", path: "TourStops_API/updateNeighborAngle", body: { stop_id: "s1", neighbor_id: "s2", yaw: 10, pitch: -4 } },
+    expect(planHotspot(NODE_GRAPH, "a", "b", { yaw: 10, pitch: -4 })).toEqual([
+      { method: "PATCH", path: "Nodes_API/updateNeighborAngle", body: { node_id: "a", neighbor_id: "b", yaw: 10, pitch: -4 } },
     ]);
   });
 });
@@ -58,8 +50,8 @@ describe("planDefaultView", () => {
 
 describe("planClearDefaultView", () => {
   it("clears a link's arrival view", () => {
-    expect(planClearDefaultView(STOP_GRAPH, "s1", "s2")).toEqual([
-      { method: "POST", path: "TourStops_API/clearNeighborDefaultView", body: { stop_id: "s1", neighbor_id: "s2" } },
+    expect(planClearDefaultView(NODE_GRAPH, "a", "b")).toEqual([
+      { method: "POST", path: "Nodes_API/clearNeighborDefaultView", body: { node_id: "a", neighbor_id: "b" } },
     ]);
   });
 });
@@ -101,11 +93,6 @@ describe("planMarkers", () => {
     expect(planMarkers(NODE_GRAPH, "a", [saved], [{ ...saved, landings: ["b"] }])).toEqual([
       { method: "PATCH", path: "Nodes_API/updateMarker/9", body: { yaw: 1, pitch: 2, landings: ["b"] } },
     ]);
-  });
-
-  it("does not send a stop marker's label edit", () => {
-    const next = current.map((m) => (m.id === 1 ? { ...m, label: "renamed" } : m));
-    expect(planMarkers(STOP_GRAPH, "a", current, next)).toEqual([]);
   });
 });
 

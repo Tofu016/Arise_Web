@@ -32,8 +32,8 @@ const defaultFilters = {
 // pages silently disagreeing about which node is selected.
 //
 // The placement mechanic (walking, linking, placing links and markers on
-// the panorama) is shared with the tour editor — see useGraphEditor. What
-// is specific to nodes lives here: the typed markers, and the sidebar.
+// the panorama) lives in useGraphEditor. What is specific to nodes lives
+// here: the typed markers, and the sidebar.
 export default function NavigationEditorPage() {
   const {
     nodes,

@@ -4,13 +4,13 @@ import { buildHotspots } from "../utils/hotspots";
 import { arrivalView } from "../utils/arrivalView";
 import * as placement from "../utils/placement";
 
-// React adapter over utils/placement.js for the navigation editors (indoor
-// nodes and tour stops alike): holds the session, the add-link box and the
-// photo-missing flag, and turns a placement into the right backend call.
+// React adapter over utils/placement.js for the navigation editor: holds
+// the session, the add-link box and the photo-missing flag, and turns a
+// placement into the right backend call.
 //
 // `items` is the list being edited; selection and the backend operations
-// come from whichever hook owns that data (the outlet's useNodes, or
-// useTourStops). `onCaptureFallback`, if given, is called with a captured
+// come from whichever hook owns that data (the outlet's useNodes).
+// `onCaptureFallback`, if given, is called with a captured
 // angle when a capture happens for a reason this hook doesn't itself own
 // (e.g. NavigationEditorPage's starting-view capture) — see requestCapture.
 export function useGraphEditor({

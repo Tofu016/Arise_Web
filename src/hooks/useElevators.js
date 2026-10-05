@@ -7,7 +7,7 @@ import { useCollection } from "./useCollection";
 // and accessible floors (see utils/elevators.js): every landing marker
 // just points at one of these by id, instead of carrying its own copy.
 // Public shape (elevators, loading, addElevator, updateElevator,
-// deleteElevator) mirrors useTourSections.js.
+// deleteElevator) mirrors the other small-collection hooks.
 
 async function loadAll() {
   const data = await apiGet("Elevators_API/getAll");

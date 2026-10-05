@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNodes } from "../../hooks/useNodes";
-import { useTourStops } from "../../hooks/useTourStops";
 import { usePhotos } from "../../hooks/usePhotos";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { isVideoPath } from "../../utils/signage";
@@ -89,8 +88,8 @@ function PhotoCard({ photo, onDelete, deleting }) {
   );
 }
 
-// Merged page: the Photo Coverage function (which nodes/tour stops still
-// need a photo uploaded) on top, and the Photos function (every photo on
+// Merged page: the Photo Coverage function (which nodes still need a
+// photo uploaded) on top, and the Photos function (every photo on
 // disk, in-use/orphaned, with delete) below it, keeping its own "Photos"
 // title as a sub-section. Combined because both pages exist to answer the
 // same underlying question — "what's going on with our photos" — from two
@@ -98,7 +97,6 @@ function PhotoCard({ photo, onDelete, deleting }) {
 // longer have to jump between two separate sidebar entries for it.
 export default function PhotoCoverageAdminPage() {
   const { nodes } = useNodes();
-  const { stops } = useTourStops();
   const { photos, loading, deletePhoto } = usePhotos();
   const [filter, setFilter] = useState("all");
   const [deletingPath, setDeletingPath] = useState(null);
@@ -106,8 +104,6 @@ export default function PhotoCoverageAdminPage() {
 
   const nodesWithPhoto = nodes.filter((n) => n.photo);
   const nodesMissing = nodes.filter((n) => !n.photo);
-  const stopsWithPhoto = stops.filter((s) => s.photo);
-  const stopsMissing = stops.filter((s) => !s.photo);
 
   const handleDelete = async (path) => {
     setError("");
@@ -132,13 +128,12 @@ export default function PhotoCoverageAdminPage() {
     <div className="photo-coverage-page">
       <h2 className="admin-page-heading">Photo Coverage</h2>
       <p className="field-hint">
-        Which nodes and tour stops still need a 360° photo uploaded. A node or stop with no photo has nothing
-        for a visitor to actually see there.
+        Which nodes still need a 360° photo uploaded. A node with no photo has nothing for a visitor to
+        actually see there.
       </p>
 
       <div className="photo-coverage-summary-row">
         <CoverageSummary label="Nodes" total={nodes.length} withPhoto={nodesWithPhoto.length} />
-        <CoverageSummary label="Tour Stops" total={stops.length} withPhoto={stopsWithPhoto.length} />
       </div>
 
       <h3 className="photo-coverage-section-heading">Nodes missing a photo</h3>
@@ -159,29 +154,13 @@ export default function PhotoCoverageAdminPage() {
         </div>
       )}
 
-      <h3 className="photo-coverage-section-heading">Tour stops missing a photo</h3>
-      {stopsMissing.length === 0 ? (
-        <p className="empty-hint">Every tour stop has a photo. ✓</p>
-      ) : (
-        <div className="users-list">
-          {stopsMissing.map((s) => (
-            <div key={s.id} className="users-row">
-              <div className="users-row-main">
-                <span className="users-row-name">{s.name || s.id}</span>
-                <span className="field-hint">{s.id}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <h2 className="admin-page-heading">
         Photos
         {orphanedCount > 0 && <span className="badge-count">{orphanedCount} orphaned</span>}
       </h2>
       <p className="field-hint">
-        Every photo uploaded anywhere in the system: node panoramas, room photos, tour stops, section covers,
-        marker photos, and advertisement images and videos, scanned directly from disk and checked against what's actually referenced.
+        Every photo uploaded anywhere in the system: node panoramas, room photos, marker photos, and
+        advertisement images and videos, scanned directly from disk and checked against what's actually referenced.
       </p>
 
       <div className="photo-gallery-filter-row">

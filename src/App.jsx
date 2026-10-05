@@ -7,14 +7,11 @@ import NavigationEditorPage from "./pages/admin/NavigationEditorPage";
 import RoomEditorPage from "./pages/admin/RoomEditorPage";
 import MarkerManagementPage from "./pages/admin/MarkerManagementPage";
 import UserPanelPage from "./pages/admin/UserPanelPage";
-import TourStopsPage from "./pages/admin/TourStopsPage";
-import TourNavigationEditorPage from "./pages/admin/TourNavigationEditorPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
 import EmergencyCoveragePage from "./pages/admin/EmergencyCoveragePage";
 import SignagePage from "./pages/admin/SignagePage";
 import KiosksPage from "./pages/admin/KiosksPage";
-import PublicTourPage from "./pages/PublicTourPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -53,16 +50,12 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          {/* Genuinely public: no RequireAuth wrapper at all, same as
-              /login above. This is the whole point of the Virtual Tour:
-              showcasing the campus to visitors, who have no accounts. */}
-          <Route path="/tour" element={<PublicTourPage />} />
           {/* Genuinely public — no RequireAuth wrapper at all, same as
-              /login and /tour above. Indoor navigation no longer requires
-              an account either; see IndoorUploads_API's serve() for the
-              matching backend change — removing the gate here alone,
-              without that one, would have left the page reachable but
-              every photo failing to load for a logged-out visitor. */}
+              /login above. Indoor navigation doesn't require an account;
+              see IndoorUploads_API's serve() for the matching backend
+              change — removing the gate here alone, without that one,
+              would have left the page reachable but every photo failing
+              to load for a logged-out visitor. */}
           <Route path="/" element={<MainPage />} />
           {/* Nested under one shared layout — useNodes() is called once in
               AdminLayout and passed down to whichever section is active via
@@ -85,8 +78,6 @@ export default function App() {
             <Route path="marker-management" element={<MarkerManagementPage />} />
             <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />
             <Route path="user-panel" element={<UserPanelPage />} />
-            <Route path="tour-stops" element={<TourStopsPage />} />
-            <Route path="campus-tour-navigation-editor" element={<TourNavigationEditorPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="photo-coverage" element={<PhotoCoverageAdminPage />} />
             {/* Named for the page, like every admin route. Only the API,

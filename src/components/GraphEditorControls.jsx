@@ -1,14 +1,12 @@
 import PanoramaNav from "./PanoramaNav";
 
-// The parts of a graph editor page (NavigationEditorPage, TourNavigationEditorPage)
-// that are byte-for-byte identical between the indoor and Campus Tour sides,
-// since both share the same walking/linking/placing mechanic via
-// useGraphEditor. Markers (indoor only) and the title-row subtitle are
-// genuinely different per page (floor/building vs. section) and stay in each
-// page.
+// The parts of a graph editor page (NavigationEditorPage) that aren't
+// specific to any one page, since every graph editor shares the same
+// walking/linking/placing mechanic via useGraphEditor. Markers and the
+// title-row subtitle are genuinely page-specific and stay in each page.
 //
 // Every component here takes the whole `editor` returned by useGraphEditor —
-// both pages already hold it in the same shape, so passing it whole costs
+// a page already holds it in that shape, so passing it whole costs
 // callers nothing extra to learn.
 
 // The three placing/capture banners, in the order they can appear. `children`

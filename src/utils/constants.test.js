@@ -18,7 +18,7 @@ describe("suggestNodeId", () => {
   it("builds the id from the type id as is", () => {
     expect(suggestNodeId("gd1", 2, "stairs", [])).toBe("gd1_f2_stairs01");
     expect(suggestNodeId("gd1", 2, "open_area", [])).toBe("gd1_f2_open_area01");
-    expect(suggestNodeId("gd2", -1, "building_transition", [])).toBe("gd2_f-1_building_transition01");
+    expect(suggestNodeId("gd2", -1, "parking", [])).toBe("gd2_f-1_parking01");
   });
 
   it("picks the next free number for that building, floor and type", () => {

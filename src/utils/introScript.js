@@ -24,17 +24,5 @@ export const KIOSK_INTRO_TEXT = {
   menu: "Tap the menu button for search, directions and more.",
 };
 
-// The public tour's (/tour) controls screen — see TourTutorialOverlay.
-// `drag`/`hotspot` come in a mouse and a touch wording.
-export const TOUR_INTRO_TEXT = {
-  drag: "Click and drag to look around.",
-  dragTouch: "Touch and drag to look around.",
-  hotspot: "Click a glowing hotspot to move to that spot.",
-  hotspotTouch: "Tap a glowing hotspot to move to that spot.",
-  scenes: "Open Scenes to see every stop and jump straight to any of them.",
-  step: "Use the arrows at the bottom to go to the previous or next stop.",
-  help: "Press ? anytime to see these tips again.",
-};
-
 export const DESKTOP_INTRO_SPEECH = [...Object.values(DESKTOP_INTRO_TEXT), ...Object.values(SIDEBAR_INTRO_TEXT)].join(" ");
 export const KIOSK_INTRO_SPEECH = Object.values(KIOSK_INTRO_TEXT).join(" ");

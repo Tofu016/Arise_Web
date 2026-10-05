@@ -36,8 +36,6 @@ describe("uploadPhoto", () => {
     ["panorama", "IndoorUploads_API/panoramaPublish"],
     ["roomPhoto", "IndoorUploads_API/roomPhoto"],
     ["room360", "IndoorUploads_API/room360Photo"],
-    ["tourPanorama", "TourUploads_API/panorama"],
-    ["tourCover", "TourUploads_API/cover"],
   ])("%s goes to %s, converted first", async (kind, endpoint) => {
     apiUpload.mockResolvedValue({ path: "p/a.webp" });
     const file = new Blob(["x"]);
@@ -52,9 +50,9 @@ describe("uploadPhoto", () => {
     expect(formData.get("building")).toBe("gd1");
   });
 
-  it("omits building for tour kinds", async () => {
-    apiUpload.mockResolvedValue({ path: "tourcover/a.webp" });
-    await uploadPhoto("tourCover", new Blob(["x"]), { filename: "a.webp" });
+  it("omits building when none is given", async () => {
+    apiUpload.mockResolvedValue({ path: "signage/a.webp" });
+    await uploadPhoto("signage", new Blob(["x"]), { filename: "a.webp" });
     expect(apiUpload.mock.calls[0][1].has("building")).toBe(false);
   });
 
@@ -64,7 +62,7 @@ describe("uploadPhoto", () => {
 });
 
 describe("loadPhoto", () => {
-  it.each(["tourpanorama/a.jpg", "tourcover/a.jpg"])(
+  it.each(["signage/a.jpg", "signage/clip.mp4"])(
     "%s resolves to a direct static URL with no fetch",
     async (path) => {
       const { url } = await loadPhoto(path);
@@ -157,13 +155,13 @@ describe("fetchPhotoBlob", () => {
     const blob = new Blob(["t"]);
     const fetchMock = vi.fn(async () => ({ ok: true, blob: async () => blob }));
     vi.stubGlobal("fetch", fetchMock);
-    expect(await fetchPhotoBlob("tourcover/a.webp")).toBe(blob);
-    expect(fetchMock).toHaveBeenCalledWith("http://host/api/uploads/tourcover/a.webp", { cache: "no-cache" });
+    expect(await fetchPhotoBlob("signage/a.webp")).toBe(blob);
+    expect(fetchMock).toHaveBeenCalledWith("http://host/api/uploads/signage/a.webp", { cache: "no-cache" });
   });
 
   it("fails clearly when a public photo can't be read, or the path is unknown", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
-    await expect(fetchPhotoBlob("tourcover/a.webp")).rejects.toThrow("Couldn't load the existing photo.");
+    await expect(fetchPhotoBlob("signage/a.webp")).rejects.toThrow("Couldn't load the existing photo.");
     await expect(fetchPhotoBlob("old-firebase-path.jpg")).rejects.toThrow("old storage path");
   });
 });
@@ -179,11 +177,11 @@ describe("reuploadPhoto", () => {
     expect(result).toEqual({ path: "room360/gd1/r.webp" });
   });
 
-  it("sends no building for a flat (public tour) photo", async () => {
-    apiUpload.mockResolvedValue({ path: "tourpanorama/s.webp" });
-    await reuploadPhoto("tourpanorama/s.webp", new Blob(["x"]));
+  it("sends no building for a flat (public) photo", async () => {
+    apiUpload.mockResolvedValue({ path: "signage/s.webp" });
+    await reuploadPhoto("signage/s.webp", new Blob(["x"]));
     const [endpoint, formData] = apiUpload.mock.calls[0];
-    expect(endpoint).toBe("TourUploads_API/panorama");
+    expect(endpoint).toBe("Signage_API/upload");
     expect(formData.get("building")).toBeNull();
   });
 

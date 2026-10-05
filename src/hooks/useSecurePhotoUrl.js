@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { acquirePhoto, loadPhoto, loadPhotoThumbnail } from "../utils/photoStore";
 
 // React adapter over photoStore's loadPhoto: `photo` is a backend storage
-// path, e.g. "panoramas/gd1/gd1_f2_hallway01.jpg". Public tour paths
-// resolve to a direct URL; protected indoor paths are fetched with the
-// current auth token into a blob: URL, revoked on change or unmount.
+// path, e.g. "panoramas/gd1/gd1_f2_hallway01.jpg". Public paths (e.g.
+// signage) resolve to a direct URL; protected indoor paths are fetched
+// with the current auth token into a blob: URL, revoked on change or
+// unmount.
 // `cached` serves it from photoStore's session cache instead (shared with
 // prefetchPhoto) — for the visitor view; admin editors leave it off so an
 // edited photo is never shown stale.

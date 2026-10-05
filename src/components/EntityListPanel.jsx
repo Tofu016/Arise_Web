@@ -1,4 +1,4 @@
-// Shared row-list rendering behind NodeList.jsx and TourStopList.jsx —
+// Shared row-list rendering behind NodeList.jsx and RoomList.jsx —
 // both show the same "photo dot + name + one meta line (+ optional extra
 // line)" row, over a header reporting how many of the full set matched
 // the current filter and how many have a photo. Each caller keeps its

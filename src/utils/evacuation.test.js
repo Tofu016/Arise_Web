@@ -47,7 +47,7 @@ describe("which nodes are destination points", () => {
   });
 
   it("a tick on any other type is ignored", () => {
-    for (const type of ["hallway", "stairs", "building_transition"]) {
+    for (const type of ["hallway", "stairs"]) {
       expect(canBeDestinationPoint(node("x", 1, { type, isEmergencyDestination: true }))).toBe(false);
     }
   });

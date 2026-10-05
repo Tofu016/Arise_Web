@@ -1,14 +1,9 @@
 import { useMemo } from "react";
 
-// Building Transition nodes connect GD2<->GD3 across building boundaries, so
-// they must stay selectable as a neighbor regardless of which building/floor
-// filter is currently active — otherwise they'd be invisible in the list
-// exactly when you need to link to one.
 export default function NeighborPicker({ nodes, currentNodeId, building, floor, selected, onChange }) {
   const options = useMemo(() => {
     return nodes.filter((n) => {
       if (n.id === currentNodeId) return false;
-      if (n.type === "building_transition") return true;
       return n.building === building && n.floor === floor;
     });
   }, [nodes, currentNodeId, building, floor]);
@@ -35,7 +30,6 @@ export default function NeighborPicker({ nodes, currentNodeId, building, floor, 
             />
             <span>{n.name}</span>
             <span className="neighbor-id">{n.id}</span>
-            {n.type === "building_transition" && <span className="portal-tag">building transition</span>}
           </label>
         ))}
       </div>

@@ -12,8 +12,6 @@ import { createLimiter } from "./concurrencyLimiter";
 //   panorama      node panoramas (published version, after blur review)
 //   roomPhoto     a room's photo
 //   room360       a room's 360° photo
-//   tourPanorama  outdoor tour stop panoramas
-//   tourCover     tour section cover photos
 //   signage       kiosk bottom-band media (see utils/signage.js): images,
 //                 animated GIFs and MP4/WebM video. Uploaded as picked
 //                 (raw), since convertImage's canvas re-encode would
@@ -22,8 +20,6 @@ const KINDS = {
   panorama: { endpoint: "IndoorUploads_API/panoramaPublish", prefix: "panoramas/", visibility: "protected" },
   roomPhoto: { endpoint: "IndoorUploads_API/roomPhoto", prefix: "roomphoto/", visibility: "protected" },
   room360: { endpoint: "IndoorUploads_API/room360Photo", prefix: "room360/", visibility: "protected" },
-  tourPanorama: { endpoint: "TourUploads_API/panorama", prefix: "tourpanorama/", visibility: "public" },
-  tourCover: { endpoint: "TourUploads_API/cover", prefix: "tourcover/", visibility: "public" },
   signage: { endpoint: "Signage_API/upload", prefix: "signage/", visibility: "public", raw: true },
 };
 

@@ -3,12 +3,6 @@ import {
   toNode,
   nodeCreateBody,
   nodePatchBody,
-  toStop,
-  stopCreateBody,
-  stopPatchBody,
-  toSection,
-  sectionCreateBody,
-  sectionPatchBody,
   toAdmin,
   toDialog,
   normalizeRoomName,
@@ -176,82 +170,6 @@ describe("node request bodies", () => {
       starting_view_yaw: null,
       starting_view_pitch: null,
     });
-  });
-});
-
-describe("tour stops", () => {
-  const row = {
-    id: "s1",
-    name: "Stop",
-    section_id: null,
-    photo_path: null,
-    description: null,
-    neighbors: [{ neighbor_id: "s2", yaw: 1, pitch: 2 }],
-    created_at: "c",
-    updated_at: "u",
-  };
-
-  it("maps empties to empty strings", () => {
-    expect(toStop(row)).toEqual({
-      id: "s1",
-      name: "Stop",
-      section: "",
-      photo: "",
-      coverPhoto: "",
-      description: "",
-      neighbors: ["s2"],
-      hotspots: { s2: { yaw: 1, pitch: 2, defaultYaw: null, defaultPitch: null } },
-      createdAt: "c",
-      updatedAt: "u",
-    });
-  });
-
-  it("create drops empty optionals", () => {
-    const body = stopCreateBody({ id: "s", name: "S", section: "", photo: "", coverPhoto: "", description: "" });
-    expect(body).toEqual({
-      id: "s",
-      name: "S",
-      section_id: undefined,
-      photo_path: undefined,
-      cover_photo_path: undefined,
-      description: undefined,
-    });
-  });
-
-  it("maps the cover photo both ways", () => {
-    expect(toStop({ ...row, cover_photo_path: "tourcover/s1_cover.webp" }).coverPhoto).toBe("tourcover/s1_cover.webp");
-    expect(stopCreateBody({ id: "s", name: "S", coverPhoto: "tourcover/s_cover.webp" }).cover_photo_path).toBe(
-      "tourcover/s_cover.webp"
-    );
-    expect(stopPatchBody({ coverPhoto: "" })).toEqual({ cover_photo_path: "" });
-  });
-
-  it("patch sends a cleared section as null, never as an empty string", () => {
-    expect(stopPatchBody({ section: "" })).toEqual({ section_id: null });
-    expect(stopPatchBody({ section: "sec1" })).toEqual({ section_id: "sec1" });
-    expect(stopPatchBody({ photo: "", description: "d", name: "n" })).toEqual({
-      photo_path: "",
-      description: "d",
-      name: "n",
-    });
-    expect(stopPatchBody({})).toEqual({});
-  });
-});
-
-describe("tour sections", () => {
-  it("has a null cover photo when empty (unlike other photo fields)", () => {
-    expect(toSection({ id: 1, label: "L", cover_photo_path: "", created_at: "c", updated_at: "u" })).toEqual({
-      id: 1,
-      label: "L",
-      coverPhoto: null,
-      createdAt: "c",
-      updatedAt: "u",
-    });
-  });
-  it("bodies", () => {
-    expect(sectionCreateBody({ label: "L", coverPhoto: "" }).cover_photo_path).toBeUndefined();
-    expect(sectionPatchBody({ coverPhoto: "p" })).toEqual({ cover_photo_path: "p" });
-    expect(sectionPatchBody({})).toEqual({});
   });
 });
 

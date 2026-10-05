@@ -1,5 +1,4 @@
 import {
-  BUILDING_TRANSITION_TYPE,
   EMERGENCY_DESTINATION_TYPES,
   FIRE_STAIRS_PREFERENCE,
   GROUND_FLOOR,
@@ -37,7 +36,6 @@ import { exitLandingEdges, isFireExitNode, landingProblems, fireExitCrossFloorLi
 const COST_PER_FLOOR_DOWN = 2;
 const COST_PER_FLOOR_UP = 8;
 const COST_ENTERING_STAIRS = 1;
-const COST_ENTERING_BUILDING_TRANSITION = 2;
 
 function floorCost(from, to) {
   const delta = Number(to.floor) - Number(from.floor);
@@ -56,7 +54,6 @@ function entryCost(from, to) {
   let cost = 1 + floorCost(from, to);
   if (isStairsFlight(from, to)) cost += FIRE_STAIRS_PREFERENCE;
   if (to.type === STAIRS_TYPE) cost += COST_ENTERING_STAIRS;
-  if (to.type === BUILDING_TRANSITION_TYPE) cost += COST_ENTERING_BUILDING_TRANSITION;
   return cost;
 }
 

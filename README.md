@@ -334,11 +334,10 @@ Under **Virtual Map → Node Editor**:
    - **Name** — a human-readable label, e.g. "Hallway near Rm 203".
    - **Building** / **Floor** — pick from the dropdowns. Floors offered are
      specific to the selected building.
-   - **Type**: Hallway, Lobby, Entrance, Stairs, Open Area, Parking, or
-     Building Transition (a walkable GD2 ↔ GD3 link). There is no Fire Exit
-     type: a node that holds a fire stairwell door keeps its real type (often
-     a Hallway) and carries an **Emergency Exit marker** instead (see
-     "Point-of-interest markers").
+   - **Type**: Hallway, Lobby, Entrance, Stairs, Open Area or Parking. There
+     is no Fire Exit type: a node that holds a fire stairwell door keeps its
+     real type (often a Hallway) and carries an **Emergency Exit marker**
+     instead (see "Point-of-interest markers").
    - **Floors reached**: shown for Stairs, read-only: the floors the node's
      own neighbor links reach (managed in Virtual Map Navigation Editor), so
      there is no second list to keep in step with them.

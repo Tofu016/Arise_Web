@@ -5,9 +5,8 @@
 //
 // Empty-value conventions are the backend contract, not tidiness, and are
 // deliberately left as each entity has them: photo fields are "" when
-// empty, except a section's coverPhoto, which is null. Create bodies drop
-// empty optionals (`|| undefined`); patch bodies send exactly what was
-// given.
+// empty. Create bodies drop empty optionals (`|| undefined`); patch
+// bodies send exactly what was given.
 
 // A hotspot's defaultYaw/defaultPitch are the arrival view for that one
 // edge — the camera orientation to land on when walking this specific
@@ -33,9 +32,8 @@ function toMarker(m) {
   return { id: m.id, type: m.type, label: m.label, yaw: m.yaw, pitch: m.pitch };
 }
 
-// Elevator markers are a Node-only concept (see utils/elevators.js) — tour
-// stops have no floors at all, so toStop() below deliberately doesn't call
-// this. accessibleFloors (and an elevator marker's label) are read-time
+// Elevator markers are a Node-only concept (see utils/elevators.js).
+// accessibleFloors (and an elevator marker's label) are read-time
 // copies joined from the one `elevators` row, never stored per marker, so
 // every landing of the same elevator always agrees. An emergency exit marker
 // carries `landings`: the node ids its hidden fire stairs come out at, lowest
@@ -154,67 +152,6 @@ export function elevatorCreateBody({ id, label, building, accessibleFloors }) {
 // them), so only label and floors are patchable.
 export function elevatorPatchBody(patch) {
   return pick(patch, { label: "label", accessibleFloors: "accessible_floors" });
-}
-
-// ---- Tour stop (outdoor panorama point) ----
-
-export function toStop(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    section: row.section_id || "",
-    photo: row.photo_path || "",
-    coverPhoto: row.cover_photo_path || "",
-    description: row.description || "",
-    ...toEdges(row.neighbors),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-export function stopCreateBody(item) {
-  return {
-    id: item.id,
-    name: item.name,
-    section_id: item.section || undefined,
-    photo_path: item.photo || undefined,
-    cover_photo_path: item.coverPhoto || undefined,
-    description: item.description || undefined,
-  };
-}
-
-export function stopPatchBody(patch) {
-  const body = pick(patch, {
-    name: "name",
-    photo: "photo_path",
-    coverPhoto: "cover_photo_path",
-    description: "description",
-  });
-  // "" means "no section" (the form's "— No section —" option), but
-  // section_id is a foreign key: the database wants a real id or NULL,
-  // never a literal empty string (sending "" caused a 500).
-  if (patch.section !== undefined) body.section_id = patch.section || null;
-  return body;
-}
-
-// ---- Tour section ----
-
-export function toSection(row) {
-  return {
-    id: row.id,
-    label: row.label,
-    coverPhoto: row.cover_photo_path || null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-export function sectionCreateBody({ label, coverPhoto }) {
-  return { label, cover_photo_path: coverPhoto || undefined };
-}
-
-export function sectionPatchBody(patch) {
-  return pick(patch, { label: "label", coverPhoto: "cover_photo_path" });
 }
 
 // ---- Admin ----

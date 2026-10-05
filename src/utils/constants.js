@@ -95,9 +95,6 @@ export const NODE_TYPES = [
   // admin needs to be able to say which this actually is.
   { id: "open_area", label: "Open Area", color: "#6b6663" },
   { id: "parking", label: "Parking", color: "#5b7a8a" },
-  // Renamed from "Portal" to avoid reading as the mobile app's unrelated
-  // AR portal feature \u2014 this is a walkable GD2<->GD3 building link.
-  { id: "building_transition", label: "Building Transition", color: "#ad7f00" },
 ];
 
 // Node type ids the emergency router (utils/evacuation.js) keys off, named
@@ -106,7 +103,6 @@ export const NODE_TYPES = [
 // an emergency exit marker (see utils/emergencyExits.js), so a hallway that
 // holds a fire stairwell door stays a hallway.
 export const STAIRS_TYPE = "stairs";
-export const BUILDING_TRANSITION_TYPE = "building_transition";
 // The ground floor. Floor 1 is the ground in every building, and Underground
 // (-1) lies below it. Emergency routing treats it as fixed: an Emergency Exit
 // Destination Point can only be on this floor or below, and a route climbs

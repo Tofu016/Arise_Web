@@ -12,7 +12,7 @@ export function hotspotAngle(node, neighborId) {
   return node.hotspots?.[neighborId] || defaultHotspotAngle(idx, neighborIds.length);
 }
 
-// The clickable arrows for a node or tour stop: one per neighbor, at its
+// The clickable arrows for a node: one per neighbor, at its
 // saved angle, or spread evenly around the circle when none was placed yet.
 // `withPhoto` adds the neighbor's photo, which powers the viewer's hover
 // sneak-peek (the public viewers use it; the admin editors don't).

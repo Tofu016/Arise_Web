@@ -1,8 +1,7 @@
 import { apiDelete, apiPatch, apiPost } from "./apiClient";
 
-// Nodes (indoor) and tour stops (outdoor) are the same kind of thing to
-// edit: a point in a graph, with neighbor links, a hotspot angle per link,
-// and markers. The editors hand over the WHOLE new list ("replace the
+// A node is a point in a graph, with neighbor links, a hotspot angle per
+// link, and markers. The editors hand over the WHOLE new list ("replace the
 // neighbors array"), while the REST backend works through individual
 // add/update/remove endpoints — so each function here diffs the current
 // list against the new one and returns just the calls that difference
@@ -10,9 +9,8 @@ import { apiDelete, apiPatch, apiPost } from "./apiClient";
 //
 // A graph scope says which backend the calls address:
 //   api           API controller name
-//   ownerKey      the body key naming the owner ("node_id" / "stop_id")
+//   ownerKey      the body key naming the owner ("node_id")
 //   newMarkerBody the body for a brand-new marker beyond the owner id
-//                 (only the node graph has markers, so only it sets this)
 //   syncsLabel    whether a changed marker label is sent too (the node
 //                 backend's updateMarker takes one)
 export const NODE_GRAPH = {
@@ -27,11 +25,6 @@ export const NODE_GRAPH = {
     ...(m.type === "elevator" ? { elevator_id: m.elevatorId } : {}),
     ...(m.type === "emergency_exit" ? { landings: m.landings || [] } : {}),
   }),
-};
-
-export const STOP_GRAPH = {
-  api: "TourStops_API",
-  ownerKey: "stop_id",
 };
 
 const call = (method, path, body) => ({ method, path, body });
@@ -95,8 +88,8 @@ export function planClearDefaultView(graph, id, neighborId) {
 
 const labelChanged = (graph, before, next) => graph.syncsLabel && next.type !== "elevator" && before.label !== next.label;
 
-// An emergency exit marker's landing list, compared as a set of ids: only the
-// node graph has them, and the backend replaces the whole list when it changes.
+// An emergency exit marker's landing list, compared as a set of ids: the
+// backend replaces the whole list when it changes.
 const landingsChanged = (graph, before, next) => {
   if (graph.api !== NODE_GRAPH.api || next.type !== "emergency_exit") return false;
   const a = [...(before.landings || [])].sort();
@@ -111,8 +104,8 @@ const landingsChanged = (graph, before, next) => {
 // missing from the new list is a REMOVE.
 //
 // A node marker's label is compared too, since a facility's label is the key
-// its saved details are stored under. A stop marker's label and photos are
-// never sent. An elevator landing's floors and label live on its `elevators`
+// its saved details are stored under. An elevator landing's floors and label
+// live on its `elevators`
 // row instead (see useElevators), so there's nothing elevator-specific to diff.
 export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const currentIds = currentMarkers.map((m) => m.id);

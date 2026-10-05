@@ -14,11 +14,10 @@ const LOCATION_ICON = <img src={locationIcon} alt="" className="admin-sidebar-ic
 // Pending real icons — see the icon list handed back to the user.
 const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="admin-sidebar-icon-img" />;
 
-// Three independent top-level groups, per the confirmed sidebar
-// architecture — Virtual Map and Campus Tour each collapse to one rail
-// icon and expand into their own labeled sub-items; User Panel is its
-// own single rail icon with no sub-items or grouping at all, since user
-// management genuinely doesn't belong to either tour.
+// Top-level groups, per the confirmed sidebar architecture — Virtual Map
+// collapses to one rail icon and expands into its own labeled sub-items;
+// User Panel is its own single rail icon with no sub-items or grouping at
+// all, since user management genuinely doesn't belong to any one group.
 //
 // Group-level icons deliberately avoid reusing any of their own
 // sub-items' icons (Virtual Map's own "Virtual Map Navigation Editor"
@@ -39,33 +38,22 @@ const GROUPS = [
       { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" },
     ],
   },
-  {
-    id: "virtual",
-    icon: PLACEHOLDER("landscape-photo"),
-    label: "Campus Tour",
-    items: [
-      { path: "tour-stops", icon: LOCATION_ICON, label: "Tour Stops" },
-      { path: "campus-tour-navigation-editor", icon: MAP_ICON, label: "Campus Tour Navigation Editor" },
-    ],
-  },
 ];
 
 // Standalone rail icons — each a direct link with no sub-items, so
 // (unlike GROUPS) clicking navigates immediately with no flyout step.
-// User Panel: user management doesn't belong to either tour.
+// User Panel: user management doesn't belong to any one editor group.
 // Analytics: session/behavior tracking plus feedback comments (formerly
 // the plain Feedback page), same reasoning. Uses the bar-chart icon
 // (formerly Photo Coverage's) now that Photo Coverage itself uses the
 // picture-frame icon below.
-// Photo Coverage: covers both nodes (Virtual Map) and tour stops (Campus
-// Tour) together, so it doesn't belong to either single group either.
-// Also now covers every photo type (the former standalone Photos page was
-// merged into it), so it uses that page's own picture-frame icon.
+// Photo Coverage: covers every photo type (the former standalone Photos
+// page was merged into it), so it uses that page's own picture-frame icon.
 const USER_PANEL = { path: "user-panel", icon: ACCOUNT_ICON, label: "User Panel" };
 const ANALYTICS = { path: "analytics", icon: PLACEHOLDER("bar-chart"), label: "Analytics" };
 const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("picture-frame"), label: "Photo Coverage" };
 // Advertisements: the kiosk's bottom-band media (signage). Kiosk-wide, not
-// part of either tour's content, so it stands alone too.
+// part of the Virtual Map's own content, so it stands alone too.
 const ADVERTISEMENTS = { path: "advertisements", icon: PLACEHOLDER("megaphone"), label: "Advertisements" };
 // Kiosks: the physical kiosk devices and where each stands on the map.
 // Kiosk-wide like Advertisements, so it stands alone too.
@@ -77,17 +65,7 @@ const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS,
 // not independently per page, and passed down through Outlet's own
 // context — this is what lets a node selected in one Virtual Map section
 // still be the selected node after switching to another, rather than
-// every page losing track of it on navigation. The Campus Tour side's
-// two pages (Description Edit and Section Editor became popups launched
-// from Tour Stops rather than their own sidebar destinations) each call
-// their own hooks independently for now rather than sharing through this
-// same context — see this file's own history for why: useNodes() and
-// useTourStops() both return same-named properties
-// (setNeighbors/setHotspot/setMarkers), so naively merging them into one
-// flat context object would silently let one overwrite the other, and
-// fixing that properly would mean restructuring every existing Virtual
-// Map page's own useOutletContext() call too — out of scope for what
-// this pass is actually about.
+// every page losing track of it on navigation.
 //
 // Sidebar interaction: collapsed is an icon-only rail, always visible.
 // Clicking a GROUP icon expands into a flyout showing that group's own
@@ -122,11 +100,6 @@ export default function AdminLayout() {
       <div className="admin-header">
         <div className="admin-header-side admin-header-nav">
           <Link to="/" className="admin-header-nav-btn primary">Back to Virtual Map</Link>
-          {/* Destination now exists (the public /tour page, built in a
-              prior phase) — same treatment and behavior as "Back to
-              Virtual Map" above: plain in-app navigation, same tab, no
-              target="_blank", for consistency between the two. */}
-          <Link to="/tour" className="admin-header-nav-btn primary">Back to Virtual Tour</Link>
         </div>
         <div className="admin-header-center">
           <div className="admin-header-title-line" />

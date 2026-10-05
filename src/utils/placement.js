@@ -1,6 +1,5 @@
 // What an admin is doing while editing a point's links and markers on its
-// panorama — shared by the indoor (node) and tour (stop) navigation
-// editors, which are the same mechanic over different data. Pure state and
+// panorama, as used by the indoor (node) navigation editor. Pure state and
 // transitions: no React, no backend calls. Where a transition needs the
 // backend, it returns the change to make (an "action") and the caller
 // performs it.

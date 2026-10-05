@@ -27,7 +27,7 @@ describe("validateNode: Emergency Exit Destination Point tick", () => {
   });
 
   it("refuses it on any other type without the marker", () => {
-    for (const type of ["hallway", "stairs", "building_transition"]) {
+    for (const type of ["hallway", "stairs"]) {
       const n = node({ id: `gd1_f1_${type}01`, type, isEmergencyDestination: true });
       expect(validateNode(n, [])).toEqual([expect.stringMatching(/Only Open Area, Parking, Lobby and Entrance/)]);
     }
