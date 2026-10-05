@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTourStops } from "../hooks/useTourStops";
 import { useTourSections } from "../hooks/useTourSections";
 import { buildHotspots } from "../utils/hotspots";
+import { arrivalView } from "../utils/arrivalView";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useImagePreloaded } from "../hooks/useImagePreloaded";
 import PanoramaNav from "../components/PanoramaNav";
@@ -220,9 +221,10 @@ export default function PublicTourPage() {
   };
 
   const goTo = (id, angle) => {
+    const view = arrivalView(angle, byId[id], selectedStopId);
     setSelectedStopId(id);
     markVisited(id);
-    setEntryYaw(angle?.yaw ?? 0);
+    setEntryYaw(view.yaw);
   };
 
   const jumpToStop = (id) => {

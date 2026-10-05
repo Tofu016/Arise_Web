@@ -27,6 +27,10 @@ _Avoid_: face scan, face review (automatic detection no longer exists)
 **Walk**:
 Moving to a neighboring Node by its hotspot; the visitor keeps their history and faces the way they went.
 
+**Arrival view**:
+The direction a visitor faces after a Walk. Chosen in order: the link's **Manual default view** (an admin's override, always wins), else the **Automatic default view** (facing away from the arrival Node's own saved arrow back to the Node just left, since panoramas share no common north), else the clicked arrow's own yaw. Nothing is stored for the automatic one. See `docs/arrival-view.md` and `src/utils/arrivalView.js`.
+_Avoid_: entry direction, initial view, "default view" on its own when it matters whether it is manual or automatic (a Node's starting view, used by a Jump, is a different thing)
+
 **Jump**:
 Moving anywhere else (search result, entrance, room card, start of a route) as a fresh start; history is cleared.
 

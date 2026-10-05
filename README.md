@@ -415,14 +415,17 @@ needing to re-upload from scratch.
   box has **+ Add Links**, a search of other nodes by name or ID. Pick one to
   link it and then click on the panorama where its arrow should sit — links
   are bidirectional. The **Links added** list beside it has **Reposition**,
-  **Clear default view** and **Remove** per link.
+  **Override/Change default view**, **Back to automatic** and **Remove** per link.
 - Positioning the clickable arrow itself:
   1. Select the node you want to position an arrow in.
   2. Add or **Reposition** a link, and click on the panorama sphere where
      the arrow toward that neighbor should sit. A link that was never
      positioned defaults to evenly spaced arrows.
-  3. Optionally save a **default view**: the camera direction a visitor
-     lands facing when arriving through that particular link.
+  3. Every link already has an **automatic default view**: a visitor lands
+     facing away from the arrival photo's own arrow back to where they came
+     from. Optionally **Override** it with a manual default view (the camera
+     direction a visitor lands facing through that particular link); **Back
+     to automatic** removes the override. See `docs/arrival-view.md`.
 - **Renaming a node's ID** automatically updates every other node's neighbor
   list to match.
 

@@ -687,7 +687,7 @@ function MainPageContent({ onReset }) {
   const rideElevatorTo = (dest) => {
     overlay.closeElevatorPicker();
     speak(`Taking the elevator to ${floorLabel(dest.floor)}`);
-    goTo(dest.node.id, { yaw: arrivalYawFromLanding(dest.marker) });
+    goTo(dest.node.id, { defaultYaw: arrivalYawFromLanding(dest.marker) });
   };
 
   // Tapping an elevator landing marker, like pressing the call button: with

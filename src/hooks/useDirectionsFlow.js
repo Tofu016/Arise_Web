@@ -20,6 +20,7 @@ import { fireStairsAnnouncement } from "../utils/emergencyExits";
 // Collaborators are injected, so this knows nothing about navigation or the
 // overlay beyond these verbs:
 //   moves    { jump(id), walk(id, { yaw, defaultYaw?, defaultPitch? }, via?) }
+//            (defaultYaw wins; see utils/arrivalView.js)
 //   overlay  { openDirections(), closeDirections(), walkStarted() }
 //   clearSearch()
 //
@@ -164,7 +165,11 @@ export function useDirectionsFlow({
     if (!step) return;
     if (step.kind === "elevator") speak(`Taking the elevator to ${floorLabel(step.ride.toFloor)}`);
     if (step.kind === "fireStairs") speak(`Taking the Emergency Exit stairs to ${floorLabel(step.stairs.toFloor)}`);
-    moves.walk(step.id, { yaw: step.yaw, defaultYaw: step.defaultYaw, defaultPitch: step.defaultPitch });
+    // An elevator or fire stairs step carries its own arrival yaw (out of the
+    // doors), which is fixed like a manual default view; a plain walk lets
+    // arrivalView work the facing out.
+    const fixed = step.kind === "walk" ? step.defaultYaw : step.yaw;
+    moves.walk(step.id, { yaw: step.yaw, defaultYaw: fixed, defaultPitch: step.defaultPitch });
   };
   useAutoWalk(directions, setDirections, walkToNext);
 

@@ -96,15 +96,18 @@ export function LinkList({ editor }) {
           <div key={h.id} className="link-row">
             <span className="link-name">
               {h.name}
-              {h.defaultYaw != null && <span className="field-hint"> · default view set</span>}
+              <span className="field-hint">
+                {" "}
+                · {h.defaultYaw != null ? "manual default view" : "automatic default view"}
+              </span>
             </span>
             <div className="link-actions">
               <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
               <button onClick={() => editor.startSetDefaultView(h.id)}>
-                {h.defaultYaw != null ? "Reset" : "Set"} default view
+                {h.defaultYaw != null ? "Change" : "Override"} default view
               </button>
               {h.defaultYaw != null && (
-                <button onClick={() => editor.clearDefaultView(h.id)}>Clear default view</button>
+                <button onClick={() => editor.clearDefaultView(h.id)}>Back to automatic</button>
               )}
               <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
             </div>

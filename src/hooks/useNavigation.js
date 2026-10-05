@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { allBuildings } from "../utils/constants";
+import { arrivalView } from "../utils/arrivalView";
 import {
   initialNavigation,
   landOnDefault,
@@ -45,14 +46,16 @@ export function useNavigation(nodes, byId) {
     entryPitch: nav.entryPitch,
     arrival: nav.arrival,
     flyover: nav.flyover,
-    // `angle` may carry a per-edge default arrival view (defaultYaw/
-    // defaultPitch), which wins over the arrow's own plain yaw/pitch —
-    // same preference placement.js's walk() applies in the editors.
-    // `via` is the nodes a skip-ahead walk passes over (see requestWalk).
+    // `angle` is the link walked; the arrival view comes from arrivalView
+    // (manual default view, else away from the arrival's return arrow, else
+    // the arrow's own yaw). `via` is the nodes a skip-ahead walk passes over
+    // (see requestWalk); the stop just before arrival is the last of them.
     walk: (id, angle, meta, via) =>
-      perform((n, world, now) =>
-        requestWalk(n, world, { id, yaw: angle?.defaultYaw ?? angle?.yaw, pitch: angle?.defaultPitch, via, meta }, now)
-      ),
+      perform((n, world, now) => {
+        const fromId = via?.length ? via[via.length - 1] : n.currentId;
+        const view = arrivalView(angle, world.byId[id], fromId);
+        return requestWalk(n, world, { id, yaw: view.yaw, pitch: view.pitch, via, meta }, now);
+      }),
     // Jumping lands on a fresh node, facing `view` ({ yaw, pitch }) when
     // given (a room's own marker), else the node's own starting view if it
     // has one (set for a floor/building picker drop-in).

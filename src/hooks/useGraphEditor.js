@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSecurePhotoUrl } from "./useSecurePhotoUrl";
 import { buildHotspots } from "../utils/hotspots";
+import { arrivalView } from "../utils/arrivalView";
 import * as placement from "../utils/placement";
 
 // React adapter over utils/placement.js for the navigation editors (indoor
@@ -47,8 +48,11 @@ export function useGraphEditor({
   // Shared by every real navigation (goTo, startSetDefaultView): walks the
   // session and selection. Only the public entry points decide whether
   // that navigation should also drop a pending default-view capture.
+  // The admin arrives the way a visitor would (manual default view, else the
+  // automatic one), so what they see here is what visitors get.
   const navigateTo = (id, angle) => {
-    setSession(placement.walk(session, selectedId, angle));
+    const view = arrivalView(angle, byId[id], selectedId);
+    setSession(placement.walk(session, selectedId, { defaultYaw: view.yaw, defaultPitch: view.pitch }));
     setSelectedId(id);
     setPhotoMissing(false);
   };
