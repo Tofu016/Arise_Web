@@ -194,6 +194,7 @@ describe("tour stops", () => {
       name: "Stop",
       section: "",
       photo: "",
+      coverPhoto: "",
       description: "",
       neighbors: ["s2"],
       hotspots: { s2: { yaw: 1, pitch: 2, defaultYaw: null, defaultPitch: null } },
@@ -203,8 +204,23 @@ describe("tour stops", () => {
   });
 
   it("create drops empty optionals", () => {
-    const body = stopCreateBody({ id: "s", name: "S", section: "", photo: "", description: "" });
-    expect(body).toEqual({ id: "s", name: "S", section_id: undefined, photo_path: undefined, description: undefined });
+    const body = stopCreateBody({ id: "s", name: "S", section: "", photo: "", coverPhoto: "", description: "" });
+    expect(body).toEqual({
+      id: "s",
+      name: "S",
+      section_id: undefined,
+      photo_path: undefined,
+      cover_photo_path: undefined,
+      description: undefined,
+    });
+  });
+
+  it("maps the cover photo both ways", () => {
+    expect(toStop({ ...row, cover_photo_path: "tourcover/s1_cover.webp" }).coverPhoto).toBe("tourcover/s1_cover.webp");
+    expect(stopCreateBody({ id: "s", name: "S", coverPhoto: "tourcover/s_cover.webp" }).cover_photo_path).toBe(
+      "tourcover/s_cover.webp"
+    );
+    expect(stopPatchBody({ coverPhoto: "" })).toEqual({ cover_photo_path: "" });
   });
 
   it("patch sends a cleared section as null, never as an empty string", () => {

@@ -164,6 +164,7 @@ export function toStop(row) {
     name: row.name,
     section: row.section_id || "",
     photo: row.photo_path || "",
+    coverPhoto: row.cover_photo_path || "",
     description: row.description || "",
     ...toEdges(row.neighbors),
     createdAt: row.created_at,
@@ -177,12 +178,18 @@ export function stopCreateBody(item) {
     name: item.name,
     section_id: item.section || undefined,
     photo_path: item.photo || undefined,
+    cover_photo_path: item.coverPhoto || undefined,
     description: item.description || undefined,
   };
 }
 
 export function stopPatchBody(patch) {
-  const body = pick(patch, { name: "name", photo: "photo_path", description: "description" });
+  const body = pick(patch, {
+    name: "name",
+    photo: "photo_path",
+    coverPhoto: "cover_photo_path",
+    description: "description",
+  });
   // "" means "no section" (the form's "— No section —" option), but
   // section_id is a foreign key: the database wants a real id or NULL,
   // never a literal empty string (sending "" caused a 500).
