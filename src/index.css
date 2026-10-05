@@ -1653,9 +1653,9 @@ html.kiosk-mode .sidebar-admin-btn:hover:active {
 .you-are-here-pill {
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.5;
@@ -7978,7 +7978,7 @@ html.kiosk-mode body {
 }
 
 /* Pulse so the notice is hard to miss: the card breathes between its own
-   look and a green tint, with a glow ring that expands and fades. */
+   look and a red tint, with a glow ring that expands and fades. */
 .arrival-notice {
   animation: arrival-notice-pulse 1.2s ease-in-out infinite;
 }
@@ -7986,12 +7986,12 @@ html.kiosk-mode body {
   0%, 100% {
     background: var(--surface);
     border-color: var(--border);
-    box-shadow: var(--shadow-2), 0 0 0 0 var(--success);
+    box-shadow: var(--shadow-2), 0 0 0 0 var(--danger);
     scale: 1;
   }
   50% {
-    background: var(--success-surface, var(--surface));
-    border-color: var(--success);
+    background: var(--danger-surface, var(--surface));
+    border-color: var(--danger);
     box-shadow: var(--shadow-2), 0 0 0 12px transparent;
     scale: 1.04;
   }
@@ -9797,28 +9797,34 @@ html.kiosk-mode .signage-row-thumb:hover:active {
    undoing .app-sidebar's 16px padding. The search row is hidden so nothing
    but the emergency view competes for attention; the header's close button
    ends the route. */
-.app-sidebar-emergency .app-sidebar-search {
+.app-sidebar-emergency .app-sidebar-search,
+.app-sidebar-directions .app-sidebar-search {
   display: none;
 }
-.app-sidebar-emergency .app-sidebar-content {
+.app-sidebar-emergency .app-sidebar-content,
+.app-sidebar-directions .app-sidebar-content {
   flex: 1 1 0;
 }
-.app-sidebar-emergency .directions-panel {
+.app-sidebar-emergency .directions-panel,
+.app-sidebar-directions .directions-panel {
   background: none;
   border: none;
   padding: 0;
   color: var(--white);
 }
-.app-sidebar-emergency .directions-panel-header {
+.app-sidebar-emergency .directions-panel-header,
+.app-sidebar-directions .directions-panel-header {
   justify-content: center;
   position: relative;
 }
-.app-sidebar-emergency .directions-panel-header h3 {
+.app-sidebar-emergency .directions-panel-header h3,
+.app-sidebar-directions .directions-panel-header h3 {
   font-size: 18px;
   color: var(--white);
 }
 /* White disc so the grey close icon reads against the dark sidebar. */
-.app-sidebar-emergency .directions-panel-header .close-btn {
+.app-sidebar-emergency .directions-panel-header .close-btn,
+.app-sidebar-directions .directions-panel-header .close-btn {
   position: absolute;
   right: 0;
   top: 50%;
@@ -9834,23 +9840,179 @@ html.kiosk-mode .signage-row-thumb:hover:active {
   border: none;
   outline: none;
 }
-.app-sidebar-emergency .directions-panel-header .close-btn:hover {
+.app-sidebar-emergency .directions-panel-header .close-btn:hover,
+.app-sidebar-directions .directions-panel-header .close-btn:hover {
   background: var(--surface-sunken);
 }
 /* Room for the 34px close button so the scroll area's top edge cannot clip it. */
-.app-sidebar-emergency .directions-panel-header {
+.app-sidebar-emergency .directions-panel-header,
+.app-sidebar-directions .directions-panel-header {
   min-height: 38px;
 }
-.app-sidebar-emergency .directions-field {
+.app-sidebar-emergency .directions-field,
+.app-sidebar-directions .directions-field {
   height: 36px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .app-sidebar-emergency .sidebar-field-label,
+.app-sidebar-directions .sidebar-field-label,
 .app-sidebar-emergency .directions-progress-text,
-.app-sidebar-emergency .field-hint {
+.app-sidebar-directions .directions-progress-text,
+.app-sidebar-emergency .field-hint,
+.app-sidebar-directions .field-hint {
   color: var(--white);
+}
+/* Desktop Directions: the form never scrolls; it sits above the map and its
+   suggestion list floats over the map instead of pushing it down. The
+   content box stacks above the map (z-index) so the list can overlap it. */
+.app-sidebar-directions {
+  /* The map keeps its place at the bottom: the sidebar itself never scrolls,
+     so a taller form cannot push it down. */
+  overflow: hidden;
+  gap: 8px;
+}
+.app-sidebar-directions .app-sidebar-logo {
+  padding: 4px 0 0;
+}
+.app-sidebar-directions .app-sidebar-logo img {
+  width: 56%;
+}
+/* Natural height; once a route exists MainPage sets min-height to the route's
+   tallest stage (DirectionsPeakProbe), so the map below is resized once. */
+.app-sidebar-directions .app-sidebar-content {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+/* Invisible, sidebar-wide copy of the form per walking stage, measured only. */
+.directions-probe {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.app-sidebar-directions .directions-panel {
+  gap: 6px;
+}
+.app-sidebar-directions .directions-panel-header {
+  min-height: 34px;
+}
+.app-sidebar-directions .sidebar-field-label .directions-field {
+  margin-top: 2px;
+  padding: 6px 10px;
+  height: 32px;
+}
+.app-sidebar-directions .directions-go-btn {
+  padding: 7px 16px;
+}
+.app-sidebar-directions .directions-autowalk-btn,
+.app-sidebar-directions .directions-skip-btn {
+  margin-top: 0;
+}
+.app-sidebar-directions .directions-progress {
+  gap: 6px;
+}
+.directions-suggestions-anchor {
+  position: relative;
+  height: 0;
+}
+.app-sidebar-directions .directions-suggestions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: auto;
+  max-height: 240px;
+  margin-top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow-2);
+}
+/* Desktop Directions map: full sidebar width, bled out to the sidebar's true
+   edges like .emergency-band. */
+.directions-map {
+  position: relative;
+  /* A square by default; it only shrinks when the form above needs the room. */
+  flex: 0 1 auto;
+  aspect-ratio: 1 / 1;
+  min-height: 150px;
+  /* auto top margin: any spare height goes above the map, never below it. */
+  margin: auto -16px -16px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+/* Same icon and label scheme as the panorama's corner tile, over a darkening
+   so the white text reads on any map tile. */
+.directions-map-badge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 12px 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: linear-gradient(to bottom, rgba(32, 27, 27, 0) 0%, rgba(32, 27, 27, 0.78) 100%);
+  color: var(--white);
+  font-family: var(--font-sans-display);
+  pointer-events: none;
+}
+.directions-map-badge-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.directions-map-badge-label {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.directions-map-pills {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.directions-map-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.directions-map-zoom button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 2px;
+  background: var(--white);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+}
+:where(html:not(.kiosk-mode)) .directions-map-zoom button:hover,
+html.kiosk-mode .directions-map-zoom button:hover:active {
+  background: var(--surface-sunken);
+}
+/* The branding zoom icons are white strokes; inverted and dimmed they read as
+   dark grey on the white button. */
+.directions-map-zoom-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  filter: invert(1) brightness(0.4);
 }
 .emergency-band {
   /* 40% is the floor, not a cap: the band grows to fit every contact so it

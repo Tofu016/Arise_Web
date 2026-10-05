@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
@@ -6,6 +6,8 @@ import RoomCard from "../components/RoomCard";
 import FlyoverPanel from "../components/FlyoverPanel";
 import CampusMapModal from "../components/CampusMapModal";
 import CampusMapPreview from "../components/CampusMapPreview";
+import DirectionsMap from "../components/DirectionsMap";
+import DirectionsPeakProbe from "../components/DirectionsPeakProbe";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
 import KioskCampusScreen from "../components/KioskCampusScreen";
@@ -232,6 +234,10 @@ function MainPageContent({ onReset }) {
   } = overlay;
 
   const [campusMapOpen, setCampusMapOpen] = useState(false);
+  // The tallest the form gets along the current route (see DirectionsPeakProbe),
+  // tagged with the path it was measured for so a stale one is never applied.
+  const [directionsPeak, setDirectionsPeak] = useState(null);
+  const recordPeak = useCallback((path, height) => setDirectionsPeak({ path, height }), []);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
   useEffect(() => {
@@ -848,12 +854,22 @@ function MainPageContent({ onReset }) {
   // Compact layout dock minus Search, which the sidebar already shows, and
   // plus Directions, which used to sit inside the search bar. The buttons
   // stack downward from the FAB's own level, over the panorama.
+  // Opening one UI closes the others, so nothing opens hidden behind (or
+  // stacked under) what was already up. Modals never outlive a menu action;
+  // the sidebar views (directions, room card, building list) replace each
+  // other.
+  const closeModals = () => {
+    overlay.closeFeedback();
+    setCampusMapOpen(false);
+    setAccountMenuOpen(false);
+  };
   const desktopMenuItems = [
     {
       key: "directions",
       icon: PLACEHOLDER("directions"),
       title: "Get directions",
       onClick: () => {
+        closeModals();
         overlay.closeBuildingMenu();
         flow.open();
       },
@@ -862,13 +878,22 @@ function MainPageContent({ onReset }) {
       key: "building",
       icon: PLACEHOLDER("building"),
       title: "Choose a building",
-      onClick: () => overlay.openFromDock("building"),
+      // The sidebar shows one thing at a time: directions and the room card
+      // outrank the building selector in the render order, so without closing
+      // them first it would open hidden behind them.
+      onClick: () => {
+        closeModals();
+        if (directions) flow.close();
+        else if (panelMode === "room") overlay.closeRoomCard();
+        overlay.openFromDock("building");
+      },
     },
     {
       key: "nearest-exit",
       icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />,
       title: "Nearest Exit",
       onClick: () => {
+        closeModals();
         overlay.closeBuildingMenu();
         flow.openNearestExit();
       },
@@ -878,7 +903,10 @@ function MainPageContent({ onReset }) {
       key: "feedback",
       icon: PLACEHOLDER("chat-bubble"),
       title: "Give feedback",
-      onClick: overlay.openFeedback,
+      onClick: () => {
+        closeModals();
+        overlay.openFeedback();
+      },
     },
     {
       key: "help",
@@ -1160,6 +1188,77 @@ function MainPageContent({ onReset }) {
   // (title, the two fields, buttons, red contacts band) instead of the
   // ordinary Directions card, the same way an open room takes the sidebar.
   const emergencySidebar = !compact && panelMode === "directions" && !!directions?.emergency && !arrived;
+  // Desktop ordinary Directions: the sidebar itself becomes the view (title,
+  // the two fields, buttons, a square map) rather than a card inside it.
+  const directionsSidebar = !compact && panelMode === "directions" && !!directions && !arrived && !emergencySidebar;
+  const sidebarTakeover = emergencySidebar || directionsSidebar;
+  const reservedFormHeight = directionsPeak && directionsPeak.path === directions?.path ? directionsPeak.height : undefined;
+  const campusOfNodeId = (id) => (id && byId[id] ? campusForBuilding(byId[id].building) : null);
+
+  // The walking half of the panel: where the visitor is on the route and the
+  // buttons to move along it. Also rendered, inert, by DirectionsPeakProbe to
+  // measure the route's tallest stage, hence the stage object `st` and `live`
+  // (false there: no start-walking state, no emergency button).
+  const renderProgress = (st, live = false) => (
+    <div className="directions-progress">
+      <p className="directions-progress-text">
+        Stop {st.stepIndex + 1} of {st.total}
+        {st.nextElevator ? (
+          <>{": "}<strong>Take the elevator</strong> to {floorLabel(st.nextElevator.floor)}</>
+        ) : st.nextStopName && (
+          <>
+            {": "}
+            {st.turnInstruction ? (
+              <><strong>{st.turnInstruction}</strong> {st.nextStopName}</>
+            ) : (
+              <>next: <strong>{st.nextStopName}</strong></>
+            )}
+          </>
+        )}
+      </p>
+      {live && st.stepIndex === 0 && currentId !== directions.path[0] ? (
+        <button className="primary directions-go-btn" onClick={() => flow.startWalking()}>Start walking</button>
+      ) : (
+        <>
+          <button
+            className="primary directions-go-btn"
+            onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
+            disabled={autoWalking}
+          >
+            {st.nextElevator && PLACEHOLDER("elevator")} {st.action} {CHEVRON_RIGHT_WHITE}
+          </button>
+          {st.skip && (
+            <button
+              className="directions-go-btn directions-skip-btn"
+              onClick={() => { overlay.setWalkDialog(false); flow.skipAhead(); }}
+              disabled={autoWalking}
+            >
+              {PLACEHOLDER("skip-forward")} Skip hallway ({st.skip.count} stops)
+            </button>
+          )}
+          <button
+            className="directions-go-btn directions-autowalk-btn"
+            onClick={() => { overlay.setWalkDialog(false); flow.toggleAutoWalk(); }}
+          >
+            {autoWalking
+              ? <>{PLACEHOLDER("pause")} Stop auto-walk</>
+              : <>{PLACEHOLDER("play")} Auto-walk (every {AUTO_WALK_STEP_SECONDS}s)</>}
+            {live && autoWalking && <AutoWalkCountdown key={st.stepIndex} />}
+          </button>
+          {live && directions.emergency && (
+            <button className="directions-go-btn" onClick={flow.reportBlocked}>
+              This way is blocked
+            </button>
+          )}
+        </>
+      )}
+      <p className="field-hint">
+        {st.nextElevator
+          ? "The elevator is glowing in the photo. Tap it and pick the highlighted floor, or use the button above."
+          : "Follow the yellow hotspot in the photo: it marks the correct path to your destination."}
+      </p>
+    </div>
+  );
 
   const directionsContent = directions && (
     <>
@@ -1181,7 +1280,7 @@ function MainPageContent({ onReset }) {
         </span>
         <textarea
           className="directions-field"
-          rows={emergencySidebar ? 1 : 2}
+          rows={sidebarTakeover ? 1 : 2}
           ref={fromFieldRef}
           value={directions.fromQuery}
           onChange={(e) => flow.editField("from", e.target.value)}
@@ -1191,13 +1290,13 @@ function MainPageContent({ onReset }) {
           placeholder="Starting point"
         />
       </label>
-      {renderDirectionsSuggestions("from")}
+      {!directionsSidebar && renderDirectionsSuggestions("from")}
 
       <label className="sidebar-field-label">
         To
         <textarea
           className="directions-field"
-          rows={emergencySidebar ? 1 : 2}
+          rows={sidebarTakeover ? 1 : 2}
           ref={toFieldRef}
           value={directions.toQuery}
           onChange={(e) => flow.editField("to", e.target.value)}
@@ -1207,7 +1306,17 @@ function MainPageContent({ onReset }) {
           placeholder="Destination"
         />
       </label>
-      {renderDirectionsSuggestions("to")}
+      {/* In the sidebar the list floats over the map, so both fields' lists
+          open below To; From's would otherwise cover the To field. Only one
+          is ever active. The zero-height anchor is what pins the list under
+          To: an absolutely positioned child of the panel's flex column would
+          sit at the panel's top instead of where it is in the flow. */}
+      {directionsSidebar ? (
+        <div className="directions-suggestions-anchor">
+          {renderDirectionsSuggestions("from")}
+          {renderDirectionsSuggestions("to")}
+        </div>
+      ) : renderDirectionsSuggestions("to")}
 
       {directions.error && <p className="directions-error">{directions.error}</p>}
 
@@ -1237,66 +1346,15 @@ function MainPageContent({ onReset }) {
         </button>
       )}
 
-      {directions.path && !arrived && (
-        <div className="directions-progress">
-          <p className="directions-progress-text">
-            Stop {directions.stepIndex + 1} of {directions.path.length}
-            {nextElevator ? (
-              <>{": "}<strong>Take the elevator</strong> to {floorLabel(nextElevator.floor)}</>
-            ) : nextStopName && (
-              <>
-                {": "}
-                {turnInstruction ? (
-                  <><strong>{turnInstruction}</strong> {nextStopName}</>
-                ) : (
-                  <>next: <strong>{nextStopName}</strong></>
-                )}
-              </>
-            )}
-          </p>
-          {directions.stepIndex === 0 && currentId !== directions.path[0] ? (
-            <button className="primary directions-go-btn" onClick={() => flow.startWalking()}>Start walking</button>
-          ) : (
-            <>
-              <button
-                className="primary directions-go-btn"
-                onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
-                disabled={autoWalking}
-              >
-                {nextElevator && PLACEHOLDER("elevator")} {nextStepAction} {CHEVRON_RIGHT_WHITE}
-              </button>
-              {skip && (
-                <button
-                  className="directions-go-btn directions-skip-btn"
-                  onClick={() => { overlay.setWalkDialog(false); flow.skipAhead(); }}
-                  disabled={autoWalking}
-                >
-                  {PLACEHOLDER("skip-forward")} Skip hallway ({skip.count} stops)
-                </button>
-              )}
-              <button
-                className="directions-go-btn directions-autowalk-btn"
-                onClick={() => { overlay.setWalkDialog(false); flow.toggleAutoWalk(); }}
-              >
-                {autoWalking
-                  ? <>{PLACEHOLDER("pause")} Stop auto-walk</>
-                  : <>{PLACEHOLDER("play")} Auto-walk (every {AUTO_WALK_STEP_SECONDS}s)</>}
-                {autoWalking && <AutoWalkCountdown key={directions.stepIndex} />}
-              </button>
-              {directions.emergency && (
-                <button className="directions-go-btn" onClick={flow.reportBlocked}>
-                  This way is blocked
-                </button>
-              )}
-            </>
-          )}
-          <p className="field-hint">
-            {nextElevator
-              ? "The elevator is glowing in the photo. Tap it and pick the highlighted floor, or use the button above."
-              : "Follow the yellow hotspot in the photo: it marks the correct path to your destination."}
-          </p>
-        </div>
-      )}
+      {directions.path && !arrived && renderProgress({
+        stepIndex: directions.stepIndex,
+        total: directions.path.length,
+        nextElevator,
+        nextStopName,
+        turnInstruction,
+        skip,
+        action: nextStepAction,
+      }, true)}
     </>
   );
 
@@ -1729,10 +1787,30 @@ function MainPageContent({ onReset }) {
                   RoomCard.jsx), not a separate sidebar mode, so the
                   directory stays browsable behind its collapsed peek. */}
               <aside
+                onMouseDown={
+                  directionsSidebar
+                    ? (e) => {
+                        // Anything but the fields, the list itself or a button
+                        // counts as a blank area and dismisses the suggestions.
+                        if (!e.target.closest("textarea, .directions-suggestions, button")) flow.blurField();
+                      }
+                    : undefined
+                }
+                // The From/To text is inside a <label>, so a click on it would
+                // otherwise refocus the field and bring the suggestions back
+                // right after the mousedown above closed them.
+                onClick={
+                  directionsSidebar
+                    ? (e) => {
+                        if (e.target.closest("label") && !e.target.closest("textarea")) e.preventDefault();
+                      }
+                    : undefined
+                }
                 className={
                   "app-sidebar" +
                   (panelMode === "room" && selectedRoomCard ? " app-sidebar-with-room" : "") +
-                  (emergencySidebar ? " app-sidebar-emergency" : "")
+                  (emergencySidebar ? " app-sidebar-emergency" : "") +
+                  (directionsSidebar ? " app-sidebar-directions" : "")
                 }
               >
                 {/* The sidebar's own session-start walkthrough — see
@@ -1832,7 +1910,10 @@ function MainPageContent({ onReset }) {
                   <h3 className="directory-title">Directory</h3>
                 )}
 
-                <div className="app-sidebar-content">
+                <div
+                  className="app-sidebar-content"
+                  style={directionsSidebar && reservedFormHeight ? { minHeight: reservedFormHeight } : undefined}
+                >
                   {panelMode === "search" && searchResultsContent}
 
                   {/* The building selector: the Compact layout's modal, shown
@@ -1871,6 +1952,24 @@ function MainPageContent({ onReset }) {
                 </div>
 
                 {emergencySidebar && <EmergencyContactsBand />}
+
+                {directionsSidebar && directions.path && (
+                  <DirectionsPeakProbe
+                    path={directions.path}
+                    byId={byId}
+                    nodes={nodes}
+                    renderProgress={renderProgress}
+                    onPeak={recordPeak}
+                  />
+                )}
+
+                {directionsSidebar && (
+                  <DirectionsMap
+                    fromCampusId={campusOfNodeId(directions.fromId)}
+                    toCampusId={campusOfNodeId(directions.toId)}
+                    buildingName={buildingDisplayName(current.building)}
+                  />
+                )}
 
                 {/* Outside .app-sidebar-content so it anchors to the sidebar
                     itself rather than scrolling with the directory. */}
@@ -1962,7 +2061,10 @@ function MainPageContent({ onReset }) {
                 <button
                   type="button"
                   className="campus-map-btn"
-                  onClick={() => setCampusMapOpen(true)}
+                  onClick={() => {
+                    closeModals();
+                    setCampusMapOpen(true);
+                  }}
                   aria-label="Open campus map"
                   title="Campus map"
                 >
@@ -1991,7 +2093,11 @@ function MainPageContent({ onReset }) {
                     )}
                     <button
                       className="floating-rail-btn floating-account-btn"
-                      onClick={() => setAccountMenuOpen((o) => !o)}
+                      onClick={() => {
+                        overlay.closeFeedback();
+                        setCampusMapOpen(false);
+                        setAccountMenuOpen((o) => !o);
+                      }}
                       title={displayName}
                     >
                       Admin

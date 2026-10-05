@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Map, Marker, Source, Layer, useMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { osmRasterStyle } from "../utils/osmMapStyle";
 import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
 import IconPlaceholder from "./IconPlaceholder";
+import { useRoadRoute } from "../hooks/useRoadRoute";
 import chevronRight from "../assets/icons/chevron-right.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 
@@ -47,47 +48,11 @@ function FitToRoute({ fromLat, fromLng, toLat, toLng }) {
 // would be bad UX regardless of how apt the cinematic reference is.
 export default function FlyoverPanel({ flyover, kiosk, onComplete, onCancel }) {
   const { fromLat, fromLng, fromLabel, toLat, toLng, toLabel } = flyover;
-  const [routeCoords, setRouteCoords] = useState(null);
-  const [routeError, setRouteError] = useState(false);
+  const { coords: routeCoords, error: routeError } = useRoadRoute(
+    { lat: fromLat, lng: fromLng },
+    { lat: toLat, lng: toLng }
+  );
   const timerRef = useRef(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setRouteCoords(null);
-    setRouteError(false);
-
-    // OSRM expects, and returns, lng,lat order (GeoJSON convention) — the
-    // same order a GeoJSON LineString wants, so no swap is needed before
-    // handing it to <Source>/<Layer> below.
-    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const coords = data?.routes?.[0]?.geometry?.coordinates;
-        if (coords && coords.length > 0) {
-          setRouteCoords(coords);
-        } else {
-          throw new Error("No route geometry in response");
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // Straight-line fallback — still shows the genuine spatial
-        // relationship even if OSRM's public demo is temporarily down or
-        // can't find a road-based route between these two specific
-        // points (e.g. no verified road data linking them yet).
-        setRouteError(true);
-        setRouteCoords([
-          [fromLng, fromLat],
-          [toLng, toLat],
-        ]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fromLat, fromLng, toLat, toLng]);
 
   useEffect(() => {
     timerRef.current = setTimeout(onComplete, AUTO_PROCEED_MS);

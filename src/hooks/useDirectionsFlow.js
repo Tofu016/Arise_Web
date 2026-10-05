@@ -180,6 +180,7 @@ export function useDirectionsFlow({
     skipAhead,
     toggleAutoWalk: () => setDirections(route.toggleAutoWalk),
     editField: (field, value) => setDirections((d) => route.editField(d, field, value)),
+    blurField: () => setDirections((d) => (d ? route.blurField(d) : d)),
     focusField: (field) => setDirections((d) => route.focusField(d, field)),
     pickNode: (field, node) => setDirections((d) => route.pickNodeField(d, field, node)),
     pickRoom: (field, room) => setDirections((d) => route.pickRoomField(d, field, room)),

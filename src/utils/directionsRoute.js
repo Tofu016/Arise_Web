@@ -87,6 +87,11 @@ export function focusField(d, field) {
   return { ...d, editingField: field };
 }
 
+// Dismisses the suggestions without picking one; the typed text stays.
+export function blurField(d) {
+  return d.editingField ? { ...d, editingField: null } : d;
+}
+
 export function pickNodeField(d, field, node) {
   return { ...d, [queryKey(field)]: node.name, [idKey(field)]: node.id, editingField: null, emergency: null };
 }
