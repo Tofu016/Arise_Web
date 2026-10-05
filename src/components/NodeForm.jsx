@@ -182,7 +182,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
       if (isNew) setDraft((d) => ({ ...d, photo: path }));
       setCopyState("copied");
       setTimeout(() => setCopyState((s) => (s === "copied" ? "idle" : s)), 2500);
-      toast.success("Panorama published.");
+      toast.success(isNew ? "Panorama published. Save the node to keep it." : "Panorama published.");
     } catch (err) {
       setCopyState("error");
       toast.error(err.message || "Couldn't publish the panorama.");

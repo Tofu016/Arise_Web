@@ -5212,6 +5212,26 @@ html.kiosk-mode .floating-title-back:hover:active {
 }
 /* Puts the hint/count row from the wireframe side by side — was
    previously two separate, stacked paragraphs. */
+.face-review-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.face-review-zoom button {
+  min-width: 36px;
+}
+.face-review-zoom-level {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+}
+.face-review-manual-chip:hover {
+  border-color: #ff9f1c;
+  color: #ff9f1c;
+}
 .face-review-footer-row {
   display: flex;
   align-items: center;

@@ -74,6 +74,31 @@ describe("confirmReview", () => {
     expect(result.isNew).toBe(false);
   });
 
+  it("reports a reopened photo as new when it was re-saved under a different extension", async () => {
+    uploadPhoto.mockResolvedValue({ path: "panoramas/gd1/n1.jpg" });
+
+    const result = await confirmReview(
+      { tempPath: null, targetFilename: null, storagePath: "panoramas/gd1/n1.webp" },
+      new Blob(["b"]),
+      { building: "gd1" }
+    );
+
+    expect(result).toEqual({ path: "panoramas/gd1/n1.jpg", isNew: true });
+  });
+
+  it("overwrites a reopened photo inside its own building folder, not the node's", async () => {
+    uploadPhoto.mockResolvedValue({ path: "panoramas/gd1/n1.webp" });
+
+    const result = await confirmReview(
+      { tempPath: null, targetFilename: null, storagePath: "panoramas/gd1/n1.webp" },
+      new Blob(["b"]),
+      { building: "gd3" }
+    );
+
+    expect(uploadPhoto).toHaveBeenCalledWith("panorama", expect.any(Blob), { building: "gd1", filename: "n1.webp" });
+    expect(result.isNew).toBe(false);
+  });
+
   it("still succeeds when temp cleanup fails", async () => {
     uploadPhoto.mockResolvedValue({ path: "panoramas/gd1/n1.jpg" });
     apiPost.mockRejectedValue(new Error("boom"));

@@ -41,11 +41,20 @@ export async function reviewExisting(path) {
 // elsewhere may need a reload to pick up the new bytes.
 export async function confirmReview(review, blurredBlob, { building }) {
   const { tempPath, targetFilename, storagePath } = review;
-  const filename = tempPath ? targetFilename : storagePath.split("/").pop();
+  const segments = storagePath.split("/");
+  const filename = tempPath ? targetFilename : segments.pop();
+  // A reopened photo is overwritten where it lives, not under the node's
+  // building: a node can point at another building's folder (a copied or
+  // reassigned node), and using node.building would write a stray copy there
+  // while the node kept serving the old, unblurred file.
+  const folder = tempPath ? building : segments[1];
 
-  const { path } = await uploadPhoto("panorama", blurredBlob, { building, filename });
+  const { path } = await uploadPhoto("panorama", blurredBlob, { building: folder, filename });
   if (tempPath) await discardTemp(tempPath);
-  return { path, isNew: Boolean(tempPath) };
+  // Safety net: if the saved path ever differs from the reopened one (e.g. an
+  // old .jpg re-saved as .webp), the record must adopt it or it keeps
+  // pointing at the old, unblurred file.
+  return { path, isNew: Boolean(tempPath) || path !== storagePath };
 }
 
 export async function cancelReview(review) {

@@ -61,6 +61,10 @@ function pixelateRegion(ctx, x, y, w, h, blockSize) {
 // download-and-scan server-side, so removing the prop from the caller
 // isn't necessary; an unused prop is harmless.
 const PREVIEW_WIDTH = 880;
+const MAX_ZOOM = 8;
+const ZOOM_STEP = 1.5;
+const REGION_COLOR = "#4a9eff";
+const REGION_HOVER_COLOR = "#ff9f1c";
 
 export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, onConfirm, onCancel }) {
   const canvasRef = useRef(null);
@@ -70,105 +74,192 @@ export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, 
   // just remove if drawn by mistake. Stored in {x,y,width,height} shape,
   // in NATURAL image pixels.
   const [manualBoxes, setManualBoxes] = useState([]);
-  // The box currently being dragged out, in CANVAS (preview) pixel space —
-  // null when not actively drawing.
+  // The box currently being dragged out, in NATURAL image pixels (so it
+  // stays put if the view changes mid-drag) — null when not actively drawing.
   const [drawing, setDrawing] = useState(null);
+  // Zoom factor (1 = whole photo) and the top-left corner of the visible
+  // window in natural pixels. The window keeps the photo's aspect ratio, so
+  // it maps onto the canvas without distortion.
+  const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
+  // Region the admin is pointing at (chip or canvas), so a numbered chip
+  // and its box can be matched at a glance.
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const panRef = useRef(null);
   const [error, setError] = useState("");
   const [applying, setApplying] = useState(false);
 
   const imageUrl = useMemo(() => URL.createObjectURL(imageBlob), [imageBlob]);
   useEffect(() => () => URL.revokeObjectURL(imageUrl), [imageUrl]);
 
-  // Draws the image + manual regions + the in-progress drag rectangle
-  // onto the (small) preview canvas, scaling everything from the
-  // original image's pixel space to whatever size the preview canvas
-  // actually renders at.
+  const clampView = (v, size) => {
+    const zoom = Math.min(MAX_ZOOM, Math.max(1, v.zoom));
+    return {
+      zoom,
+      x: Math.min(size.width - size.width / zoom, Math.max(0, v.x)),
+      y: Math.min(size.height - size.height / zoom, Math.max(0, v.y)),
+    };
+  };
+
+  // Zooms about the center of the current window.
+  const zoomBy = (factor) => {
+    if (!naturalSize) return;
+    setView((v) => {
+      const cx = v.x + naturalSize.width / v.zoom / 2;
+      const cy = v.y + naturalSize.height / v.zoom / 2;
+      const zoom = Math.min(MAX_ZOOM, Math.max(1, v.zoom * factor));
+      return clampView(
+        { zoom, x: cx - naturalSize.width / zoom / 2, y: cy - naturalSize.height / zoom / 2 },
+        naturalSize
+      );
+    });
+  };
+  const resetZoom = () => setView({ zoom: 1, x: 0, y: 0 });
+
+  // Draws the visible window of the image + numbered regions + the
+  // in-progress drag rectangle onto the preview canvas. The window is
+  // sampled from the full-resolution image, so zooming shows real detail.
   useEffect(() => {
     if (!naturalSize || !canvasRef.current || !imgRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    const scaleX = canvas.width / naturalSize.width;
-    const scaleY = canvas.height / naturalSize.height;
+    const visW = naturalSize.width / view.zoom;
+    const visH = naturalSize.height / view.zoom;
+    const sx = canvas.width / visW;
+    const sy = canvas.height / visH;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(imgRef.current, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgRef.current, view.x, view.y, visW, visH, 0, 0, canvas.width, canvas.height);
 
-    manualBoxes.forEach((b) => {
-      ctx.strokeStyle = "#4a9eff";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b.x * scaleX, b.y * scaleY, b.width * scaleX, b.height * scaleY);
+    manualBoxes.forEach((b, i) => {
+      const hot = i === hoverIndex;
+      const color = hot ? REGION_HOVER_COLOR : REGION_COLOR;
+      const x = (b.x - view.x) * sx;
+      const y = (b.y - view.y) * sy;
+      ctx.fillStyle = hot ? "rgba(255, 159, 28, 0.22)" : "rgba(74, 158, 255, 0.12)";
+      ctx.fillRect(x, y, b.width * sx, b.height * sy);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = hot ? 3 : 2;
+      ctx.strokeRect(x, y, b.width * sx, b.height * sy);
+
+      // Number badge on the box's top-left corner, constant on-screen size.
+      const label = String(i + 1);
+      ctx.font = "bold 14px sans-serif";
+      const bw = Math.max(20, ctx.measureText(label).width + 10);
+      const bh = 20;
+      const by = y >= bh ? y - bh : y;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, by, bw, bh);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x + bw / 2, by + bh / 2 + 1);
     });
 
     if (drawing) {
-      ctx.strokeStyle = "#4a9eff";
+      ctx.strokeStyle = REGION_COLOR;
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 3]);
-      const x = Math.min(drawing.startX, drawing.curX);
-      const y = Math.min(drawing.startY, drawing.curY);
-      const w = Math.abs(drawing.curX - drawing.startX);
-      const h = Math.abs(drawing.curY - drawing.startY);
-      ctx.strokeRect(x, y, w, h);
+      ctx.strokeRect(
+        (Math.min(drawing.startX, drawing.curX) - view.x) * sx,
+        (Math.min(drawing.startY, drawing.curY) - view.y) * sy,
+        Math.abs(drawing.curX - drawing.startX) * sx,
+        Math.abs(drawing.curY - drawing.startY) * sy
+      );
       ctx.setLineDash([]);
     }
-  }, [naturalSize, manualBoxes, drawing]);
+  }, [naturalSize, manualBoxes, drawing, view, hoverIndex]);
 
   const handleImgLoad = () => {
     const img = imgRef.current;
     setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
   };
 
-  const removeManualBox = (i) => setManualBoxes((mb) => mb.filter((_, idx) => idx !== i));
+  const removeManualBox = (i) => {
+    setHoverIndex(null);
+    setManualBoxes((mb) => mb.filter((_, idx) => idx !== i));
+  };
 
-  // Converts a mouse event's page position into the canvas's own internal
-  // pixel coordinates — needed because the canvas's displayed CSS size
-  // (width: 100%) can differ from its actual drawing-surface resolution,
-  // so a raw offsetX/offsetY would be wrong whenever those two sizes don't
-  // match, which is basically always on a real screen.
-  const getCanvasCoords = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+  // Converts a mouse event into NATURAL image pixels. The canvas's CSS size
+  // differs from its drawing-surface resolution and the visible window may
+  // be zoomed, so both are accounted for.
+  const getImageCoords = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: view.x + ((e.clientX - rect.left) / rect.width) * (naturalSize.width / view.zoom),
+      y: view.y + ((e.clientY - rect.top) / rect.height) * (naturalSize.height / view.zoom),
     };
+  };
+
+  const regionAt = (p) => {
+    for (let i = manualBoxes.length - 1; i >= 0; i--) {
+      const b = manualBoxes[i];
+      if (p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height) return i;
+    }
+    return null;
   };
 
   const handleMouseDown = (e) => {
     if (!naturalSize) return;
-    const { x, y } = getCanvasCoords(e);
+    // Right button pans, left button marks a region.
+    if (e.button === 2) {
+      e.preventDefault();
+      panRef.current = { clientX: e.clientX, clientY: e.clientY };
+      return;
+    }
+    if (e.button !== 0) return;
+    const { x, y } = getImageCoords(e);
     setDrawing({ startX: x, startY: y, curX: x, curY: y });
   };
 
   const handleMouseMove = (e) => {
-    if (!drawing) return;
-    const { x, y } = getCanvasCoords(e);
-    setDrawing((d) => (d ? { ...d, curX: x, curY: y } : d));
+    if (!naturalSize) return;
+    if (panRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const dx = e.clientX - panRef.current.clientX;
+      const dy = e.clientY - panRef.current.clientY;
+      panRef.current = { clientX: e.clientX, clientY: e.clientY };
+      setView((v) =>
+        clampView(
+          {
+            ...v,
+            x: v.x - (dx / rect.width) * (naturalSize.width / v.zoom),
+            y: v.y - (dy / rect.height) * (naturalSize.height / v.zoom),
+          },
+          naturalSize
+        )
+      );
+      return;
+    }
+    const p = getImageCoords(e);
+    if (drawing) {
+      setDrawing((d) => (d ? { ...d, curX: p.x, curY: p.y } : d));
+    } else {
+      setHoverIndex(regionAt(p));
+    }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    if (e.button === 2 || e.type === "mouseleave") panRef.current = null;
+    if (e.button === 2) return;
     if (!drawing || !naturalSize) {
       setDrawing(null);
       return;
     }
-    const canvas = canvasRef.current;
     const w = Math.abs(drawing.curX - drawing.startX);
     const h = Math.abs(drawing.curY - drawing.startY);
     setDrawing(null);
-    // Too small to be a deliberate drag — treat as an accidental click, not
-    // a new region.
-    if (w < 6 || h < 6) return;
+    // Under 6 on-screen pixels is an accidental click, not a deliberate
+    // drag, so no region is created.
+    const minSize = (6 * naturalSize.width) / PREVIEW_WIDTH / view.zoom;
+    if (w < minSize || h < minSize) return;
 
-    const scaleX = naturalSize.width / canvas.width;
-    const scaleY = naturalSize.height / canvas.height;
     setManualBoxes((mb) => [
       ...mb,
       {
-        x: Math.min(drawing.startX, drawing.curX) * scaleX,
-        y: Math.min(drawing.startY, drawing.curY) * scaleY,
-        width: w * scaleX,
-        height: h * scaleY,
+        x: Math.min(drawing.startX, drawing.curX),
+        y: Math.min(drawing.startY, drawing.curY),
+        width: w,
+        height: h,
       },
     ]);
   };
@@ -230,10 +321,20 @@ export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, 
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseLeave={(e) => {
+            setHoverIndex(null);
+            handleMouseUp(e);
+          }}
+          onContextMenu={(e) => e.preventDefault()}
         />
+        <div className="face-review-zoom">
+          <button type="button" onClick={() => zoomBy(1 / ZOOM_STEP)} disabled={view.zoom <= 1} title="Zoom out">-</button>
+          <span className="face-review-zoom-level">{Math.round(view.zoom * 100)}%</span>
+          <button type="button" onClick={() => zoomBy(ZOOM_STEP)} disabled={view.zoom >= MAX_ZOOM} title="Zoom in">+</button>
+          <button type="button" onClick={resetZoom} disabled={view.zoom === 1}>Reset</button>
+        </div>
         <p className="field-hint">
-          Click and drag directly on the photo to mark any face or sensitive area to blur.
+          Click and drag on the photo to mark a face or sensitive area to blur. Zoom with the buttons, then hold the right mouse button and drag to move around the photo.
         </p>
 
         {manualBoxes.length === 0 && (
@@ -244,7 +345,12 @@ export default function FaceReviewPanel({ imageBlob, storagePath: _storagePath, 
           <div className="face-review-footer-row">
             <div className="face-review-manual-chips">
               {manualBoxes.map((_, i) => (
-                <span key={i} className="face-review-manual-chip">
+                <span
+                  key={i}
+                  className="face-review-manual-chip"
+                  onMouseEnter={() => setHoverIndex(i)}
+                  onMouseLeave={() => setHoverIndex(null)}
+                >
                   Region {i + 1}
                   <button type="button" onClick={() => removeManualBox(i)} title="Remove">×</button>
                 </span>
