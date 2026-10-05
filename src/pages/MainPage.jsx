@@ -7,6 +7,7 @@ import FlyoverPanel from "../components/FlyoverPanel";
 import CampusMapModal from "../components/CampusMapModal";
 import CampusMapPreview from "../components/CampusMapPreview";
 import DirectionsMap from "../components/DirectionsMap";
+import DirectionsFields from "../components/DirectionsFields";
 import DirectionsPeakProbe from "../components/DirectionsPeakProbe";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
@@ -704,8 +705,17 @@ function MainPageContent({ onReset }) {
   // elsewhere it goes straight to the panel starting at the current node.
   const requestDirectionsTo = (node) => (compact ? overlay.openOriginChoice(node) : flow.openTo(node));
 
+  // Desktop room panel's expanded state. The panel unmounts behind the
+  // directions panel, so it's kept here and fed back via openExpanded when
+  // closing directions returns to it.
+  const roomExpandedRef = useRef(false);
+  const trackRoomExpanded = useCallback((expanded) => {
+    roomExpandedRef.current = expanded;
+  }, []);
+
   const handleRoomGetDirections = () => {
     if (!selectedRoomCard) return;
+    if (!compact) overlay.previewRoom({ ...selectedRoomCard, openExpanded: roomExpandedRef.current });
     requestDirectionsTo(selectedRoomCard.node);
   };
 
@@ -1271,41 +1281,43 @@ function MainPageContent({ onReset }) {
         )}
       </div>
 
-      <label className="sidebar-field-label">
-        <span className="directions-from-label">
-          From
-          {!compact && directions.fromId && directions.fromId === currentId && (
-            <span className="you-are-here-pill">You are here</span>
-          )}
-        </span>
-        <textarea
-          className="directions-field"
-          rows={sidebarTakeover ? 1 : 2}
-          ref={fromFieldRef}
-          value={directions.fromQuery}
-          onChange={(e) => flow.editField("from", e.target.value)}
-          onFocus={() => flow.focusField("from")}
-          onKeyDown={blockEnter}
-          inputMode={compact ? "none" : undefined}
-          placeholder="Starting point"
-        />
-      </label>
-      {!directionsSidebar && renderDirectionsSuggestions("from")}
+      <DirectionsFields>
+        <label className="sidebar-field-label">
+          <span className="directions-from-label">
+            From
+            {!compact && directions.fromId && directions.fromId === currentId && (
+              <span className="you-are-here-pill">You are here</span>
+            )}
+          </span>
+          <textarea
+            className="directions-field"
+            rows={sidebarTakeover ? 1 : 2}
+            ref={fromFieldRef}
+            value={directions.fromQuery}
+            onChange={(e) => flow.editField("from", e.target.value)}
+            onFocus={() => flow.focusField("from")}
+            onKeyDown={blockEnter}
+            inputMode={compact ? "none" : undefined}
+            placeholder="Starting point"
+          />
+        </label>
+        {!directionsSidebar && renderDirectionsSuggestions("from")}
 
-      <label className="sidebar-field-label">
-        To
-        <textarea
-          className="directions-field"
-          rows={sidebarTakeover ? 1 : 2}
-          ref={toFieldRef}
-          value={directions.toQuery}
-          onChange={(e) => flow.editField("to", e.target.value)}
-          onFocus={() => flow.focusField("to")}
-          onKeyDown={blockEnter}
-          inputMode={compact ? "none" : undefined}
-          placeholder="Destination"
-        />
-      </label>
+        <label className="sidebar-field-label">
+          <span className="directions-from-label">To</span>
+          <textarea
+            className="directions-field"
+            rows={sidebarTakeover ? 1 : 2}
+            ref={toFieldRef}
+            value={directions.toQuery}
+            onChange={(e) => flow.editField("to", e.target.value)}
+            onFocus={() => flow.focusField("to")}
+            onKeyDown={blockEnter}
+            inputMode={compact ? "none" : undefined}
+            placeholder="Destination"
+          />
+        </label>
+      </DirectionsFields>
       {/* In the sidebar the list floats over the map, so both fields' lists
           open below To; From's would otherwise cover the To field. Only one
           is ever active. The zero-height anchor is what pins the list under
@@ -1932,7 +1944,7 @@ function MainPageContent({ onReset }) {
                     </div>
                   )}
 
-                  {!buildingMenuOpen && panelMode !== "search" && panelMode !== "directions" && (
+                  {!buildingMenuOpen && panelMode !== "search" && (panelMode !== "directions" || (arrived && !!directions)) && (
                     <div className="sidebar-card sidebar-card-directory">
                       <DirectoryAccordion
                         rooms={searchableRooms}
@@ -1982,6 +1994,7 @@ function MainPageContent({ onReset }) {
                     onClose={overlay.closeRoomCard}
                     onGoTo={handleRoomGoTo}
                     onGetDirections={handleRoomGetDirections}
+                    onExpandedChange={trackRoomExpanded}
                   />
                 )}
               </aside>

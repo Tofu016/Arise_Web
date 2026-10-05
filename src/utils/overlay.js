@@ -14,6 +14,7 @@ export const initialOverlay = {
   floorPick: null, // building whose floor list is expanded in the building dialog
   walkDialog: true, // kiosk: big directions dialog (true) vs compact walk bar (false)
   roomCard: null, // the room whose card the "room" panel shows
+  directionsFromRoom: false, // the directions panel was opened from the room panel, so closing it reopens that
   help: false, // the "how to use this tour" tips modal, reachable from the menu/dock at any time
   endSessionThanks: false, // kiosk: End Session tapped after feedback was already given this session — skips straight to the thank-you card
   originChoice: null, // kiosk: the destination Node awaiting a "where from?" answer (Current / Kiosk / Custom location)
@@ -57,10 +58,22 @@ export function overlayReducer(state, action) {
     case "setWalkDialog":
       return { ...state, walkDialog: action.open };
     // Directions replace whatever the panel was showing, and start on the big dialog.
+    // Opened from the room panel, closing returns to it (the roomCard stays set meanwhile).
     case "openDirections":
-      return { ...state, dock: false, walkDialog: true, panel: "directions" };
+      return {
+        ...state,
+        dock: false,
+        walkDialog: true,
+        panel: "directions",
+        directionsFromRoom: state.panel === "room" && !!state.roomCard,
+      };
     case "closeDirections":
-      return { ...state, walkDialog: true, panel: null };
+      return {
+        ...state,
+        walkDialog: true,
+        panel: state.directionsFromRoom && state.roomCard ? "room" : null,
+        directionsFromRoom: false,
+      };
     case "walkStarted": // the route's first jump closed the panel; reopen it collapsed to the walk bar
       return { ...state, walkDialog: false, panel: "directions" };
     // Opening a room's card from a search entry without moving there; the

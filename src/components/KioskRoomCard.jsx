@@ -4,6 +4,7 @@ import locationIcon from "../assets/icons/location.svg";
 import linkIcon from "../assets/icons/link.svg";
 import IconPlaceholder from "./IconPlaceholder";
 import { RoomPhotoCarousel } from "./RoomCard";
+import { roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
 
 // The kiosk view's room information card. Shares the KioskDialog footprint
 // (a half-band-tall slice starting at KIOSK_DIALOG_TOP, closed by a centered
@@ -27,11 +28,7 @@ import { RoomPhotoCarousel } from "./RoomCard";
 export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }) {
   const { roomName, node, placard } = room;
 
-  // Placards only store a single photo today; `photos` is read first so a
-  // future multi-photo table drops straight in (same as RoomCard).
-  let photos = [];
-  if (placard?.photos?.length) photos = placard.photos;
-  else if (placard?.photo) photos = [placard.photo];
+  const photos = roomPhotos(placard);
 
   const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber || placard?.department);
 
@@ -45,7 +42,7 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
     >
       <div className="kiosk-room-card" role="dialog" aria-label={roomName}>
         <div className="kiosk-room-card-photo">
-          <RoomPhotoCarousel photos={photos} alt={roomName} />
+          <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} />
         </div>
 
         <div className="kiosk-room-card-body">

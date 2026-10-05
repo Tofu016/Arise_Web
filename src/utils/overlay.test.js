@@ -48,6 +48,16 @@ describe("directions", () => {
     expect(walking).toMatchObject({ panel: "directions", walkDialog: false });
     expect(overlayReducer(walking, { type: "closeDirections" })).toMatchObject({ panel: null, walkDialog: true });
   });
+
+  it("closing returns to the room panel when it was opened from there", () => {
+    const s = run({ type: "previewRoom", room }, { type: "openDirections" });
+    expect(overlayReducer(s, { type: "closeDirections" })).toMatchObject({ panel: "room", roomCard: room });
+  });
+
+  it("closing does not return to a room panel opened from elsewhere", () => {
+    const s = run({ type: "previewRoom", room }, { type: "showPanel", mode: "menu" }, { type: "openDirections" });
+    expect(overlayReducer(s, { type: "closeDirections" }).panel).toBeNull();
+  });
 });
 
 describe("moves", () => {

@@ -7,6 +7,7 @@ import FilePickerButton from "../../components/FilePickerButton";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { useBlurReview } from "../../hooks/useBlurReview";
+import PhotoFocusPicker from "../../components/PhotoFocusPicker";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
 import IconPlaceholder from "../../components/IconPlaceholder";
@@ -69,6 +70,20 @@ const LIST_MODES = [
 // A room can be reached two ways: straight from the Rooms list, or through
 // its node in the Nodes list (the row, or one of its room pills). Either
 // way a selection is a (node, room) pair.
+const CENTERED = { x: 50, y: 50 };
+
+const uniqueSuffix = () => Date.now().toString(36);
+
+function ExtraPhotoThumb({ path, alt, focus, onFocusChange, onRemove }) {
+  const { url } = useSecurePhotoUrl(path);
+  return (
+    <div className="room-editor-extra-photo">
+      {url ? <PhotoFocusPicker url={url} alt={alt} focus={focus} onChange={onFocusChange} /> : <span className="field-hint">Loading…</span>}
+      <button type="button" className="admin-btn-secondary" onClick={onRemove} aria-label={`Remove ${alt}`}>Remove</button>
+    </div>
+  );
+}
+
 export default function RoomEditorPage() {
   const { nodes, selectedNodeId, setSelectedNodeId, updateNode, setMarkers } = useOutletContext();
   const { getForRoom, saveRoomDialog } = usePlacardDialogs();
@@ -106,6 +121,11 @@ export default function RoomEditorPage() {
   const [link, setLink] = useState("");
   const [photoPath, setPhotoPath] = useState("");
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
+  // Photos after the main one; the room panel's carousel will show them in this order.
+  const [extraPhotos, setExtraPhotos] = useState([]); // [{ path, x, y }]
+  // Where the main photo's square thumbnail is centered (see PhotoFocusPicker).
+  const [photoFocus, setPhotoFocus] = useState(CENTERED);
+  const [extraUploadState, setExtraUploadState] = useState("idle"); // idle | uploading | done | error
   // Separate state for the 360° photo — a distinct field/upload from the
   // flat "Room photo" above, used specifically by the mobile AR feature's
   // portal preview, not the normal room reference photo.
@@ -128,6 +148,9 @@ export default function RoomEditorPage() {
     setLink(existing?.link || "");
     setPhotoPath(existing?.photo || "");
     setUploadState("idle");
+    setPhotoFocus(existing?.photoFocus || CENTERED);
+    setExtraPhotos(existing?.extraPhotos || []);
+    setExtraUploadState("idle");
     setPhoto360Path(existing?.photo360 || "");
     setUpload360State("idle");
     setSavedFlash(false);
@@ -176,6 +199,7 @@ export default function RoomEditorPage() {
       setUploadState("uploading");
       const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
       setPhotoPath(path);
+      setPhotoFocus(CENTERED);
       setUploadState("done");
       setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
     } catch (err) {
@@ -183,6 +207,39 @@ export default function RoomEditorPage() {
       toast.error(err.message || "Couldn't upload the room photo.");
     }
   };
+
+  // Each picked file gets its own blur review, one after another; cancelling
+  // one review skips only that file.
+  const handleExtraFilesPick = async (e) => {
+    const input = e.target;
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length || !selectedRoom || !node) return;
+    setExtraUploadState("uploading");
+    let added = 0;
+    try {
+      for (const file of files) {
+        const reviewed = await requestBlur(file);
+        if (!reviewed) continue;
+        // Unlike the main photo, which is meant to overwrite its own file,
+        // each extra needs a name of its own or it would replace the others.
+        const filename = photoFilename(file, `${slugify(selectedRoom)}-${uniqueSuffix()}-${added}`);
+        const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
+        setExtraPhotos((prev) => [...prev, { path, ...CENTERED }]);
+        added++;
+      }
+      setExtraUploadState(added ? "done" : "idle");
+      if (added) setTimeout(() => setExtraUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+    } catch (err) {
+      setExtraUploadState("error");
+      toast.error(err.message || "Couldn't upload the room photos.");
+    }
+  };
+
+  const setExtraFocus = (index, focus) =>
+    setExtraPhotos((prev) => prev.map((p, i) => (i === index ? { ...p, ...focus } : p)));
+
+  const removeExtraPhoto = (index) => setExtraPhotos((prev) => prev.filter((_, i) => i !== index));
 
   const handle360FilePick = async (e) => {
     const input = e.target;
@@ -205,7 +262,7 @@ export default function RoomEditorPage() {
   };
 
   const handleSave = async () => {
-    if (!selectedRoom || !node || uploadState === "uploading" || upload360State === "uploading") return;
+    if (!selectedRoom || !node || uploadState === "uploading" || upload360State === "uploading" || extraUploadState === "uploading") return;
 
     const trimmedTitle = roomTitle.trim();
     const isRenaming = trimmedTitle !== selectedRoom;
@@ -268,6 +325,8 @@ export default function RoomEditorPage() {
         contactNumber: contactNumber.trim(),
         link: link.trim(),
         photo: photoPath,
+        photoFocus,
+        extraPhotos,
         photo360: photo360Path,
         ocrSearchTerms: ocrTerm ? [ocrTerm] : [],
       });
@@ -467,6 +526,36 @@ export default function RoomEditorPage() {
               </div>
             </div>
 
+            <div className="room-editor-extra-photos">
+              <label>
+                More room photos
+                <FilePickerButton accept="image/*" multiple label="Add Photos" onChange={handleExtraFilesPick} disabled={extraUploadState === "uploading"} />
+                <span className="field-hint">
+                  {extraUploadState === "uploading" && "Uploading…"}
+                  {extraUploadState === "done" && "✓ Uploaded"}
+                  {extraUploadState === "error" && "⚠ Upload failed: check your connection."}
+                  {extraUploadState === "idle" && !extraPhotos.length && "Optional: pick several at once. They follow the room photo below."}
+                </span>
+              </label>
+              {(extraPhotos.length > 0 || photoPath) && (
+                <p className="field-hint">Drag the gold frame on a photo to choose its square thumbnail in the room panel. It starts centered.</p>
+              )}
+              {extraPhotos.length > 0 && (
+                <div className="room-editor-extra-photo-grid">
+                  {extraPhotos.map((p, i) => (
+                    <ExtraPhotoThumb
+                      key={p.path}
+                      path={p.path}
+                      alt={`${selectedRoom} photo ${i + 2}`}
+                      focus={p}
+                      onFocusChange={(focus) => setExtraFocus(i, focus)}
+                      onRemove={() => removeExtraPhoto(i)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="room-editor-photos-row">
               <div className="room-editor-photo-item">
                 <label>
@@ -496,7 +585,7 @@ export default function RoomEditorPage() {
                 <div className="room-editor-photo-preview-box">
                   {photoPath ? (
                     securePhotoUrl
-                      ? <img src={securePhotoUrl} alt={selectedRoom} className="photo-preview" />
+                      ? <PhotoFocusPicker url={securePhotoUrl} alt={selectedRoom} focus={photoFocus} onChange={setPhotoFocus} />
                       : <p className="field-hint">Loading photo…</p>
                   ) : (
                     <p className="field-hint">No photo yet</p>

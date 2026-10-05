@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useHeldPhoto, usePreloadPhotos } from "../hooks/useHeldPhoto";
 import { useToast } from "../context/ToastContext";
 import { buildingLabel, floorLabel } from "../utils/constants";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
@@ -11,6 +12,9 @@ import linkIconWhite from "../assets/icons/link-white.svg";
 import bookmarkIconWhite from "../assets/icons/bookmark-white.svg";
 import bookmarkFilledIconWhite from "../assets/icons/bookmark-filled-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
+import PhotoLightbox from "./PhotoLightbox";
+import PhotoLoading from "./PhotoLoading";
+import { focusPosition, roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
 
 // How far (as a fraction of the collapsed-to-expanded travel) a drag has to
 // go before releasing it flips the sheet to the other state. Short of that
@@ -27,7 +31,7 @@ const TAP_SLOP_PX = 4;
 // and photos below. A room opened with search's "Go To" (room.openExpanded)
 // starts fully expanded instead. MainPage keys it on the room and that flag,
 // so each new pick starts in its own state.
-export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, onGetDirections }) {
+export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, onGetDirections, onExpandedChange }) {
   const { roomName, placard, node } = room;
   const toast = useToast();
 
@@ -35,6 +39,10 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
   const peekRef = useRef(null);
   const dragRef = useRef(null);
   const [expanded, setExpanded] = useState(!!room.openExpanded);
+  // Reported up so the state survives the card unmounting behind the directions panel.
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
   const [peekHeight, setPeekHeight] = useState(null);
   // The sheet's live height while a drag is in progress; null otherwise, so
   // the snapped states come from CSS and animate.
@@ -98,11 +106,11 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
   else if (expanded) height = "100%";
   else if (peekHeight != null) height = peekHeight;
 
-  // Placards only store a single photo today (placard_dialogs.photo_path);
-  // `photos` is read first so a future multi-photo table drops straight in.
-  let photos = [];
-  if (placard?.photos?.length) photos = placard.photos;
-  else if (placard?.photo) photos = [placard.photo];
+  const photos = roomPhotos(placard);
+  // Which photo the panorama-wide viewer is showing; null = closed. Lives
+  // here so closing the room panel (this card unmounting) closes it too.
+  const [viewerIndex, setViewerIndex] = useState(null);
+  const screen = viewerIndex != null ? document.querySelector(".main-page-screen") : null;
 
   // Admins may type a URL without a protocol (e.g. "example.com"). Used
   // as-is, the browser would treat that as a relative path on this site
@@ -240,38 +248,74 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
           </p>
         )}
 
-        <RoomPhotoCarousel photos={photos} alt={roomName} />
+        <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} onOpen={setViewerIndex} />
       </div>
+
+      {screen && photos.length > 0 && createPortal(
+        <PhotoLightbox photos={photos} index={Math.min(viewerIndex, photos.length - 1)} onIndexChange={setViewerIndex} onClose={() => setViewerIndex(null)} alt={roomName} />,
+        screen
+      )}
     </div>
   );
 }
 
-export function RoomPhotoCarousel({ photos, alt }) {
+// `onOpen(index)`, when given, makes the photo itself pressable (the desktop
+// panel opens its viewer from it).
+export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
   const [index, setIndex] = useState(0);
-  const { url } = useSecurePhotoUrl(photos[index]);
+  usePreloadPhotos(photos);
+  // The previous photo stays up (same size) while the next resolves; the
+  // spinner only appears if that drags on (see .photo-loading-veil).
+  const { url, path: shownPath, pending, error } = useHeldPhoto(photos[index]);
   const multiple = photos.length > 1;
 
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
   const next = () => setIndex((i) => (i + 1) % photos.length);
 
+  let content;
+  if (photos.length === 0) {
+    content = (
+      <div className="sidebar-room-carousel-placeholder">
+        <img src={placeholderIcon} alt="No photo" />
+      </div>
+    );
+  } else if (!url) {
+    content = (
+      <div className="sidebar-room-carousel-empty">
+        {error ? "Couldn't load photo." : <PhotoLoading />}
+      </div>
+    );
+  } else {
+    // Square, cropped around the focus an admin set for the photo on screen
+    // (centered by default); the viewer shows the whole picture.
+    const image = (
+      <img
+        src={url}
+        alt={alt}
+        className={"sidebar-room-carousel-image photo-swap" + (pending ? " photo-dimmed" : "")}
+        style={{ objectPosition: focusPosition(focus[shownPath]) }}
+      />
+    );
+    content = onOpen ? (
+      <button type="button" className="sidebar-room-carousel-open" onClick={() => onOpen(index)} aria-label={`View ${alt} photo larger`}>
+        {image}
+      </button>
+    ) : image;
+  }
+
   return (
     <div className="sidebar-room-carousel">
-      {photos.length === 0 ? (
-        <div className="sidebar-room-carousel-placeholder">
-          <img src={placeholderIcon} alt="No photo" />
-        </div>
-      ) : url ? (
-        <img src={url} alt={alt} className="sidebar-room-carousel-image" />
-      ) : (
-        <div className="sidebar-room-carousel-empty">Loading photo…</div>
+      {content}
+      {url && pending && !error && (
+        <div className="photo-loading-veil"><PhotoLoading /></div>
       )}
 
       {multiple && (
         <>
-          <button type="button" className="sidebar-room-carousel-arrow sidebar-room-carousel-prev" onClick={prev} aria-label="Previous photo">
+          <button type="button" className="photo-arrow sidebar-room-carousel-arrow sidebar-room-carousel-prev" onClick={prev} aria-label="Previous photo">
             <img src={chevronLeftWhite} alt="" className="inline-icon-img" />
           </button>
-          <button type="button" className="sidebar-room-carousel-arrow sidebar-room-carousel-next" onClick={next} aria-label="Next photo">
+          <button type="button" className="photo-arrow sidebar-room-carousel-arrow sidebar-room-carousel-next" onClick={next} aria-label="Next photo">
             <img src={chevronRightWhite} alt="" className="inline-icon-img" />
           </button>
           <div className="sidebar-room-carousel-dots">

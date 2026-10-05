@@ -4,8 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // the region and fills the block with that average color. Effective enough
 // to obscure a face at the resolution a manually-marked region typically
 // is, without needing any external image-processing library.
-function pixelateRegion(ctx, x, y, w, h, blockSize = 12) {
+//
+// The block size scales with the region (about 4 blocks across its shorter
+// side) because a fixed size is relative to the full-resolution panorama:
+// a face drawn on a multi-thousand-pixel image spans so many 12px blocks
+// that it stayed faintly recognizable.
+const MIN_BLOCK_SIZE = 12;
+const BLOCKS_ACROSS_REGION = 4;
+
+function pixelateRegion(ctx, x, y, w, h, blockSize) {
   if (w <= 0 || h <= 0) return;
+  blockSize = blockSize ?? Math.max(MIN_BLOCK_SIZE, Math.ceil(Math.min(w, h) / BLOCKS_ACROSS_REGION));
   const imageData = ctx.getImageData(x, y, w, h);
   const { data, width, height } = imageData;
 

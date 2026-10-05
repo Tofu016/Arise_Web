@@ -279,6 +279,21 @@ describe("room placard dialogs", () => {
     });
   });
 
+  it("maps thumbnail focus, centered when the row has none", () => {
+    expect(toDialog({ id: 1, room_name: "A" })).toMatchObject({ photoFocus: { x: 50, y: 50 }, extraPhotos: [] });
+    expect(
+      toDialog({ id: 1, room_name: "A", thumb_x: 10, thumb_y: 90, extra_photos: [{ path: "b.webp", thumb_x: 30, thumb_y: 40 }] })
+    ).toMatchObject({ photoFocus: { x: 10, y: 90 }, extraPhotos: [{ path: "b.webp", x: 30, y: 40 }] });
+  });
+
+  it("patch sends thumbnail focus under the wire names", () => {
+    expect(dialogPatchBody({ photoFocus: { x: 1, y: 2 }, extraPhotos: [{ path: "b.webp", x: 3, y: 4 }] })).toEqual({
+      thumb_x: 1,
+      thumb_y: 2,
+      extra_photos: [{ path: "b.webp", thumb_x: 3, thumb_y: 4 }],
+    });
+  });
+
   it("normalizes names for lookup", () => {
     expect(normalizeRoomName("  rm 203 ")).toBe("RM 203");
     expect(normalizeRoomName(null)).toBe("");

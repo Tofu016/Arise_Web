@@ -12,7 +12,13 @@
 
 import { getKioskToken } from "./kioskToken";
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost/Arise_API/index.php";
+// Unless VITE_API_BASE_URL overrides it, the API is assumed to live on the
+// same host the page was loaded from — so the one dev server works from
+// localhost, the WiFi address and the Ethernet address alike.
+const pageHost = typeof window !== "undefined" && window.location?.hostname;
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  `http://${pageHost || "localhost"}/Arise_API/index.php`;
 
 // For callers that can't go through apiRequest (e.g. navigator.sendBeacon,
 // which builds its own request and can't attach the Authorization header).

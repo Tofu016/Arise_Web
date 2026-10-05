@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useKiosks } from "../../hooks/useKiosks";
+import { fuzzyIncludes } from "../../utils/fuzzy";
+import IconPlaceholder from "../../components/IconPlaceholder";
 import { buildingLabel, floorLabel } from "../../utils/constants";
 
 // A kiosk that has checked in within two heartbeats (see useKioskIdentity)
@@ -33,6 +35,7 @@ function nodeOptionLabel(n) {
 function KioskForm({ kiosk, nodes, onSave, onCancel }) {
   const [name, setName] = useState(kiosk?.name ?? "");
   const [nodeId, setNodeId] = useState(kiosk?.nodeId ?? "");
+  const [nodeQuery, setNodeQuery] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e) => {
@@ -47,24 +50,54 @@ function KioskForm({ kiosk, nodes, onSave, onCancel }) {
     }
   };
 
-  const sortedNodes = [...nodes].sort((a, b) => nodeOptionLabel(a).localeCompare(nodeOptionLabel(b)));
+  const sortedNodes = useMemo(
+    () => [...nodes].sort((a, b) => nodeOptionLabel(a).localeCompare(nodeOptionLabel(b))),
+    [nodes]
+  );
+  // The chosen node stays listed even when the search filters it out, so
+  // typing never silently changes the selection.
+  const visibleNodes = useMemo(
+    () => sortedNodes.filter((n) => n.id === nodeId || fuzzyIncludes(nodeQuery, [n.name, n.building, buildingLabel(n.building), floorLabel(n.floor)])),
+    [sortedNodes, nodeId, nodeQuery]
+  );
 
   return (
     <form className="signage-card kiosks-form" onSubmit={submit}>
       <label className="signage-setting">
         <span className="signage-field-label">Name</span>
-        <input type="text" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="e.g. GD3 Lobby" />
+        <input
+          type="text"
+          className="user-panel-search-input kiosks-form-input"
+          value={name}
+          maxLength={120}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. GD3 Lobby"
+        />
       </label>
       <label className="signage-setting">
         <span className="signage-field-label">Location on the map</span>
+        <span className="user-panel-search kiosks-form-search">
+          <IconPlaceholder name="search-magnifier" className="user-panel-search-icon" />
+          <input
+            type="search"
+            className="user-panel-search-input"
+            placeholder="Search by node name, building or floor"
+            aria-label="Search locations on the map"
+            value={nodeQuery}
+            onChange={(e) => setNodeQuery(e.target.value)}
+          />
+        </span>
         <select value={nodeId} onChange={(e) => setNodeId(e.target.value)}>
           <option value="">No location yet</option>
-          {sortedNodes.map((n) => (
+          {visibleNodes.map((n) => (
             <option key={n.id} value={n.id}>
               {nodeOptionLabel(n)}
             </option>
           ))}
         </select>
+        {nodeQuery.trim() && visibleNodes.length === (nodeId ? 1 : 0) && (
+          <span className="signage-field-hint">No locations match this search.</span>
+        )}
         <span className="signage-field-hint">Where the kiosk physically stands. "Kiosk Location" directions start here.</span>
       </label>
       <div className="signage-settings-actions">
@@ -121,15 +154,32 @@ export default function KiosksPage() {
         <div>
           <h2 className="admin-page-heading">Kiosks</h2>
           <p className="signage-page-intro">
-            Add a kiosk, choose where it stands on the map, then pair the device: on the kiosk, tap the logo, the node
-            name and the bottom band five times each, in that order, and type the code shown here. A pairing code works
-            once and expires after 30 minutes.
+            Add a kiosk and choose where it stands on the map, then pair the device using the steps below. A pairing
+            code works once and expires after 30 minutes.
           </p>
         </div>
         <button type="button" className="signage-add-btn" onClick={() => setEditor({ kiosk: null })}>
           Add kiosk
         </button>
       </header>
+
+      <section className="signage-card kiosks-steps" aria-label="How to pair a kiosk">
+        <div className="signage-card-head">
+          <h3>Opening the pairing prompt on the kiosk</h3>
+          <span className="signage-card-sub">The prompt is hidden from visitors, so it opens with a tap sequence.</span>
+        </div>
+        <ol className="kiosks-steps-list">
+          <li>Open the app on the kiosk device so the panorama view is showing.</li>
+          <li>Tap the logo five times.</li>
+          <li>Tap the node name five times.</li>
+          <li>Tap the bottom band five times. The pairing prompt then appears.</li>
+          <li>Type the pairing code shown on this page into the prompt.</li>
+        </ol>
+        <span className="signage-field-hint">
+          Do the three groups of taps in this order. If the prompt does not appear, start again from the logo. Use New
+          code on a kiosk below to get a fresh code.
+        </span>
+      </section>
 
       {error && (
         <div className="error-box" role="alert">

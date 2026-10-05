@@ -5,7 +5,7 @@ import { useRef } from "react";
 // browsers. Triggers a visually-hidden native <input type="file"> via a
 // ref; the actual file-picking dialog/behavior stays completely
 // standard, only the trigger's own appearance is replaced.
-export default function FilePickerButton({ onChange, accept = "image/*", disabled, label = "Choose Photo" }) {
+export default function FilePickerButton({ onChange, accept = "image/*", multiple, disabled, label = "Choose Photo" }) {
   const inputRef = useRef(null);
 
   return (
@@ -14,6 +14,7 @@ export default function FilePickerButton({ onChange, accept = "image/*", disable
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         onChange={onChange}
         disabled={disabled}
         className="file-picker-hidden-input"

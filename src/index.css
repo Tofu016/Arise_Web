@@ -661,6 +661,55 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   flex: 1;
   min-width: 0;
 }
+.room-editor-extra-photos {
+  margin-top: 20px;
+}
+.room-editor-extra-photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.room-editor-extra-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.room-editor-extra-photo img {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.photo-focus-picker {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  user-select: none;
+  touch-action: none;
+}
+.photo-focus-picker img {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+}
+.photo-focus-picker-active {
+  cursor: grab;
+}
+.photo-focus-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.photo-focus-picker {
+  overflow: hidden;
+  border-radius: 6px;
+}
 /* Bottom row: both photo choosers side by side, spanning the full width
    — text occupies the top of the page, photos occupy the bottom. */
 .room-editor-photos-row {
@@ -1642,13 +1691,80 @@ html.kiosk-mode .sidebar-admin-btn:hover:active {
 .sidebar-field-label .directions-field {
   box-sizing: border-box;
   font-family: inherit;
-  line-height: 1.3;
+  font-size: 16px;
+  line-height: 22px;
+  padding: 13px 20px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
   resize: none;
+}
+.sidebar-field-label .directions-field::placeholder {
+  color: var(--tour-search-placeholder);
+}
+.sidebar-field-label .directions-field:focus {
+  outline: none;
+  border-color: var(--focus-ring);
 }
 .directions-from-label {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: var(--dir-label-h);
+  line-height: var(--dir-label-h);
+}
+/* From and To plus the route graphic in the gutter to their left. The
+   graphic's dot sits on From's vertical center and its pin on To's, worked
+   out from the fixed caption and field heights below (--dir-label-h caption,
+   --dir-mt gap above a field, --dir-field-h field: two text rows, plus the
+   padding and border, as set on .directions-field). Each context that
+   changes one of those (kiosk dialog, desktop sidebar) overrides these. */
+.directions-fields {
+  --dir-label-h: 16px;
+  --dir-mt: 4px;
+  --dir-field-h: 72px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 18px;
+}
+.directions-route-graphic {
+  position: absolute;
+  left: 0;
+  top: calc(var(--dir-label-h) + var(--dir-mt) + var(--dir-field-h) / 2 - 5px);
+  bottom: calc(var(--dir-field-h) / 2 - 8px);
+  width: 11px;
+  opacity: 0.8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.directions-route-dot,
+.directions-route-pin {
+  flex: none;
+  display: block;
+}
+.directions-route-dot {
+  width: 10px;
+  height: 10px;
+}
+.directions-route-pin {
+  width: 11px;
+  height: 16px;
+}
+.directions-route-line {
+  flex: 1;
+  width: 1.5px;
+  margin: 2px 0;
+  background: repeating-linear-gradient(to bottom, currentColor 0 3px, transparent 3px 6px);
+}
+.directions-suggestions {
+  position: relative;
+  z-index: 1;
 }
 .you-are-here-pill {
   padding: 1px 8px;
@@ -1658,7 +1774,7 @@ html.kiosk-mode .sidebar-admin-btn:hover:active {
   color: #fff;
   font-size: 11px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.3;
 }
 .sidebar-divider {
   height: 1px;
@@ -4241,11 +4357,12 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
 }
 .sidebar-room-carousel-image {
   width: 100%;
-  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
   display: block;
 }
 .sidebar-room-carousel-empty {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4254,7 +4371,7 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   color: rgba(255, 255, 255, 0.7);
 }
 .sidebar-room-carousel-placeholder {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4265,7 +4382,60 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   height: 56px;
   opacity: 0.7;
 }
-.sidebar-room-carousel-arrow {
+/* Shown over the photo that is still on screen while the next one loads.
+   Its own animation delay keeps it invisible for the first half second, so
+   a cached or quick photo just crossfades in and the spinner is only ever
+   seen on a slow connection. */
+.photo-loading-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(32, 27, 27, 0.55);
+  opacity: 0;
+  animation: photo-loading-veil-in 0.25s ease 0.5s forwards;
+  pointer-events: none;
+}
+@keyframes photo-loading-veil-in {
+  to { opacity: 1; }
+}
+.photo-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--white);
+}
+.photo-loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: var(--white);
+}
+/* The photo element is never unmounted between photos: it dims while the
+   next one resolves, then the new picture takes its place and the opacity
+   eases back up. Its own background stays solid throughout, so nothing
+   behind it (the panorama) ever shows through mid-swap. */
+.photo-swap {
+  transition: opacity 0.25s ease;
+}
+.photo-dimmed {
+  opacity: 0.3;
+}
+.sidebar-room-carousel-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+/* Round previous/next button shared by the panel's carousel and the photo
+   viewer. The drop shadow keeps it readable over any photo. */
+.photo-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -4274,15 +4444,21 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(32, 27, 27, 0.55);
+  background: var(--sdca-maroon);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(255, 255, 255, 0.85);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-:where(html:not(.kiosk-mode)) .sidebar-room-carousel-arrow:hover,
-html.kiosk-mode .sidebar-room-carousel-arrow:hover:active {
-  background: rgba(32, 27, 27, 0.8);
+.photo-arrow .inline-icon-img {
+  width: 16px;
+  height: 16px;
+}
+.photo-arrow:focus-visible,
+:where(html:not(.kiosk-mode)) .photo-arrow:hover,
+html.kiosk-mode .photo-arrow:hover:active {
+  background: var(--sdca-maroon-deeper);
 }
 .sidebar-room-carousel-prev { left: 8px; }
 .sidebar-room-carousel-next { right: 8px; }
@@ -4306,6 +4482,86 @@ html.kiosk-mode .sidebar-room-carousel-arrow:hover:active {
 }
 .sidebar-room-carousel-dot-active {
   background: var(--gold);
+}
+
+/* ---------- Room photo viewer (PhotoLightbox.jsx) ----------
+   Scoped to .main-page-screen like .desktop-intro-overlay, at the same
+   z-index, so it dims only the panorama. */
+.photo-lightbox {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px 24px;
+  background: rgba(10, 8, 8, 0.72);
+  cursor: pointer;
+  animation: modal-overlay-in 0.2s ease;
+}
+.photo-lightbox-stage {
+  position: relative;
+  max-width: min(85%, 800px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  cursor: default;
+}
+.photo-lightbox-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 270px);
+  border-radius: 8px;
+  background: var(--sdca-maroon-deeper);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+.photo-lightbox-loading {
+  padding: 80px 60px;
+  color: rgba(255, 255, 255, 0.8);
+}
+.photo-lightbox-stage .photo-loading-veil {
+  border-radius: 8px;
+}
+.photo-lightbox .photo-arrow {
+  width: 37px;
+  height: 37px;
+}
+.photo-lightbox .photo-arrow-prev { left: 12px; }
+.photo-lightbox .photo-arrow-next { right: 12px; }
+.photo-lightbox-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  cursor: default;
+}
+.photo-lightbox-thumb {
+  width: 64px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 0.7;
+  cursor: pointer;
+}
+.photo-lightbox-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-lightbox-thumb-active {
+  border-color: var(--gold);
+  opacity: 1;
+}
+:where(html:not(.kiosk-mode)) .photo-lightbox-thumb:hover {
+  opacity: 1;
 }
 
 /* ---------- Floating overlay UI (Maps-style) ---------- */
@@ -4432,9 +4688,13 @@ html.kiosk-mode .floating-nearest-exit-btn:hover:active {
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-1);
 }
+.floating-search-bar:focus-within {
+  border-color: var(--focus-ring);
+}
 .floating-search-bar input {
   width: 100%;
-  padding: 15px 52px 15px 22px;
+  height: 48px;
+  padding: 0 52px 0 20px;
   border-radius: var(--radius-pill);
   border: none;
   background: transparent;
@@ -5183,7 +5443,7 @@ html.kiosk-mode .nearby-rooms-item:hover:active {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 3px solid var(--sdca-gray);
+  border: none;
   background: var(--surface);
   color: var(--sdca-gray);
   font-size: 24px;
@@ -5226,7 +5486,7 @@ html.kiosk-mode .nearby-rooms-item:hover:active {
   height: 92px;
   margin: -46px 0 0 -46px; /* centers the 92px button on its own translate()-computed point */
   border-radius: 50%;
-  border: 3px solid var(--sdca-gray);
+  border: none;
   background: var(--surface);
   color: var(--sdca-gray);
   font-size: 44px;
@@ -5342,13 +5602,16 @@ html.kiosk-mode .nearby-rooms-item:hover:active {
 .mobile-search-row input {
   width: 100%;
   height: 48px;
-  padding: 0 16px;
+  padding: 0 20px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   font-size: 16px;
   box-shadow: var(--shadow-1);
+}
+.mobile-search-row input::placeholder {
+  color: var(--tour-search-placeholder);
 }
 .mobile-search-row input:focus {
   outline: none;
@@ -7741,9 +8004,16 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
 }
 .kiosk-dialog .directions-panel .sidebar-field-label input,
 .kiosk-dialog .directions-panel .sidebar-field-label .directions-field {
-  padding: 14px 16px;
+  padding: 14px 22px;
   font-size: 19px;
+  line-height: 25px;
   margin-top: 6px;
+}
+.kiosk-dialog .directions-panel .directions-fields {
+  --dir-label-h: 20px;
+  --dir-mt: 6px;
+  --dir-field-h: 80px;
+  gap: 14px;
 }
 .kiosk-dialog .directions-panel .directions-go-btn {
   min-height: 64px;
@@ -10104,10 +10374,26 @@ html.kiosk-mode .signage-row-thumb:hover:active {
   letter-spacing: 0.15em;
   font-variant-numeric: tabular-nums;
 }
-.kiosks-form select,
-.kiosks-form input[type="text"] {
+.kiosks-form select {
   width: 100%;
   max-width: 420px;
+}
+/* The Name field wears the shared search-box look (.user-panel-search-input)
+   but has no magnifier, so it gets the plain left padding back. */
+.kiosks-form-input {
+  max-width: 360px;
+  padding-left: 10px;
+}
+.kiosks-form-search {
+  display: block;
+  margin-bottom: 8px;
+}
+.kiosks-steps-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* Kiosk pairing screen (KioskPairingScreen.jsx): a compact modal, a big code
@@ -10257,7 +10543,7 @@ html.kiosk-mode .signage-row-thumb:hover:active {
 }
 .app-sidebar-emergency .directions-field,
 .app-sidebar-directions .directions-field {
-  height: 36px;
+  height: 40px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -10309,10 +10595,24 @@ html.kiosk-mode .signage-row-thumb:hover:active {
 .app-sidebar-directions .directions-panel-header {
   min-height: 34px;
 }
+.app-sidebar-emergency .sidebar-field-label .directions-field,
 .app-sidebar-directions .sidebar-field-label .directions-field {
-  margin-top: 2px;
-  padding: 6px 10px;
-  height: 32px;
+  margin-top: 5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  height: 40px;
+}
+.app-sidebar-emergency .directions-fields,
+.app-sidebar-directions .directions-fields {
+  --dir-mt: 5px;
+  --dir-field-h: 40px;
+  gap: 6px;
+  /* The sidebar is a dark band, so the graphic goes white like the labels. */
+  color: var(--white);
+}
+.app-sidebar-emergency .directions-route-graphic,
+.app-sidebar-directions .directions-route-graphic {
+  color: var(--white);
 }
 .app-sidebar-directions .directions-go-btn {
   padding: 7px 16px;

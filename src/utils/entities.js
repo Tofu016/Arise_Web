@@ -248,6 +248,11 @@ export function toDialog(row) {
     link: row.link || "",
     photo: row.photo_path || "",
     photo360: row.photo_360_path || "",
+    // Where the main photo's square thumbnail is centered, as CSS
+    // object-position percentages (50/50 = the middle of the picture).
+    photoFocus: { x: row.thumb_x ?? 50, y: row.thumb_y ?? 50 },
+    // Photos after the main one, in display order, each with its own focus.
+    extraPhotos: (row.extra_photos || []).map((p) => ({ path: p.path, x: p.thumb_x ?? 50, y: p.thumb_y ?? 50 })),
     ocrSearchTerms: (row.search_terms || []).map((t) => t.term),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -255,7 +260,7 @@ export function toDialog(row) {
 }
 
 export function dialogPatchBody(patch) {
-  return pick(patch, {
+  const body = pick(patch, {
     roomName: "room_name",
     roomDescription: "description",
     department: "department",
@@ -265,6 +270,14 @@ export function dialogPatchBody(patch) {
     photo360: "photo_360_path",
     ocrSearchTerms: "search_terms",
   });
+  if (patch.photoFocus) {
+    body.thumb_x = patch.photoFocus.x;
+    body.thumb_y = patch.photoFocus.y;
+  }
+  if (patch.extraPhotos) {
+    body.extra_photos = patch.extraPhotos.map((p) => ({ path: p.path, thumb_x: p.x, thumb_y: p.y }));
+  }
+  return body;
 }
 
 // A brand-new record is seeded with an empty description and one search

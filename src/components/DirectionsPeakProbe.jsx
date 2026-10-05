@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as route from "../utils/directionsRoute";
 import { buildHotspots } from "../utils/hotspots";
 import { floorLabel } from "../utils/constants";
+import DirectionsFields from "./DirectionsFields";
 
 // One entry per distinct thing the walking panel can say along a route: the
 // next stop's name, an elevator ride, a straight run to skip. The turn word is
@@ -58,14 +59,16 @@ export default function DirectionsPeakProbe({ path, byId, nodes, renderProgress,
       {stages.map((stage) => (
         <div className="directions-panel" key={stage.stepIndex}>
           <div className="directions-panel-header"><h3>Directions</h3></div>
+          <DirectionsFields>
           <label className="sidebar-field-label">
             <span className="directions-from-label">From<span className="you-are-here-pill">You are here</span></span>
             <textarea className="directions-field" rows={1} readOnly tabIndex={-1} />
           </label>
           <label className="sidebar-field-label">
-            To
+            <span className="directions-from-label">To</span>
             <textarea className="directions-field" rows={1} readOnly tabIndex={-1} />
           </label>
+          </DirectionsFields>
           <div className="directions-suggestions-anchor" />
           {renderProgress(stage)}
         </div>

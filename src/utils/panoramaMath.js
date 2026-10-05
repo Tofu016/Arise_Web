@@ -120,11 +120,13 @@ export function previewScale(lookDot) {
 // Directions auto-pan: how far (radians) to turn this frame toward a target
 // `angleRad` away. Eases out (speed follows the remaining angle) between a
 // floor and a ceiling in degrees per second so it stays gentle; a long frame
-// is capped at 0.1s so a hitch can't jump the view. 0 once close enough.
-export const AUTO_PAN_MIN_DEG_PER_SEC = 7.5;
-export const AUTO_PAN_MAX_DEG_PER_SEC = 37.5;
-export const AUTO_PAN_EASE = 0.625; // share of the remaining angle covered per second
-export const AUTO_PAN_DONE_DEG = 0.5;
+// is capped at 0.1s so a hitch can't jump the view. 0 once close enough. The
+// floor and the done threshold are kept tiny so the speed has already decayed
+// to a crawl on landing; a high floor read as an abrupt stop.
+export const AUTO_PAN_MIN_DEG_PER_SEC = 1.5;
+export const AUTO_PAN_MAX_DEG_PER_SEC = 50;
+export const AUTO_PAN_EASE = 0.9; // share of the remaining angle covered per second
+export const AUTO_PAN_DONE_DEG = 0.2;
 
 export function autoPanStep(angleRad, deltaSeconds) {
   const angleDeg = (angleRad * 180) / Math.PI;
