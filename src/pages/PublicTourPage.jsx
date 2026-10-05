@@ -9,6 +9,8 @@ import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
 import TourTutorialOverlay from "../components/TourTutorialOverlay";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
+import FadeImage from "../components/FadeImage";
+import Presence from "../components/Presence";
 import sdcaLogoFull from "../assets/images/sdca-logo-full.png";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import menuWhite from "../assets/icons/menu-white.svg";
@@ -29,7 +31,7 @@ function SecureImg({ path, alt, className, loading, fallback = null }) {
   const { url } = useSecurePhotoUrl(path);
   const [failedUrl, setFailedUrl] = useState(null);
   if (!url || url === failedUrl) return fallback;
-  return <img src={url} alt={alt} className={className} loading={loading} onError={() => setFailedUrl(url)} />;
+  return <FadeImage src={url} alt={alt} className={className} loading={loading} onError={() => setFailedUrl(url)} />;
 }
 
 // A single description entry's truncate/expand behavior — CSS
@@ -364,8 +366,9 @@ export default function PublicTourPage() {
             </div>
           </nav>
 
-          <TourTutorialOverlay open={tutorialOpen} onDismiss={() => setTutorialOpen(false)} />
-
+          <Presence show={tutorialOpen} ms={250}>
+            <TourTutorialOverlay open={tutorialOpen} onDismiss={() => setTutorialOpen(false)} />
+          </Presence>
           {/* The intro, over the dimmed first panorama. */}
           {!entered && (
             <div className="tour-intro">

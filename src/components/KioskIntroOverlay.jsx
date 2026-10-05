@@ -3,6 +3,7 @@ import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import HotspotGlyph from "./HotspotGlyph";
 import { KIOSK_INTRO_TEXT } from "../utils/introScript";
+import { useIntroReady } from "../hooks/useIntroReady";
 
 // Hand-drawn (nothing touch-specific exists in the icon set): a fingertip dot
 // sliding between two arrowheads to read as "drag", and the real hotspot's
@@ -34,6 +35,7 @@ function TapIcon() {
 // MainPageContent mount, and each new visitor should see it.
 export default function KioskIntroOverlay({ open, onDismiss, style }) {
   const ref = useRef(null);
+  const ready = useIntroReady(open);
 
   useEffect(() => {
     if (open) ref.current?.focus();
@@ -48,8 +50,8 @@ export default function KioskIntroOverlay({ open, onDismiss, style }) {
       style={style}
       role="button"
       aria-label="How to use this tour. Tap anywhere to begin."
-      onClick={onDismiss}
-      onKeyDown={(e) => e.key === "Escape" && onDismiss()}
+      onClick={ready ? onDismiss : undefined}
+      onKeyDown={(e) => ready && e.key === "Escape" && onDismiss()}
       tabIndex={-1}
     >
       <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" className="desktop-intro-logo" />
@@ -73,7 +75,7 @@ export default function KioskIntroOverlay({ open, onDismiss, style }) {
         </div>
       </div>
 
-      <p className="desktop-intro-dismiss kiosk-intro-dismiss">Tap anywhere to begin</p>
+      <p className={"desktop-intro-dismiss kiosk-intro-dismiss" + (ready ? " intro-dismiss-ready" : "")}>Tap anywhere to begin</p>
     </div>
   );
 }

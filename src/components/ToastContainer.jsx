@@ -25,7 +25,7 @@ export default function ToastContainer() {
   return (
     <div className="toast-stack" role="status" aria-live="polite">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.type}`}>
+        <div key={t.id} className={`toast toast-${t.type}${t.leaving ? " toast-leaving" : ""}`}>
           <span className="toast-icon" aria-hidden="true">{ICONS[t.type]}</span>
           <span className="toast-message">{t.message}</span>
           <button type="button" className="toast-close" onClick={() => dismiss(t.id)} aria-label="Dismiss">

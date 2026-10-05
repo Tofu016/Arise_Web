@@ -10,19 +10,23 @@ let nextId = 0;
 
 // error/warning stay up longer than success/info — a mistake worth reading
 // twice shouldn't vanish as fast as a routine confirmation.
+const EXIT_MS = 200;
 const DEFAULT_DURATION = { success: 4000, info: 4000, warning: 5500, error: 6500 };
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map());
 
+  // Marks the toast as leaving first so motion.css can fade it out, then
+  // removes it once that exit (EXIT_MS) has played.
   const dismiss = useCallback((id) => {
-    setToasts((t) => t.filter((x) => x.id !== id));
     const timer = timers.current.get(id);
     if (timer) {
       clearTimeout(timer);
       timers.current.delete(id);
     }
+    setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), EXIT_MS);
   }, []);
 
   const push = useCallback(

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
 import HotspotGlyph from "./HotspotGlyph";
 import { DESKTOP_INTRO_TEXT } from "../utils/introScript";
+import { useIntroReady } from "../hooks/useIntroReady";
 
 // Hand-drawn (not sourced) since nothing this specific exists in the icon
 // set or the grey/white pairs: a mouse body with one button highlighted to
@@ -69,6 +70,7 @@ function KeyCap({ label, wide }) {
 // visitor's first impression, so it shows again on its own.
 export default function DesktopIntroOverlay({ open, onDismiss }) {
   const ref = useRef(null);
+  const ready = useIntroReady(open);
 
   useEffect(() => {
     if (open) ref.current?.focus();
@@ -79,13 +81,13 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
   // overlay only has focus until the visitor clicks elsewhere; the key still
   // reaches the panorama's keyboard nav, so the move happens too.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !ready) return;
     const onKey = (e) => {
       if (e.key === "w" || e.key === "W" || e.key === "ArrowUp") onDismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onDismiss]);
+  }, [open, ready, onDismiss]);
 
   if (!open) return null;
 
@@ -95,8 +97,8 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
       className="desktop-intro-overlay"
       role="button"
       aria-label="How to move around this tour. Click anywhere to begin."
-      onClick={onDismiss}
-      onKeyDown={(e) => e.key === "Escape" && onDismiss()}
+      onClick={ready ? onDismiss : undefined}
+      onKeyDown={(e) => ready && e.key === "Escape" && onDismiss()}
       tabIndex={-1}
     >
       <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" className="desktop-intro-logo" />
@@ -152,7 +154,7 @@ export default function DesktopIntroOverlay({ open, onDismiss }) {
         </div>
       </div>
 
-      <p className="desktop-intro-dismiss">Click anywhere to begin</p>
+      <p className={"desktop-intro-dismiss" + (ready ? " intro-dismiss-ready" : "")}>Click anywhere to begin</p>
     </div>
   );
 }

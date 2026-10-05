@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { MouseIcon, HotspotClickIcon } from "./DesktopIntroOverlay";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
 import { TOUR_INTRO_TEXT } from "../utils/introScript";
+import { useIntroReady } from "../hooks/useIntroReady";
 import menuWhite from "../assets/icons/menu-white.svg";
 
 // A finger in place of the mouse, for touch screens: the same "drag here"
@@ -56,6 +57,7 @@ function StepButtonsIcon() {
 export default function TourTutorialOverlay({ open, onDismiss }) {
   const ref = useRef(null);
   const touch = useIsCoarsePointer();
+  const ready = useIntroReady(open);
 
   useEffect(() => {
     if (open) ref.current?.focus();
@@ -76,8 +78,8 @@ export default function TourTutorialOverlay({ open, onDismiss }) {
       className="desktop-intro-overlay tour-tutorial"
       role="button"
       aria-label={`How to use this tour. ${tips.map((t) => t.text).join(" ")} ${touch ? "Tap" : "Click"} anywhere to begin.`}
-      onClick={onDismiss}
-      onKeyDown={(e) => (e.key === "Escape" || e.key === "Enter" || e.key === " ") && onDismiss()}
+      onClick={ready ? onDismiss : undefined}
+      onKeyDown={(e) => ready && (e.key === "Escape" || e.key === "Enter" || e.key === " ") && onDismiss()}
       tabIndex={-1}
     >
       <h2 className="tour-tutorial-title">How to explore</h2>
@@ -94,7 +96,7 @@ export default function TourTutorialOverlay({ open, onDismiss }) {
       </div>
 
       <p className="tour-tutorial-help">{TOUR_INTRO_TEXT.help}</p>
-      <p className="desktop-intro-dismiss">{touch ? "Tap" : "Click"} anywhere to begin</p>
+      <p className={"desktop-intro-dismiss" + (ready ? " intro-dismiss-ready" : "")}>{touch ? "Tap" : "Click"} anywhere to begin</p>
     </div>
   );
 }

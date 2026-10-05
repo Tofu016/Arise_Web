@@ -36,6 +36,9 @@ import ToastContainer from "./components/ToastContainer";
 import "./styles/fonts.css";
 import "./styles/tokens.css";
 import "./index.css";
+// After index.css on purpose: motion.css layers entrance animations and
+// easing over existing selectors, and must win same-specificity ties.
+import "./styles/motion.css";
 
 export default function App() {
   return (

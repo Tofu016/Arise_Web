@@ -14,10 +14,11 @@ const campusLabel = (campusId) => allCampuses().find((c) => c.id === campusId)?.
 // label by that much parks it just above the pin's head instead of on it.
 const PIN_LABEL_OFFSET = [0, -42];
 
-// Room above for the pill that sits over each pin, a thin margin elsewhere.
+// Room above for the pill that sits over each pin (plus the "You are here"
+// pill stacked over the current one), a thin margin elsewhere.
 // The side margin is about half a pill's width so a pill over an edge pin is
 // not clipped by the modal.
-const FIT_PADDING = { top: 80, bottom: 30, left: 90, right: 90 };
+const FIT_PADDING = { top: 110, bottom: 30, left: 90, right: 90 };
 
 // fitBounds is imperative, so it needs useMap() (same reason as FlyoverPanel's
 // FitToRoute). maxZoom keeps a lone pin from zooming to street level.
@@ -79,14 +80,17 @@ export default function CampusMapModal({ currentCampusId, onClose }) {
               anchor="bottom"
               offset={PIN_LABEL_OFFSET}
             >
-              <span
-                className={
-                  "flyover-pin-label" +
-                  (p.id === currentCampusId ? "" : " flyover-pin-label-destination")
-                }
-              >
-                {p.label}
-              </span>
+              <div className="campus-map-pin-stack">
+                {p.id === currentCampusId && <span className="campus-map-here-pill">You are here</span>}
+                <span
+                  className={
+                    "flyover-pin-label" +
+                    (p.id === currentCampusId ? "" : " flyover-pin-label-destination")
+                  }
+                >
+                  {p.label}
+                </span>
+              </div>
             </Marker>
           ))}
           <FitToPins pins={pins} />

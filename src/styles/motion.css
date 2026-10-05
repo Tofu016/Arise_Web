@@ -1,0 +1,332 @@
+/* =====================================================================
+   Motion layer. Loaded after index.css (see App.jsx) so these entrance
+   animations and easings win same-specificity ties over the base rules.
+
+   Entrances use the individual `translate` / `scale` properties rather
+   than `transform`, because many of these elements position themselves
+   with an inline or stylesheet `transform` (kiosk centring, the radial
+   menu, the dock); `translate`/`scale` compose with it instead of
+   fighting it. Timing comes from the --dur-* / --ease-* tokens.
+   ===================================================================== */
+
+@keyframes m-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes m-rise-in {
+  from { opacity: 0; translate: 0 14px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes m-drop-in {
+  from { opacity: 0; translate: 0 -8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes m-slide-left-in {
+  from { opacity: 0; translate: -16px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes m-scale-in {
+  from { opacity: 0; scale: 0.94; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes m-pop {
+  0% { scale: 1; }
+  45% { scale: 1.25; }
+  100% { scale: 1; }
+}
+@keyframes m-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes m-fade-out {
+  to { opacity: 0; }
+}
+@keyframes m-toast-out {
+  to { opacity: 0; translate: 0 8px; }
+}
+
+/* ---------- Exit (see Presence.jsx) ---------- */
+.presence {
+  display: contents;
+}
+.presence-exit > * {
+  animation: m-fade-out var(--dur-fast) var(--ease-in) forwards !important;
+  pointer-events: none;
+}
+
+/* ---------- Press / focus feedback ---------- */
+:where([class*="-btn"]) {
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur-med) ease,
+    scale var(--dur-fast) var(--ease-out);
+}
+button {
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur-med) ease,
+    scale var(--dur-fast) var(--ease-out);
+}
+button:active:not(:disabled),
+:where([class*="-btn"]):active:not(:disabled) {
+  scale: 0.97;
+}
+input,
+textarea,
+select {
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-med) ease, background var(--dur-fast) ease;
+}
+.nearby-rooms-item,
+.search-result-btn,
+.directory-building-row,
+.directory-campus-row,
+.directory-room-row,
+.origin-choice-option,
+.account-popover a {
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    scale var(--dur-fast) var(--ease-out);
+}
+
+/* ---------- Page entrance ---------- */
+.main-page-layout,
+.auth-page,
+.tour-screen {
+  animation: m-fade-in var(--dur-slow) ease both;
+}
+.auth-card {
+  animation: m-rise-in 0.45s var(--ease-out) 0.05s both;
+}
+.auth-left-panel > * {
+  animation: m-rise-in 0.5s var(--ease-out) both;
+}
+.auth-left-panel > :nth-child(2) { animation-delay: 80ms; }
+.auth-left-panel > :nth-child(3) { animation-delay: 160ms; }
+.auth-left-panel > :nth-child(4) { animation-delay: 240ms; }
+.loading-screen-label {
+  animation: m-fade-in 0.6s ease 0.15s both;
+}
+
+/* ---------- Floating chrome, first reveal ---------- */
+.floating-title-wrap {
+  animation: m-drop-in 0.5s var(--ease-out) 0.15s both;
+}
+.floating-rail-btn,
+.campus-map-btn {
+  animation: m-fade-in 0.5s ease 0.3s both;
+}
+.pano-zoom-buttons {
+  animation: m-fade-in 0.5s ease 0.4s both;
+}
+.account-popover {
+  animation: m-drop-in var(--dur-med) var(--ease-out) both;
+}
+
+/* ---------- Kiosk dialogs, thanks, nearby, room card ---------- */
+.kiosk-dialog-scrim {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.kiosk-dialog-layer {
+  animation: m-rise-in 0.28s var(--ease-out) both;
+}
+.kiosk-dialog-keyboard {
+  animation: m-rise-in 0.3s var(--ease-out) 90ms both;
+}
+.kiosk-thanks {
+  animation: m-scale-in 0.3s var(--ease-out) both;
+}
+.nearby-rooms-panel {
+  animation: m-slide-left-in 0.35s var(--ease-out) both;
+}
+.nearby-rooms-list > li {
+  animation: m-slide-left-in 0.35s var(--ease-out) both;
+}
+.nearby-rooms-list > li:nth-child(1) { animation-delay: 60ms; }
+.nearby-rooms-list > li:nth-child(2) { animation-delay: 110ms; }
+.nearby-rooms-list > li:nth-child(3) { animation-delay: 160ms; }
+.nearby-rooms-list > li:nth-child(4) { animation-delay: 210ms; }
+.nearby-rooms-list > li:nth-child(n + 5) { animation-delay: 260ms; }
+.kiosk-room-card-body > * {
+  animation: m-rise-in 0.3s var(--ease-out) both;
+}
+.kiosk-room-card-body > :nth-child(2) { animation-delay: 50ms; }
+.kiosk-room-card-body > :nth-child(3) { animation-delay: 100ms; }
+.kiosk-room-card-body > :nth-child(4) { animation-delay: 150ms; }
+.kiosk-room-card-body > :nth-child(n + 5) { animation-delay: 200ms; }
+.mobile-panel-backdrop {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.kiosk-walkbar {
+  animation: m-rise-in 0.3s var(--ease-out) both;
+}
+
+/* Compact dock: the FAB morphs between its closed and open footprints. */
+.mobile-side-dock {
+  transition: right 0.28s var(--ease-out), width 0.28s var(--ease-out), height 0.28s var(--ease-out);
+}
+
+/* ---------- Desktop room card ---------- */
+.sidebar-room-body > * {
+  animation: m-fade-in 0.3s ease both;
+}
+.sidebar-room-body > :nth-child(2) { animation-delay: 50ms; }
+.sidebar-room-body > :nth-child(3) { animation-delay: 100ms; }
+.sidebar-room-body > :nth-child(n + 4) { animation-delay: 150ms; }
+button[aria-pressed="true"] > .inline-icon-img {
+  animation: m-pop 0.35s var(--ease-spring);
+}
+
+/* ---------- Directions ---------- */
+.directions-panel {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.directions-mode-choice,
+.directions-progress,
+.directions-error {
+  animation: m-drop-in var(--dur-med) var(--ease-out) both;
+}
+.directions-suggestions,
+.room-search-results,
+.directions-go-btn,
+.emergency-band {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.emergency-notice {
+  animation: m-drop-in 0.35s var(--ease-out) both;
+}
+.search-result-btn {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.search-result-btn:nth-child(2) { animation-delay: 30ms; }
+.search-result-btn:nth-child(3) { animation-delay: 60ms; }
+.search-result-btn:nth-child(4) { animation-delay: 90ms; }
+.search-result-btn:nth-child(n + 5) { animation-delay: 120ms; }
+
+/* ---------- Directory accordion ---------- */
+.directory-room-list {
+  animation: m-drop-in var(--dur-med) var(--ease-out) both;
+}
+.directory-room-list > * {
+  animation: m-fade-in 0.3s ease both;
+}
+.directory-room-list > :nth-child(2) { animation-delay: 30ms; }
+.directory-room-list > :nth-child(3) { animation-delay: 60ms; }
+.directory-room-list > :nth-child(4) { animation-delay: 90ms; }
+.directory-room-list > :nth-child(n + 5) { animation-delay: 120ms; }
+
+/* ---------- Modals not built on .modal-overlay ---------- */
+.flyover-overlay,
+.campus-map-overlay,
+.photo-lightbox {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.flyover-panel,
+.campus-map-modal,
+.photo-lightbox-stage {
+  animation: m-scale-in 0.25s var(--ease-out) both;
+}
+.campus-map-here-pill {
+  animation: m-rise-in 0.4s var(--ease-spring) 0.2s both;
+}
+
+/* ---------- Kiosk start / campus / building / floor sequence ---------- */
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) .kiosk-building-title,
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) .kiosk-back-btn {
+  animation: m-rise-in 0.45s var(--ease-out) 0.1s both;
+}
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) .kiosk-building-btn {
+  animation: m-rise-in 0.45s var(--ease-out) both;
+}
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) :is(.kiosk-building-column, .kiosk-floor-list) > :nth-child(1) { animation-delay: 150ms; }
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) :is(.kiosk-building-column, .kiosk-floor-list) > :nth-child(2) { animation-delay: 210ms; }
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) :is(.kiosk-building-column, .kiosk-floor-list) > :nth-child(3) { animation-delay: 270ms; }
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) :is(.kiosk-building-column, .kiosk-floor-list) > :nth-child(4) { animation-delay: 330ms; }
+.kiosk-building-screen:not(.kiosk-building-screen-hidden) :is(.kiosk-building-column, .kiosk-floor-list) > :nth-child(n + 5) { animation-delay: 390ms; }
+.kiosk-start-screen:not(.kiosk-start-screen-hidden) > * {
+  animation: m-rise-in 0.6s var(--ease-out) both;
+}
+.kiosk-start-screen:not(.kiosk-start-screen-hidden) > :nth-child(2) { animation-delay: 120ms; }
+.kiosk-start-screen:not(.kiosk-start-screen-hidden) > :nth-child(3) { animation-delay: 240ms; }
+.origin-choice-option {
+  animation: m-rise-in 0.3s var(--ease-out) both;
+}
+.origin-choice-list > :nth-child(2) { animation-delay: 60ms; }
+.origin-choice-list > :nth-child(3) { animation-delay: 120ms; }
+
+/* ---------- Tour page ---------- */
+.tour-sidebar-list .tour-scene {
+  animation: m-fade-in 0.4s ease both;
+}
+.tour-sidebar-list .tour-scene:nth-child(2) { animation-delay: 40ms; }
+.tour-sidebar-list .tour-scene:nth-child(3) { animation-delay: 80ms; }
+.tour-sidebar-list .tour-scene:nth-child(4) { animation-delay: 120ms; }
+.tour-sidebar-list .tour-scene:nth-child(n + 5) { animation-delay: 160ms; }
+.tour-scene-name {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+.tour-scene-thumb-empty,
+.skeleton {
+  background: linear-gradient(100deg, var(--sdca-maroon-dark) 30%, rgba(255, 255, 255, 0.12) 50%, var(--sdca-maroon-dark) 70%);
+  background-size: 200% 100%;
+  animation: m-shimmer 1.6s linear infinite;
+}
+
+/* Images that fade in once decoded (see FadeImage.jsx). */
+.fade-img {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.fade-img.is-loaded {
+  opacity: 1;
+}
+
+/* ---------- Feedback ---------- */
+.feedback-star[aria-checked="true"] .inline-icon-img {
+  animation: m-pop 0.35s var(--ease-spring);
+}
+.feedback-panel-thanks {
+  animation: m-scale-in 0.3s var(--ease-out) both;
+}
+.feedback-fields {
+  animation: m-fade-in var(--dur-med) ease both;
+}
+
+/* ---------- Toasts ---------- */
+.toast-leaving {
+  animation: m-toast-out var(--dur-med) var(--ease-in) forwards !important;
+  pointer-events: none;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  /* The countdown ring and spinner convey real time/progress, so they keep running. */
+  *:not(.countdown-ring-bar):not(.loading-spinner),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+  button:active,
+  :where([class*="-btn"]):active {
+    scale: 1;
+  }
+}
+
+.tour-scene-thumb.fade-img {
+  transition: opacity 0.35s ease, transform 0.3s;
+}
+
+/* The instructional overlays are full-screen, so they leave more gently. */
+.presence-exit > :is(.desktop-intro-overlay, .kiosk-intro-overlay, .sidebar-intro-overlay, .tour-tutorial-overlay) {
+  animation-duration: 240ms !important;
+  animation-timing-function: ease !important;
+}

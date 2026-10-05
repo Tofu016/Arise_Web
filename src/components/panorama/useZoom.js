@@ -20,6 +20,16 @@ const WHEEL_ZOOM_SENSITIVITY = 0.0012;
 // scroll their way back to x1.0 instead of hunting for it pixel by pixel.
 const WHEEL_ZOOM_SNAP = 0.02;
 
+// One + (direction 1) or - (direction -1) tap. A step that would cross 1.0
+// lands on it instead: the multiplicative steps drift off 1.0 once a clamp at
+// MIN_ZOOM/MAX_ZOOM has eaten part of a step (0.7 * 1.25 * 1.25 is 1.09, not
+// 1), so without this a visitor could never zoom their way back to the
+// default view with the buttons alone.
+export function stepZoom(zoom, direction) {
+  const next = clampZoom(direction > 0 ? zoom * BUTTON_ZOOM_FACTOR : zoom / BUTTON_ZOOM_FACTOR);
+  return (zoom - 1) * (next - 1) < 0 ? 1 : next;
+}
+
 export function useZoom() {
   const [zoom, setZoomState] = useState(1);
   const setZoom = (z) => setZoomState(clampZoom(z));

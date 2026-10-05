@@ -76,6 +76,7 @@ import { useSavedRooms } from "../hooks/useSavedRooms";
 import { resolveSavedRooms } from "../utils/savedRooms";
 import { useLiveSignage } from "../hooks/useSignage";
 import KioskSignage from "../components/KioskSignage";
+import Presence from "../components/Presence";
 import { useAuth } from "../context/useAuth";
 
 // Compact-layout control dock: how far each radial icon sits from the
@@ -544,7 +545,12 @@ function MainPageContent({ onReset }) {
   const directionsWasOpenRef = useRef(false);
   useEffect(() => {
     const isOpen = !!directions;
-    if (isOpen && !directionsWasOpenRef.current) {
+    // Desktop with both ends already chosen (the Directions button on a
+    // room): nothing left to search for, so don't focus a field, which would
+    // pop the suggestions over a filled-in route. Clicking a field still
+    // brings them back via its onFocus.
+    const bothPreselected = !compact && !!directions?.toId && !!directions?.fromId;
+    if (isOpen && !directionsWasOpenRef.current && !bothPreselected) {
       const originFirst = !!directions.toId && !directions.fromId;
       const target = originFirst ? fromFieldRef : toFieldRef;
       target.current?.focus();
@@ -1372,9 +1378,11 @@ function MainPageContent({ onReset }) {
 
   return (
     <div className={"main-page-layout" + (compact ? "" : " tour-shell")}>
-      {directions?.path && arrived && (
-        <ArrivalModal kiosk={compact} emergency={!!directions.emergency} onDone={flow.close} />
-      )}
+      <Presence show={!!(directions?.path && arrived)}>
+        {directions?.path && arrived && (
+          <ArrivalModal kiosk={compact} emergency={!!directions.emergency} onDone={flow.close} />
+        )}
+      </Presence>
       {compact && overlay.originChoice && (
         <KioskOriginChoice
           destinationName={overlay.originChoice.name}
@@ -1406,6 +1414,7 @@ function MainPageContent({ onReset }) {
           onCancel={flow.close}
         />
       )}
+      <Presence show={!!overlay.elevatorPicker}>
       {overlay.elevatorPicker && (
         <div className="modal-overlay elevator-picker-overlay" onClick={overlay.closeElevatorPicker}>
           <div className="modal elevator-picker" role="dialog" aria-label="Choose a floor" onClick={(e) => e.stopPropagation()}>
@@ -1441,6 +1450,7 @@ function MainPageContent({ onReset }) {
           </div>
         </div>
       )}
+      </Presence>
       {/* Overlays everything below until the current node's photo has
           actually finished decoding, not just until nodes data has
           loaded — matches how the !nodes early-return above already
@@ -1585,39 +1595,44 @@ function MainPageContent({ onReset }) {
 
             {/* Session-start walkthrough over the panorama band only, so the
                 header and signage stay visible — see KioskIntroOverlay.jsx. */}
-            <KioskIntroOverlay
-              open={hintsAllowed && compact && !kioskIntroSeen}
-              onDismiss={() => {
-                setNarrateIntro(false);
-                setKioskIntroSeen(true);
-              }}
-              style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
-            />
-
-            {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (
-              <NearbyRoomsPanel
-                rooms={nearbyRooms}
-                currentFloor={current.floor}
-                onSelect={selectNearbyRoom}
-                style={{ top: `calc(${KIOSK_TOP_INSET * 100}% + 12px)` }}
+            <Presence show={hintsAllowed && compact && !kioskIntroSeen} ms={250}>
+              <KioskIntroOverlay
+                open={hintsAllowed && compact && !kioskIntroSeen}
+                onDismiss={() => {
+                  setNarrateIntro(false);
+                  setKioskIntroSeen(true);
+                }}
+                style={{ top: `${KIOSK_TOP_INSET * 100}%`, bottom: `${KIOSK_BOTTOM_INSET * 100}%` }}
               />
-            )}
+            </Presence>
+            <Presence show={!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && nearbyRooms?.length > 0}>
+              {!kioskDialogOpen && !mobileDockOpen && !kiosk.awaitingStart && panelMode !== "room" && (
+                <NearbyRoomsPanel
+                  rooms={nearbyRooms}
+                  currentFloor={current.floor}
+                  onSelect={selectNearbyRoom}
+                  style={{ top: `calc(${KIOSK_TOP_INSET * 100}% + 12px)` }}
+                />
+              )}
+            </Presence>
 
-            {mobileDockOpen && (
-              <div className="mobile-panel-backdrop" onClick={overlay.dismiss} />
-            )}
+            <Presence show={mobileDockOpen}>
+              {mobileDockOpen && <div className="mobile-panel-backdrop" onClick={overlay.dismiss} />}
+            </Presence>
 
             {/* ---------- Room card: same footprint as the kiosk dialogs
                 (top half of the panorama band), not a bottom sheet — the
                 screen's very bottom sits at shin height. ---------- */}
-            {panelMode === "room" && selectedRoomCard && (
-              <KioskRoomCard
-                room={selectedRoomCard}
-                onClose={overlay.closeRoomCard}
-                onGoTo={handleRoomGoTo}
-                onGetDirections={handleRoomGetDirections}
-              />
-            )}
+            <Presence show={panelMode === "room" && !!selectedRoomCard}>
+              {panelMode === "room" && selectedRoomCard && (
+                <KioskRoomCard
+                  room={selectedRoomCard}
+                  onClose={overlay.closeRoomCard}
+                  onGoTo={handleRoomGoTo}
+                  onGetDirections={handleRoomGetDirections}
+                />
+              )}
+            </Presence>
 
             {/* ---------- Middle-right control dock: a single FAB, collapsed
                 by default — reachable at arm's length by someone standing
@@ -1721,36 +1736,41 @@ function MainPageContent({ onReset }) {
               />
             )}
 
-            {panelMode === "search" && (
-              <KioskDialog title="Search" onClose={overlay.closePanel}>
-                <div className="mobile-search-row">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    inputMode="none"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={current?.name || "Search a room..."}
-                    aria-label="Search"
-                    autoFocus
-                  />
-                </div>
-                {/* Fills whatever height the dialog has left below the field,
-                    scrolling on its own — see .kiosk-dialog .mobile-search-results-area. */}
-                <div className="mobile-search-results-area">
-                  {searchResultsContent}
-                </div>
-              </KioskDialog>
-            )}
+            <Presence show={panelMode === "search"}>
+              {panelMode === "search" && (
+                <KioskDialog title="Search" onClose={overlay.closePanel}>
+                  <div className="mobile-search-row">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      inputMode="none"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={current?.name || "Search a room..."}
+                      aria-label="Search"
+                      autoFocus
+                    />
+                  </div>
+                  {/* Fills whatever height the dialog has left below the field,
+                      scrolling on its own — see .kiosk-dialog .mobile-search-results-area. */}
+                  <div className="mobile-search-results-area">
+                    {searchResultsContent}
+                  </div>
+                </KioskDialog>
+              )}
+            </Presence>
 
-            {panelMode === "directions" && directions && !arrived && !walkBarShown && !directions.pendingModeChoice && (
-              <KioskDialog onClose={flow.close}>
-                <div className="directions-panel">
-                  {directionsContent}
-                </div>
-              </KioskDialog>
-            )}
+            <Presence show={!!(panelMode === "directions" && directions && !arrived && !walkBarShown && !directions.pendingModeChoice)}>
+              {panelMode === "directions" && directions && !arrived && !walkBarShown && !directions.pendingModeChoice && (
+                <KioskDialog onClose={flow.close}>
+                  <div className="directions-panel">
+                    {directionsContent}
+                  </div>
+                </KioskDialog>
+              )}
+            </Presence>
 
+            <Presence show={!!walkBarShown}>
             {walkBarShown && (
               <KioskWalkBar
                 progressText={`Stop ${directions.stepIndex + 1} of ${directions.path.length}${
@@ -1770,6 +1790,7 @@ function MainPageContent({ onReset }) {
                 onEnd={flow.close}
               />
             )}
+            </Presence>
 
             {buildingMenuOpen && (
               <div
@@ -1829,11 +1850,12 @@ function MainPageContent({ onReset }) {
                     SidebarIntroOverlay.jsx and the sidebarIntroSeen state
                     above. Shares dismissIntro with DesktopIntroOverlay
                     below, so clicking either one closes both. */}
-                <SidebarIntroOverlay
-                  open={hintsAllowed && !compact && !sidebarIntroSeen}
-                  onDismiss={dismissIntro}
-                />
-
+                <Presence show={hintsAllowed && !compact && !sidebarIntroSeen} ms={250}>
+                  <SidebarIntroOverlay
+                    open={hintsAllowed && !compact && !sidebarIntroSeen}
+                    onDismiss={dismissIntro}
+                  />
+                </Presence>
                 <div className="app-sidebar-logo">
                   <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" />
                 </div>
@@ -2035,11 +2057,12 @@ function MainPageContent({ onReset }) {
                     DesktopIntroOverlay.jsx and the desktopIntroSeen state
                     above. Shares dismissIntro with SidebarIntroOverlay, so
                     clicking either one closes both. */}
-                <DesktopIntroOverlay
-                  open={hintsAllowed && !compact && !desktopIntroSeen}
-                  onDismiss={dismissIntro}
-                />
-
+                <Presence show={hintsAllowed && !compact && !desktopIntroSeen} ms={250}>
+                  <DesktopIntroOverlay
+                    open={hintsAllowed && !compact && !desktopIntroSeen}
+                    onDismiss={dismissIntro}
+                  />
+                </Presence>
                 {/* .floating-title-center is the ONLY flex item .floating-title-wrap
                     centers — its own width is just the pill's (the back
                     button is position: absolute inside it, so it adds no
@@ -2085,12 +2108,14 @@ function MainPageContent({ onReset }) {
                   <IconPlaceholder name="map-layers" variant="white" className="campus-map-btn-icon" />
                   <span className="campus-map-btn-label">{buildingDisplayName(current.building)}</span>
                 </button>
-                {campusMapOpen && (
-                  <CampusMapModal
-                    currentCampusId={campusForBuilding(current.building)}
-                    onClose={() => setCampusMapOpen(false)}
-                  />
-                )}
+                <Presence show={campusMapOpen}>
+                  {campusMapOpen && (
+                    <CampusMapModal
+                      currentCampusId={campusForBuilding(current.building)}
+                      onClose={() => setCampusMapOpen(false)}
+                    />
+                  )}
+                </Presence>
 
                 {/* Top-left corner; its popover opens downward. */}
                 {/* Hidden entirely for a logged-out visitor — same
@@ -2123,10 +2148,13 @@ function MainPageContent({ onReset }) {
         )}
       </div>
 
-      {flyover && (
-        <FlyoverPanel flyover={flyover} kiosk={compact} onComplete={completeFlyover} onCancel={cancelFlyover} />
-      )}
+      <Presence show={!!flyover} ms={200}>
+        {flyover && (
+          <FlyoverPanel flyover={flyover} kiosk={compact} onComplete={completeFlyover} onCancel={cancelFlyover} />
+        )}
+      </Presence>
 
+      <Presence show={!!showFeedback}>
       {showFeedback && (
         <FeedbackPanel
           onClose={overlay.closeFeedback}
@@ -2138,14 +2166,18 @@ function MainPageContent({ onReset }) {
           kiosk={compact}
         />
       )}
+      </Presence>
 
       {/* End Session, feedback already given: straight to the same
           thank-you card/countdown/"Keep exploring" cancel FeedbackPanel
           shows after a fresh submission, without re-asking for a rating. */}
-      {overlay.endSessionThanks && (
-        <KioskThanks onDone={() => endSessionAndReset("feedback")} onResume={overlay.closeEndSessionThanks} />
-      )}
+      <Presence show={!!overlay.endSessionThanks}>
+        {overlay.endSessionThanks && (
+          <KioskThanks onDone={() => endSessionAndReset("feedback")} onResume={overlay.closeEndSessionThanks} />
+        )}
+      </Presence>
 
+      <Presence show={!!isIdle}>
       {isIdle && (
         <IdlePrompt
           onContinue={resetIdle}
@@ -2156,6 +2188,7 @@ function MainPageContent({ onReset }) {
           }}
         />
       )}
+      </Presence>
     </div>
   );
 }

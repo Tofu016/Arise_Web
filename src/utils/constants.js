@@ -6,7 +6,10 @@ import { getCustomBuildings, getServerBuildingNames } from "./buildingStore";
 // (one per campus, see `campusEntrance`) surfaces the cross-campus minimap,
 // but all three carry the coordinate for data consistency.
 const MAIN_CAMPUS_LAT = 14.45890388620473;
-const MAIN_CAMPUS_LNG = 120.95932439713594;
+// Shifted 130 m due east of the surveyed point (130 / (111320 m * cos(14.4589
+// deg)) = 0.001206 deg of longitude) so the pin sits where the campus reads
+// on the map.
+const MAIN_CAMPUS_LNG = 120.9605304;
 
 export const BUILDINGS = [
   { id: "gd1", label: "GD1", lat: MAIN_CAMPUS_LAT, lng: MAIN_CAMPUS_LNG, campus: "main" },

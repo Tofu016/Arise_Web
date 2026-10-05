@@ -22,11 +22,13 @@ import { focusPosition, roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
 const SNAP_FRACTION = 0.25;
 // Below this much pointer travel a press on the grab area is a tap, not a drag.
 const TAP_SLOP_PX = 4;
+// Horizontal travel that counts as a photo swipe rather than a tap.
+const SWIPE_MIN_PX = 40;
 
 // The desktop view's room information, as a bottom sheet over the app
 // sidebar's directory. It opens collapsed to its "peek" (name, close,
 // location/link/contact number, then Directions/link/call/save) so the
-// directory stays usable behind it, and is dragged (or its handle tapped)
+// directory stays usable behind it, and is dragged (or tapped)
 // up to the sidebar's full height to reveal the description, department,
 // and photos below. A room opened with search's "Go To" (room.openExpanded)
 // starts fully expanded instead. MainPage keys it on the room and that flag,
@@ -90,8 +92,10 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
     dragRef.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     if (!drag.moved) {
-      // A tap on the handle toggles; a tap anywhere else in the peek does nothing.
+      // A tap on the handle toggles; a tap anywhere else in the peek only
+      // expands, so a stray tap on the open sheet never collapses it.
       if (e.target.closest(".sidebar-room-handle")) setExpanded((v) => !v);
+      else setExpanded(true);
       return;
     }
     const min = peekHeight ?? 0;
@@ -133,6 +137,8 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
     }
   };
 
+  const locationText = node ? `${buildingLabel(node.building)} · ${floorLabel(node.floor)}` : "";
+
   // Rooms with no Room Edit record (placard is null) or an empty one.
   const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber || placard?.department);
 
@@ -159,7 +165,11 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
           className="sidebar-room-handle"
           aria-expanded={expanded}
           aria-label={expanded ? "Collapse room details" : "Expand room details"}
-        />
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 15 12 9 18 15" />
+          </svg>
+        </button>
 
         <div className="sidebar-room-header">
           <h2 className="sidebar-room-title">{roomName}</h2>
@@ -169,23 +179,23 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
         </div>
 
         {(node || placard?.link || placard?.contactNumber) && (
-          <div className="sidebar-room-contact">
+          <div className="sidebar-room-contact sidebar-room-contact-truncate">
             {node && (
               <p className="sidebar-room-contact-row">
                 <img src={locationIcon} alt="" className="inline-icon-img" />
-                <span>{buildingLabel(node.building)} &middot; {floorLabel(node.floor)}</span>
+                <span title={locationText}>{locationText}</span>
               </p>
             )}
             {placard?.link && (
               <a className="sidebar-room-contact-row" href={linkHref} target="_blank" rel="noopener noreferrer">
                 <img src={linkIcon} alt="" className="inline-icon-img" />
-                <span>{placard.link}</span>
+                <span title={placard.link}>{placard.link}</span>
               </a>
             )}
             {placard?.contactNumber && (
               <p className="sidebar-room-contact-row">
                 <IconPlaceholder name="call" className="inline-icon-img" />
-                <span>{placard.contactNumber}</span>
+                <span title={placard.contactNumber}>{placard.contactNumber}</span>
               </p>
             )}
           </div>
@@ -272,6 +282,33 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
   const next = () => setIndex((i) => (i + 1) % photos.length);
 
+  // Horizontal swipe flips photos. No pointer capture, so the arrows, dots and
+  // the open button keep receiving their own clicks; a swipe that ends on the
+  // open button has its click swallowed so it doesn't also open the viewer.
+  const swipeRef = useRef(null);
+  const swipedRef = useRef(false);
+  const handleSwipeStart = (e) => {
+    if (!multiple || (e.pointerType === "mouse" && e.button !== 0)) return;
+    swipeRef.current = { x: e.clientX, y: e.clientY };
+    swipedRef.current = false;
+  };
+  const handleSwipeEnd = (e) => {
+    const start = swipeRef.current;
+    swipeRef.current = null;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    swipedRef.current = true;
+    if (dx < 0) next();
+    else prev();
+  };
+  const handleClickCapture = (e) => {
+    if (!swipedRef.current) return;
+    swipedRef.current = false;
+    e.stopPropagation();
+  };
+
   let content;
   if (photos.length === 0) {
     content = (
@@ -304,7 +341,13 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
   }
 
   return (
-    <div className="sidebar-room-carousel">
+    <div
+      className="sidebar-room-carousel"
+      onPointerDown={handleSwipeStart}
+      onPointerUp={handleSwipeEnd}
+      onPointerCancel={() => { swipeRef.current = null; }}
+      onClickCapture={handleClickCapture}
+    >
       {content}
       {url && pending && !error && (
         <div className="photo-loading-veil"><PhotoLoading /></div>

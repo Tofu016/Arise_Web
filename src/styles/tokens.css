@@ -156,3 +156,15 @@
   --tour-directory-selected-bg: #3a3737;
   --tour-search-placeholder: #b0b0b0;
 }
+
+/* ---------- Motion ----------
+   Shared durations and easings so every entrance/exit/hover in the app
+   moves at the same pace. Keyframes that use them live in motion.css. */
+:root {
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+  --dur-slow: 400ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}

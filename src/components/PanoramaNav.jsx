@@ -9,7 +9,6 @@ import { usePanoramaFov, TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panora
 import { Hotspot } from "./panorama/Hotspot";
 import { Marker } from "./panorama/Marker";
 import { ZoomControls } from "./panorama/ZoomControls";
-import { ZoomIndicator } from "./panorama/ZoomIndicator";
 import { useZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
@@ -342,10 +341,8 @@ export default function PanoramaNav({
     <div className="pano-zoom-wrap" ref={wrapRef}>
       {canvas}
       {/* Hidden, like the hotspot previews, while a menu/dialog is open over the panorama. */}
-      {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
-      {wheelZoomable && (
-        <ZoomIndicator zoom={zoom} className="pano-zoom-indicator pano-wheel-zoom-indicator" />
-      )}
+      {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} showReset />}
+      {wheelZoomable && <ZoomControls zoom={zoom} setZoom={setZoom} desktop />}
       {nothingAheadHint && <div className="pano-nothing-ahead-hint">No location in front.</div>}
     </div>
   );
