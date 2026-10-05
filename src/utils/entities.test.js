@@ -188,30 +188,31 @@ describe("admins", () => {
 
 describe("room placard dialogs", () => {
   it("maps a row, with empty strings for missing text", () => {
-    expect(
-      toDialog({ id: 1, room_name: "203", search_terms: [{ term: "203" }, { term: "two" }], photo_360_path: "r.jpg" })
-    ).toMatchObject({
+    expect(toDialog({ id: 1, room_name: "203", search_terms: [{ term: "203" }, { term: "two" }] })).toMatchObject({
       id: 1,
       roomName: "203",
       roomDescription: "",
       photo: "",
-      photo360: "r.jpg",
+      photos: [],
       ocrSearchTerms: ["203", "two"],
     });
   });
 
-  it("maps thumbnail focus, centered when the row has none", () => {
-    expect(toDialog({ id: 1, room_name: "A" })).toMatchObject({ photoFocus: { x: 50, y: 50 }, extraPhotos: [] });
-    expect(
-      toDialog({ id: 1, room_name: "A", thumb_x: 10, thumb_y: 90, extra_photos: [{ path: "b.webp", thumb_x: 30, thumb_y: 40 }] })
-    ).toMatchObject({ photoFocus: { x: 10, y: 90 }, extraPhotos: [{ path: "b.webp", x: 30, y: 40 }] });
+  it("maps photos in order with their kind and thumbnail focus, centered when unset", () => {
+    const row = {
+      id: 1,
+      room_name: "A",
+      photos: [{ path: "b.webp", kind: "360" }, { path: "c.webp", kind: "flat", thumb_x: 30, thumb_y: 40 }],
+    };
+    expect(toDialog(row)).toMatchObject({
+      photo: "b.webp",
+      photos: [{ path: "b.webp", kind: "360", x: 50, y: 50 }, { path: "c.webp", kind: "flat", x: 30, y: 40 }],
+    });
   });
 
-  it("patch sends thumbnail focus under the wire names", () => {
-    expect(dialogPatchBody({ photoFocus: { x: 1, y: 2 }, extraPhotos: [{ path: "b.webp", x: 3, y: 4 }] })).toEqual({
-      thumb_x: 1,
-      thumb_y: 2,
-      extra_photos: [{ path: "b.webp", thumb_x: 3, thumb_y: 4 }],
+  it("patch sends the photo list under the wire names", () => {
+    expect(dialogPatchBody({ photos: [{ path: "b.webp", kind: "360", x: 3, y: 4 }] })).toEqual({
+      photos: [{ path: "b.webp", kind: "360", thumb_x: 3, thumb_y: 4 }],
     });
   });
 
@@ -221,10 +222,9 @@ describe("room placard dialogs", () => {
   });
 
   it("patch maps app names to wire names", () => {
-    expect(dialogPatchBody({ roomName: "N", roomDescription: "D", photo360: "p", ocrSearchTerms: ["x"] })).toEqual({
+    expect(dialogPatchBody({ roomName: "N", roomDescription: "D", ocrSearchTerms: ["x"] })).toEqual({
       room_name: "N",
       description: "D",
-      photo_360_path: "p",
       search_terms: ["x"],
     });
   });

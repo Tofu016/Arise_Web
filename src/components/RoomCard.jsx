@@ -13,7 +13,9 @@ import bookmarkFilledIconWhite from "../assets/icons/bookmark-filled-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 import PhotoLightbox from "./PhotoLightbox";
 import PhotoLoading from "./PhotoLoading";
-import { focusPosition, roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
+import { focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
+import { useFlatPhotoUrl, SQUARE_PREVIEW } from "../hooks/useFlatPhotoUrl";
+import { Pano360Pill } from "./RoomPanorama";
 
 // How far (as a fraction of the collapsed-to-expanded travel) a drag has to
 // go before releasing it flips the sheet to the other state. Short of that
@@ -28,7 +30,7 @@ const SWIPE_MIN_PX = 40;
 // sidebar's directory. It opens collapsed to its "peek" (name, close,
 // location/link/contact number, then Directions/link/call/save) so the
 // directory stays usable behind it, and is dragged (or tapped)
-// up to the sidebar's full height to reveal the description, department,
+// up to the sidebar's full height to reveal the description
 // and photos below. A room opened with search's "Go To" (room.openExpanded)
 // starts fully expanded instead. MainPage keys it on the room and that flag,
 // so each new pick starts in its own state.
@@ -139,7 +141,7 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
   const locationText = node ? `${buildingLabel(node.building)} · ${floorLabel(node.floor)}` : "";
 
   // Rooms with no Room Edit record (placard is null) or an empty one.
-  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber || placard?.department);
+  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber);
 
   return (
     <div
@@ -251,13 +253,7 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
           {placard?.roomDescription || (hasInfo ? "No description." : "No information.")}
         </p>
 
-        {placard?.department && (
-          <p className="sidebar-room-department">
-            <strong>Department:</strong> {placard.department}
-          </p>
-        )}
-
-        <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} onOpen={setViewerIndex} />
+        <RoomPhotoCarousel photos={photos} alt={roomName} onOpen={setViewerIndex} />
       </div>
 
       {screen && photos.length > 0 && createPortal(
@@ -269,13 +265,18 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
 }
 
 // `onOpen(index)`, when given, makes the photo itself pressable (the desktop
-// panel opens its viewer from it).
-export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
+// panel opens its viewer from it). A 360 photo shows here as a flat-looking
+// view of itself with a "360°" pill over it; `onOpenPanorama(photo)`, when given,
+// makes that pill a button that opens it for looking around (the kiosk, which
+// has no viewer; on desktop the photo itself opens the viewer).
+export function RoomPhotoCarousel({ photos, alt, onOpen, onOpenPanorama }) {
   const [index, setIndex] = useState(0);
-  usePreloadPhotos(photos);
+  usePreloadPhotos(photos.map((p) => p.path));
   // The previous photo stays up (same size) while the next resolves; the
   // spinner only appears if that drags on (see .photo-loading-veil).
-  const { url, path: shownPath, pending, error } = useHeldPhoto(photos[index]);
+  const { url, path: shownPath, pending, error } = useHeldPhoto(photos[index]?.path);
+  const shown = photos.find((p) => p.path === shownPath);
+  const flatUrl = useFlatPhotoUrl(url, shown, SQUARE_PREVIEW);
   const multiple = photos.length > 1;
 
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
@@ -311,7 +312,7 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
   if (photos.length === 0) return null;
 
   let content;
-  if (!url) {
+  if (!flatUrl) {
     content = (
       <div className="sidebar-room-carousel-empty">
         {error ? "Couldn't load photo." : <PhotoLoading />}
@@ -319,13 +320,14 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
     );
   } else {
     // Square, cropped around the focus an admin set for the photo on screen
-    // (centered by default); the viewer shows the whole picture.
+    // (centered by default, and for a 360 photo's flattened view); the viewer
+    // shows the whole picture.
     const image = (
       <img
-        src={url}
+        src={flatUrl}
         alt={alt}
         className={"sidebar-room-carousel-image photo-swap" + (pending ? " photo-dimmed" : "")}
-        style={{ objectPosition: focusPosition(focus[shownPath]) }}
+        style={{ objectPosition: focusPosition(isPanorama(shown) ? null : shown) }}
       />
     );
     content = onOpen ? (
@@ -344,7 +346,13 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
       onClickCapture={handleClickCapture}
     >
       {content}
-      {url && pending && !error && (
+      {isPanorama(shown) && flatUrl && !pending && (
+        <Pano360Pill
+          className={multiple ? "pano-360-pill-above-dots" : ""}
+          onClick={onOpenPanorama ? () => onOpenPanorama(shown) : undefined}
+        />
+      )}
+      {flatUrl && pending && !error && (
         <div className="photo-loading-veil"><PhotoLoading /></div>
       )}
 
@@ -359,7 +367,7 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
           <div className="sidebar-room-carousel-dots">
             {photos.map((p, i) => (
               <button
-                key={p}
+                key={p.path}
                 type="button"
                 className={`sidebar-room-carousel-dot ${i === index ? "sidebar-room-carousel-dot-active" : ""}`}
                 onClick={() => setIndex(i)}

@@ -9,8 +9,7 @@ import { projectRectilinear } from "../utils/rectilinear";
 // or the flat equirectangular image flashes up.
 
 const SOURCE_WIDTH = 2048; // equirect is downscaled to this before sampling
-const OUT_WIDTH = 288;
-const OUT_HEIGHT = 180;
+const DEFAULT_SIZE = { width: 288, height: 180 };
 const FOV = 80; // horizontal degrees — reads as a natural photo
 
 const sourceCache = new Map(); // url -> Promise<{data,width,height}>
@@ -50,7 +49,7 @@ function loadSource(url) {
   return promise;
 }
 
-async function render(url, yaw) {
+async function render(url, yaw, { width: OUT_WIDTH, height: OUT_HEIGHT }) {
   const src = await loadSource(url);
   const pixels = projectRectilinear(src, { yaw, pitch: 0, fov: FOV, width: OUT_WIDTH, height: OUT_HEIGHT });
   const canvas = document.createElement("canvas");
@@ -60,11 +59,30 @@ async function render(url, yaw) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-export function useRectilinearPreview(photoUrl, rawYaw) {
+// `size` ({ width, height }) is for a caller that shows the preview bigger or
+// squarer than a hotspot's sneak-peek (the room panel).
+// Makes the preview ahead of time, into the same cache the hook reads, so a
+// component that shows it later has it at once. Never rejects.
+export function preloadRectilinear(photoUrl, rawYaw, size = DEFAULT_SIZE) {
+  const yaw = Number(rawYaw);
+  if (!photoUrl || !Number.isFinite(yaw)) return Promise.resolve();
+  const key = `${photoUrl}|${Math.round(yaw)}|${size.width}x${size.height}`;
+  if (previewCache.has(key) || failedKeys.has(key)) return Promise.resolve();
+  queue = queue.then(async () => {
+    try {
+      previewCache.set(key, await render(photoUrl, yaw, size));
+    } catch {
+      failedKeys.add(key);
+    }
+  });
+  return queue;
+}
+
+export function useRectilinearPreview(photoUrl, rawYaw, size = DEFAULT_SIZE) {
   // The backend can hand angles back as strings ("123.5"), so coerce.
   const yaw = Number(rawYaw);
   // Blob URLs are per-load, so key on the URL itself.
-  const key = photoUrl && Number.isFinite(yaw) ? `${photoUrl}|${Math.round(yaw)}` : null;
+  const key = photoUrl && Number.isFinite(yaw) ? `${photoUrl}|${Math.round(yaw)}|${size.width}x${size.height}` : null;
   // The result is stored with its key, so a stale one is never returned for
   // a different photo/angle.
   const [done, setDone] = useState({ key: null, url: null, failed: false });
@@ -75,7 +93,7 @@ export function useRectilinearPreview(photoUrl, rawYaw) {
     queue = queue.then(async () => {
       if (cancelled) return;
       try {
-        const dataUrl = await render(photoUrl, yaw);
+        const dataUrl = await render(photoUrl, yaw, size);
         previewCache.set(key, dataUrl);
         if (!cancelled) setDone({ key, url: dataUrl, failed: false });
       } catch (err) {
@@ -88,6 +106,8 @@ export function useRectilinearPreview(photoUrl, rawYaw) {
     return () => {
       cancelled = true;
     };
+    // size is part of key
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, photoUrl, yaw]);
 
   if (!key) return { url: null, failed: false };

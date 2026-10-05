@@ -674,10 +674,12 @@ function MainPageContent({ onReset }) {
   // On desktop, a marker whose label isn't in any node's "Rooms served"
   // list still opens the sidebar's "No information." state, anchored to
   // the node the marker was clicked from.
+  // Tapping a marker is a deliberate pick like search's "Go To", so the
+  // desktop room panel opens fully expanded.
   const handleRoomMarkerClick = (marker) => {
     const match = findRoomForMarker(marker, searchableRooms);
-    if (match) openRoomCard(match);
-    else if (marker.label?.trim()) openRoomCard({ roomName: marker.label.trim(), node: current, placard: null });
+    if (match) goToRoom(match);
+    else if (marker.label?.trim()) goToRoom({ roomName: marker.label.trim(), node: current, placard: null });
   };
 
   // Riding an elevator is a Walk, not a Jump: history is kept, so Back rides

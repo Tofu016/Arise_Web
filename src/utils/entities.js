@@ -183,13 +183,12 @@ export function toDialog(row) {
     department: row.department || "",
     contactNumber: row.contact_number || "",
     link: row.link || "",
-    photo: row.photo_path || "",
-    photo360: row.photo_360_path || "",
-    // Where the main photo's square thumbnail is centered, as CSS
+    // Every photo in the order an admin sorted them, each with its kind
+    // ("flat" or "360") and, for a flat one, its square thumbnail focus as CSS
     // object-position percentages (50/50 = the middle of the picture).
-    photoFocus: { x: row.thumb_x ?? 50, y: row.thumb_y ?? 50 },
-    // Photos after the main one, in display order, each with its own focus.
-    extraPhotos: (row.extra_photos || []).map((p) => ({ path: p.path, x: p.thumb_x ?? 50, y: p.thumb_y ?? 50 })),
+    photos: (row.photos || []).map((p) => ({ path: p.path, kind: p.kind === "360" ? "360" : "flat", x: p.thumb_x ?? 50, y: p.thumb_y ?? 50 })),
+    // The first photo is the room's thumbnail; "" when it has none.
+    photo: row.photos?.[0]?.path || "",
     ocrSearchTerms: (row.search_terms || []).map((t) => t.term),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -203,16 +202,10 @@ export function dialogPatchBody(patch) {
     department: "department",
     contactNumber: "contact_number",
     link: "link",
-    photo: "photo_path",
-    photo360: "photo_360_path",
     ocrSearchTerms: "search_terms",
   });
-  if (patch.photoFocus) {
-    body.thumb_x = patch.photoFocus.x;
-    body.thumb_y = patch.photoFocus.y;
-  }
-  if (patch.extraPhotos) {
-    body.extra_photos = patch.extraPhotos.map((p) => ({ path: p.path, thumb_x: p.x, thumb_y: p.y }));
+  if (patch.photos) {
+    body.photos = patch.photos.map((p) => ({ path: p.path, kind: p.kind, thumb_x: p.x, thumb_y: p.y }));
   }
   return body;
 }

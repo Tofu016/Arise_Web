@@ -3,8 +3,10 @@ import { KIOSK_DIALOG_TOP, KIOSK_PANORAMA_FRACTION } from "../utils/kioskLayout"
 import locationIcon from "../assets/icons/location.svg";
 import linkIcon from "../assets/icons/link.svg";
 import IconPlaceholder from "./IconPlaceholder";
+import { useState } from "react";
 import { RoomPhotoCarousel } from "./RoomCard";
-import { roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
+import PanoramaPhoto, { Pano360Pill } from "./RoomPanorama";
+import { roomPhotos } from "../utils/roomPhotos";
 
 // The kiosk view's room information card. Shares the KioskDialog footprint
 // (a half-band-tall slice starting at KIOSK_DIALOG_TOP, closed by a centered
@@ -29,8 +31,10 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
   const { roomName, node, placard } = room;
 
   const photos = roomPhotos(placard);
+  // The 360 photo opened over the whole card (details and all); null = closed.
+  const [panorama, setPanorama] = useState(null);
 
-  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber || placard?.department);
+  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber);
 
   return (
     <div
@@ -43,7 +47,7 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
       <div className={"kiosk-room-card" + (photos.length === 0 ? " kiosk-room-card-no-photo" : "")} role="dialog" aria-label={roomName}>
         {photos.length > 0 && (
           <div className="kiosk-room-card-photo">
-            <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} />
+            <RoomPhotoCarousel photos={photos} alt={roomName} onOpenPanorama={setPanorama} />
           </div>
         )}
 
@@ -81,11 +85,6 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
             <p className="sidebar-room-description">
               {placard?.roomDescription || (hasInfo ? "No description." : "No information.")}
             </p>
-            {placard?.department && (
-              <p className="sidebar-room-department">
-                <strong>Department:</strong> {placard.department}
-              </p>
-            )}
           </div>
 
           <div className="sidebar-room-actions sidebar-room-actions-stacked">
@@ -97,6 +96,16 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
             </button>
           </div>
         </div>
+
+        {panorama && (
+          <div className="kiosk-room-card-pano">
+            <PanoramaPhoto key={panorama.path} path={panorama.path} alt={roomName} hint />
+            <Pano360Pill />
+            <button type="button" className="kiosk-dialog-close kiosk-room-card-close" onClick={() => setPanorama(null)} aria-label="Close 360 view">
+              <IconPlaceholder name="close" className="inline-icon-img" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

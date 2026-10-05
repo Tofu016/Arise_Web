@@ -8,8 +8,12 @@ Campus virtual tour: visitors walk through 360° panoramas of indoor locations; 
 An indoor panorama point (building, floor, type) linked to neighboring Nodes.
 
 **Photo kind**:
-A category of stored photo (node panorama, room photo, room 360, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
+A category of stored photo (node panorama, room photo, signage; room 360 is an older kind that new uploads no longer use). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
 _Avoid_: photo type, upload type
+
+**Room photo**:
+One of the ordered photos of a room or facility, set in the Room and Facility Editor. Each is marked flat or 360 by the admin (its "kind" in the data, not to be confused with Photo kind, which is storage). The first is the room's thumbnail in the Saved Directories. Everywhere a Room photo is a still (the room panel, the directory cell, the editor) a 360 one is shown flattened, as a normal-looking view out of it; it is only looked around in when opened: the desktop photo viewer, or, on the kiosk (no viewer), the "360°" pill on the room panel, which opens it over the whole panel. A drag hint animation plays the first time a 360 photo is shown in a viewer, and on every kiosk opening.
+_Avoid_: room image, extra photo
 
 **Public photo**:
 A photo served straight from disk to anyone (signage).

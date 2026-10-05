@@ -661,27 +661,6 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   flex: 1;
   min-width: 0;
 }
-.room-editor-extra-photos {
-  margin-top: 20px;
-}
-.room-editor-extra-photo-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 10px;
-}
-.room-editor-extra-photo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-.room-editor-extra-photo img {
-  width: 120px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 6px;
-}
 .photo-focus-picker {
   position: relative;
   display: inline-block;
@@ -710,38 +689,107 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   overflow: hidden;
   border-radius: 6px;
 }
-/* Bottom row: both photo choosers side by side, spanning the full width
-   — text occupies the top of the page, photos occupy the bottom. */
-.room-editor-photos-row {
-  display: flex;
-  gap: 28px;
+.room-photo-gallery {
   margin-top: 20px;
 }
-.room-editor-photo-item {
-  flex: 1;
-  min-width: 0;
+.room-photo-grid {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
-/* Always-visible preview area, even with no photo set yet — matching the
-   wireframe's consistent box even in its own placeholder/empty state. */
-.room-editor-photo-preview-box {
-  width: 100%;
-  min-height: 220px;
-  border-radius: var(--radius-md);
+.room-photo-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--border);
-  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+/* Where a dragged photo would land. */
+.room-photo-tile-over {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+.room-photo-tile-head {
+  display: flex;
+  justify-content: center;
+}
+.room-photo-tile-grip {
+  display: flex;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+}
+.room-photo-tile-grip:active {
+  cursor: grabbing;
+}
+/* The photo as visitors' panel shows it: a flat photo whole with its
+   thumbnail frame, a 360 photo flattened with its pill. */
+.room-photo-tile-image {
+  position: relative;
+  min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 8px;
-  margin-bottom: 14px;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  overflow: hidden;
 }
-.room-editor-photo-preview-box .photo-preview {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-md);
+.room-photo-tile-image > img {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+}
+/* Marks the first photo, the one the directory cell shows. */
+.room-photo-thumbnail-pill {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 2px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--admin-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.room-photo-tile-kind {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.room-photo-kind-btn {
+  flex: 1;
+  padding: 5px 10px;
   border: none;
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.room-photo-kind-btn-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+.room-photo-tile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.room-photo-tile-actions .rescan-faces-btn {
   margin: 0;
-  object-fit: cover;
 }
 /* margin-left:auto pins this to the right edge of .room-editor-page
    regardless of how much space .room-editor-main's own content actually
@@ -1317,11 +1365,16 @@ html.kiosk-mode .node-row:hover:active {
   pointer-events: none;
 }
 /* Same box as .user-panel-search-input so every admin search field matches. */
-.filter-panel .filter-search-input-wrap input,
-.directory-admin-panel .filter-search-input-wrap input {
+.filter-panel .filter-search-input-wrap input {
   height: 36px;
   padding: 0 10px 0 34px;
   background: var(--surface);
+}
+/* The Directory page uses the shared .user-panel-search directly; its label
+   is not a flex container, so the 240px flex-basis never applies. */
+.filter-search-field .user-panel-search {
+  display: block;
+  margin-top: 6px;
 }
 .position-readout {
   font-size: 12px;
@@ -4442,7 +4495,7 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   margin-top: auto;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--sdca-maroon-deeper);
+  background: var(--photo-backdrop);
   /* Horizontal drags are swipes between photos, so the browser must not claim them. */
   touch-action: pan-y;
 }
@@ -4594,7 +4647,7 @@ html.kiosk-mode .photo-arrow:hover:active {
   max-width: 100%;
   max-height: calc(100vh - 270px);
   border-radius: 8px;
-  background: var(--sdca-maroon-deeper);
+  background: var(--photo-backdrop);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 .photo-lightbox-loading {
@@ -4641,6 +4694,132 @@ html.kiosk-mode .photo-arrow:hover:active {
 }
 :where(html:not(.kiosk-mode)) .photo-lightbox-thumb:hover {
   opacity: 1;
+}
+
+/* ---------- 360 room photos (RoomPanorama.jsx) ---------- */
+.room-pano {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.room-pano:active {
+  cursor: grabbing;
+}
+/* The canvas is sized from a rounded-down measurement of its box, which on a
+   fractional-width box leaves a thin strip of the box's own background at the
+   right and bottom; stretching it to the box closes that. */
+.room-pano canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.room-pano-status {
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+/* Gold pill with white text, bottom middle of the photo. A plain label by
+   default; a button where it opens the photo (kiosk). */
+.pano-360-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 4px 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  color: #fff;
+  font-family: var(--font-sans-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+button.pano-360-pill {
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+html.kiosk-mode .pano-360-pill {
+  padding: 8px 24px;
+  font-size: 20px;
+}
+/* The carousel's dots sit at the bottom middle too. */
+.pano-360-pill-above-dots {
+  bottom: 30px;
+}
+html.kiosk-mode .pano-360-pill-above-dots {
+  bottom: 44px;
+}
+/* A hand sweeping left and right, over the photo, three times and gone.
+   The container's fade sets the total time (3 sweeps of 1.2s), which is
+   what the component waits for before dropping it. */
+.room-pano-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: room-pano-hint-life 3.6s linear forwards;
+}
+.room-pano-hint-hand {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  animation: room-pano-hint-sweep 1.2s ease-in-out 3;
+}
+html.kiosk-mode .room-pano-hint-hand {
+  width: 80px;
+  height: 80px;
+}
+@keyframes room-pano-hint-life {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Pressed down to "grab" at each end of the sweep. */
+@keyframes room-pano-hint-sweep {
+  0% { transform: translateX(-44px) rotate(-12deg) scale(1); }
+  12% { transform: translateX(-44px) rotate(-12deg) scale(0.9); }
+  50% { transform: translateX(44px) rotate(12deg) scale(0.9); }
+  62% { transform: translateX(44px) rotate(12deg) scale(1); }
+  100% { transform: translateX(-44px) rotate(-12deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-pano-hint-hand {
+    animation: none;
+  }
+}
+.photo-lightbox-pano {
+  position: relative;
+  width: min(85vw, 800px);
+  height: min(calc(100vh - 270px), 520px);
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--photo-backdrop);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+/* Opened over the whole kiosk room card, details included. */
+.kiosk-room-card-pano {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--photo-backdrop);
 }
 
 /* ---------- Floating overlay UI (Maps-style) ---------- */
@@ -5367,6 +5546,43 @@ html.kiosk-mode .rescan-faces-btn:hover:active {
     transform: scale(0.96);
     opacity: 0.85;
   }
+}
+
+/* The browser's default tap highlight and focus ring are drawn on the
+   element's rectangular box, so a round or glyph-shaped control (the feedback
+   stars, FABs, pills) flashes a dim square behind it. The press state above
+   (opacity on the control itself) already follows the shape, so the
+   rectangle is suppressed everywhere on touch/kiosk. */
+html.kiosk-mode,
+html.kiosk-mode *,
+html.kiosk-mode *::before,
+html.kiosk-mode *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: none) {
+  html,
+  html * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+html.kiosk-mode button:focus,
+html.kiosk-mode a:focus,
+html.kiosk-mode [role="button"]:focus,
+html.kiosk-mode button:focus-visible,
+html.kiosk-mode a:focus-visible,
+html.kiosk-mode [role="button"]:focus-visible {
+  outline: none;
+}
+/* Kiosk press feedback for every control, including ones whose class has no
+   own :active rule (stars, dock FABs): fade the control itself. */
+html.kiosk-mode button:not(:disabled):active,
+html.kiosk-mode [role="button"]:active {
+  opacity: 0.85;
 }
 
 /* =====================================================================
@@ -7331,7 +7547,7 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   min-height: 0;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--sdca-maroon-deeper);
+  background: var(--photo-backdrop);
 }
 /* The carousel fills the photo column instead of sizing to the image. */
 .kiosk-room-card-photo .sidebar-room-carousel {

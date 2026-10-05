@@ -3,11 +3,9 @@ import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import RoomList from "../../components/RoomList";
 import FilterPanel from "../../components/FilterPanel";
-import FilePickerButton from "../../components/FilePickerButton";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
-import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { useBlurReview } from "../../hooks/useBlurReview";
-import PhotoFocusPicker from "../../components/PhotoFocusPicker";
+import RoomPhotoGallery from "../../components/admin/RoomPhotoGallery";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { useToast } from "../../context/ToastContext";
 import IconPlaceholder from "../../components/IconPlaceholder";
@@ -74,14 +72,22 @@ const CENTERED = { x: 50, y: 50 };
 
 const uniqueSuffix = () => Date.now().toString(36);
 
-function ExtraPhotoThumb({ path, alt, focus, onFocusChange, onRemove }) {
-  const { url } = useSecurePhotoUrl(path);
-  return (
-    <div className="room-editor-extra-photo">
-      {url ? <PhotoFocusPicker url={url} alt={alt} focus={focus} onChange={onFocusChange} /> : <span className="field-hint">Loading…</span>}
-      <button type="button" className="admin-btn-secondary" onClick={onRemove} aria-label={`Remove ${alt}`}>Remove</button>
-    </div>
-  );
+// An equirectangular 360 photo is exactly twice as wide as it is tall, so a
+// photo of that shape is marked 360 up front; the admin can still flip it.
+function guessKind(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(Math.abs(img.naturalWidth / img.naturalHeight - 2) < 0.02 ? "360" : "flat");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve("flat");
+    };
+    img.src = url;
+  });
 }
 
 export default function RoomEditorPage() {
@@ -119,18 +125,11 @@ export default function RoomEditorPage() {
   const [department, setDepartment] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [link, setLink] = useState("");
-  const [photoPath, setPhotoPath] = useState("");
+  // The room's photos in the order visitors see them, each marked flat or 360.
+  const [photos, setPhotos] = useState([]); // [{ path, kind, x, y }]
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
-  // Photos after the main one; the room panel's carousel will show them in this order.
-  const [extraPhotos, setExtraPhotos] = useState([]); // [{ path, x, y }]
-  // Where the main photo's square thumbnail is centered (see PhotoFocusPicker).
-  const [photoFocus, setPhotoFocus] = useState(CENTERED);
-  const [extraUploadState, setExtraUploadState] = useState("idle"); // idle | uploading | done | error
-  // Separate state for the 360° photo — a distinct field/upload from the
-  // flat "Room photo" above, used specifically by the mobile AR feature's
-  // portal preview, not the normal room reference photo.
-  const [photo360Path, setPhoto360Path] = useState("");
-  const [upload360State, setUpload360State] = useState("idle"); // idle | uploading | done | error
+  // Bumped for a photo edited in place (same path, new bytes), so its preview reloads.
+  const [photoVersions, setPhotoVersions] = useState({});
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -146,13 +145,8 @@ export default function RoomEditorPage() {
     setDepartment(existing?.department || "");
     setContactNumber(existing?.contactNumber || "");
     setLink(existing?.link || "");
-    setPhotoPath(existing?.photo || "");
+    setPhotos(existing?.photos || []);
     setUploadState("idle");
-    setPhotoFocus(existing?.photoFocus || CENTERED);
-    setExtraPhotos(existing?.extraPhotos || []);
-    setExtraUploadState("idle");
-    setPhoto360Path(existing?.photo360 || "");
-    setUpload360State("idle");
     setSavedFlash(false);
   };
 
@@ -164,105 +158,51 @@ export default function RoomEditorPage() {
   }, [selectedRoom, existing?.id, node?.id]);
 
   const { requestBlur, reblurStored, blurDialog } = useBlurReview();
-  // Bumped when a stored photo is edited in place (same path, new bytes), so
-  // the preview reloads.
-  const [photoVersion, setPhotoVersion] = useState(0);
-  const [photo360Version, setPhoto360Version] = useState(0);
-
-  const { url: securePhotoUrl } = useSecurePhotoUrl(photoPath, { version: photoVersion });
-  const { url: secure360PhotoUrl } = useSecurePhotoUrl(photo360Path, { version: photo360Version });
-
   // "Edit blur regions" on an already-saved photo. Saves straight over it;
   // if that ever lands on a different path (old .jpg re-saved as .webp) the
-  // field adopts the new one, and Save then stores it on the room.
-  const handleReblur = async (path, setPath, setVersion) => {
+  // photo adopts the new one, and Save then stores it on the room.
+  const handleReblur = async (path) => {
     try {
       const saved = await reblurStored(path);
       if (!saved) return;
-      setPath(saved.path);
-      setVersion((v) => v + 1);
+      setPhotos((prev) => prev.map((p) => (p.path === path ? { ...p, path: saved.path } : p)));
+      setPhotoVersions((prev) => ({ ...prev, [saved.path]: (prev[saved.path] || 0) + 1 }));
       toast.success("Blur regions updated.");
     } catch (err) {
       toast.error(err.message || "Couldn't update the photo.");
     }
   };
 
-  const handleFilePick = async (e) => {
-    const input = e.target;
-    const file = input.files?.[0];
-    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
-    if (!file || !selectedRoom || !node) return;
-    const filename = photoFilename(file, slugify(selectedRoom));
-    try {
-      const reviewed = await requestBlur(file); // blur review first; null = cancelled
-      if (!reviewed) return;
-      setUploadState("uploading");
-      const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
-      setPhotoPath(path);
-      setPhotoFocus(CENTERED);
-      setUploadState("done");
-      setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch (err) {
-      setUploadState("error");
-      toast.error(err.message || "Couldn't upload the room photo.");
-    }
-  };
-
   // Each picked file gets its own blur review, one after another; cancelling
-  // one review skips only that file.
-  const handleExtraFilesPick = async (e) => {
+  // one review skips only that file. Every file needs a name of its own or it
+  // would replace the others.
+  const handleFilesPick = async (e) => {
     const input = e.target;
     const files = Array.from(input.files || []);
-    input.value = "";
+    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
     if (!files.length || !selectedRoom || !node) return;
-    setExtraUploadState("uploading");
+    setUploadState("uploading");
     let added = 0;
     try {
       for (const file of files) {
-        const reviewed = await requestBlur(file);
+        const kind = await guessKind(file);
+        const reviewed = await requestBlur(file); // null = cancelled
         if (!reviewed) continue;
-        // Unlike the main photo, which is meant to overwrite its own file,
-        // each extra needs a name of its own or it would replace the others.
         const filename = photoFilename(file, `${slugify(selectedRoom)}-${uniqueSuffix()}-${added}`);
         const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
-        setExtraPhotos((prev) => [...prev, { path, ...CENTERED }]);
+        setPhotos((prev) => [...prev, { path, kind, ...CENTERED }]);
         added++;
       }
-      setExtraUploadState(added ? "done" : "idle");
-      if (added) setTimeout(() => setExtraUploadState((s) => (s === "done" ? "idle" : s)), 2500);
+      setUploadState(added ? "done" : "idle");
+      if (added) setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
     } catch (err) {
-      setExtraUploadState("error");
+      setUploadState("error");
       toast.error(err.message || "Couldn't upload the room photos.");
     }
   };
 
-  const setExtraFocus = (index, focus) =>
-    setExtraPhotos((prev) => prev.map((p, i) => (i === index ? { ...p, ...focus } : p)));
-
-  const removeExtraPhoto = (index) => setExtraPhotos((prev) => prev.filter((_, i) => i !== index));
-
-  const handle360FilePick = async (e) => {
-    const input = e.target;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file || !selectedRoom || !node) return;
-    const filename = photoFilename(file, slugify(selectedRoom));
-    try {
-      const reviewed = await requestBlur(file);
-      if (!reviewed) return;
-      setUpload360State("uploading");
-      const { path } = await uploadPhoto("room360", reviewed, { building: node.building, filename });
-      setPhoto360Path(path);
-      setUpload360State("done");
-      setTimeout(() => setUpload360State((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch (err) {
-      setUpload360State("error");
-      toast.error(err.message || "Couldn't upload the 360° room photo.");
-    }
-  };
-
   const handleSave = async () => {
-    if (!selectedRoom || !node || uploadState === "uploading" || upload360State === "uploading" || extraUploadState === "uploading") return;
+    if (!selectedRoom || !node || uploadState === "uploading") return;
 
     const trimmedTitle = roomTitle.trim();
     const isRenaming = trimmedTitle !== selectedRoom;
@@ -324,10 +264,7 @@ export default function RoomEditorPage() {
         department: department.trim(),
         contactNumber: contactNumber.trim(),
         link: link.trim(),
-        photo: photoPath,
-        photoFocus,
-        extraPhotos,
-        photo360: photo360Path,
+        photos,
         ocrSearchTerms: ocrTerm ? [ocrTerm] : [],
       });
 
@@ -447,9 +384,8 @@ export default function RoomEditorPage() {
             )}
 
             {/* Top row: title/description (left) and department/contact number/link
-                (right) side by side. Bottom row: both photo choosers side
-                by side, spanning the full width — a different split from
-                the previous "all text left, both photos right" layout. */}
+                (right) side by side. Below it, the photo
+                gallery spans the full width. */}
             <div className="room-editor-top-row">
               <div className="room-editor-top-col">
                 <label>
@@ -526,114 +462,21 @@ export default function RoomEditorPage() {
               </div>
             </div>
 
-            <div className="room-editor-extra-photos">
-              <label>
-                More room photos
-                <FilePickerButton accept="image/*" multiple label="Add Photos" onChange={handleExtraFilesPick} disabled={extraUploadState === "uploading"} />
-                <span className="field-hint">
-                  {extraUploadState === "uploading" && "Uploading…"}
-                  {extraUploadState === "done" && "✓ Uploaded"}
-                  {extraUploadState === "error" && "⚠ Upload failed: check your connection."}
-                  {extraUploadState === "idle" && !extraPhotos.length && "Optional: pick several at once. They follow the room photo below."}
-                </span>
-              </label>
-              {(extraPhotos.length > 0 || photoPath) && (
-                <p className="field-hint">Drag the gold frame on a photo to choose its square thumbnail in the room panel. It starts centered.</p>
-              )}
-              {extraPhotos.length > 0 && (
-                <div className="room-editor-extra-photo-grid">
-                  {extraPhotos.map((p, i) => (
-                    <ExtraPhotoThumb
-                      key={p.path}
-                      path={p.path}
-                      alt={`${selectedRoom} photo ${i + 2}`}
-                      focus={p}
-                      onFocusChange={(focus) => setExtraFocus(i, focus)}
-                      onRemove={() => removeExtraPhoto(i)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="room-editor-photos-row">
-              <div className="room-editor-photo-item">
-                <label>
-                  Room photo
-                  <FilePickerButton accept="image/*" onChange={handleFilePick} disabled={uploadState === "uploading"} />
-                  <span className="field-hint">
-                    {uploadState === "uploading" && "Uploading…"}
-                    {uploadState === "done" && "✓ Uploaded"}
-                    {uploadState === "error" && "⚠ Upload failed: check your connection."}
-                    {uploadState === "idle" && !photoPath && "No photo set yet."}
-                  </span>
-                </label>
-                {photoPath && (
-                  <button
-                    type="button"
-                    className="rescan-faces-btn"
-                    onClick={() => handleReblur(photoPath, setPhotoPath, setPhotoVersion)}
-                    disabled={uploadState === "uploading"}
-                  >
-                    <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
-                  </button>
-                )}
-                {/* Always shows a preview-sized box, even with no photo set
-                    yet — matching the wireframe, which gives both photo
-                    sections consistent visual weight regardless of upload
-                    state, rather than leaving empty space when unset. */}
-                <div className="room-editor-photo-preview-box">
-                  {photoPath ? (
-                    securePhotoUrl
-                      ? <PhotoFocusPicker url={securePhotoUrl} alt={selectedRoom} focus={photoFocus} onChange={setPhotoFocus} />
-                      : <p className="field-hint">Loading photo…</p>
-                  ) : (
-                    <p className="field-hint">No photo yet</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="room-editor-photo-item">
-                <label>
-                  360° room photo
-                  <FilePickerButton accept="image/*" onChange={handle360FilePick} disabled={upload360State === "uploading"} />
-                  <span className="field-hint">
-                    {upload360State === "uploading" && "Uploading…"}
-                    {upload360State === "done" && "✓ Uploaded"}
-                    {upload360State === "error" && "⚠ Upload failed: check your connection."}
-                    {upload360State === "idle" && !photo360Path && "No 360° photo set yet."}
-                  </span>
-                </label>
-                <p className="field-hint">
-                  Used by the mobile app's AR placard scanner, separate from the room photo above.
-                </p>
-                {photo360Path && (
-                  <button
-                    type="button"
-                    className="rescan-faces-btn"
-                    onClick={() => handleReblur(photo360Path, setPhoto360Path, setPhoto360Version)}
-                    disabled={upload360State === "uploading"}
-                  >
-                    <IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo
-                  </button>
-                )}
-                <div className="room-editor-photo-preview-box">
-                  {photo360Path ? (
-                    secure360PhotoUrl
-                      ? <img src={secure360PhotoUrl} alt={`${selectedRoom} 360°`} className="photo-preview" />
-                      : <p className="field-hint">Loading photo…</p>
-                  ) : (
-                    <p className="field-hint">No photo yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <RoomPhotoGallery
+              photos={photos}
+              versions={photoVersions}
+              roomName={selectedRoom}
+              uploadState={uploadState}
+              onChange={setPhotos}
+              onFilesPick={handleFilesPick}
+              onReblur={handleReblur}
+            />
 
             <div className="form-actions">
               <button
                 className="primary"
                 onClick={handleSave}
-                disabled={saving || uploadState === "uploading" || upload360State === "uploading"}
+                disabled={saving || uploadState === "uploading"}
               >
                 {saving ? "Saving…" : savedFlash ? "✓ Saved" : "Save"}
               </button>

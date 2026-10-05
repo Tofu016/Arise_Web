@@ -85,8 +85,11 @@ const THUMBNAIL_WIDTH = 320;
 // and decoding the full multi-MB panorama just to shrink it in CSS wastes
 // both. The backend caches the converted copy on disk, so repeat requests
 // for the same photo are cheap after the first.
-export function fetchProtectedPhotoThumbnail(path, fallbackError = "Couldn't load photo.") {
-  const query = `path=${encodeURIComponent(path)}&format=jpeg&width=${THUMBNAIL_WIDTH}`;
+//
+// `width` must be one of Photo_preview::WIDTHS. A 360 photo is shown as a
+// small crop of itself, so it asks for a wider copy than a flat one.
+export function fetchProtectedPhotoThumbnail(path, fallbackError = "Couldn't load photo.", width = THUMBNAIL_WIDTH) {
+  const query = `path=${encodeURIComponent(path)}&format=jpeg&width=${width}`;
   return protectedPhotoLimiter(() => apiGetBlob(`IndoorUploads_API/serve?${query}`, fallbackError));
 }
 
@@ -151,7 +154,7 @@ export async function loadPhoto(path) {
 // resolution: serve()'s format/width params only apply to protected photos,
 // since public ones are served straight from disk by Apache, never through
 // serve() at all.
-export async function loadPhotoThumbnail(path) {
+export async function loadPhotoThumbnail(path, width) {
   const spec = specForPath(path);
   if (!spec) throw new Error(UNSUPPORTED_PATH_MESSAGE);
 
@@ -159,9 +162,35 @@ export async function loadPhotoThumbnail(path) {
     return { url: publicPhotoUrl(path), release() {} };
   }
 
-  const blob = await fetchProtectedPhotoThumbnail(path);
+  const blob = await fetchProtectedPhotoThumbnail(path, undefined, width);
   const url = URL.createObjectURL(blob);
   return { url, release: () => URL.revokeObjectURL(url) };
+}
+
+// Session cache for thumbnails (the directory's cell photos), which are small
+// and shared by every row that shows them: kept for the whole session so a row
+// that scrolls back, an accordion that reopens, or the background preload
+// (useDirectoryThumbnailPreload) costs no fetch. Never revoked, unlike
+// acquirePhoto's entries; an entry older than THUMBNAIL_TTL_MS is refetched so
+// a replaced photo is eventually picked up. Same contract as loadPhotoThumbnail.
+const THUMBNAIL_TTL_MS = 30 * 60 * 1000;
+const thumbnailCache = new Map(); // "path|width" -> { promise, at }
+
+export function acquireThumbnail(path, width) {
+  const key = `${path}|${width ?? ""}`;
+  let entry = thumbnailCache.get(key);
+  if (!entry || Date.now() - entry.at > THUMBNAIL_TTL_MS) {
+    const created = {
+      at: Date.now(),
+      promise: loadPhotoThumbnail(path, width).then(({ url }) => ({ url, release() {} })),
+    };
+    created.promise.catch(() => {
+      if (thumbnailCache.get(key) === created) thumbnailCache.delete(key);
+    });
+    thumbnailCache.set(key, created);
+    entry = created;
+  }
+  return entry.promise;
 }
 
 // Opt-in session cache over loadPhoto, for the visitor view where the same

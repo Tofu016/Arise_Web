@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { acquirePhoto, loadPhoto, loadPhotoThumbnail } from "../utils/photoStore";
+import { acquirePhoto, acquireThumbnail, loadPhoto, loadPhotoThumbnail } from "../utils/photoStore";
 
 // React adapter over photoStore's loadPhoto: `photo` is a backend storage
 // path, e.g. "panoramas/gd1/gd1_f2_hallway01.jpg". Public paths (e.g.
@@ -18,7 +18,8 @@ import { acquirePhoto, loadPhoto, loadPhotoThumbnail } from "../utils/photoStore
 // for a caller that only ever displays the photo tiny (the node flowchart).
 // It's a separate code path (loadPhotoThumbnail, never the shared session
 // cache) so it can never serve a low-res copy to a caller that needs the
-// original, or vice versa.
+// original, or vice versa. `thumbnail` may be a width (one of the backend's
+// Photo_preview::WIDTHS) instead of true, for a wider copy.
 export function useSecurePhotoUrl(photo, { cached = false, version = 0, thumbnail = false } = {}) {
   // Keyed on the (photo, cached, version) it was resolved for, and reset
   // during render (not only in the effect below) the instant that key
@@ -40,7 +41,9 @@ export function useSecurePhotoUrl(photo, { cached = false, version = 0, thumbnai
     let release = null;
 
     let loader = loadPhoto;
-    if (thumbnail) loader = loadPhotoThumbnail;
+    const width = thumbnail === true ? undefined : thumbnail;
+    // With `cached`, the thumbnail comes from photoStore's thumbnail cache.
+    if (thumbnail) loader = (p) => (cached ? acquireThumbnail(p, width) : loadPhotoThumbnail(p, width));
     else if (cached) loader = acquirePhoto;
 
     loader(photo)

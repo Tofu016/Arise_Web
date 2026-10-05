@@ -93,6 +93,9 @@
   --gold: var(--sdca-gold);
   --gold-strong: var(--sdca-gold-dark);
 
+  /* Behind room photos while they load (and around ones that do not fill the box) */
+  --photo-backdrop: #2b2727;
+
   /* Danger / destructive (brand maroon, per guide) */
   --danger: var(--sdca-maroon);
   --danger-hover: var(--sdca-maroon-dark);

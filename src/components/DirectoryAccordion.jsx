@@ -3,7 +3,9 @@ import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { allBuildings, allCampuses, buildingLabel, campusForBuilding } from "../utils/constants";
 import { DEFAULT_DIRECTORY_SETTINGS, listedRooms, roomsInBuilding } from "../utils/directorySettings";
 import { buildingsForCampus } from "../utils/navigation";
-import { focusPosition, roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
+import { useFlatPhotoUrl, CELL_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "../hooks/useFlatPhotoUrl";
+import { useDirectoryThumbnailPreload } from "../hooks/useDirectoryThumbnailPreload";
+import { focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
 
 // A room's row fades from the sidebar's own gray on the left into the room's
 // photo on the right. The thumbnail is only requested once the row scrolls
@@ -22,8 +24,12 @@ function RoomRow({ room, isSelected, onSelect }) {
     return () => observer.disconnect();
   }, [seen]);
 
+  // The first photo in the order an admin sorted them. A 360 photo is shown as
+  // a flat-looking crop of itself, from a wider downscaled copy than a flat
+  // photo needs since only part of it is used.
   const photo = roomPhotos(room.placard)[0] ?? null;
-  const { url } = useSecurePhotoUrl(seen ? photo : null, { thumbnail: true });
+  const { url: loaded } = useSecurePhotoUrl(seen ? photo?.path : null, { thumbnail: isPanorama(photo) ? PANORAMA_THUMBNAIL_WIDTH : true, cached: true });
+  const url = useFlatPhotoUrl(loaded, photo, CELL_PREVIEW);
 
   return (
     <button
@@ -38,7 +44,7 @@ function RoomRow({ room, isSelected, onSelect }) {
           src={url}
           alt=""
           className="directory-room-photo"
-          style={{ objectPosition: focusPosition(roomPhotoFocus(room.placard)[photo]) }}
+          style={{ objectPosition: focusPosition(isPanorama(photo) ? null : photo) }}
         />
       )}
     </button>
@@ -124,6 +130,7 @@ export default function DirectoryAccordion({
     });
 
   const buildings = allBuildings();
+  useDirectoryThumbnailPreload(rooms, buildings, settings);
 
   return (
     <div className="directory-accordion">

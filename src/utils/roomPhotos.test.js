@@ -1,39 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { focusPosition, roomPhotoFocus, roomPhotos } from "./roomPhotos";
+import { focusPosition, isPanorama, moveItem, roomPhotos } from "./roomPhotos";
 
 describe("roomPhotos", () => {
-  it("is empty for a room with no record or no photos", () => {
+  it("returns the photos in their saved order", () => {
+    const photos = [{ path: "b.webp", kind: "360", x: 50, y: 50 }, { path: "a.webp", kind: "flat", x: 10, y: 20 }];
+    expect(roomPhotos({ photos })).toBe(photos);
+  });
+
+  it("is empty for a missing placard or one without photos", () => {
     expect(roomPhotos(null)).toEqual([]);
     expect(roomPhotos({})).toEqual([]);
   });
+});
 
-  it("puts the main photo before the extras", () => {
-    expect(roomPhotos({ photo: "a.webp", extraPhotos: [{ path: "b.webp" }, { path: "c.webp" }] })).toEqual(["a.webp", "b.webp", "c.webp"]);
-  });
-
-  it("uses extras alone when there is no main photo", () => {
-    expect(roomPhotos({ photo: "", extraPhotos: [{ path: "b.webp" }] })).toEqual(["b.webp"]);
-  });
-
-  it("drops an extra that repeats the main photo", () => {
-    expect(roomPhotos({ photo: "a.webp", extraPhotos: [{ path: "a.webp" }, { path: "b.webp" }] })).toEqual(["a.webp", "b.webp"]);
+describe("isPanorama", () => {
+  it("is true only for the 360 kind", () => {
+    expect(isPanorama({ kind: "360" })).toBe(true);
+    expect(isPanorama({ kind: "flat" })).toBe(false);
+    expect(isPanorama(undefined)).toBe(false);
   });
 });
 
-describe("roomPhotoFocus", () => {
-  it("maps each photo to its own focus, the main photo included", () => {
-    const placard = { photo: "a.webp", photoFocus: { x: 10, y: 20 }, extraPhotos: [{ path: "b.webp", x: 70, y: 30 }] };
-    expect(roomPhotoFocus(placard)).toEqual({ "a.webp": { x: 10, y: 20 }, "b.webp": { x: 70, y: 30 } });
+describe("moveItem", () => {
+  it("moves an item to a new position and keeps the rest in order", () => {
+    expect(moveItem(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"]);
+    expect(moveItem(["a", "b", "c", "d"], 3, 1)).toEqual(["a", "d", "b", "c"]);
   });
 
-  it("centers a main photo with no stored focus", () => {
-    expect(roomPhotoFocus({ photo: "a.webp" })).toEqual({ "a.webp": { x: 50, y: 50 } });
+  it("returns the list untouched for a no-op or out-of-range move", () => {
+    const list = ["a", "b"];
+    expect(moveItem(list, 1, 1)).toBe(list);
+    expect(moveItem(list, 0, 5)).toBe(list);
+    expect(moveItem(list, -1, 0)).toBe(list);
   });
 });
 
 describe("focusPosition", () => {
-  it("formats as an object-position and defaults to the center", () => {
-    expect(focusPosition({ x: 25, y: 80 })).toBe("25% 80%");
+  it("formats a focus as object-position and centers when unset", () => {
+    expect(focusPosition({ x: 10, y: 90 })).toBe("10% 90%");
     expect(focusPosition(undefined)).toBe("50% 50%");
   });
 });

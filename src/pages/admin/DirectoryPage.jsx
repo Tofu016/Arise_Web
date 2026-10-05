@@ -103,10 +103,11 @@ function RoomPicker({ rooms, draft, onChange }) {
         <div className="filter-panel-grid">
           <label className="filter-search-field">
             Search
-            <span className="filter-search-input-wrap">
-              <IconPlaceholder name="search-magnifier" className="filter-search-icon" />
+            <span className="user-panel-search">
+              <IconPlaceholder name="search-magnifier" className="user-panel-search-icon" />
               <input
                 type="search"
+                className="user-panel-search-input"
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
                 placeholder="Name, department, description or node"
