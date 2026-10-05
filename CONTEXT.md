@@ -1,21 +1,18 @@
 # ARISE
 
-Campus virtual tour: visitors walk through 360° panoramas of indoor and outdoor locations; admins author the content.
+Campus virtual tour: visitors walk through 360° panoramas of indoor locations; admins author the content.
 
 ## Language
 
 **Node**:
 An indoor panorama point (building, floor, type) linked to neighboring Nodes.
 
-**Tour stop**:
-An outdoor panorama point, grouped into a **Section**.
-
 **Photo kind**:
-A category of stored photo (node panorama, room photo, room 360, tour panorama, tour cover, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
+A category of stored photo (node panorama, room photo, room 360, signage). A kind decides where the photo is stored and whether it is public or protected. Signage is the one kind that may also be a video.
 _Avoid_: photo type, upload type
 
 **Public photo**:
-A photo served straight from disk to anyone (the tour kinds and signage).
+A photo served straight from disk to anyone (signage).
 
 **Protected photo**:
 A photo stored outside the web server's reach and streamed only through the serve endpoint (the indoor kinds). The endpoint does not check who is asking, since `/` is public: "protected" describes where the file lives, not who may view it.

@@ -19,8 +19,7 @@ bearer tokens rather than cookies or a client-side SDK.
 requires a login, and only admins have accounts: there are no other kinds of
 account. This is a
 deliberate design choice, not an oversight: the indoor navigator is meant to
-be usable by any walk-up visitor, the same way the Virtual Campus Tour
-(`/tour`) already was.
+be usable by any walk-up visitor.
 
 ---
 
@@ -54,7 +53,6 @@ npm run dev
 
 Open the printed localhost URL:
 - `/` — the public indoor viewer. No login needed.
-- `/tour` — the public Virtual Campus Tour. No login needed either.
 - `/admin` — the editor, for building and maintaining the campus graph.
   Requires an admin account.
 
@@ -77,8 +75,8 @@ CodeIgniter 3, MySQL) needs to be set up and running first:
    credentials. There is no `database.php.example`: `database.php` reads
    its values from `.env`.
 5. **Upload folders**:
-   - `Arise_API/uploads/` — public Virtual Tour photos and kiosk
-     advertisement media, served directly by Apache.
+   - `Arise_API/uploads/` — public kiosk advertisement media, served
+     directly by Apache.
    - `protected-uploads/` — indoor node/room photos, deliberately kept
      outside anywhere Apache can serve directly. With `PROTECTED_UPLOAD_ROOT`
      blank in `.env` it defaults to two directories above `Arise_API`'s
@@ -131,8 +129,8 @@ back directly; there's no direct URL to any indoor photo file at all. That
 endpoint deliberately does **not** check who is asking, because `/` is
 public: anyone who knows a photo path can fetch it, including a blur-review
 upload that hasn't been published yet. Only uploading is admin-only.
-(Virtual Tour photos and kiosk advertisement media are different:
-fully public, served straight by Apache.)
+(Kiosk advertisement media is different: fully public, served straight
+by Apache.)
 
 **Directory traversal protection** — every user-supplied filename/path
 segment is validated against a strict character allowlist and explicitly
@@ -147,7 +145,7 @@ same error, so login can't be used to probe which addresses have accounts.
 
 **CORS is scoped to specific origins**, not a wildcard — read from
 `CORS_ORIGIN` in `Arise_API`'s `.env` (a comma-separated list is allowed) by
-`MY_Controller.php`. (The public tour/signage media in `uploads/` allow any
+`MY_Controller.php`. (The public signage media in `uploads/` allows any
 origin, via that folder's own `.htaccess`.)
 
 **Accounts are domain-restricted** — only `@sdca.edu.ph` addresses can be
@@ -218,8 +216,8 @@ beyond a local machine.
 
 ## Accounts
 
-**`/` (indoor navigator) and `/tour` (Virtual Campus Tour) are genuinely
-public — no account needed at all.** Only `/admin` requires signing in. Only
+**`/` (the indoor navigator) is genuinely public — no account needed at
+all.** Only `/admin` requires signing in. Only
 admins have accounts, with no other role. Anyone with an `@sdca.edu.ph` email
 can register at `/register`, but that account is **pending**: it cannot sign
 in until an admin approves it in the User Panel. The system sends email
@@ -280,20 +278,13 @@ document database.
 - **Analytics** — `analytics_sessions` and `analytics_events`: one row per
   visitor session (`kiosk` only when it comes from a paired kiosk, `web`
   for everything else) and one per tracked action.
-- **Tour stops / sections** — `tour_stops`, `tour_sections`,
-  `tour_stop_neighbors` — the
-  Virtual Campus Tour's own equivalent structure, kept as its own,
-  independent set of tables rather than sharing the node graph, since the
-  two diverged enough in practice (tour stops carry no markers; nodes
-  do, and also carry floor/building/leads-to-floor).
   - **Room details** — `placard_dialogs` and `placard_search_terms`, matched
     against AR placard scans.
 - **App feedback** — `app_feedback` table, general experience feedback from
   MainPage visitors (see [Admin guide](#admin-guide-admin)).
-- **360° photos and room photos** — real files, not database blobs. Public
-  Virtual Tour content (`tourpanorama/`, `tourcover/`) lives
-  in `Arise_API/uploads/`, served directly by Apache. Indoor content
-  (`panoramas/`, `roomphoto/`, `room360/`) lives in `protected-uploads/`,
+- **360° photos and room photos** — real files, not database blobs. Indoor
+  content (`panoramas/`, `roomphoto/`, `room360/`) lives in
+  `protected-uploads/`,
   outside `htdocs` entirely by default, served only through the
   `IndoorUploads_API/serve` PHP endpoint, which doesn't check who is asking
   — see [Security & authentication](#security--authentication).
@@ -301,8 +292,8 @@ document database.
   advertisement: its file, crop, time on screen, rotation position, on/off
   and optional run dates) and `signage_settings` (one row: rotation order,
   transition, default time on screen). The files themselves (images, GIFs,
-  MP4/WebM videos) live in `Arise_API/uploads/signage/`, public like the
-  tour photos. Named "signage" in every table, file path, endpoint and CSS
+  MP4/WebM videos) live in `Arise_API/uploads/signage/`, served directly by
+  Apache. Named "signage" in every table, file path, endpoint and CSS
   class, never "ads": ad blockers hide or refuse requests and elements that
   look like advertisements. (The admin page's own route,
   `/admin/advertisements`, is exempt: it's in-app navigation, not a request.)
@@ -515,9 +506,6 @@ Type, Photo status (all, missing, or has a photo filename), and a search
   panel and used by search. A facility is a Facility marker; it is renamed
   here (which relabels the marker) but placed and moved in Virtual Map
   Navigation Editor.
-- **Campus Tour** group: **Tour Stops** and **Campus Tour Navigation
-  Editor**, the equivalents for the outdoor Virtual Campus Tour.
-
 ### Analytics
 
 **Analytics** — session and behavior tracking for `/`: sessions over time,
@@ -557,15 +545,15 @@ node types, floors or links.
 
 ### Photo Coverage
 
-**Photo Coverage** — a read-only summary of which nodes and tour stops
-still don't have a photo uploaded at all, with the specific missing ones
-listed by name/building/floor, not just a bare count.
+**Photo Coverage** — a read-only summary of which nodes still don't have a
+photo uploaded at all, with the specific missing ones listed by
+name/building/floor, not just a bare count.
 
 ### Photos (on the Photo Coverage page)
 
 The **Photos** list lower on the same page — every photo uploaded anywhere
-in the system (node panoramas, room photos, tour stops, section covers,
-marker photos, advertisement media), scanned
+in the system (node panoramas, room photos, marker photos, advertisement
+media), scanned
 directly off disk and checked against what's actually referenced in the
 database. Each shows **In use** or **Orphaned**; only orphaned files can be
 deleted. The backend independently re-checks "is this still in use" at the

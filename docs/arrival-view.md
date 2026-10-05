@@ -32,8 +32,6 @@ facing the way you walked.
 - Back keeps its own rule: face the arrow that points at the node being left.
 - Jumps (search, rooms, building/floor pickers) are unchanged: the node's
   starting view, else dead ahead.
-- Tour stops (`/tour`) use the same chain (`PublicTourPage.goTo`); pitch is not
-  carried there, as before.
 
 ## Admin override
 

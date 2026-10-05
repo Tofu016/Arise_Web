@@ -90,6 +90,11 @@ export default function App() {
                 shell around an empty content area. */}
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
+          {/* Any other path — most likely a stale bookmark to the removed
+              /tour page or one of its two admin editors — lands on the
+              indoor navigator instead of a blank screen. Same reasoning as
+              the /admin/* catch-all above. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
       <ToastContainer />
