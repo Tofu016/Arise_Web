@@ -6,8 +6,9 @@ import { DESKTOP_INTRO_TEXT } from "../utils/introScript";
 // Hand-drawn (not sourced) since nothing this specific exists in the icon
 // set or the grey/white pairs: a mouse body with one button highlighted to
 // show which click does what, reused for both the drag and the scroll
-// instruction with a different part of the same base shape lit up.
-function MouseIcon({ highlight }) {
+// instruction with a different part of the same base shape lit up. Also
+// used by the public tour's TourTutorialOverlay.
+export function MouseIcon({ highlight }) {
   return (
     <svg className="intro-mouse-icon" viewBox="0 0 40 60" aria-hidden="true">
       <rect x="3" y="2" width="34" height="56" rx="17" fill="none" stroke="currentColor" strokeWidth="2.5" />
@@ -36,7 +37,7 @@ function MouseIcon({ highlight }) {
 // HotspotGlyph) to read as "click this glowing spot in the photo" without
 // needing a real panorama screenshot behind it. The arrow's tip lands on the
 // disc's lower-right edge, off-center, so it doesn't hide the chevron.
-function HotspotClickIcon() {
+export function HotspotClickIcon() {
   return (
     <svg className="intro-hotspot-icon" viewBox="0 0 60 60" aria-hidden="true">
       <HotspotGlyph cx={27} cy={26} />

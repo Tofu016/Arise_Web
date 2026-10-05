@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { suggestTourStopId } from "../utils/tourConstants";
 import { photoFilename, uploadPhoto } from "../utils/photoStore";
+import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { useAutoId } from "../hooks/useAutoId";
 import { useBlurReview } from "../hooks/useBlurReview";
 import FilePickerButton from "./FilePickerButton";
@@ -12,6 +13,7 @@ const emptyDraft = () => ({
   name: "",
   section: "",
   photo: "",
+  coverPhoto: "",
   neighbors: [],
 });
 
@@ -31,6 +33,12 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
   const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
   const { requestBlur, reblurStored, blurDialog } = useBlurReview();
   const toast = useToast();
+  // The cover photo: a flat photo for the public tour's scene list (its
+  // tile), instead of a crop of the 360° one — and far lighter to load.
+  const [coverState, setCoverState] = useState("idle"); // idle | uploading | done | error
+  const [coverVersion, setCoverVersion] = useState(0); // bumped when the cover is replaced or edited in place
+  const { url: coverPreviewUrl } = useSecurePhotoUrl(draft.coverPhoto || null, { version: coverVersion });
+  const uploading = uploadState === "uploading" || coverState === "uploading";
 
   // "Edit blur regions" on the stop's already-uploaded panorama. Saves over
   // it; if that lands on a different path (old .jpg re-saved as .webp) the
@@ -63,6 +71,7 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
     setErrors([]);
     setPreviewUrl(null);
     setUploadState("idle");
+    setCoverState("idle");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, stop]);
 
@@ -127,8 +136,56 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
     }
   };
 
+  // Same blur review as the 360° photo. Named after the stop's id plus
+  // "_cover", so a new cover replaces the old file, and can't collide with
+  // a section's cover (those are named by upload time).
+  const handleCoverPick = async (e) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
+    if (!file) return;
+    if (!draft.id.trim()) {
+      toast.error("Give the stop an ID first: the cover photo is named after it.");
+      return;
+    }
+    const targetFilename = photoFilename(file, `${draft.id.trim()}_cover`);
+
+    try {
+      const reviewed = await requestBlur(file); // blur review first; null = cancelled
+      if (!reviewed) return;
+      setCoverState("uploading");
+      const { path } = await uploadPhoto("tourCover", reviewed, { filename: targetFilename });
+      setDraft((d) => ({ ...d, coverPhoto: path }));
+      setCoverVersion((v) => v + 1);
+      setCoverState("done");
+      setTimeout(() => setCoverState((s) => (s === "done" ? "idle" : s)), 2500);
+    } catch (err) {
+      setCoverState("error");
+      toast.error(err.message || "Couldn't upload the cover photo.");
+    }
+  };
+
+  const handleCoverReblur = async () => {
+    try {
+      const saved = await reblurStored(draft.coverPhoto);
+      if (!saved) return;
+      setDraft((d) => ({ ...d, coverPhoto: saved.path }));
+      setCoverVersion((v) => v + 1);
+      toast.success("Blur regions updated.");
+    } catch (err) {
+      toast.error(err.message || "Couldn't update the photo.");
+    }
+  };
+
+  // Only unlinks it from the stop (on Save); the file stays in the photo
+  // gallery, where it can be deleted once nothing uses it.
+  const handleCoverRemove = () => {
+    setDraft((d) => ({ ...d, coverPhoto: "" }));
+    setCoverState("idle");
+  };
+
   const handleSave = () => {
-    if (uploadState === "uploading") {
+    if (uploading) {
       setErrors(["The photo is still uploading. Wait for it to finish before saving."]);
       return;
     }
@@ -212,6 +269,34 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
         <img src={previewUrl} alt="preview" className="photo-preview" />
       )}
 
+      <label>
+        Cover photo
+        <FilePickerButton accept="image/*" onChange={handleCoverPick} disabled={uploading} />
+        <span className="field-hint">
+          {coverState === "uploading" && "Uploading…"}
+          {coverState === "done" && "✓ Uploaded"}
+          {coverState === "error" && "⚠ Upload failed: check your connection."}
+          {coverState === "idle" &&
+            (draft.coverPhoto
+              ? "Shown on this stop's tile in the public tour's scene list."
+              : "Optional: a regular photo for this stop's tile in the public tour's scene list. Without one, the tile shows the 360° photo.")}
+        </span>
+      </label>
+
+      {draft.coverPhoto && (
+        <>
+          {coverPreviewUrl && <img src={coverPreviewUrl} alt="Cover preview" className="photo-preview" />}
+          <div className="form-actions">
+            <button type="button" className="rescan-faces-btn" onClick={handleCoverReblur} disabled={uploading}>
+              <IconPlaceholder name="edit-pencil" /> Edit blur regions on the cover
+            </button>
+            <button type="button" onClick={handleCoverRemove} disabled={uploading}>
+              Remove cover photo
+            </button>
+          </div>
+        </>
+      )}
+
       {errors.length > 0 && (
         <div className="error-box">
           {errors.map((e, i) => <p key={i}>{e}</p>)}
@@ -219,8 +304,8 @@ export default function TourStopForm({ mode, stop, stops, sections, onSave, onCa
       )}
 
       <div className="form-actions">
-        <button className="primary" onClick={handleSave} disabled={uploadState === "uploading"}>
-          {uploadState === "uploading" ? "Waiting for photo upload…" : mode === "edit" ? "Save changes" : "Create stop"}
+        <button className="primary" onClick={handleSave} disabled={uploading}>
+          {uploading ? "Waiting for photo upload…" : mode === "edit" ? "Save changes" : "Create stop"}
         </button>
         {mode === "edit" && (
           <button className="danger" onClick={() => onDelete(stop.id)}>Delete</button>
