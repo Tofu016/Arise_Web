@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { KIOSK_RAISED_STYLE, KIOSK_TOP_INSET } from "../utils/kioskLayout";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import KioskSignage from "./KioskSignage";
-import buttonImg from "../assets/kiosk-startup/button.png";
-import letterA from "../assets/kiosk-startup/letter-a.png";
-import letterR from "../assets/kiosk-startup/letter-r.png";
-import letterI from "../assets/kiosk-startup/letter-i.png";
-import letterS from "../assets/kiosk-startup/letter-s.png";
-import letterE from "../assets/kiosk-startup/letter-e.png";
+import buttonImg from "../assets/kiosk-start/button.png";
+import letterA from "../assets/kiosk-start/letter-a.png";
+import letterR from "../assets/kiosk-start/letter-r.png";
+import letterI from "../assets/kiosk-start/letter-i.png";
+import letterS from "../assets/kiosk-start/letter-s.png";
+import letterE from "../assets/kiosk-start/letter-e.png";
 
 // The kiosk's attract screen: covers the whole viewport (header and bottom
 // whitespace included) until tapped, then fades out. It shows the ARISE logo
