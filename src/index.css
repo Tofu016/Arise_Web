@@ -1507,6 +1507,10 @@ html.kiosk-mode .export-import-bar button.primary:hover:active {
   color: var(--text);
   text-align: center;
 }
+.main-page-status-logo {
+  width: 96px;
+  height: 96px;
+}
 .main-page-layout {
   height: 100vh;
   width: 100vw;

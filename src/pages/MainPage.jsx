@@ -811,6 +811,7 @@ function MainPageContent({ onReset }) {
   if (loadError) {
     return (
       <div className="main-page-status">
+        <img src="/favicon.svg" alt="" className="main-page-status-logo" draggable="false" />
         <h2>ARISE</h2>
         <p>{loadError}</p>
         <p className="empty-hint">
