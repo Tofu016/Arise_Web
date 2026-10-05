@@ -32,6 +32,7 @@ import KioskIntroOverlay from "../components/KioskIntroOverlay";
 import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
+import { useLiveDirectorySettings } from "../hooks/useDirectorySettings";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import powerIcon from "../assets/icons/power.svg";
 import questionMarkIcon from "../assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg";
@@ -299,6 +300,7 @@ function MainPageContent({ onReset }) {
   // Desktop only: the save button is on RoomCard and the "Saved Directories"
   // group in its directory; the kiosk is a shared screen.
   const { savedNames, isSaved, toggleSaved } = useSavedRooms();
+  const directorySettings = useLiveDirectorySettings();
   const savedRooms = useMemo(() => resolveSavedRooms(savedNames, searchableRooms), [savedNames, searchableRooms]);
 
   // Room search always scans the whole campus regardless of the building filter —
@@ -1997,6 +1999,7 @@ function MainPageContent({ onReset }) {
                       <DirectoryAccordion
                         rooms={searchableRooms}
                         savedRooms={savedRooms}
+                        settings={directorySettings}
                         onSelect={openRoomCard}
                         selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}

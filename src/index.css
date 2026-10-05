@@ -977,23 +977,24 @@ html.kiosk-mode .user-panel-page .user-panel-create-btn:hover:active {
   white-space: nowrap;
   border: 0;
 }
+/* Only used in the admin CMS, where an upload trigger is a secondary
+   action: same look as .admin-btn-secondary, not an accent-filled primary. */
 .file-picker-btn {
-  padding: 7px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
+  padding: 8px 16px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   font-family: var(--font-sans-display);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-:where(html:not(.kiosk-mode)) .file-picker-btn:hover,
-html.kiosk-mode .file-picker-btn:hover:active {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+:where(html:not(.kiosk-mode)) .file-picker-btn:hover:not(:disabled),
+html.kiosk-mode .file-picker-btn:hover:active:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 .file-picker-btn:disabled {
   opacity: 0.5;
@@ -1315,8 +1316,12 @@ html.kiosk-mode .node-row:hover:active {
   transform: translateY(-50%);
   pointer-events: none;
 }
-.filter-panel .filter-search-input-wrap input {
-  padding-left: 34px;
+/* Same box as .user-panel-search-input so every admin search field matches. */
+.filter-panel .filter-search-input-wrap input,
+.directory-admin-panel .filter-search-input-wrap input {
+  height: 36px;
+  padding: 0 10px 0 34px;
+  background: var(--surface);
 }
 .position-readout {
   font-size: 12px;
@@ -2368,8 +2373,8 @@ html.kiosk-mode .entrance-btn:hover:active {
   letter-spacing: 0.04em;
 }
 .directory-campus-row {
-  padding: 10px 16px;
-  font-size: 13px;
+  padding: 14px 16px;
+  font-size: 14px;
 }
 .directory-building-list {
   display: flex;
@@ -2377,19 +2382,55 @@ html.kiosk-mode .entrance-btn:hover:active {
   gap: 2px;
 }
 .directory-building-row {
-  padding: 10px 16px 10px 28px;
-  font-size: 12px;
+  padding: 13px 16px 13px 28px;
+  font-size: 13px;
 }
 .directory-room-list {
   display: flex;
   flex-direction: column;
 }
+/* Room rows are twice their old height (about 30px) and fade from the
+   sidebar's own gray on the left into the room's photo on the right. The
+   fade is a gradient laid over the photo, in --directory-room-fade, so the
+   selected and hover states recolor it instead of being hidden by the photo
+   (which a plain background would be). */
 .directory-room-row {
-  background: none;
+  --directory-room-fade: var(--tour-sidebar-bg);
+  position: relative;
+  overflow: hidden;
+  min-height: 60px;
+  background: var(--directory-room-fade);
   padding: 8px 16px 8px 40px;
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.03em;
+}
+.directory-room-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+.directory-room-row:has(.directory-room-photo)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--directory-room-fade) 0%,
+    var(--directory-room-fade) 30%,
+    transparent 100%
+  );
+}
+.directory-room-row > span:first-child {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 /* Tier 2: the campus, building, and room that make up the visitor's
    actual current location — always wins over tier 1's default band
@@ -2401,7 +2442,8 @@ html.kiosk-mode .entrance-btn:hover:active {
 /* Room/facility rows (only) use brand maroon for the selected state; the
    campus and building rows keep the dark gray above. */
 .directory-room-row.directory-row-selected {
-  background: var(--sdca-maroon);
+  --directory-room-fade: var(--sdca-maroon);
+  background: var(--directory-room-fade);
 }
 /* The "Saved Directories" header always wears the campus highlight (tier
    2's dark gray): it isn't a place the visitor can be in, so it would
@@ -2424,12 +2466,16 @@ html.kiosk-mode .directory-campus-row:hover:active {
    as the selected highlight — a hard inset outline over a maroon wash. */
 :where(html:not(.kiosk-mode)) .directory-room-row:hover,
 html.kiosk-mode .directory-room-row:hover:active {
-  background: rgba(161, 33, 36, 0.4);
+  /* The same 40% maroon wash as before, flattened onto the sidebar gray
+     because the fade over a photo needs an opaque color. */
+  --directory-room-fade: color-mix(in srgb, var(--sdca-maroon) 40%, var(--tour-sidebar-bg));
+  background: var(--directory-room-fade);
   box-shadow: inset 0 0 0 1px var(--sdca-maroon);
 }
 :where(html:not(.kiosk-mode)) .directory-room-row.directory-row-selected:hover,
 html.kiosk-mode .directory-room-row.directory-row-selected:hover:active {
-  background: var(--accent-hover);
+  --directory-room-fade: var(--accent-hover);
+  background: var(--directory-room-fade);
 }
 .directory-empty-hint {
   margin: 0;
@@ -9459,13 +9505,15 @@ html.kiosk-mode .signage-segmented-opt--on:hover:active {
 
 /* Shared plain and accent buttons for this page and its dialog. */
 .signage-btn {
-  padding: 7px 12px;
+  padding: 8px 16px;
   border-radius: var(--admin-radius);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
-  font-family: inherit;
+  font-weight: 700;
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.03em;
   cursor: pointer;
 }
 :where(html:not(.kiosk-mode)) .signage-btn:hover:not(:disabled),
@@ -10752,4 +10800,143 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
 .emergency-stairs-banner-text strong {
   font-size: 18px;
   font-weight: 700;
+}
+
+/* Admin Directory page: parent directories on the left, the selected
+   building's room list (with search and add) on the right. Stacks on a
+   narrow admin window. */
+.directory-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .directory-admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.directory-admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.directory-admin-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.directory-admin-nav-actions {
+  margin-top: 2px;
+}
+.directory-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.directory-admin-expand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+.directory-admin-static {
+  cursor: default;
+}
+.directory-admin-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.directory-admin-building-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.directory-admin-building {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  background: var(--surface-sunken);
+}
+.directory-admin-building-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.directory-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.directory-admin-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+.directory-admin-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.directory-admin-editor-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.directory-admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.directory-admin-search {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  font-family: inherit;
+  font-size: 13px;
+}
+.directory-admin-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.directory-admin-room-row {
+  cursor: default;
+  align-items: center;
+}
+.directory-admin-reset-filters {
+  align-self: flex-start;
+}
+.directory-admin-room-row .node-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.directory-admin-building-clear {
+  margin-top: var(--space-sm);
+}
+.directory-admin-incoming {
+  margin-top: var(--space-sm);
+}
+.directory-admin-incoming {
+  margin-top: var(--space-sm);
 }

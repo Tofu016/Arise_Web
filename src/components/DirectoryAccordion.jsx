@@ -1,31 +1,55 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import { allBuildings, allCampuses, buildingLabel, campusForBuilding } from "../utils/constants";
+import { DEFAULT_DIRECTORY_SETTINGS, listedRooms, roomsInBuilding } from "../utils/directorySettings";
 import { buildingsForCampus } from "../utils/navigation";
+import { focusPosition, roomPhotoFocus, roomPhotos } from "../utils/roomPhotos";
 
-// Every room/facility (from nodes' "Rooms served" lists, see
-// buildSearchableRooms) in one building, in natural order ("Room 2" before
-// "Room 10"). Rooms rather than nodes: a node is a panorama point, which
-// means nothing to a visitor browsing for a destination.
-function roomsInBuilding(rooms, buildingId) {
-  return (rooms || [])
-    .filter((r) => r.node.building === buildingId)
-    .sort((a, b) => a.roomName.localeCompare(b.roomName, undefined, { numeric: true, sensitivity: "base" }));
-}
-
+// A room's row fades from the sidebar's own gray on the left into the room's
+// photo on the right. The thumbnail is only requested once the row scrolls
+// into view: a building can list over a hundred rooms, and most of them are
+// never scrolled to.
 function RoomRow({ room, isSelected, onSelect }) {
+  const rowRef = useRef(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row || seen) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setSeen(true);
+    });
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [seen]);
+
+  const photo = roomPhotos(room.placard)[0] ?? null;
+  const { url } = useSecurePhotoUrl(seen ? photo : null, { thumbnail: true });
+
   return (
     <button
+      ref={rowRef}
       type="button"
       className={"directory-room-row" + (isSelected ? " directory-row-selected" : "")}
       onClick={() => onSelect(room)}
     >
-      <span>{room.roomName}</span>
+      <span className="directory-room-name">{room.roomName}</span>
+      {url && (
+        <img
+          src={url}
+          alt=""
+          className="directory-room-photo"
+          style={{ objectPosition: focusPosition(roomPhotoFocus(room.placard)[photo]) }}
+        />
+      )}
     </button>
   );
 }
 
-function BuildingRow({ building, rooms: allRooms, expanded, isHere, selectedRoomName, onToggle, onSelect }) {
-  const rooms = useMemo(() => roomsInBuilding(allRooms, building.id), [allRooms, building.id]);
+function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, selectedRoomName, onToggle, onSelect }) {
+  const rooms = useMemo(
+    () => listedRooms(settings, building.id, roomsInBuilding(allRooms, building.id)),
+    [allRooms, building.id, settings]
+  );
   return (
     <div className="directory-building">
       <button
@@ -62,8 +86,19 @@ function BuildingRow({ building, rooms: allRooms, expanded, isHere, selectedRoom
 // `savedRooms` (the visitor's saved rooms, already resolved to directory
 // rooms, see utils/savedRooms.js) adds a "Saved Directories" group above
 // the campuses, collapsed to start, and only while at least one is saved.
-export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, selectedRoomName, currentBuildingId }) {
-  const campuses = allCampuses();
+//
+// `settings` (see utils/directorySettings.js, edited on the admin Directory
+// page) hides whole groups, campuses, buildings and individual rooms. It
+// only trims what this accordion lists; search still finds every room.
+export default function DirectoryAccordion({
+  rooms,
+  savedRooms = [],
+  settings = DEFAULT_DIRECTORY_SETTINGS,
+  onSelect,
+  selectedRoomName,
+  currentBuildingId,
+}) {
+  const campuses = allCampuses().filter((c) => !settings.hiddenCampuses.includes(c.id));
   const mainCampus = campuses.find((c) => c.id === "main");
   const otherCampuses = campuses.filter((c) => c.id !== "main");
   const currentCampusId = currentBuildingId ? campusForBuilding(currentBuildingId) : null;
@@ -92,7 +127,7 @@ export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, s
 
   return (
     <div className="directory-accordion">
-      {savedRooms.length > 0 && (
+      {settings.showSaved && savedRooms.length > 0 && (
         <div className="directory-campus directory-saved">
           <button
             type="button"
@@ -124,11 +159,14 @@ export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, s
           </button>
           {expandedCampuses.has(mainCampus.id) && (
             <div className="directory-building-list">
-              {buildingsForCampus(buildings, mainCampus.id, campusForBuilding).map((b) => (
+              {buildingsForCampus(buildings, mainCampus.id, campusForBuilding)
+                .filter((b) => !settings.hiddenBuildings.includes(b.id))
+                .map((b) => (
                 <BuildingRow
                   key={b.id}
                   building={b}
                   rooms={rooms}
+                  settings={settings}
                   selectedRoomName={selectedRoomName}
                   isHere={b.id === currentBuildingId}
                   expanded={expandedBuildings.has(b.id)}
@@ -145,6 +183,7 @@ export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, s
         // A solo campus is exactly one building (see allCampuses) — its
         // rooms render as this row's own children, skipping the building tier.
         const soloBuildingId = campus.buildingIds[0];
+        if (settings.hiddenBuildings.includes(soloBuildingId)) return null;
         const expanded = expandedCampuses.has(campus.id);
         const isHere = campus.id === currentCampusId;
         return (
@@ -162,6 +201,7 @@ export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, s
                 <SoloCampusRooms
                   buildingId={soloBuildingId}
                   rooms={rooms}
+                  settings={settings}
                   selectedRoomName={selectedRoomName}
                   onSelect={onSelect}
                 />
@@ -174,8 +214,11 @@ export default function DirectoryAccordion({ rooms, savedRooms = [], onSelect, s
   );
 }
 
-function SoloCampusRooms({ buildingId, rooms: allRooms, selectedRoomName, onSelect }) {
-  const rooms = useMemo(() => roomsInBuilding(allRooms, buildingId), [allRooms, buildingId]);
+function SoloCampusRooms({ buildingId, rooms: allRooms, settings, selectedRoomName, onSelect }) {
+  const rooms = useMemo(
+    () => listedRooms(settings, buildingId, roomsInBuilding(allRooms, buildingId)),
+    [allRooms, buildingId, settings]
+  );
   return (
     <>
       {rooms.length === 0 && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { EMERGENCY_DESTINATION_INDOOR_TYPES, EMERGENCY_DESTINATION_TYPES, GROUND_FLOOR, NODE_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
@@ -9,6 +9,7 @@ import { photoFilename } from "../utils/photoStore";
 import { startReview, reviewExisting, confirmReview, cancelReview } from "../utils/panoramaReview";
 import { useToast } from "../context/ToastContext";
 import IconPlaceholder from "./IconPlaceholder";
+import FilePickerButton from "./FilePickerButton";
 
 const emptyDraft = () => ({
   id: "",
@@ -35,7 +36,6 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
   const [errors, setErrors] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [roomInput, setRoomInput] = useState("");
-  const fileInputRef = useRef();
 
   // Whether the ID field is still being auto-generated from Building/Floor/Type
   // (true for a fresh new node) vs. the admin having typed their own — once
@@ -455,7 +455,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
 
       <label>
         Choose 360° photo file
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFilePick} />
+        <FilePickerButton accept="image/*" onChange={handleFilePick} label="Choose Photo" />
         {!draft.id && (
           <span className="field-hint">Set an ID first so the uploaded photo can be named to match.</span>
         )}

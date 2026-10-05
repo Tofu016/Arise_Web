@@ -284,3 +284,23 @@ export function signageSettingsBody(patch) {
     defaultDurationSeconds: "default_duration_seconds",
   });
 }
+
+export function toDirectorySettings(row) {
+  return {
+    showSaved: row.show_saved !== false,
+    hiddenCampuses: row.hidden_campuses || [],
+    hiddenBuildings: row.hidden_buildings || [],
+    // An empty map comes back from PHP as an empty list. A map stored by an
+    // earlier version (building id to a bare list) is read as no entry.
+    buildingRooms: Array.isArray(row.building_rooms) ? {} : row.building_rooms || {},
+  };
+}
+
+export function directorySettingsBody(patch) {
+  return pick(patch, {
+    showSaved: "show_saved",
+    hiddenCampuses: "hidden_campuses",
+    hiddenBuildings: "hidden_buildings",
+    buildingRooms: "building_rooms",
+  });
+}

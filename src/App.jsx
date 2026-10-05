@@ -11,6 +11,7 @@ import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
 import EmergencyCoveragePage from "./pages/admin/EmergencyCoveragePage";
 import SignagePage from "./pages/admin/SignagePage";
+import DirectoryPage from "./pages/admin/DirectoryPage";
 import KiosksPage from "./pages/admin/KiosksPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="navigation-editor" element={<NavigationEditorPage />} />
             <Route path="room-and-facility-editor" element={<RoomEditorPage />} />
             <Route path="marker-management" element={<MarkerManagementPage />} />
+            <Route path="directory" element={<DirectoryPage />} />
             <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />
             <Route path="user-panel" element={<UserPanelPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
