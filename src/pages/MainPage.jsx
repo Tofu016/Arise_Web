@@ -78,6 +78,7 @@ import { useSavedRooms } from "../hooks/useSavedRooms";
 import { resolveSavedRooms } from "../utils/savedRooms";
 import { useLiveSignage } from "../hooks/useSignage";
 import KioskSignage from "../components/KioskSignage";
+import { slidesInCategory } from "../utils/signage";
 import Presence from "../components/Presence";
 import { useAuth } from "../context/useAuth";
 
@@ -132,6 +133,8 @@ function MainPageContent({ onReset }) {
   // The bottom band's advertisements (signage); only the Compact layout has
   // that band, so desktop never fetches them.
   const signage = useLiveSignage(compact);
+  const footerSlides = useMemo(() => slidesInCategory(signage.slides, "footer"), [signage.slides]);
+  const startingSlides = useMemo(() => slidesInCategory(signage.slides, "starting"), [signage.slides]);
   // Kiosk session: the attract screen, then the campus screen, then (only
   // for a multi-building campus) the building screen, then the floor
   // screen, then exploring
@@ -821,7 +824,7 @@ function MainPageContent({ onReset }) {
     return (
       <>
         <LoadingScreen show label="Loading campus…" />
-        {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
+        {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} signageSlides={startingSlides} signageSettings={signage.settings} />}
       </>
     );
   }
@@ -1524,7 +1527,7 @@ function MainPageContent({ onReset }) {
           onBack={kioskCampusIsMultiBuilding ? kiosk.backToBuilding : kiosk.backToCampus}
         />
       )}
-      {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} />}
+      {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} signageSlides={startingSlides} signageSettings={signage.settings} />}
       <div className="main-page-viewer">
         {!compact && (
           <header className="tour-shell-header">
@@ -1612,7 +1615,7 @@ function MainPageContent({ onReset }) {
               style={{ height: `${KIOSK_BOTTOM_INSET * 100}%` }}
               onClick={() => tapForPairing("signage")}
             >
-              <KioskSignage slides={signage.slides} settings={signage.settings} />
+              <KioskSignage slides={footerSlides} settings={signage.settings} />
             </div>
 
             {/* Session-start walkthrough over the panorama band only, so the

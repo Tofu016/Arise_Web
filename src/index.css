@@ -4411,18 +4411,6 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
 }
-.sidebar-room-carousel-placeholder {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gray-300);
-}
-.sidebar-room-carousel-placeholder img {
-  width: 56px;
-  height: 56px;
-  opacity: 0.7;
-}
 /* Shown over the photo that is still on screen while the next one loads.
    Its own animation delay keeps it invisible for the first half second, so
    a cached or quick photo just crossfades in and the spinner is only ever
@@ -7901,6 +7889,7 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
    type come from the desktop room panel's .sidebar-room-* rules; this only
    sets the kiosk layout and bumps sizes for touch. */
 .kiosk-room-card {
+  position: relative;
   pointer-events: auto;
   box-sizing: border-box;
   height: var(--kiosk-grid-height);
@@ -7912,6 +7901,13 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   color: var(--white);
   border-radius: 14px;
   box-shadow: var(--shadow-2);
+}
+/* No photos: drop the photo column and keep the details column's half width,
+   centered. */
+.kiosk-room-card-no-photo {
+  grid-template-columns: 1fr;
+  width: 50%;
+  margin: 0 auto;
 }
 .kiosk-room-card-photo {
   position: relative;
@@ -7931,8 +7927,7 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   height: 100%;
   object-fit: cover;
 }
-.kiosk-room-card-photo .sidebar-room-carousel-empty,
-.kiosk-room-card-photo .sidebar-room-carousel-placeholder {
+.kiosk-room-card-photo .sidebar-room-carousel-empty {
   height: 100%;
   aspect-ratio: auto;
 }
@@ -8008,6 +8003,20 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
 }
 .kiosk-dialog-close:active {
   transform: scale(0.95);
+}
+/* On the room card the ✕ sits in the card's top-right corner; the title
+   leaves room for it. */
+.kiosk-room-card-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 52px;
+  height: 52px;
+  margin: 0;
+  z-index: 1;
+}
+.kiosk-room-card .sidebar-room-title {
+  padding-right: 60px;
 }
 
 /* ---------- Kiosk dialog content: fill the two left quadrants instead of
@@ -8310,7 +8319,9 @@ html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center) - 160px);
+  /* 120px less bottom padding than before, which moves the centered content
+     60px lower, leaving room for the logo above. */
+  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center) - 280px);
   gap: 24px;
   width: 100%;
   border: 0;
@@ -8322,6 +8333,36 @@ html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   touch-action: manipulation;
   opacity: 1;
   transition: opacity 0.6s ease, visibility 0s;
+}
+/* Same band and padding as .kiosk-shell-header, but the logo is pinned to
+   the top of the band rather than centered in it. */
+.kiosk-start-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8px calc(24px + env(safe-area-inset-right)) 8px calc(24px + env(safe-area-inset-left));
+}
+.kiosk-start-header-logo {
+  height: 50%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+/* Starting advertisements: 16:9 (authored at 1280 x 720) scaled to the
+   screen's width, along the bottom of the start screen. */
+.kiosk-start-signage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #fff;
 }
 /* Kiosk building (KioskBuildingScreen.jsx) and floor (KioskFloorScreen.jsx)
    selection screens: sit just under the start screen (600) so that one
@@ -8428,8 +8469,6 @@ html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   grid-template-columns: 1fr 1fr;
   align-content: start;
   gap: 20px 24px;
-  max-height: 62vh;
-  overflow-y: auto;
 }
 .kiosk-building-btn {
   min-height: 140px;
@@ -10448,6 +10487,64 @@ html.kiosk-mode .signage-row-thumb:hover:active {
   background: var(--surface-sunken);
   text-align: center;
 }
+.signage-dropzone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+.signage-library {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-sm);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.signage-library-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  padding: 6px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  cursor: pointer;
+}
+.signage-library-item:hover,
+.signage-library-item:focus-visible {
+  border-color: var(--accent);
+}
+.signage-library-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--surface-sunken);
+}
+.signage-library-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signage-library-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.signage-tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
 .signage-dropzone-title {
   margin: 0;
   font-size: 16px;
@@ -10614,6 +10711,16 @@ html.kiosk-mode .signage-row-thumb:hover:active {
 .signage-kiosk-mock-band {
   position: relative;
   overflow: hidden;
+  border-radius: 0 0 5px 5px;
+}
+/* The starting rectangle: 16:9 across the screen's width, at the bottom
+   (the screen shown is the starting screen, so no panorama). */
+.signage-kiosk-mock-band--starting {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  aspect-ratio: 16 / 9;
   border-radius: 0 0 5px 5px;
 }
 .signage-kiosk-mock .signage-caption {

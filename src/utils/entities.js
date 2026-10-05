@@ -299,6 +299,7 @@ export function toSignageSlide(row) {
   return {
     id: String(row.id),
     title: row.title,
+    category: row.category === "starting" ? "starting" : "footer",
     mediaPath: row.media_path,
     crop: { x: Number(row.crop_x), y: Number(row.crop_y), w: Number(row.crop_w), h: Number(row.crop_h) },
     durationSeconds: Number(row.duration_seconds),
@@ -315,6 +316,7 @@ export function toSignageSlide(row) {
 export function signageSlideBody(patch) {
   const body = pick(patch, {
     title: "title",
+    category: "category",
     mediaPath: "media_path",
     durationSeconds: "duration_seconds",
     active: "is_active",

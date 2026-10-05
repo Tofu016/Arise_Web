@@ -19,6 +19,9 @@ import {
   parseDuration,
   durationForVideo,
   formatSeconds,
+  slidesInCategory,
+  reorderWithinCategory,
+  mediaLibrary,
 } from "./signage";
 import { SIGNAGE_ASPECT, SIGNAGE_REFERENCE_SIZE } from "./kioskLayout";
 import { toSignageSlide, signageSlideBody, toSignageSettings, signageSettingsBody } from "./entities";
@@ -314,6 +317,7 @@ describe("signage entity mapping", () => {
     expect(toSignageSlide(row)).toEqual({
       id: "4",
       title: "Enrollment",
+      category: "footer",
       mediaPath: "signage/enroll.mp4",
       crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.3 },
       durationSeconds: 15.5,
@@ -339,5 +343,36 @@ describe("signage entity mapping", () => {
     const settings = toSignageSettings({ rotation_order: "shuffle", transition: "cut", default_duration_seconds: "8" });
     expect(settings).toEqual({ rotationOrder: "shuffle", transition: "cut", defaultDurationSeconds: 8 });
     expect(signageSettingsBody({ transition: "fade" })).toEqual({ transition: "fade" });
+  });
+});
+
+describe("signage categories", () => {
+  const slide = (id, category, mediaPath = `signage/${id}.mp4`) => ({ id, category, mediaPath, title: `t${id}` });
+
+  it("splits slides by category", () => {
+    const slides = [slide("1", "footer"), slide("2", "starting"), slide("3", "footer")];
+    expect(slidesInCategory(slides, "footer").map((s) => s.id)).toEqual(["1", "3"]);
+  });
+
+  it("reorders within a category and leaves the other category's slots alone", () => {
+    const slides = [slide("1", "footer"), slide("2", "starting"), slide("3", "footer"), slide("4", "starting")];
+    expect(reorderWithinCategory(slides, "3", -1)).toEqual(["3", "2", "1", "4"]);
+    expect(reorderWithinCategory(slides, "4", -1)).toEqual(["1", "4", "3", "2"]);
+    expect(reorderWithinCategory(slides, "1", -1)).toBeNull();
+    expect(reorderWithinCategory(slides, "3", 1)).toBeNull();
+  });
+
+  it("lists each shared file once with every category using it", () => {
+    const slides = [slide("1", "footer", "signage/x.mp4"), slide("2", "starting", "signage/x.mp4"), slide("3", "footer")];
+    const library = mediaLibrary(slides);
+    expect(library).toHaveLength(2);
+    expect(library.find((m) => m.mediaPath === "signage/x.mp4").categories).toEqual(["footer", "starting"]);
+  });
+
+  it("reads and writes the category", () => {
+    const row = { id: 1, title: "a", category: "starting", media_path: "signage/a.jpg", crop_x: 0, crop_y: 0, crop_w: 1, crop_h: 1, duration_seconds: 5, sort_order: 0, is_active: 1 };
+    expect(toSignageSlide(row).category).toBe("starting");
+    expect(toSignageSlide({ ...row, category: undefined }).category).toBe("footer");
+    expect(signageSlideBody({ category: "footer" })).toEqual({ category: "footer" });
   });
 });

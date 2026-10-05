@@ -1,4 +1,9 @@
-import { SIGNAGE_ASPECT } from "./kioskLayout";
+import {
+  SIGNAGE_ASPECT,
+  SIGNAGE_REFERENCE_SIZE,
+  STARTING_SIGNAGE_ASPECT,
+  STARTING_SIGNAGE_REFERENCE_SIZE,
+} from "./kioskLayout";
 
 // Signage: the images, GIFs and looping videos rotating in the kiosk's
 // bottom band, managed from the admin "Advertisements" page. Pure helpers
@@ -10,6 +15,67 @@ import { SIGNAGE_ASPECT } from "./kioskLayout";
 // advertisements, which would silently blank the band or the admin's own
 // previews. (The admin page's route is the exception: page URLs follow
 // page names, and in-app navigation isn't a request.)
+
+// ---- Categories ----
+//
+// A slide plays on one of two kiosk surfaces: the "footer" band (the bottom
+// whitespace under the panorama) or the "starting" rectangle (16:9, at the
+// bottom of the starting screen). Both share one rotation list and settings;
+// a slide's crop is cut to its own category's shape.
+
+export const SIGNAGE_CATEGORIES = {
+  footer: {
+    id: "footer",
+    label: "Footer",
+    noun: "footer advertisement",
+    where: "the white band along the bottom of the kiosk screen",
+    size: SIGNAGE_REFERENCE_SIZE,
+    aspect: SIGNAGE_ASPECT,
+  },
+  starting: {
+    id: "starting",
+    label: "Starting",
+    noun: "starting advertisement",
+    where: "the rectangle at the bottom of the kiosk starting screen",
+    size: STARTING_SIGNAGE_REFERENCE_SIZE,
+    aspect: STARTING_SIGNAGE_ASPECT,
+  },
+};
+export const SIGNAGE_CATEGORY_IDS = Object.keys(SIGNAGE_CATEGORIES);
+
+export function slidesInCategory(slides, category) {
+  return slides.filter((s) => s.category === category);
+}
+
+// The distinct media files across every slide, newest first, each with the
+// categories using it, so an admin can reuse a file already uploaded for the
+// other category instead of uploading it again. Files are shared by path and
+// the API deletes one only when the last slide using it goes.
+export function mediaLibrary(slides) {
+  const byPath = new Map();
+  for (const slide of slides) {
+    const entry = byPath.get(slide.mediaPath) ?? { mediaPath: slide.mediaPath, titles: [], categories: [] };
+    entry.titles.push(slide.title);
+    if (!entry.categories.includes(slide.category)) entry.categories.push(slide.category);
+    byPath.set(slide.mediaPath, entry);
+  }
+  return [...byPath.values()].reverse();
+}
+
+// The new global id order after moving slide `id` by `delta` within its own
+// category: the category's slides keep the positions they already occupy in
+// the full list, so the other category's order is untouched. Null at an end.
+export function reorderWithinCategory(slides, id, delta) {
+  const moved = slides.find((s) => s.id === id);
+  if (!moved) return null;
+  const peers = slidesInCategory(slides, moved.category).map((s) => s.id);
+  const from = peers.indexOf(id);
+  const to = from + delta;
+  if (to < 0 || to >= peers.length) return null;
+  peers.splice(to, 0, peers.splice(from, 1)[0]);
+  let next = 0;
+  return slides.map((s) => (s.category === moved.category ? peers[next++] : s.id));
+}
 
 // ---- Media ----
 

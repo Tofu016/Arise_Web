@@ -4,17 +4,21 @@ import KioskSignage from "../../components/KioskSignage";
 import SignageMedia from "../../components/SignageMedia";
 import SignageSlideEditor from "../../components/admin/SignageSlideEditor";
 import { publicPhotoUrl } from "../../utils/photoStore";
-import { SIGNAGE_REFERENCE_SIZE } from "../../utils/kioskLayout";
 import {
   DURATION_RULE,
+  SIGNAGE_CATEGORIES,
+  SIGNAGE_CATEGORY_IDS,
   SIGNAGE_MAX_SECONDS,
   SIGNAGE_MIN_SECONDS,
   describeWindow,
   formatSeconds,
   isVideoPath,
+  mediaLibrary,
   parseDuration,
+  reorderWithinCategory,
   serverClock,
   slideStatus,
+  slidesInCategory,
 } from "../../utils/signage";
 import chevronIcon from "../../assets/icons/chevron-right.svg";
 
@@ -101,7 +105,7 @@ function RotationSettings({ settings, onSave }) {
         </span>
       </div>
       <div className="signage-setting">
-        <span className="signage-field-label">Switching between ads</span>
+        <span className="signage-field-label">Switching between advertisements</span>
         <Segmented
           name="signage-transition"
           value={current.transition}
@@ -212,10 +216,13 @@ function SlideRow({ slide, position, count, status, busy, onMove, onToggle, onEd
   );
 }
 
-// Advertisements: the media rotating in the white band along the bottom of
-// the kiosk screen (signage, see utils/signage.js). The page reads top to
-// bottom as what the admin does: see what's playing now, adjust how the
-// rotation behaves, then manage the advertisements themselves.
+// Advertisements (signage, see utils/signage.js) in two categories: footer
+// advertisements in the white band along the bottom of the kiosk screen, and
+// starting advertisements in the 16:9 rectangle on the kiosk starting screen.
+// The page reads top to bottom as what the admin does: pick a category, see
+// what's playing now, adjust how the rotation behaves, then manage the
+// advertisements themselves. One uploaded file can be used by both
+// categories; it is deleted only with the last advertisement using it.
 export default function SignagePage() {
   const {
     slides,
@@ -232,6 +239,7 @@ export default function SignagePage() {
   } = useSignage();
   // null: closed; { slide: null }: adding; { slide }: editing.
   const [editor, setEditor] = useState(null);
+  const [category, setCategory] = useState("footer");
   const [busyId, setBusyId] = useState(null);
   const [tick, setTick] = useState(0);
 
@@ -248,7 +256,10 @@ export default function SignagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides, serverTime, readAt, tick]);
 
-  const liveSlides = slides.filter((s) => statuses[s.id] === "live");
+  const target = SIGNAGE_CATEGORIES[category];
+  const categorySlides = slidesInCategory(slides, category);
+  const library = useMemo(() => mediaLibrary(slides), [slides]);
+  const liveSlides = categorySlides.filter((s) => statuses[s.id] === "live");
   const roundSeconds = liveSlides.reduce((sum, s) => sum + s.durationSeconds, 0);
   const anyBusy = busyId !== null;
 
@@ -263,19 +274,24 @@ export default function SignagePage() {
     }
   };
 
-  const move = (index, delta) => {
-    const ids = slides.map((s) => s.id);
-    const [moved] = ids.splice(index, 1);
-    ids.splice(index + delta, 0, moved);
-    run(moved, () => reorderSlides(ids));
+  const move = (slide, delta) => {
+    const ids = reorderWithinCategory(slides, slide.id, delta);
+    if (ids) run(slide.id, () => reorderSlides(ids));
   };
 
   const remove = (slide) => {
-    if (!window.confirm(`Delete "${slide.title}"? Its file is deleted too. This can't be undone.`)) return;
+    const shared = slides.some((s) => s.id !== slide.id && s.mediaPath === slide.mediaPath);
+    const fileNote = shared
+      ? "Its file stays, because another advertisement still uses it."
+      : "Its file is deleted too.";
+    if (!window.confirm(`Delete "${slide.title}"? ${fileNote} This can't be undone.`)) return;
     run(slide.id, () => deleteSlide(slide));
   };
 
-  let liveSummary = "Nothing is playing. The kiosk shows a plain white band.";
+  let liveSummary =
+    category === "starting"
+      ? "Nothing is playing. The starting screen shows no advertisement."
+      : "Nothing is playing. The kiosk shows a plain white band.";
   if (liveSlides.length === 1) liveSummary = "1 advertisement playing, shown continuously.";
   else if (liveSlides.length > 1) {
     liveSummary = `${liveSlides.length} advertisements playing; one full round takes ${formatTotal(roundSeconds)}.`;
@@ -287,15 +303,29 @@ export default function SignagePage() {
         <div>
           <h2 className="admin-page-heading">Advertisements</h2>
           <p className="signage-page-intro">
-            Images, GIFs and videos shown in the band along the bottom of the kiosk screen (
-            {SIGNAGE_REFERENCE_SIZE.width} x {SIGNAGE_REFERENCE_SIZE.height} px). Several advertisements take turns;
-            kiosks pick up changes within five minutes.
+            Images, GIFs and videos shown on the kiosk. Footer advertisements play in the band along the bottom of
+            the screen ({SIGNAGE_CATEGORIES.footer.size.width} x {SIGNAGE_CATEGORIES.footer.size.height} px);
+            starting advertisements play in the rectangle on the starting screen (
+            {SIGNAGE_CATEGORIES.starting.size.width} x {SIGNAGE_CATEGORIES.starting.size.height} px). A file you
+            uploaded for one can be reused for the other. Kiosks pick up changes within five minutes.
           </p>
         </div>
         <button type="button" className="signage-add-btn" onClick={() => setEditor({ slide: null })} disabled={!settings}>
-          Add advertisement
+          Add {target.noun}
         </button>
       </header>
+
+      <div className="signage-tabs">
+        <Segmented
+          name="signage-category-tab"
+          value={category}
+          onChange={setCategory}
+          options={SIGNAGE_CATEGORY_IDS.map((id) => ({
+            id,
+            label: `${SIGNAGE_CATEGORIES[id].label} (${slidesInCategory(slides, id).length})`,
+          }))}
+        />
+      </div>
 
       {error && (
         <div className="error-box" role="alert">
@@ -310,14 +340,14 @@ export default function SignagePage() {
           <div className="signage-top-grid">
             <section className="signage-card" aria-labelledby="signage-live-title">
               <div className="signage-card-head">
-                <h3 id="signage-live-title">Playing on the kiosk now</h3>
+                <h3 id="signage-live-title">Playing now: {target.label.toLowerCase()}</h3>
                 <span className="signage-card-sub">{liveSummary}</span>
               </div>
-              <div className="signage-band-frame signage-band-frame--live">
+              <div className="signage-band-frame signage-band-frame--live" style={{ aspectRatio: target.aspect }}>
                 {liveSlides.length > 0 ? (
                   <KioskSignage slides={liveSlides} settings={settings} />
                 ) : (
-                  <span className="signage-band-empty">Plain white band</span>
+                  <span className="signage-band-empty">{category === "starting" ? "Nothing shown" : "Plain white band"}</span>
                 )}
               </div>
             </section>
@@ -327,8 +357,8 @@ export default function SignagePage() {
 
           <section className="signage-card" aria-labelledby="signage-list-title">
             <div className="signage-card-head">
-              <h3 id="signage-list-title">All advertisements</h3>
-              {slides.length > 1 && (
+              <h3 id="signage-list-title">All {target.label.toLowerCase()} advertisements</h3>
+              {categorySlides.length > 1 && (
                 <span className="signage-card-sub">
                   {settings.rotationOrder === "shuffle"
                     ? "Shuffle is on, so the order below is not used."
@@ -337,27 +367,28 @@ export default function SignagePage() {
               )}
             </div>
 
-            {slides.length === 0 ? (
+            {categorySlides.length === 0 ? (
               <div className="signage-empty">
-                <p className="signage-empty-title">No advertisements yet</p>
+                <p className="signage-empty-title">No {target.noun}s yet</p>
                 <p className="signage-field-hint">
-                  Add an image, GIF or video. You'll crop it to the band's shape before it goes live.
+                  Add an image, GIF or video, or reuse a file already uploaded. You'll crop it to the shape of{" "}
+                  {target.where} before it goes live.
                 </p>
                 <button type="button" className="signage-add-btn" onClick={() => setEditor({ slide: null })}>
-                  Add advertisement
+                  Add {target.noun}
                 </button>
               </div>
             ) : (
               <ol className="signage-list">
-                {slides.map((slide, i) => (
+                {categorySlides.map((slide, i) => (
                   <SlideRow
                     key={slide.id}
                     slide={slide}
                     position={i}
-                    count={slides.length}
+                    count={categorySlides.length}
                     status={statuses[slide.id]}
                     busy={anyBusy}
-                    onMove={(delta) => move(i, delta)}
+                    onMove={(delta) => move(slide, delta)}
                     onToggle={(active) => run(slide.id, () => setSlideActive(slide, active))}
                     onEdit={() => setEditor({ slide })}
                     onDelete={() => remove(slide)}
@@ -372,6 +403,8 @@ export default function SignagePage() {
       {editor && (
         <SignageSlideEditor
           slide={editor.slide}
+          category={category}
+          library={library}
           defaultDuration={settings?.defaultDurationSeconds}
           onSave={(draft) => saveSlide(editor.slide?.id ?? null, draft)}
           onClose={() => setEditor(null)}

@@ -40,10 +40,16 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
         "--kiosk-grid-height": `calc(${(KIOSK_PANORAMA_FRACTION / 2) * 100}vh - var(--kiosk-dialog-gap))`,
       }}
     >
-      <div className="kiosk-room-card" role="dialog" aria-label={roomName}>
-        <div className="kiosk-room-card-photo">
-          <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} />
-        </div>
+      <div className={"kiosk-room-card" + (photos.length === 0 ? " kiosk-room-card-no-photo" : "")} role="dialog" aria-label={roomName}>
+        {photos.length > 0 && (
+          <div className="kiosk-room-card-photo">
+            <RoomPhotoCarousel photos={photos} focus={roomPhotoFocus(placard)} alt={roomName} />
+          </div>
+        )}
+
+        <button type="button" className="kiosk-dialog-close kiosk-room-card-close" onClick={onClose} aria-label="Close">
+          <IconPlaceholder name="close" className="inline-icon-img" />
+        </button>
 
         <div className="kiosk-room-card-body">
           <h2 className="sidebar-room-title">{roomName}</h2>
@@ -92,9 +98,6 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
           </div>
         </div>
       </div>
-      <button type="button" className="kiosk-dialog-close" onClick={onClose} aria-label="Close">
-        <IconPlaceholder name="close" className="inline-icon-img" />
-      </button>
     </div>
   );
 }

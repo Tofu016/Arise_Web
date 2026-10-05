@@ -3,9 +3,10 @@ import IconPlaceholder from "../IconPlaceholder";
 import SignageCropper from "./SignageCropper";
 import SignageMedia from "../SignageMedia";
 import { publicPhotoUrl } from "../../utils/photoStore";
-import { SIGNAGE_REFERENCE_SIZE } from "../../utils/kioskLayout";
 import {
   DURATION_RULE,
+  SIGNAGE_CATEGORIES,
+  SIGNAGE_CATEGORY_IDS,
   SIGNAGE_IMAGE_TYPES,
   SIGNAGE_MAX_SECONDS,
   SIGNAGE_MIN_SECONDS,
@@ -37,6 +38,29 @@ function saveHint({ title, media, crop, durationValid, windowValid }) {
   return "";
 }
 
+// The already-uploaded files (from either category), to reuse for this one.
+function MediaLibrary({ items, onPick }) {
+  return (
+    <ul className="signage-library" aria-label="Uploaded files">
+      {items.map((item) => (
+        <li key={item.mediaPath}>
+          <button type="button" className="signage-library-item" onClick={() => onPick(item)} title={item.titles.join(", ")}>
+            {isVideoPath(item.mediaPath) ? (
+              <video src={publicPhotoUrl(item.mediaPath)} className="signage-library-thumb" muted preload="metadata" />
+            ) : (
+              <img src={publicPhotoUrl(item.mediaPath)} alt="" className="signage-library-thumb" loading="lazy" />
+            )}
+            <span className="signage-library-name">{item.titles[0]}</span>
+            <span className="signage-library-meta">
+              {item.categories.map((c) => SIGNAGE_CATEGORIES[c].label).join(" + ")}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // The add/edit dialog for one advertisement (signage slide): pick the file,
 // crop it to the kiosk's bottom band while watching a live preview, then
 // set its title, time on screen, run dates and on/off. The file is only
@@ -44,13 +68,17 @@ function saveHint({ title, media, crop, durationValid, windowValid }) {
 //
 // Deliberately not closed by clicking the backdrop: a stray click would
 // throw away a crop the admin spent a while lining up.
-export default function SignageSlideEditor({ slide, defaultDuration, onSave, onClose }) {
+export default function SignageSlideEditor({ slide, category: initialCategory, library, defaultDuration, onSave, onClose }) {
   const editing = !!slide;
   const fileInputRef = useRef(null);
   // Every object URL made for a picked file, revoked when the dialog closes.
   const objectUrls = useRef([]);
 
   const [title, setTitle] = useState(slide?.title ?? "");
+  const [category, setCategory] = useState(slide?.category ?? initialCategory ?? "footer");
+  // An already-uploaded file picked from the library (a path), instead of a new upload.
+  const [libraryPath, setLibraryPath] = useState(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [media, setMedia] = useState(() =>
     slide ? { src: publicPhotoUrl(slide.mediaPath), video: isVideoPath(slide.mediaPath), name: null } : null
@@ -66,6 +94,7 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const target = SIGNAGE_CATEGORIES[category];
   const mediaAspect = mediaInfo ? mediaInfo.width / mediaInfo.height : null;
   const videoSeconds = mediaInfo?.duration && Number.isFinite(mediaInfo.duration) ? mediaInfo.duration : null;
 
@@ -86,10 +115,30 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
     objectUrls.current.push(src);
     setError("");
     setFile(picked);
+    setLibraryPath(null);
+    setLibraryOpen(false);
     setMedia({ src, video: SIGNAGE_VIDEO_TYPES.includes(picked.type), name: picked.name });
     setMediaInfo(null);
     setCrop(null); // a new shape needs a new crop, picked once it loads
     if (!title.trim()) setTitle(picked.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+  };
+
+  const pickLibrary = (item) => {
+    setError("");
+    setFile(null);
+    setLibraryPath(item.mediaPath);
+    setLibraryOpen(false);
+    setMedia({ src: publicPhotoUrl(item.mediaPath), video: isVideoPath(item.mediaPath), name: null });
+    setMediaInfo(null);
+    setCrop(null);
+    if (!title.trim()) setTitle(item.titles[0]);
+  };
+
+  // A slide's crop is cut to its category's shape, so switching category
+  // starts over from the largest centered crop of the new shape.
+  const changeCategory = (next) => {
+    setCategory(next);
+    if (mediaAspect) setCrop(defaultCrop(mediaAspect, SIGNAGE_CATEGORIES[next].aspect));
   };
 
   // The media loaded: now its shape is known. Keep a stored crop that still
@@ -100,7 +149,7 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
     if (!info.width || !info.height) return;
     const aspect = info.width / info.height;
     setMediaInfo(info);
-    setCrop((current) => (current && cropMatchesShape(current, aspect) ? current : defaultCrop(aspect)));
+    setCrop((current) => (current && cropMatchesShape(current, aspect, target.aspect) ? current : defaultCrop(aspect, target.aspect)));
     if (!durationTouched && info.duration && Number.isFinite(info.duration)) {
       setDuration(formatSeconds(durationForVideo(info.duration)));
     }
@@ -122,7 +171,9 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
     try {
       await onSave({
         title: title.trim(),
+        category,
         ...(file ? { file } : {}),
+        ...(libraryPath && libraryPath !== slide?.mediaPath ? { mediaPath: libraryPath } : {}),
         crop: roundCrop(crop),
         durationSeconds: seconds,
         active,
@@ -160,7 +211,7 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
         onKeyDown={(e) => e.key === "Escape" && !saving && close()}
       >
         <div className="preview-header">
-          <h3 id="signage-editor-title">{editing ? "Edit advertisement" : "New advertisement"}</h3>
+          <h3 id="signage-editor-title">{editing ? "Edit" : "New"} {target.noun}</h3>
           <button type="button" className="close-btn" onClick={close} aria-label="Close" disabled={saving}>
             <IconPlaceholder name="close" className="signage-editor-close-icon" />
           </button>
@@ -187,12 +238,20 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
                 <div className={"signage-dropzone" + (dragOver ? " signage-dropzone--over" : "")} {...dropProps}>
                   <p className="signage-dropzone-title">Drop an image or video here</p>
                   <p className="signage-dropzone-hint">
-                    JPG, PNG, GIF, WebP, MP4 or WebM. Best at {SIGNAGE_REFERENCE_SIZE.width} x{" "}
-                    {SIGNAGE_REFERENCE_SIZE.height} px or larger. Videos play muted and loop.
+                    JPG, PNG, GIF, WebP, MP4 or WebM. Best at {target.size.width} x {target.size.height} px or larger.
+                    Videos play muted and loop.
                   </p>
-                  <button type="button" className="signage-btn signage-btn--accent" onClick={() => fileInputRef.current?.click()}>
-                    Choose file
-                  </button>
+                  <div className="signage-dropzone-actions">
+                    <button type="button" className="signage-btn signage-btn--accent" onClick={() => fileInputRef.current?.click()}>
+                      Choose file
+                    </button>
+                    {library.length > 0 && (
+                      <button type="button" className="signage-btn" onClick={() => setLibraryOpen((o) => !o)}>
+                        Use an uploaded file
+                      </button>
+                    )}
+                  </div>
+                  {libraryOpen && <MediaLibrary items={library} onPick={pickLibrary} />}
                 </div>
               ) : (
                 <div className={"signage-crop-area" + (dragOver ? " signage-dropzone--over" : "")} {...dropProps}>
@@ -204,6 +263,7 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
                     video={media.video}
                     crop={crop}
                     mediaAspect={mediaAspect}
+                    targetAspect={target.aspect}
                     onChange={setCrop}
                     onMediaInfo={handleMediaInfo}
                   />
@@ -212,7 +272,7 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
                       type="button"
                       className="signage-btn"
                       disabled={!crop}
-                      onClick={() => setCrop(scaleCrop(crop, 1 / ZOOM_STEP, mediaAspect))}
+                      onClick={() => setCrop(scaleCrop(crop, 1 / ZOOM_STEP, mediaAspect, target.aspect))}
                     >
                       Zoom in
                     </button>
@@ -220,24 +280,30 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
                       type="button"
                       className="signage-btn"
                       disabled={!crop}
-                      onClick={() => setCrop(scaleCrop(crop, ZOOM_STEP, mediaAspect))}
+                      onClick={() => setCrop(scaleCrop(crop, ZOOM_STEP, mediaAspect, target.aspect))}
                     >
                       Zoom out
                     </button>
-                    <button type="button" className="signage-btn" disabled={!mediaAspect} onClick={() => setCrop(defaultCrop(mediaAspect))}>
-                      Fit to band
+                    <button type="button" className="signage-btn" disabled={!mediaAspect} onClick={() => setCrop(defaultCrop(mediaAspect, target.aspect))}>
+                      Fit to frame
                     </button>
                     <span className="signage-crop-tools-spacer" />
+                    {library.length > 0 && (
+                      <button type="button" className="signage-btn" onClick={() => setLibraryOpen((o) => !o)}>
+                        Use an uploaded file
+                      </button>
+                    )}
                     <button type="button" className="signage-btn" onClick={() => fileInputRef.current?.click()}>
                       Replace file
                     </button>
                   </div>
+                  {libraryOpen && <MediaLibrary items={library} onPick={pickLibrary} />}
                   {mediaInfo && (
                     <p className="signage-media-facts">
                       {media.name ? `${media.name}: ` : ""}
                       {mediaInfo.width} x {mediaInfo.height} px
                       {videoSeconds ? `, ${videoSeconds.toFixed(1)} s video` : ""}
-                      {crop && crop.w * mediaInfo.width < SIGNAGE_REFERENCE_SIZE.width && (
+                      {crop && crop.w * mediaInfo.width < target.size.width && (
                         <span className="signage-warn">
                           {" "}
                           The visible part is only {Math.round(crop.w * mediaInfo.width)} px wide, so it will look soft on
@@ -257,15 +323,15 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
                 </h4>
                 <div className="signage-preview-row">
                   <div className="signage-preview-band-wrap">
-                    <div className="signage-band-frame">
+                    <div className="signage-band-frame" style={{ aspectRatio: target.aspect }}>
                       <SignageMedia src={media.src} video={media.video} crop={crop} />
                     </div>
-                    <span className="signage-caption">Bottom band, as the kiosk shows it</span>
+                    <span className="signage-caption">{target.label} advertisement, as the kiosk shows it</span>
                   </div>
                   <div className="signage-kiosk-mock" aria-hidden="true">
                     <div className="signage-kiosk-mock-header" />
                     <div className="signage-kiosk-mock-panorama" />
-                    <div className="signage-kiosk-mock-band">
+                    <div className={`signage-kiosk-mock-band signage-kiosk-mock-band--${category}`}>
                       <SignageMedia src={media.src} video={media.video} crop={crop} />
                     </div>
                     <span className="signage-caption">Whole screen</span>
@@ -279,6 +345,27 @@ export default function SignageSlideEditor({ slide, defaultDuration, onSave, onC
             <h4 className="signage-editor-step">
               <span className="signage-step-num">{media && crop ? 3 : 2}</span> Details
             </h4>
+
+            <fieldset className="signage-field">
+              <legend className="signage-field-label">Plays on</legend>
+              <div className="signage-segmented" role="radiogroup">
+                {SIGNAGE_CATEGORY_IDS.map((id) => (
+                  <label key={id} className={"signage-segmented-opt" + (category === id ? " signage-segmented-opt--on" : "")}>
+                    <input
+                      type="radio"
+                      name="signage-category"
+                      value={id}
+                      checked={category === id}
+                      onChange={() => changeCategory(id)}
+                    />
+                    {SIGNAGE_CATEGORIES[id].label}
+                  </label>
+                ))}
+              </div>
+              <span className="signage-field-hint">
+                {target.label} advertisements play in {target.where} ({target.size.width} x {target.size.height} px).
+              </span>
+            </fieldset>
 
             <label className="signage-field">
               <span className="signage-field-label">Name</span>

@@ -16,7 +16,7 @@ const ZOOM_STEP = 1.1;
 //
 // `crop` is null until the parent knows the media's shape (reported
 // through onMediaInfo once it loads) and has picked a starting crop.
-export default function SignageCropper({ src, video, crop, mediaAspect, onChange, onMediaInfo }) {
+export default function SignageCropper({ src, video, crop, mediaAspect, targetAspect, onChange, onMediaInfo }) {
   const wrapRef = useRef(null);
   const overlayRef = useRef(null);
   const drag = useRef(null);
@@ -58,7 +58,7 @@ export default function SignageCropper({ src, video, crop, mediaAspect, onChange
       onChange(moveCrop(d.startCrop, (e.clientX - d.startX) / d.rect.width, (e.clientY - d.startY) / d.rect.height));
     } else {
       const point = { x: (e.clientX - d.rect.left) / d.rect.width, y: (e.clientY - d.rect.top) / d.rect.height };
-      onChange(resizeCrop(d.startCrop, d.handle, point, mediaAspect));
+      onChange(resizeCrop(d.startCrop, d.handle, point, mediaAspect, targetAspect));
     }
   };
 
@@ -73,9 +73,9 @@ export default function SignageCropper({ src, video, crop, mediaAspect, onChange
     if (moves[e.key]) {
       onChange(moveCrop(crop, ...moves[e.key]));
     } else if (e.key === "+" || e.key === "=") {
-      onChange(scaleCrop(crop, 1 / ZOOM_STEP, mediaAspect));
+      onChange(scaleCrop(crop, 1 / ZOOM_STEP, mediaAspect, targetAspect));
     } else if (e.key === "-" || e.key === "_") {
-      onChange(scaleCrop(crop, ZOOM_STEP, mediaAspect));
+      onChange(scaleCrop(crop, ZOOM_STEP, mediaAspect, targetAspect));
     } else {
       return;
     }

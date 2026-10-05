@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { KIOSK_RAISED_STYLE } from "../utils/kioskLayout";
+import { KIOSK_RAISED_STYLE, KIOSK_TOP_INSET } from "../utils/kioskLayout";
+import sdcaLogo from "../assets/images/sdca-logo-full.png";
+import KioskSignage from "./KioskSignage";
 import buttonImg from "../assets/kiosk-startup/button.png";
 import letterA from "../assets/kiosk-startup/letter-a.png";
 import letterR from "../assets/kiosk-startup/letter-r.png";
@@ -38,7 +40,7 @@ const LOGO_SUBTITLE_GAP_PX = 24;
 // A moment on the finished logo before the screen fades into the kiosk.
 const FINISHED_HOLD_MS = 500;
 
-export default function KioskStartScreen({ hidden, onStart }) {
+export default function KioskStartScreen({ hidden, onStart, signageSlides = [], signageSettings = null }) {
   const [phase, setPhase] = useState("idle"); // idle, leaving (glide), playing
   const timer = useRef(null);
   const glideTimer = useRef(null);
@@ -90,6 +92,11 @@ export default function KioskStartScreen({ hidden, onStart }) {
       aria-hidden={hidden}
       aria-label="ARISE, tap to start"
     >
+      {/* The SDCA logo exactly where the kiosk header holds it once the tour
+          starts, so the two line up as this screen fades out. */}
+      <span className="kiosk-start-header" style={{ height: `${KIOSK_TOP_INSET * 100}%` }}>
+        <img src={sdcaLogo} alt="" className="kiosk-start-header-logo" draggable="false" />
+      </span>
       <span className="kiosk-start-logo-breathe">
         <span className="kiosk-start-logo" ref={logoRef} aria-hidden="true">
           <span className="kiosk-logo-frame" />
@@ -117,6 +124,13 @@ export default function KioskStartScreen({ hidden, onStart }) {
       <span className="kiosk-start-title">ARISE</span>
       <span className="kiosk-start-subtitle" ref={subtitleRef}>360° Virtual Map of SDCA</span>
       <span className="kiosk-start-prompt">Tap to Start</span>
+      {/* Starting advertisements: a 16:9 rectangle along the bottom, absent
+          when none is live. */}
+      {signageSlides.length > 0 && (
+        <span className="kiosk-start-signage">
+          <KioskSignage slides={signageSlides} settings={signageSettings} />
+        </span>
+      )}
     </button>
   );
 }

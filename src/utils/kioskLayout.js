@@ -20,6 +20,12 @@ export const SIGNAGE_REFERENCE_SIZE = {
 };
 export const SIGNAGE_ASPECT = SIGNAGE_REFERENCE_SIZE.width / SIGNAGE_REFERENCE_SIZE.height;
 
+// Starting signage: the 16:9 rectangle at the bottom of the kiosk starting
+// screen (KioskIntroOverlay). Authored at 1280 x 720; it is scaled to the
+// screen's width, so only its shape matters when cropping.
+export const STARTING_SIGNAGE_REFERENCE_SIZE = { width: 1280, height: 720 };
+export const STARTING_SIGNAGE_ASPECT = STARTING_SIGNAGE_REFERENCE_SIZE.width / STARTING_SIGNAGE_REFERENCE_SIZE.height;
+
 // Where the kiosk dialog grid (KioskDialog / KioskRoomCard, and the walk bar
 // that replaces its keyboard) starts, as a fraction of screen height. The
 // grid is half the panorama band tall, so it ends at

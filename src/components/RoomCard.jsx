@@ -5,7 +5,6 @@ import { useToast } from "../context/ToastContext";
 import { buildingLabel, floorLabel } from "../utils/constants";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
-import placeholderIcon from "../assets/icons/icon-placeholder.svg";
 import locationIcon from "../assets/icons/location.svg";
 import linkIcon from "../assets/icons/link.svg";
 import linkIconWhite from "../assets/icons/link-white.svg";
@@ -309,14 +308,10 @@ export function RoomPhotoCarousel({ photos, focus = {}, alt, onOpen }) {
     e.stopPropagation();
   };
 
+  if (photos.length === 0) return null;
+
   let content;
-  if (photos.length === 0) {
-    content = (
-      <div className="sidebar-room-carousel-placeholder">
-        <img src={placeholderIcon} alt="No photo" />
-      </div>
-    );
-  } else if (!url) {
+  if (!url) {
     content = (
       <div className="sidebar-room-carousel-empty">
         {error ? "Couldn't load photo." : <PhotoLoading />}
