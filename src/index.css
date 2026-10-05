@@ -11086,3 +11086,51 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
   color: var(--danger-text);
   font-size: 13px;
 }
+
+/* ---------- Emergency Exit stairs banner ----------
+   Over the panorama while a Nearest Exit route's next step is down the hidden
+   fire stairs. Desktop: below the place-name pill (.floating-title-wrap,
+   top 16px), inside the same 140px side gutters that keep clear of the rail and
+   the account button. Kiosk: the panorama band has no title pill over it, and
+   the right-hand side keeps clear of the FAB dock (closed width 72px). */
+.emergency-stairs-banner {
+  position: absolute;
+  top: 76px;
+  left: 140px;
+  right: 140px;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 280px);
+  z-index: 27;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--danger);
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+}
+.emergency-stairs-banner-kiosk {
+  top: 12px;
+  left: 16px;
+  right: calc(72px + 16px);
+  max-width: calc(100% - 16px - 72px - 16px);
+}
+.emergency-stairs-banner-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.emergency-stairs-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.emergency-stairs-banner-text strong {
+  font-size: 18px;
+  font-weight: 700;
+}

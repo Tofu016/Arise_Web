@@ -22,7 +22,6 @@ const nodeRow = {
   building: "gd1",
   floor: 1,
   type: "hallway",
-  leads_to_floors: [],
   photo_path: "panoramas/gd1/a.jpg",
   rooms: [{ id: 7, room_name: "101" }, { id: 8, room_name: "102" }],
   neighbors: [{ neighbor_id: "n2", yaw: 90, pitch: -5 }, { neighbor_id: "n3", yaw: 180, pitch: 0 }],
@@ -78,7 +77,6 @@ describe("toNode", () => {
       building: "gd1",
       floor: 1,
       type: "hallway",
-      leadsToFloors: [],
       startingNode: false,
       startingViewYaw: null,
       startingViewPitch: null,
@@ -92,7 +90,7 @@ describe("toNode", () => {
         n2: { yaw: 90, pitch: -5, defaultYaw: null, defaultPitch: null },
         n3: { yaw: 180, pitch: 0, defaultYaw: null, defaultPitch: null },
       },
-      markers: [{ id: 1, type: "emergency_exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorId: null, accessibleFloors: [] }],
+      markers: [{ id: 1, type: "emergency_exit", label: "Assembly Point", yaw: 10, pitch: 2, elevatorId: null, accessibleFloors: [], landings: [] }],
       flowchartPosition: { x: 12, y: 34 },
       createdAt: "c",
       updatedAt: "u",
@@ -102,7 +100,6 @@ describe("toNode", () => {
   it("uses safe empties for a bare row", () => {
     const n = toNode({ id: "x", name: "X" });
     expect(n).toMatchObject({ photo: "", rooms: [], neighbors: [], hotspots: {}, markers: [] });
-    expect(n.leadsToFloors).toEqual([]);
     expect(n.flowchartPosition).toBeNull();
   });
 
@@ -114,9 +111,16 @@ describe("toNode", () => {
     });
   });
 
-  it("keeps a leads-to-floor of 0, and reads multiple floors", () => {
-    expect(toNode({ ...nodeRow, leads_to_floors: [0] }).leadsToFloors).toEqual([0]);
-    expect(toNode({ ...nodeRow, leads_to_floors: [-1, 0, 2] }).leadsToFloors).toEqual([-1, 0, 2]);
+  it("reads an emergency exit marker's landings, lowest floor first as the backend sends them", () => {
+    const n = toNode({
+      ...nodeRow,
+      markers: [{ id: 4, type: "emergency_exit", label: "Emergency Exit", yaw: 1, pitch: 2, landings: ["g_f1_a", "g_f2_b"] }],
+    });
+    expect(n.markers[0].landings).toEqual(["g_f1_a", "g_f2_b"]);
+  });
+
+  it("gives every marker an empty landings list when the backend sent none", () => {
+    expect(toNode(nodeRow).markers.every((m) => Array.isArray(m.landings))).toBe(true);
   });
 
   it("reads a set starting view, and each edge's own default view", () => {
@@ -134,17 +138,16 @@ describe("toNode", () => {
 
 describe("node request bodies", () => {
   it("create drops empty optionals", () => {
-    const body = nodeCreateBody({ id: "a", name: "A", building: "gd1", floor: 1, type: "hallway", photo: "", leadsToFloors: [] });
+    const body = nodeCreateBody({ id: "a", name: "A", building: "gd1", floor: 1, type: "hallway", photo: "" });
     expect(body.photo_path).toBeUndefined();
-    expect(body.leads_to_floors).toBeUndefined();
-    expect(nodeCreateBody({ id: "a", leadsToFloors: [0, 2], photo: "p" })).toMatchObject({ leads_to_floors: [0, 2], photo_path: "p" });
+    expect(body).not.toHaveProperty("leads_to_floors");
+    expect(nodeCreateBody({ id: "a", photo: "p" })).toMatchObject({ photo_path: "p" });
   });
 
   it("patch sends only the fields given, under wire names", () => {
-    expect(nodePatchBody({ name: "N", photo: "", leadsToFloors: [] })).toEqual({
+    expect(nodePatchBody({ name: "N", photo: "" })).toEqual({
       name: "N",
       photo_path: "",
-      leads_to_floors: [],
     });
     expect(nodePatchBody({})).toEqual({});
   });

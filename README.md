@@ -334,18 +334,17 @@ Under **Virtual Map → Node Editor**:
    - **Name** — a human-readable label, e.g. "Hallway near Rm 203".
    - **Building** / **Floor** — pick from the dropdowns. Floors offered are
      specific to the selected building.
-   - **Type** — Hallway, Lobby, Entrance, Stairs, Fire Exit, Open Area,
-     Parking, or Building Transition (a walkable GD2 ↔ GD3 link).
-   - **Leads to floor(s)** — only shown for Stairs and Fire Exit (optional for
-     a Fire Exit ticked "Emergency Exit Destination Point" below, since an
-     exit door has no other floor to lead to). Multi-select,
-     since a stairs/fire-exit node can connect both up and down (e.g. a
-     mid-building stairwell). Checked against the node's own neighbor
-     links (managed in Virtual Map Navigation Editor) and flags a warning —
-     not a blocking error, since a brand-new node has no links yet — if the
-     two disagree.
-   - **Emergency Exit Destination Point** — shown for Open Area, Parking,
-     Lobby, Entrance and Fire Exit. Tick it only if someone who reaches this
+   - **Type**: Hallway, Lobby, Entrance, Stairs, Open Area, Parking, or
+     Building Transition (a walkable GD2 ↔ GD3 link). There is no Fire Exit
+     type: a node that holds a fire stairwell door keeps its real type (often
+     a Hallway) and carries an **Emergency Exit marker** instead (see
+     "Point-of-interest markers").
+   - **Floors reached**: shown for Stairs, read-only: the floors the node's
+     own neighbor links reach (managed in Virtual Map Navigation Editor), so
+     there is no second list to keep in step with them.
+   - **Emergency Exit Destination Point**: shown for Open Area, Parking,
+     Lobby and Entrance, and for any node carrying an Emergency Exit marker
+     (a fire door that leads outside). Tick it only if someone who reaches this
      node is out of danger: Nearest Exit ends its route at ticked nodes, and
      nothing is automatic (an unticked Open Area is not a destination). Only
      Floor 1 and Underground nodes can be ticked, and the checkbox is
@@ -432,8 +431,25 @@ needing to re-upload from scratch.
 Fixed labels that stay put in the panorama: Room, Facility, Emergency Exit,
 Fire Extinguisher. Clicking a Room marker opens that room's panel
 (it shows "No information." if the label matches no room details); the
-other three are purely informational: nothing happens when a visitor
-clicks one.
+Fire Extinguisher marker is purely informational: nothing happens when a
+visitor clicks it. The **Emergency Exit** marker is informational too,
+except while it is the next step of a Nearest Exit route (see below).
+
+**Emergency Exit** is what makes a node a *fire exit node*. Place one where
+a fire stairwell door is in the photo. It lists its **landings**: the nodes
+on other floors of the same building where the hidden stairs behind that
+door come out (stored in the `node_marker_landings` table, one directed row
+per landing; the API returns them on the marker as `landings`, lowest floor
+first). The node keeps its own type, so a hallway stays a hallway and is
+walked through by ordinary directions; only Nearest Exit uses the
+landings. A marker with no landings is a fire door that leads straight
+outside, and its node is ticked as an Emergency Exit Destination Point.
+Managed from **Virtual Map Navigation Editor**: pick marker type Emergency
+Exit, tick the landings (the lowest is used first, the rest are the way
+round a blocked one), then **Place on panorama**. **Edit landings** changes
+them later. **Emergency Coverage** reports a landing that is missing, in
+another building or on the same floor, a marker that leads nowhere, and a
+fire exit node that also has an ordinary link to another floor.
 
 **Elevator** is the one marker that navigates, and it differs in a second
 way too. First, clicking one in the public viewer actually rides the
@@ -681,21 +697,32 @@ view a portrait aspect ratio would produce from the same camera angle.
    the whole point of picking that mode.
 7. The close button cancels guidance at any time.
 
-**Emergency exits are excluded from routing.** A 🚨 Fire Exit-type node is
-never routed *through* — it's for emergency use, not everyday wayfinding.
-It can still be a route's own start or end point (searching for a fire
-exit and asking for directions FROM it still works). The one route that
-passes through them is **Nearest Exit**, which works like this:
+**Fire stairs are emergency-only.** A node carrying an **Emergency Exit
+marker** (a fire exit node) is an ordinary node for everyday directions, usually a
+hallway, and is walked through like any other. What is emergency-only is the
+hidden fire stairs behind the marker's door: the marker lists the nodes
+those stairs come out at (its **landings**), and only **Nearest Exit** ever
+takes them. Ordinary directions walk neighbor links, and a landing is not
+one. The one route that uses them is **Nearest Exit**, which works like this:
 
 - **Destination.** The nearest Emergency Exit Destination Point: an Open
-  Area, Parking, Lobby, Entrance or Fire Exit node on Floor 1 or Underground
-  that an admin ticked. Nothing is automatic and no type is trusted by
-  itself (a Fire Exit may be a stairwell, an Entrance or Lobby may be
-  indoors). A building with nothing ticked has no destination and gets the
-  no-route message with the emergency numbers. A visitor already standing
-  on a ticked node is told they have arrived at once.
-- **Never an elevator.** Only neighbor links are walked. Fire stairwells and
-  Stairs are passed through freely.
+  Area, Parking, Lobby or Entrance node, or a node with an Emergency Exit
+  marker (a fire door to the street), on Floor 1 or Underground that an admin
+  ticked. Nothing is automatic and no type is trusted by itself (an Entrance
+  or Lobby may be indoors). A building with nothing ticked has no destination
+  and gets the no-route message with the emergency numbers. A visitor already
+  standing on a ticked node is told they have arrived at once.
+- **Never an elevator.** Only neighbor links and the markers' landings are
+  walked. Stairs are passed through freely.
+- **Fire stairs first, within reason.** The hidden fire stairs are protected,
+  so a route favors them over an ordinary flight of Stairs by
+  `FIRE_STAIRS_PREFERENCE` extra hops (3, in `src/utils/constants.js`). A
+  fire exit a few hops further away than an ordinary staircase still wins; one
+  much further loses to it, with no special rule needed. A marker lists every
+  floor its stairwell reaches: the lowest landing is taken first, and the
+  others are the way round when "This way is blocked" is reported. The visitor
+  is told "Emergency Exit stairs ahead" (banner, glowing marker and spoken
+  line) because the door is a marker in the photo, not an arrow.
 - **Down before up.** A route may not rise above its ceiling: the higher of
   the visitor's own floor and Floor 1, which is the ground floor in every
   building. So a visitor on floor 1 is never sent up and over, while someone
@@ -740,7 +767,6 @@ directly — this is the shape the frontend actually works with after
   building: "gd1",                   // gd1 | gd2 | gd3 | any admin-created building id
   floor: 2,                          // -1 = UG, 1 = Ground, 2, 3, ...
   type: "hallway",
-  leadsToFloors: [],                 // set only for stairs / fire_exit types
   photo: "panoramas/gd1/gd1_f2_hallway01.webp",  // a path, not a public URL — resolved through
                                                    // the protected-photo endpoint at view time
   rooms: ["203", "204"],

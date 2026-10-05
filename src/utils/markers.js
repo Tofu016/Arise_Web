@@ -12,6 +12,8 @@ import { namesOfKind } from "./search";
 //   floor-not-served  an elevator landing on a floor its Elevator does not stop at
 //   no-details        a facility with no saved details (or an empty record), so its
 //                     panel reads "No information."
+//   exit-no-landing   an emergency exit marker with no landings on a node that is not
+//                     ticked as a destination, so it leads nowhere
 //   origin            yaw and pitch both 0, the placeholder a marker keeps until placed
 export const MARKER_PROBLEMS = {
   "blank-label": "No label.",
@@ -20,6 +22,8 @@ export const MARKER_PROBLEMS = {
   "no-elevator": "Points at an Elevator that no longer exists.",
   "floor-not-served": "Its Elevator does not stop at this floor.",
   "no-details": "No saved details yet, so its panel reads \"No information.\" Add them in the Room and Facility Editor.",
+  "exit-no-landing":
+    "Emergency exit with no landings, and its node is not an Emergency Exit Destination Point. Add landings, or tick the node if this door leads outside.",
   origin: "Still at the default position (yaw 0, pitch 0).",
 };
 
@@ -70,6 +74,9 @@ export function inventoryMarkers(nodes, elevators = [], getForRoom = null) {
         const elevator = m.elevatorId ? elevatorById.get(m.elevatorId) : null;
         if (!elevator) problems.push("no-elevator");
         else if (!elevator.accessibleFloors.includes(Number(node.floor))) problems.push("floor-not-served");
+      }
+      if (m.type === "emergency_exit" && (m.landings || []).length === 0 && !node.isEmergencyDestination) {
+        problems.push("exit-no-landing");
       }
       if (m.type === "facility" && getForRoom && normalize(m.label) && !hasDetails(getForRoom(m.label))) problems.push("no-details");
       if (Number(m.yaw) === 0 && Number(m.pitch) === 0) problems.push("origin");

@@ -37,12 +37,15 @@ function toMarker(m) {
 // stops have no floors at all, so toStop() below deliberately doesn't call
 // this. accessibleFloors (and an elevator marker's label) are read-time
 // copies joined from the one `elevators` row, never stored per marker, so
-// every landing of the same elevator always agrees.
+// every landing of the same elevator always agrees. An emergency exit marker
+// carries `landings`: the node ids its hidden fire stairs come out at, lowest
+// floor first (see utils/emergencyExits.js).
 function toNodeMarker(m) {
   return {
     ...toMarker(m),
     elevatorId: m.elevator_id ?? null,
     accessibleFloors: (m.accessible_floors || []).map(Number),
+    landings: m.landings || [],
   };
 }
 
@@ -65,7 +68,6 @@ export function toNode(row) {
     building: row.building,
     floor: Number(row.floor),
     type: row.type,
-    leadsToFloors: (row.leads_to_floors || []).map(Number),
     startingNode: Number(row.is_starting_node) === 1,
     // The view to land on when a visitor is dropped onto this node from
     // the floor/building picker (only meaningful while startingNode is
@@ -106,7 +108,6 @@ export function nodeCreateBody(item) {
     floor: item.floor,
     type: item.type,
     photo_path: item.photo || undefined,
-    leads_to_floors: item.leadsToFloors?.length ? item.leadsToFloors : undefined,
   };
 }
 
@@ -117,7 +118,6 @@ export function nodePatchBody(patch) {
     floor: "floor",
     type: "type",
     photo: "photo_path",
-    leadsToFloors: "leads_to_floors",
   });
   if (patch.startingNode !== undefined) body.is_starting_node = patch.startingNode ? 1 : 0;
   if (patch.startingViewYaw !== undefined) body.starting_view_yaw = patch.startingViewYaw;

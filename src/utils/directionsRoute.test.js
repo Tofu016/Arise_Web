@@ -121,7 +121,7 @@ describe("getEmergencyDirections", () => {
     { id: "stairs2", name: "S2", floor: 2, type: "stairs", neighbors: ["p", "stairs1"] },
     { id: "stairs1", name: "S1", floor: 1, type: "stairs", neighbors: ["stairs2", "door"] },
     {
-      id: "door", name: "Main Door", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["stairs1"],
+      id: "door", name: "Main Door", floor: 1, type: "entrance", isEmergencyDestination: true, neighbors: ["stairs1"],
       markers: [elevatorMarker("m2", "E1", [1, 2])],
     },
   ];
@@ -151,7 +151,7 @@ describe("getEmergencyDirections", () => {
   it("leaves transportMode null on a same-floor exit route", () => {
     const sameFloor = [
       { id: "a", name: "A", floor: 1, neighbors: ["x1"] },
-      { id: "x1", name: "X1", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["a"] },
+      { id: "x1", name: "X1", floor: 1, type: "entrance", isEmergencyDestination: true, neighbors: ["a"] },
     ];
     expect(route.getEmergencyDirections(open("a"), sameFloor)).toMatchObject({
       path: ["a", "x1"], transportMode: null,
@@ -162,7 +162,7 @@ describe("getEmergencyDirections", () => {
     const climb = [
       { id: "a", name: "A", floor: 1, neighbors: ["b"] },
       { id: "b", name: "B", floor: 2, neighbors: ["a", "x"] },
-      { id: "x", name: "X", floor: 1, type: "fire_exit", isEmergencyDestination: true, neighbors: ["b"] },
+      { id: "x", name: "X", floor: 1, type: "entrance", isEmergencyDestination: true, neighbors: ["b"] },
     ]; // the only way to the exit goes over floor 2
     expect(route.getEmergencyDirections(open("a"), climb).emergency).toMatchObject({ ascends: true });
   });
@@ -176,8 +176,8 @@ describe("blockNextStop and following an emergency route", () => {
     mk("x", ["a", "near"]),
     mk("y", ["a", "f1"]),
     mk("f1", ["y", "far"]),
-    mk("near", ["x"], { type: "fire_exit", isEmergencyDestination: true }),
-    mk("far", ["f1"], { type: "fire_exit", isEmergencyDestination: true }),
+    mk("near", ["x"], { type: "entrance", isEmergencyDestination: true }),
+    mk("far", ["f1"], { type: "entrance", isEmergencyDestination: true }),
   ];
   const start = () => route.getEmergencyDirections(route.openDirections(graph[0]), graph);
 
@@ -237,6 +237,47 @@ describe("nextStep with an elevator ride", () => {
   it("falls back to a plain walk when there is truly no hotspot and no elevator ride", () => {
     const noRide = [{ id: "p", floor: 1 }, { id: "q", floor: 2 }];
     expect(route.nextStep(d, [], noRide)).toEqual({ kind: "walk", id: "q" });
+  });
+});
+
+describe("a step down the hidden fire stairs", () => {
+  const exitMarker = (id, landings, yaw) => ({ id, type: "emergency_exit", label: "Emergency Exit", yaw, pitch: 0, landings });
+  const stairwell = [
+    { id: "top", name: "Top", floor: 3, neighbors: [], markers: [exitMarker(1, ["low"], 90)] },
+    { id: "low", name: "Low", floor: 1, type: "entrance", isEmergencyDestination: true, neighbors: [], markers: [exitMarker(2, [], 10)] },
+  ];
+  const emergency = { path: ["top", "low"], stepIndex: 0, emergency: { blocked: [], ascends: false } };
+
+  it("is a fireStairs step on an emergency route, arriving facing away from the landing's own door", () => {
+    const step = route.nextStep(emergency, [], stairwell);
+    expect(step).toMatchObject({ kind: "fireStairs", id: "low", yaw: 190 });
+    expect(step.stairs.toFloor).toBe(1);
+  });
+
+  it("is only ever used on an emergency route: ordinary directions never take it", () => {
+    expect(route.nextStep({ path: ["top", "low"], stepIndex: 0 }, [], stairwell)).toEqual({ kind: "walk", id: "low" });
+  });
+
+  it("still arrives with no forced facing when the landing has no door of its own", () => {
+    const plain = stairwell.map((n) => (n.id === "low" ? { ...n, markers: [] } : n));
+    expect(route.nextStep(emergency, [], plain).yaw).toBeUndefined();
+  });
+
+  it("tells the panel which marker to highlight, the floor, and which way it goes", () => {
+    const progress = route.routeProgress(emergency, { byId: Object.fromEntries(stairwell.map((n) => [n.id, n])), hotspots: [], entryYaw: null, nodes: stairwell });
+    expect(progress.nextFireStairs).toEqual({ markerId: 1, floor: 1, goesDown: true });
+    expect(progress.nextElevator).toBeNull();
+  });
+
+  it("is absent on an ordinary route and on a plain walk", () => {
+    const byIdAll = Object.fromEntries(stairwell.map((n) => [n.id, n]));
+    const ordinary = route.routeProgress({ path: ["top", "low"], stepIndex: 0 }, { byId: byIdAll, hotspots: [], entryYaw: null, nodes: stairwell });
+    expect(ordinary.nextFireStairs).toBeNull();
+  });
+
+  it("an emergency route plans through the fire stairs and then to the exit", () => {
+    const next = route.getEmergencyDirections(route.openDirections(stairwell[0]), stairwell);
+    expect(next).toMatchObject({ path: ["top", "low"], toId: "low", transportMode: "stairs", error: "" });
   });
 });
 

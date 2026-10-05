@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { EMERGENCY_DESTINATION_INDOOR_TYPES, EMERGENCY_DESTINATION_TYPES, GROUND_FLOOR, NODE_TYPES, TRANSITION_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
+import { EMERGENCY_DESTINATION_INDOOR_TYPES, EMERGENCY_DESTINATION_TYPES, GROUND_FLOOR, NODE_TYPES, allBuildings, campusForBuilding, floorLabel, floorsForBuilding, suggestNodeId } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { validateNode } from "../utils/validation";
+import { isFireExitNode } from "../utils/emergencyExits";
 import { useAutoId } from "../hooks/useAutoId";
 import FaceReviewPanel from "./FaceReviewPanel";
 import { photoFilename } from "../utils/photoStore";
@@ -15,7 +16,6 @@ const emptyDraft = () => ({
   building: "gd1",
   floor: 1,
   type: "hallway",
-  leadsToFloors: [],
   startingNode: false,
   campusEntrance: false,
   buildingEntrance: false,
@@ -85,20 +85,19 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         if (!validFloors.includes(Number(d.floor))) {
           next.floor = validFloors[0];
         }
-        next.leadsToFloors = [];
       }
 
       // Campus/building entrance only make sense for entrance-type nodes —
-      // clear them silently if the type changes away, same as leadsToFloors
-      // above.
+      // clear them silently if the type changes away.
       if (key === "type" && value !== "entrance") {
         next.campusEntrance = false;
         next.buildingEntrance = false;
       }
 
-      // Same for the destination tick: only some types can carry it, so
-      // changing to any other type drops it.
-      if (key === "type" && !EMERGENCY_DESTINATION_TYPES.includes(value)) {
+      // Same for the destination tick: only some types can carry it (or a node
+      // with an Emergency Exit marker, a fire door), so changing to any other
+      // type drops it.
+      if (key === "type" && !EMERGENCY_DESTINATION_TYPES.includes(value) && !isFireExitNode(d)) {
         next.isEmergencyDestination = false;
       }
       // A destination point can only be on the ground floor or below: the
@@ -212,15 +211,6 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     setDraft((d) => ({ ...d, rooms: (d.rooms || []).filter((r) => r !== room) }));
   };
 
-  const toggleLeadsToFloor = (floor) => {
-    setDraft((d) => ({
-      ...d,
-      leadsToFloors: (d.leadsToFloors || []).includes(floor)
-        ? d.leadsToFloors.filter((f) => f !== floor)
-        : [...(d.leadsToFloors || []), floor].sort((a, b) => a - b),
-    }));
-  };
-
   const handleSave = () => {
     if (copyState === "copying") {
       setErrors(["The photo is still uploading. Wait for it to finish before saving."]);
@@ -229,7 +219,6 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     const normalized = {
       ...draft,
       floor: Number(draft.floor),
-      leadsToFloors: (draft.leadsToFloors || []).map(Number).sort((a, b) => a - b),
     };
     const validationErrors = validateNode(normalized, nodes, mode === "edit" ? node.id : null);
     if (validationErrors.length > 0) {
@@ -239,25 +228,18 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     onSave(normalized, mode === "edit" ? node.id : null);
   };
 
-  const isTransitionType = TRANSITION_TYPES.includes(draft.type);
-
-  // What this node's actual wiring says it leads to, independent of what's
-  // declared above — neighbor links are only ever edited from Navigation
-  // Editor (see the removed-neighbor-linking note below), so this can
-  // legitimately be empty on a brand-new node or disagree with the
-  // declared floors if the graph was wired up differently. Surfaced as a
-  // non-blocking hint rather than a validation error for that reason.
-  const neighborFloors = isTransitionType
-    ? [...new Set(
-        (draft.neighbors || [])
-          .map((id) => nodes.find((n) => n.id === id)?.floor)
-          .filter((f) => f !== undefined && Number(f) !== Number(draft.floor))
-          .map(Number)
-      )].sort((a, b) => a - b)
-    : [];
-  const declaredFloors = (draft.leadsToFloors || []).map(Number);
-  const undeclaredNeighborFloors = neighborFloors.filter((f) => !declaredFloors.includes(f));
-  const unwiredDeclaredFloors = declaredFloors.filter((f) => !neighborFloors.includes(f));
+  // The floors a Stairs node actually reaches, read from its neighbor links
+  // (edited only in Virtual Map Navigation Editor), so there is no second list
+  // to keep in step with them. Informational: a brand-new node has none yet.
+  const stairsFloors =
+    draft.type === "stairs"
+      ? [...new Set(
+          (draft.neighbors || [])
+            .map((id) => nodes.find((n) => n.id === id)?.floor)
+            .filter((f) => f !== undefined && Number(f) !== Number(draft.floor))
+            .map(Number)
+        )].sort((a, b) => a - b)
+      : [];
 
   const currentStart = nodes.find(
     (n) => n.startingNode && n.building === draft.building && Number(n.floor) === Number(draft.floor)
@@ -321,40 +303,14 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         </select>
       </label>
 
-      {isTransitionType && (
+      {draft.type === "stairs" && (
         <div className="leads-to-floors-field">
-          <label>Leads to floor(s)</label>
-          <div className="elevator-floor-checkboxes">
-            {floorsForBuilding(draft.building).filter((f) => f !== Number(draft.floor)).map((f) => (
-              <label key={f} className="elevator-floor-checkbox">
-                <input
-                  type="checkbox"
-                  checked={declaredFloors.includes(f)}
-                  onChange={() => toggleLeadsToFloor(f)}
-                />
-                {floorLabel(f)}
-              </label>
-            ))}
-          </div>
+          <label>Floors reached</label>
           <span className="field-hint">
-            Stairs and fire exits often connect both up and down. Pick every floor this node actually reaches.
-            {draft.type === "fire_exit" && draft.isEmergencyDestination &&
-              " Optional here: this is an exit door people walk out through, not a stairwell."}
+            {stairsFloors.length > 0 ? stairsFloors.map(floorLabel).join(", ") : "None yet."} Read from this
+            node's links, which are set in Virtual Map Navigation Editor. A fire stairwell is not a Stairs
+            node: it is an Emergency Exit marker on an ordinary node.
           </span>
-          {unwiredDeclaredFloors.length > 0 && (
-            <p className="directions-error">
-              ⚠ Declared as leading to {unwiredDeclaredFloors.map(floorLabel).join(", ")}, but no neighbor link of
-              this node actually reaches {unwiredDeclaredFloors.length === 1 ? "that floor" : "those floors"} yet.
-              Wire it up in Virtual Map Navigation Editor, or it isn't really routable.
-            </p>
-          )}
-          {undeclaredNeighborFloors.length > 0 && (
-            <p className="directions-error">
-              ⚠ This node's neighbor links already reach {undeclaredNeighborFloors.map(floorLabel).join(", ")}, but
-              that's not checked above. Add {undeclaredNeighborFloors.length === 1 ? "it" : "them"} so this field
-              matches the actual graph.
-            </p>
-          )}
         </div>
       )}
 
@@ -415,7 +371,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         </div>
       )}
 
-      {EMERGENCY_DESTINATION_TYPES.includes(draft.type) && (
+      {(EMERGENCY_DESTINATION_TYPES.includes(draft.type) || isFireExitNode(draft)) && (
         <div className="entrance-flag-field">
           <label className="entrance-flag-toggle">
             <input
@@ -429,6 +385,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
           <span className="field-hint">
             Tick only if someone who reaches this node is out of danger. "Nearest Exit" ends its route at
             ticked nodes. Only available on Floor 1 or Underground.
+            {isFireExitNode(draft) && " This node has an Emergency Exit marker: tick it when that door leads outside."}
           </span>
           {Number(draft.floor) > GROUND_FLOOR && (
             <p className="directions-error">

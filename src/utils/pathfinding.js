@@ -1,10 +1,10 @@
 import { elevatorAdjacency } from "./elevators";
 
-// Fire exits (fire_exit) are for emergencies only, so ordinary routing
-// never passes THROUGH one. It can still start or end on one: a visitor
-// standing at a fire exit has to be able to route away from it. Emergency
-// routing, which does pass through them, lives in evacuation.js.
-const EMERGENCY_ONLY_TYPES = ["fire_exit"];
+// A fire exit node (one carrying an emergency exit marker) is an ordinary
+// node here, often a hallway, and is walked through like any other. What is
+// emergency-only is the hidden fire stairs its marker lists as landings, and
+// those are not neighbor links, so nothing in this file ever takes them.
+// Evacuation routing, which does, lives in evacuation.js.
 
 // A neighbor edge that changes floor through a Stairs (stairs) node.
 // This is the only signal for "this edge is a stairs edge", because
@@ -28,7 +28,7 @@ function isStairsEdge(byId, a, b) {
 //              PLUS elevator rides, so the only way between floors is the
 //              elevator (step-free, as far as the graph's typing allows)
 // Same-floor edges are never excluded by mode; only floor changes are
-// mode-sensitive. In every mode, fire exits are never passed through.
+// mode-sensitive. In every mode, fire stairs landings are never used.
 export function findPath(nodes, fromId, toId, mode = "any") {
   if (!fromId || !toId) return null;
   if (fromId === toId) return [fromId];
@@ -37,14 +37,8 @@ export function findPath(nodes, fromId, toId, mode = "any") {
   if (!byId[fromId] || !byId[toId]) return null;
 
   const elevatorAdj = mode === "stairs" ? null : elevatorAdjacency(nodes);
-  const emergencyOnly = (id) => id !== toId && EMERGENCY_ONLY_TYPES.includes(byId[id]?.type);
-
   const edgesFrom = (id) => {
-    const walkable = (byId[id]?.neighbors || []).filter((nb) => {
-      if (emergencyOnly(nb)) return false;
-      if (mode !== "elevator") return true;
-      return !isStairsEdge(byId, id, nb);
-    });
+    const walkable = (byId[id]?.neighbors || []).filter((nb) => mode !== "elevator" || !isStairsEdge(byId, id, nb));
     const viaElevator = elevatorAdj ? [...(elevatorAdj.get(id) || [])] : [];
     return mode === "stairs" ? walkable : [...new Set([...walkable, ...viaElevator])];
   };

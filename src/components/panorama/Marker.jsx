@@ -21,7 +21,7 @@ import IconPlaceholder from "../IconPlaceholder";
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, dimmed, selected, highlighted }) {
+export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, onEmergencyExitClick, dimmed, selected, highlighted }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
@@ -38,13 +38,19 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
   // MainPage.jsx's handleElevatorMarkerClick: unlike every other marker,
   // clicking one actually moves the visitor (a Jump to another floor).
   const isElevatorClickable = type === "elevator" && !!onElevatorClick;
+  // An emergency exit marker only moves the visitor while it is the next step
+  // of a Nearest Exit route (MainPage only passes the handler then); at any
+  // other time it is just the sign for the stairwell door.
+  const isEmergencyExitClickable = type === "emergency_exit" && !!onEmergencyExitClick;
   const clickHandler = onClick
     ? (e) => { e.stopPropagation(); onClick(); }
     : isRoomClickable
       ? (e) => { e.stopPropagation(); onRoomClick(); }
       : isElevatorClickable
         ? (e) => { e.stopPropagation(); onElevatorClick(); }
-        : undefined;
+        : isEmergencyExitClickable
+          ? (e) => { e.stopPropagation(); onEmergencyExitClick(); }
+          : undefined;
   const isClickable = !!clickHandler;
 
   const baseSize = Math.round(48 * uiScale);

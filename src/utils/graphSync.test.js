@@ -91,6 +91,18 @@ describe("planMarkers", () => {
     ]);
   });
 
+  it("sends a new emergency exit marker's landings, and only edits to them afterwards", () => {
+    const exit = { id: "new", type: "emergency_exit", label: "Emergency Exit", yaw: 1, pitch: 2, landings: ["b", "c"] };
+    expect(planMarkers(NODE_GRAPH, "a", [], [exit])).toEqual([
+      { method: "POST", path: "Nodes_API/addMarker", body: { node_id: "a", type: "emergency_exit", label: "Emergency Exit", yaw: 1, pitch: 2, landings: ["b", "c"] } },
+    ]);
+    const saved = { ...exit, id: 9 };
+    expect(planMarkers(NODE_GRAPH, "a", [saved], [{ ...saved, landings: ["c", "b"] }])).toEqual([]);
+    expect(planMarkers(NODE_GRAPH, "a", [saved], [{ ...saved, landings: ["b"] }])).toEqual([
+      { method: "PATCH", path: "Nodes_API/updateMarker/9", body: { yaw: 1, pitch: 2, landings: ["b"] } },
+    ]);
+  });
+
   it("does not send a stop marker's label edit", () => {
     const next = current.map((m) => (m.id === 1 ? { ...m, label: "renamed" } : m));
     expect(planMarkers(STOP_GRAPH, "a", current, next)).toEqual([]);

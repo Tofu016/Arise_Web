@@ -1,5 +1,3 @@
-import { TRANSITION_TYPES } from "./constants";
-
 // Plans moving every node of one building into another: each node's id is
 // re-prefixed (gd1_f2_hall01 -> gd12_f2_hall01, so it still passes
 // validateNodeId) and its building field switched. Floors are kept as-is,
@@ -28,14 +26,6 @@ export function planBuildingMove(nodes, fromId, toId, targetFloors) {
 
     if (!targetFloors.includes(Number(n.floor))) {
       problems.push(`"${n.id}" is on floor ${n.floor}, which the target building doesn't have.`);
-    }
-    // Only stairs/fire exits use leadsToFloors; other types can carry a
-    // stray value that means nothing.
-    if (TRANSITION_TYPES.includes(n.type)) {
-      const missing = (n.leadsToFloors || []).map(Number).filter((f) => !targetFloors.includes(f));
-      if (missing.length > 0) {
-        problems.push(`"${n.id}" leads to floor(s) ${missing.join(", ")}, which the target building doesn't have.`);
-      }
     }
 
     moves.push({ id: n.id, newId });

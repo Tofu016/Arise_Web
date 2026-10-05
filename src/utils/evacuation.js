@@ -1,23 +1,30 @@
 import {
   BUILDING_TRANSITION_TYPE,
   EMERGENCY_DESTINATION_TYPES,
+  FIRE_STAIRS_PREFERENCE,
   GROUND_FLOOR,
   STAIRS_TYPE,
 } from "./constants";
+import { exitLandingEdges, isFireExitNode, landingProblems, fireExitCrossFloorLinks, emergencyExitMarkers } from "./emergencyExits";
 
 // "Nearest Exit" routing. The goal is an Emergency Exit Destination Point:
 // a node an admin ticked (`isEmergencyDestination`) to say "someone who
 // reaches this node is out of danger". The router never decides that itself:
-// a Fire Exit might be a stairwell high in the building, an Entrance might
-// open into another indoor space, and only the admin knows. Only the types in
-// EMERGENCY_DESTINATION_TYPES can be ticked, and only on the ground floor or
-// below (see canBeDestinationPoint).
+// an Entrance might open into another indoor space, and only the admin knows.
+// Only the types in EMERGENCY_DESTINATION_TYPES, or a node carrying an
+// emergency exit marker (a fire door to the street), can be ticked, and only
+// on the ground floor or below (see canBeDestinationPoint).
 //
-// Only neighbor edges are walked, so an elevator ride can never be part of
-// an evacuation route (the same rule as pathfinding's "stairs" mode, and a
-// real fire-safety one). Everything else on the graph is passable here,
-// including fire exit and Stairs nodes: ordinary routing refuses to pass
-// through a fire exit, but in an emergency those stairwells are the way down.
+// Two kinds of edge are walked: neighbor links, and the exit landings of a
+// node's emergency exit markers (the hidden fire stairs, one directed edge per
+// landing, see emergencyExits.js). An elevator ride can never be part of an
+// evacuation route (the same rule as pathfinding's "stairs" mode, and a real
+// fire-safety one). Fire stairs are protected, so they are favored over an
+// ordinary flight of Stairs by FIRE_STAIRS_PREFERENCE extra hops: a nearby fire
+// exit wins over an ordinary staircase, and one too far away loses to it. Listing
+// several landings gives the visitor a way round a blocked one: the router
+// takes the cheapest, usually the lowest, and the next when it is reported
+// blocked.
 //
 // Cost is hop-based. Floors are not a distance, so changing floor adds a
 // cost: a little going down, a lot going up (smoke and heat rise, and an
@@ -32,22 +39,41 @@ const COST_PER_FLOOR_UP = 8;
 const COST_ENTERING_STAIRS = 1;
 const COST_ENTERING_BUILDING_TRANSITION = 2;
 
-function entryCost(from, to) {
+function floorCost(from, to) {
   const delta = Number(to.floor) - Number(from.floor);
-  let cost = 1;
-  if (delta < 0) cost += -delta * COST_PER_FLOOR_DOWN;
-  if (delta > 0) cost += delta * COST_PER_FLOOR_UP;
+  if (delta < 0) return -delta * COST_PER_FLOOR_DOWN;
+  if (delta > 0) return delta * COST_PER_FLOOR_UP;
+  return 0;
+}
+
+// A flight of ordinary stairs: a floor change with a Stairs node at either end.
+// The fire stairs preference is charged once per flight.
+function isStairsFlight(from, to) {
+  return Number(from.floor) !== Number(to.floor) && (from.type === STAIRS_TYPE || to.type === STAIRS_TYPE);
+}
+
+function entryCost(from, to) {
+  let cost = 1 + floorCost(from, to);
+  if (isStairsFlight(from, to)) cost += FIRE_STAIRS_PREFERENCE;
   if (to.type === STAIRS_TYPE) cost += COST_ENTERING_STAIRS;
   if (to.type === BUILDING_TRANSITION_TYPE) cost += COST_ENTERING_BUILDING_TRANSITION;
   return cost;
 }
 
-// Whether a node's tick counts. The type must be one that can lead out, and
-// the node must be on the ground floor or below: a tick on an upper floor
-// would end the route there, which is how a lobby ticked on every floor would
-// stop anyone ever leaving it.
+// Taking the hidden fire stairs from one node to its landing, however many
+// floors that is: one hop plus the floors, with none of the ordinary Stairs
+// charges. The gap to an ordinary flight is the preference for the protected
+// stairwell.
+function landingCost(from, to) {
+  return 1 + floorCost(from, to);
+}
+
+// Whether a node's tick counts. The node must be of a type that can lead out,
+// or carry an emergency exit marker (a fire door), and must be on the ground
+// floor or below: a tick on an upper floor would end the route there, which is
+// how a lobby ticked on every floor would stop anyone ever leaving it.
 export function canBeDestinationPoint(node) {
-  return EMERGENCY_DESTINATION_TYPES.includes(node.type) && Number(node.floor) <= GROUND_FLOOR;
+  return (EMERGENCY_DESTINATION_TYPES.includes(node.type) || isFireExitNode(node)) && Number(node.floor) <= GROUND_FLOOR;
 }
 
 // The ids of every Emergency Exit Destination Point in the graph. Nothing is
@@ -107,13 +133,14 @@ function prepare(nodes) {
   return {
     byId: Object.fromEntries(nodes.map((n) => [n.id, n])),
     destinations: resolveDestinationPoints(nodes),
+    landings: exitLandingEdges(nodes),
   };
 }
 
 // Cheapest walk from `fromId` to the nearest destination point, never
 // entering a blocked node or any floor above `ceiling`. Stops at the first
 // destination point it settles, which is the cheapest one by construction.
-function search({ byId, destinations }, fromId, blocked, ceiling) {
+function search({ byId, destinations, landings }, fromId, blocked, ceiling) {
   const best = new Map([[fromId, 0]]);
   const previous = new Map();
   const queue = new MinQueue();
@@ -128,11 +155,15 @@ function search({ byId, destinations }, fromId, blocked, ceiling) {
       return { path, destinationId: id };
     }
     const here = byId[id];
-    for (const nbId of here.neighbors || []) {
+    const steps = [
+      ...(here.neighbors || []).map((toId) => ({ toId, price: entryCost })),
+      ...(landings.get(id) || []).map(({ toId }) => ({ toId, price: landingCost })),
+    ];
+    for (const { toId: nbId, price } of steps) {
       const nb = byId[nbId];
       if (!nb || blocked.has(nbId)) continue;
       if (Number(nb.floor) > ceiling) continue;
-      const next = cost + entryCost(here, nb);
+      const next = cost + price(here, nb);
       if (next < (best.get(nbId) ?? Infinity)) {
         best.set(nbId, next);
         previous.set(nbId, id);
@@ -183,9 +214,21 @@ export function findEvacuationRoute(nodes, fromId, { blocked = [] } = {}) {
 //   "ok"           a route that stays within the ceiling
 //   "ascends"      the only route climbs above the ground floor first
 //   "none"         no route at all
+// `viaFireStairs` says whether that route takes any hidden fire stairs.
+// Alongside the entries, the authoring problems around emergency exit markers:
+//   landingProblems        a landing that is missing, itself, in another
+//                          building, or on the same floor
+//   markersWithoutLanding  fire exit nodes with nothing to lead down and not
+//                          ticked as a destination themselves (a fire door
+//                          that was never given a landing, or never placed)
+//   crossFloorLinks        a fire exit node with landings that also has an
+//                          ordinary link to another floor
 export function auditEmergencyCoverage(nodes) {
   const ctx = prepare(nodes);
   const none = new Set();
+
+  const takesFireStairs = (path) =>
+    path.some((id, i) => i > 0 && (ctx.landings.get(path[i - 1]) || []).some((l) => l.toId === id) && !(ctx.byId[path[i - 1]].neighbors || []).includes(id));
 
   const entries = nodes.map((n) => {
     const result = route(ctx, n.id, none);
@@ -201,8 +244,11 @@ export function auditEmergencyCoverage(nodes) {
       status,
       destinationId: result?.destinationId ?? null,
       hops: result ? result.path.length - 1 : null,
+      viaFireStairs: result ? takesFireStairs(result.path) : false,
     };
   });
+
+  const brief = (n) => ({ id: n.id, name: n.name, building: n.building, floor: n.floor });
 
   const buildings = [...new Set(nodes.map((n) => n.building))].sort();
   const destinationPoints = nodes
@@ -215,6 +261,16 @@ export function auditEmergencyCoverage(nodes) {
     // Buildings with no destination point at all: every node in them can only
     // route out through another building, or not at all.
     buildingsWithoutDestination: buildings.filter((b) => !destinationPoints.some((d) => d.building === b)),
+    landingProblems: landingProblems(nodes).map((p) => ({ ...p, ...brief(ctx.byId[p.nodeId]) })),
+    markersWithoutLanding: nodes
+      .filter(
+        (n) =>
+          emergencyExitMarkers(n).some((m) => (m.landings || []).length === 0) &&
+          !emergencyExitMarkers(n).some((m) => (m.landings || []).length > 0) &&
+          !ctx.destinations.has(n.id)
+      )
+      .map(brief),
+    crossFloorLinks: fireExitCrossFloorLinks(nodes).map((l) => ({ ...l, ...brief(ctx.byId[l.nodeId]) })),
     // Ticked, but on a type or floor that can't count, so it is ignored.
     misflagged: nodes
       .filter((n) => n.isEmergencyDestination && !canBeDestinationPoint(n))

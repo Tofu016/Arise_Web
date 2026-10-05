@@ -25,6 +25,7 @@ export const NODE_GRAPH = {
     yaw: m.yaw,
     pitch: m.pitch,
     ...(m.type === "elevator" ? { elevator_id: m.elevatorId } : {}),
+    ...(m.type === "emergency_exit" ? { landings: m.landings || [] } : {}),
   }),
 };
 
@@ -94,6 +95,15 @@ export function planClearDefaultView(graph, id, neighborId) {
 
 const labelChanged = (graph, before, next) => graph.syncsLabel && next.type !== "elevator" && before.label !== next.label;
 
+// An emergency exit marker's landing list, compared as a set of ids: only the
+// node graph has them, and the backend replaces the whole list when it changes.
+const landingsChanged = (graph, before, next) => {
+  if (graph.api !== NODE_GRAPH.api || next.type !== "emergency_exit") return false;
+  const a = [...(before.landings || [])].sort();
+  const b = [...(next.landings || [])].sort();
+  return a.length !== b.length || a.some((id, i) => id !== b[i]);
+};
+
 // Three-way: an id only in the new list is an ADD (the backend generates
 // its own real id — a marker's client-side id only names its photos while
 // it's being picked, and is replaced by the backend's after the refresh),
@@ -112,7 +122,7 @@ export function planMarkers(graph, id, currentMarkers, nextMarkers) {
   const removed = currentMarkers.filter((m) => !nextIds.includes(m.id));
   const changed = nextMarkers.filter((m) => {
     const before = currentMarkers.find((cm) => cm.id === m.id);
-    return before && (before.yaw !== m.yaw || before.pitch !== m.pitch || labelChanged(graph, before, m));
+    return before && (before.yaw !== m.yaw || before.pitch !== m.pitch || labelChanged(graph, before, m) || landingsChanged(graph, before, m));
   });
 
   return [
@@ -123,6 +133,7 @@ export function planMarkers(graph, id, currentMarkers, nextMarkers) {
         yaw: m.yaw,
         pitch: m.pitch,
         ...(labelChanged(graph, before, m) ? { label: m.label } : {}),
+        ...(landingsChanged(graph, before, m) ? { landings: m.landings || [] } : {}),
       });
     }),
     ...removed.map((m) => call("DELETE", `${graph.api}/deleteMarker/${m.id}`)),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MARKER_TYPES, NODE_TYPES, TRANSITION_TYPES, suggestNodeId } from "./constants";
+import { MARKER_TYPES, NODE_TYPES, suggestNodeId } from "./constants";
 
 describe("type ids", () => {
   it("are the snake_case form of their label", () => {
@@ -8,15 +8,16 @@ describe("type ids", () => {
     for (const t of MARKER_TYPES) expect(t.id).toBe(slug(t.label));
   });
 
-  it("only name node types that exist as transition types", () => {
-    for (const id of TRANSITION_TYPES) expect(NODE_TYPES.map((t) => t.id)).toContain(id);
+  it("have no Fire Exit node type: a fire exit is a marker on an ordinary node", () => {
+    expect(NODE_TYPES.map((t) => t.id)).not.toContain("fire_exit");
+    expect(MARKER_TYPES.map((t) => t.id)).toContain("emergency_exit");
   });
 });
 
 describe("suggestNodeId", () => {
   it("builds the id from the type id as is", () => {
     expect(suggestNodeId("gd1", 2, "stairs", [])).toBe("gd1_f2_stairs01");
-    expect(suggestNodeId("gd1", 2, "fire_exit", [])).toBe("gd1_f2_fire_exit01");
+    expect(suggestNodeId("gd1", 2, "open_area", [])).toBe("gd1_f2_open_area01");
     expect(suggestNodeId("gd2", -1, "building_transition", [])).toBe("gd2_f-1_building_transition01");
   });
 

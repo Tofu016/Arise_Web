@@ -8,9 +8,9 @@ Visitors can tap **Nearest Exit** from any panorama. The app walks them, step by
 
 How the app chooses a route:
 
-- It only ends at nodes you ticked **Emergency Exit Destination Point**. Nothing is automatic: an Open Area, Parking, Lobby, Entrance or Fire Exit node that is not ticked is never a destination.
+- It only ends at nodes you ticked **Emergency Exit Destination Point**. Nothing is automatic: an Open Area, Parking, Lobby, Entrance or fire door node that is not ticked is never a destination.
 - It never uses an elevator, even if an elevator is shorter.
-- It passes through Stairs and fire stairwells freely, since those are the way down.
+- It passes through Stairs freely, and takes the hidden fire stairs listed on **Emergency Exit markers** (see section 2). Fire stairs are preferred over an ordinary staircase unless the fire exit is a good deal further away.
 - It never climbs above **Floor 1** or above the visitor's own floor. Floor 1 is the ground floor in every building. Someone Underground does climb to Floor 1, because that is the way out. Someone on Floor 1 is never sent up and over. It climbs higher only when no other way exists, and then it warns the visitor.
 - "Nearest" means fewest links between panoramas (plus a small cost for changing floors), not meters.
 - If the visitor taps **This way is blocked**, it drops that step and finds another way out. If there is none, it shows the Bacoor City emergency numbers.
@@ -23,7 +23,9 @@ How the app chooses a route:
 | **Emergency Exit Destination Point** | A node you ticked to say: someone who reaches this node is out of danger. Where Nearest Exit ends. |
 | **Open Area**, **Parking** | Outdoor nodes. They can be ticked. Not every open area is a safe place, so none are automatic. |
 | **Lobby**, **Entrance** | Can be indoor spaces, or open into one. They can be ticked, but see the warning in section 5. |
-| **Fire Exit** | Either a fire **stairwell** (leads between floors) or a fire **door**. Only a door people walk out through should be ticked. |
+| **Emergency Exit marker** | Placed in the 360 photo where a fire stairwell door is. A node with one is a **fire exit node**, and keeps its own type (a hallway stays a hallway). It lists its **landings**. |
+| **Landing** | A node on another floor of the same building where the hidden fire stairs behind the marker's door come out. List every floor the stairwell reaches: the lowest is used first, and the others are the way round when a visitor reports "This way is blocked". |
+| **Fire door** | An Emergency Exit marker with no landings, on a node that leads straight outside. Tick that node as a destination. |
 | **Stairs** | An ordinary staircase. Cannot be ticked, but routes pass through it. |
 
 ## 3. Before you start
@@ -37,7 +39,7 @@ How the app chooses a route:
 
 In **Node Editor**, check that every place you wrote down has a node of a fitting **Type**. Use **New Node** for any that are missing:
 
-- A fire door people walk out through: **Fire Exit**.
+- A fire door people walk out through: any node you like (its own real type, such as Hallway or Entrance), with an **Emergency Exit marker** added in step 3.
 - An outdoor assembly area or yard: **Open Area**.
 - A parking lot: **Parking**.
 - A ground-floor lobby or entrance that is itself safe: **Lobby** or **Entrance**.
@@ -46,7 +48,7 @@ For each node set the **Building** and **Floor** (the node ID must match them), 
 
 Do **not** change an existing Entrance node's **Type** just to make it a destination. If it is flagged as the Campus entrance or Building entrance, the kiosk shortcuts depend on it. Entrances can be ticked as they are (step 2).
 
-For each fire **stairwell** (a Fire Exit or Stairs node that changes floor), create one node **on each floor it serves** and fill in **Leads to floor(s)**: tick every floor that node reaches. This is required for stairwells.
+For each **fire stairwell**, make sure there is a node **on each floor it serves**: they are ordinary nodes (a hallway beside the door is fine). An ordinary staircase is a **Stairs** node on each floor, linked floor to floor.
 
 ## 5. Step 2: Tick "Emergency Exit Destination Point"
 
@@ -60,8 +62,8 @@ Rules:
 
 - **Tick only if someone who reaches this node is out of danger.** That is the whole test.
 - It is only available on **Floor 1 or Underground**. On any upper floor the box is disabled. This stops a lobby ticked on every floor from ending every route where it started.
-- Only **Open Area, Parking, Lobby, Entrance and Fire Exit** nodes show the box.
-- A ticked Fire Exit door does **not** need **Leads to floor(s)**: a door has no other floor to lead to. An unticked Fire Exit (a stairwell) still does. A ground-floor stairwell exit can be ticked and still list its floors.
+- Only **Open Area, Parking, Lobby and Entrance** nodes, and nodes with an **Emergency Exit marker**, show the box.
+- A fire door that leads outside has an Emergency Exit marker with no landings, and its node is ticked here. It needs nothing else.
 - **Lobby and Entrance show a red warning.** These can be indoor spaces, or open into one (a corridor, a connected building, an elevator hall), where a visitor is **not** out of danger. The system cannot check this. If you tick one, visitors are told they have reached their exit and to follow staff instructions, so tick only a ground-floor Lobby or Entrance that is truly safe, never one per floor.
 - A visitor already standing on a ticked node who taps Nearest Exit is told they have arrived straight away.
 
@@ -76,7 +78,17 @@ A route can only use links between nodes, so a missing link means a missing way 
    - The stairwell node on one floor to the stairwell node on the floor below, for every floor it serves.
    - The ground-floor stairwell node (or hallway) to the ticked destination node.
    - The destination node to the hallway inside it, and to any outdoor node beyond it.
-4. Do not link floors to each other by drawing a link between two ordinary hallway nodes on different floors. Always change floors through **Stairs** or **Fire Exit** nodes, so the system recognizes a stairwell.
+4. Do not link floors to each other by drawing a link between two ordinary hallway nodes on different floors. Change floors through **Stairs** nodes, or through an **Emergency Exit marker's landings** (step 3b below). A node with fire stairs landings must not also have an ordinary link to another floor, or ordinary directions could use the fire stairs. Emergency Coverage reports that.
+
+### Step 3b: Add the Emergency Exit markers
+
+In **Virtual Map Navigation Editor**, on the node beside each fire stairwell door:
+
+1. Choose **+ Add Markers**, type **Emergency Exit**.
+2. Tick the **landings**: every node on another floor of the same building where those hidden stairs come out. List every floor the stairwell reaches, for example Floor 2 and Floor 1 from Floor 3. The lowest is used first. The others are only used when a visitor reports "This way is blocked", so a skipped floor means no way round a blocked landing.
+3. **Place on panorama** where the door is in the photo. Visitors are shown "Emergency Exit stairs ahead" with this marker glowing.
+4. Landings are one way: the marker lists where the stairs go down to. If the stairs can also be taken up from a lower node (an underground stairwell to Floor 1), add a marker there too.
+5. Edit landings later with **Edit landings** beside the marker in the node's list.
 
 Elevators are never used for evacuation, whatever you set up.
 
@@ -135,7 +147,8 @@ Also re-check after any construction that closes a door or stairwell. The app ha
 - [ ] Every place where a person is truly out of danger has a node, ticked **Emergency Exit Destination Point**, on Floor 1 or Underground.
 - [ ] Every ticked **Lobby** or **Entrance** was checked against the plan and does not open into another indoor space.
 - [ ] No lobby or entrance is ticked on more than the ground floor.
-- [ ] Every staircase and fire stairwell has a node on each floor it serves, with **Leads to floor(s)** filled in.
+- [ ] Every staircase has a **Stairs** node on each floor it serves, linked floor to floor.
+- [ ] Every fire stairwell has an **Emergency Exit marker** with its landings on every floor it reaches, placed on the door in the photo.
 - [ ] Hallways, stairwells and destination nodes are linked end to end, floor by floor.
 - [ ] **Emergency Coverage** shows no **No route**, no **Route must go up**, no **No destination point at all** and no **Tick ignored**.
 - [ ] **Preview a route** from the top floor, a middle floor and Floor 1 ends at a ticked node you expect.

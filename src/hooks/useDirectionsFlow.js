@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useDirections, useAutoWalk } from "./useDirections";
 import * as route from "../utils/directionsRoute";
 import { searchCampus } from "../utils/search";
 import { speak } from "../utils/tts";
 import { floorLabel } from "../utils/constants";
+import { fireStairsAnnouncement } from "../utils/emergencyExits";
 
 // The Directions flow ("just like Street View"): the from/to panel and the
 // Route it computes, followed one stop at a time. Wraps the pure transitions
@@ -24,7 +25,7 @@ import { floorLabel } from "../utils/constants";
 //
 // Returns { directions, progress, suggestions, ...verbs }:
 //   directions    the state (null when closed) — see utils/directionsRoute.js
-//   progress      { arrived, nextStopId, nextStopName, turnInstruction, walkStarted, skip }
+//   progress      { arrived, nextStopId, nextStopName, nextElevator, nextFireStairs, turnInstruction, walkStarted, skip }
 //                 (skip: the straight run ahead, or null — see straightRunAhead)
 //   suggestions   { rooms, places } matching the From/To field being edited: rooms
 //                 first, places second, no duplicates, like the main search bar
@@ -48,6 +49,18 @@ export function useDirectionsFlow({
     walkStarted,
     skip: walkStarted ? route.straightRunAhead(directions, byId) : null,
   };
+
+  // The hidden fire stairs have no arrow to follow, so the visitor is told when
+  // the next step is one: spoken once as it becomes the next step (the banner
+  // and the glowing sign say the same). Keyed by the step, not the render.
+  const { nextFireStairs } = progress;
+  const announced = useRef(null);
+  const fireStairsKey = nextFireStairs ? `${currentId}>${progress.nextStopId}` : null;
+  useEffect(() => {
+    if (fireStairsKey === announced.current) return;
+    announced.current = fireStairsKey;
+    if (fireStairsKey) speak(fireStairsAnnouncement(nextFireStairs));
+  }, [fireStairsKey, nextFireStairs]);
 
   const query = route.activeQuery(directions);
   const editingField = directions?.editingField;
@@ -150,6 +163,7 @@ export function useDirectionsFlow({
     const step = route.nextStep(directions, hotspots, nodes);
     if (!step) return;
     if (step.kind === "elevator") speak(`Taking the elevator to ${floorLabel(step.ride.toFloor)}`);
+    if (step.kind === "fireStairs") speak(`Taking the Emergency Exit stairs to ${floorLabel(step.stairs.toFloor)}`);
     moves.walk(step.id, { yaw: step.yaw, defaultYaw: step.defaultYaw, defaultPitch: step.defaultPitch });
   };
   useAutoWalk(directions, setDirections, walkToNext);

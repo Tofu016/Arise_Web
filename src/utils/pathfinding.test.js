@@ -73,26 +73,25 @@ describe("findPath", () => {
     expect(findPath([a, b], "a", "b", "elevator")).toEqual(["a", "b"]);
   });
 
-  it("never routes THROUGH a fire exit (fire_exit) — emergency-only, not standard stairs", () => {
+  it("walks through a fire exit node like any other: it is only a hallway that holds a stairwell door", () => {
     const a = node("a", 1);
-    const exit1 = node("x1", 1, { type: "fire_exit" });
-    const exit2 = node("x2", 2, { type: "fire_exit" });
-    const b = node("b", 2);
-    link(a, exit1);
-    link(exit1, exit2);
-    link(exit2, b);
-    expect(findPath([a, exit1, exit2, b], "a", "b")).toBeNull();
-    expect(findPath([a, exit1, exit2, b], "a", "b", "stairs")).toBeNull();
+    const hall = node("h", 1, { markers: [{ id: 1, type: "emergency_exit", label: "Emergency Exit", landings: ["low"] }] });
+    const b = node("b", 1);
+    const low = node("low", 1);
+    link(a, hall);
+    link(hall, b);
+    expect(findPath([a, hall, b, low], "a", "b")).toEqual(["a", "h", "b"]);
   });
 
-  it("still allows a fire exit as the route's own start or end point", () => {
-    const a = node("a", 1);
-    const exit1 = node("x1", 1, { type: "fire_exit" });
-    link(a, exit1);
-    expect(findPath([a, exit1], "a", "x1")).toEqual(["a", "x1"]);
+  it("never takes the hidden fire stairs: a landing is not a neighbor link", () => {
+    const top = node("top", 3, { markers: [{ id: 1, type: "emergency_exit", label: "Emergency Exit", landings: ["bottom"] }] });
+    const bottom = node("bottom", 1);
+    for (const mode of ["any", "stairs", "elevator"]) {
+      expect(findPath([top, bottom], "top", "bottom", mode)).toBeNull();
+    }
   });
 
-  it("a Stairs (transition) node is unaffected by the fire-exit exclusion", () => {
+  it("a Stairs (transition) node is walked through normally", () => {
     const a = node("a", 1);
     const stairs = node("s1", 1, { type: "stairs" });
     const b = node("b", 1);

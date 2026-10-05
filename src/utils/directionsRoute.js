@@ -2,6 +2,7 @@ import { findPath, getTurnInstruction } from "./pathfinding";
 import { findEvacuationRoute } from "./evacuation";
 import { resolveExactNodeMatch } from "./search";
 import { elevatorRideBetween, arrivalYawFromLanding } from "./elevators";
+import { arrivalYawFromExit, fireStairsBetween } from "./emergencyExits";
 import { hotspotAngle } from "./hotspots";
 
 // Point-to-point directions, as plain state plus transitions — no React,
@@ -264,7 +265,9 @@ export function syncToPosition(d, currentId, nodes) {
 // at the end. `hotspots` are the current node's hotspots. A step with no
 // hotspot that's an elevator ride comes back as kind "elevator": it's taken
 // through the landing marker, not an arrow, and arrives facing out of the
-// destination landing's doors.
+// destination landing's doors. A step down the hidden fire stairs (Nearest
+// Exit only) comes back as kind "fireStairs": taken through the emergency exit
+// marker, arriving facing away from the landing's own door when it has one.
 export function nextStep(d, hotspots, nodes) {
   const id = d?.path?.[d.stepIndex + 1];
   if (!id) return null;
@@ -272,6 +275,10 @@ export function nextStep(d, hotspots, nodes) {
   if (hs) return { kind: "walk", id, yaw: hs.yaw, defaultYaw: hs.defaultYaw, defaultPitch: hs.defaultPitch };
   const ride = nodes ? elevatorRideBetween(nodes, d.path[d.stepIndex], id) : null;
   if (ride) return { kind: "elevator", id, yaw: arrivalYawFromLanding(ride.toMarker), ride };
+  const stairs = nodes && d.emergency ? fireStairsBetween(nodes, d.path[d.stepIndex], id) : null;
+  if (stairs) {
+    return { kind: "fireStairs", id, yaw: stairs.toMarker ? arrivalYawFromExit(stairs.toMarker) : undefined, stairs };
+  }
   return { kind: "walk", id };
 }
 
@@ -345,6 +352,10 @@ export function settleAutoWalk(d) {
 // `nextElevator` is set when the next step is an elevator ride:
 // { markerId, floor } — the landing marker to highlight where the visitor
 // stands, and the floor the route rides to.
+//
+// `nextFireStairs` is set when the next step is down the hidden fire stairs of
+// an emergency route: { markerId, floor, goesDown } — the emergency exit marker
+// to highlight, the floor it comes out on, and whether that is below.
 export function routeProgress(d, { byId, hotspots, entryYaw, nodes }) {
   const arrived = Boolean(d?.path && d.stepIndex === d.path.length - 1);
   const nextStopId = d?.path?.[d.stepIndex + 1] || null;
@@ -352,9 +363,13 @@ export function routeProgress(d, { byId, hotspots, entryYaw, nodes }) {
   const nextStopHotspot = nextStopId ? hotspots.find((h) => h.id === nextStopId) || null : null;
   const ride = nextStopId && !nextStopHotspot && nodes ? elevatorRideBetween(nodes, d.path[d.stepIndex], nextStopId) : null;
   const nextElevator = ride ? { markerId: ride.fromMarker.id, floor: ride.toFloor } : null;
+  const stairs = nextStopId && !nextStopHotspot && !ride && nodes && d.emergency ? fireStairsBetween(nodes, d.path[d.stepIndex], nextStopId) : null;
+  const nextFireStairs = stairs
+    ? { markerId: stairs.fromMarker.id, floor: stairs.toFloor, goesDown: stairs.toFloor < Number(byId[d.path[d.stepIndex]]?.floor) }
+    : null;
   const turnInstruction =
     d?.stepIndex > 0 && nextStopHotspot ? getTurnInstruction(entryYaw, nextStopHotspot.yaw) : null;
-  return { arrived, nextStopId, nextStopName, nextStopHotspot, nextElevator, turnInstruction };
+  return { arrived, nextStopId, nextStopName, nextStopHotspot, nextElevator, nextFireStairs, turnInstruction };
 }
 
 // Whether the visitor has actually begun walking the route: it exists, and

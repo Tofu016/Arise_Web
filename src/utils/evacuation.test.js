@@ -11,7 +11,9 @@ const node = (id, floor, extra = {}) => ({
 });
 // A ticked ground-floor node: the common destination in these tests.
 const door = (id, floor = 1, extra = {}) =>
-  node(id, floor, { type: "fire_exit", isEmergencyDestination: true, ...extra });
+  node(id, floor, { type: "entrance", isEmergencyDestination: true, ...extra });
+// A fire exit marker: a stairwell door listing where its hidden stairs come out.
+const fireStairs = (id, landings = []) => ({ id, type: "emergency_exit", label: "Emergency Exit", yaw: 0, pitch: 0, landings });
 const link = (a, b) => {
   a.neighbors.push(b.id);
   b.neighbors.push(a.id);
@@ -22,16 +24,26 @@ const elevatorMarker = (id, elevatorId, accessibleFloors) => ({
 });
 
 describe("which nodes are destination points", () => {
-  it("nothing is automatic: unticked Open Area, Parking, Lobby, Entrance and Fire Exit nodes do not count", () => {
-    const nodes = ["open_area", "parking", "lobby", "entrance", "fire_exit"].map((type) => node(type, 1, { type }));
+  it("nothing is automatic: unticked Open Area, Parking, Lobby, Entrance and fire exit nodes do not count", () => {
+    const nodes = [
+      ...["open_area", "parking", "lobby", "entrance"].map((type) => node(type, 1, { type })),
+      node("fire", 1, { markers: [fireStairs(1)] }),
+    ];
     expect([...resolveDestinationPoints(nodes)]).toEqual([]);
   });
 
-  it("a ticked Open Area, Parking, Lobby, Entrance or Fire Exit counts", () => {
-    const nodes = ["open_area", "parking", "lobby", "entrance", "fire_exit"].map((type) =>
-      node(type, 1, { type, isEmergencyDestination: true })
-    );
-    expect([...resolveDestinationPoints(nodes)].sort()).toEqual(["entrance", "fire_exit", "lobby", "open_area", "parking"]);
+  it("a ticked Open Area, Parking, Lobby, Entrance or fire exit node counts", () => {
+    const nodes = [
+      ...["open_area", "parking", "lobby", "entrance"].map((type) => node(type, 1, { type, isEmergencyDestination: true })),
+      node("fire", 1, { isEmergencyDestination: true, markers: [fireStairs(1)] }),
+    ];
+    expect([...resolveDestinationPoints(nodes)].sort()).toEqual(["entrance", "fire", "lobby", "open_area", "parking"]);
+  });
+
+  it("a fire door keeps its own type: a ticked hallway counts only with an emergency exit marker", () => {
+    expect(canBeDestinationPoint(node("h", 1, { isEmergencyDestination: true }))).toBe(false);
+    expect(canBeDestinationPoint(node("h", 1, { isEmergencyDestination: true, markers: [fireStairs(1)] }))).toBe(true);
+    expect(canBeDestinationPoint(node("h", 2, { isEmergencyDestination: true, markers: [fireStairs(1)] }))).toBe(false);
   });
 
   it("a tick on any other type is ignored", () => {
@@ -66,7 +78,7 @@ describe("the upper-floor mishap", () => {
     const s1 = node("s1", 1, { type: "stairs" });
     const s2 = node("s2", 2, { type: "stairs" });
     const s3 = node("s3", 3, { type: "stairs" });
-    const upper = node("upper", 3, { type: "fire_exit", isEmergencyDestination: tickUpper });
+    const upper = node("upper", 3, { type: "entrance", isEmergencyDestination: tickUpper });
     const h1 = node("h1", 1);
     const h2 = node("h2", 1);
     const h3 = node("h3", 1);
@@ -158,15 +170,6 @@ describe("what a route may pass through", () => {
     expect(findEvacuationRoute([a, s2, s1, exit], "a").path).toEqual(["a", "s2", "s1", "exit"]);
   });
 
-  it("passes through a fire stairwell, which ordinary routing refuses to do", () => {
-    const a = node("a", 2);
-    const fx2 = node("fx2", 2, { type: "fire_exit" });
-    const fx1 = node("fx1", 1, { type: "fire_exit" });
-    const exit = door("exit");
-    chain(a, fx2, fx1, exit);
-    expect(findEvacuationRoute([a, fx2, fx1, exit], "a").path).toEqual(["a", "fx2", "fx1", "exit"]);
-  });
-
   it("returns the start itself when it is already a destination point", () => {
     expect(findEvacuationRoute([door("exit")], "exit")).toMatchObject({ path: ["exit"], destinationId: "exit" });
   });
@@ -254,6 +257,30 @@ describe("auditEmergencyCoverage", () => {
     expect(audit.counts).toMatchObject({ total: 10, destination: 2, ascends: 1 });
   });
 
+  it("flags routes through fire stairs and every authoring problem around the markers", () => {
+    const top = node("top", 3, { markers: [fireStairs(1, ["out", "ghost"])] });
+    const out = door("out");
+    const loose = node("loose", 1, { markers: [fireStairs(2)] });
+    const crossed = node("crossed", 2, { markers: [fireStairs(3, ["out"])], neighbors: ["x2"] });
+    const x2 = node("x2", 3, { neighbors: ["crossed"] });
+    const sameFloor = node("sameFloor", 3, { markers: [fireStairs(4, ["x2"])] });
+
+    const audit = auditEmergencyCoverage([top, out, loose, crossed, x2, sameFloor]);
+    expect(audit.entries.find((e) => e.id === "top")).toMatchObject({ status: "ok", viaFireStairs: true, hops: 1 });
+    expect(audit.entries.find((e) => e.id === "out").viaFireStairs).toBe(false);
+    expect(audit.landingProblems.map((p) => [p.nodeId, p.landingId, p.problem])).toEqual([
+      ["top", "ghost", "missing"],
+      ["sameFloor", "x2", "floor"],
+    ]);
+    expect(audit.markersWithoutLanding.map((n) => n.id)).toEqual(["loose"]);
+    expect(audit.crossFloorLinks.map((l) => [l.nodeId, l.neighborId])).toEqual([["crossed", "x2"]]);
+  });
+
+  it("does not report a ticked fire door as a marker without a landing", () => {
+    const fireDoor = node("fd", 1, { isEmergencyDestination: true, markers: [fireStairs(1)] });
+    expect(auditEmergencyCoverage([fireDoor]).markersWithoutLanding).toEqual([]);
+  });
+
   it("lists the destination points", () => {
     const a = node("a", 1);
     const lot = node("lot", 1, { type: "parking", isEmergencyDestination: true });
@@ -261,5 +288,91 @@ describe("auditEmergencyCoverage", () => {
     expect(auditEmergencyCoverage([a, lot]).destinationPoints).toEqual([
       { id: "lot", name: "LOT", building: "gd1", floor: 1, type: "parking" },
     ]);
+  });
+});
+
+describe("fire stairs (emergency exit marker landings)", () => {
+  // A floor-3 hallway with a fire stairwell door. Its landings are the way down.
+  const tower = (landings) => {
+    const start = node("start", 3, { markers: [fireStairs(1, landings)] });
+    const l1 = node("l1", 1, { type: "entrance", isEmergencyDestination: true });
+    const l2 = node("l2", 2);
+    const l2out = node("l2out", 2);
+    const l2exit = door("l2exit");
+    chain(l2, l2out);
+    link(l2out, l2exit);
+    return { start, l1, l2, nodes: [start, l1, l2, l2out, l2exit] };
+  };
+
+  it("takes the hidden stairs straight to the lowest listed landing", () => {
+    const { nodes } = tower(["l2", "l1"]);
+    expect(findEvacuationRoute(nodes, "start")).toMatchObject({ path: ["start", "l1"], destinationId: "l1", ascends: false });
+  });
+
+  it("the order the landings are listed in makes no difference", () => {
+    expect(findEvacuationRoute(tower(["l1", "l2"]).nodes, "start").path).toEqual(["start", "l1"]);
+  });
+
+  it("falls back to the next landing when the lowest is reported blocked", () => {
+    const { nodes } = tower(["l1", "l2"]);
+    expect(findEvacuationRoute(nodes, "start", { blocked: ["l1"] })).toMatchObject({
+      path: ["start", "l2", "l2out", "l2exit"], destinationId: "l2exit",
+    });
+  });
+
+  it("has no route once every landing is blocked", () => {
+    expect(findEvacuationRoute(tower(["l1", "l2"]).nodes, "start", { blocked: ["l1", "l2"] })).toBeNull();
+  });
+
+  it("is a one-way door: the landing lists nothing back up", () => {
+    const { nodes } = tower(["l1"]);
+    const l1 = nodes.find((n) => n.id === "l1");
+    const ground = node("g", 1);
+    link(l1, ground);
+    expect(findEvacuationRoute([...nodes, ground], "l1")).toMatchObject({ path: ["l1"] });
+    expect(findEvacuationRoute([...nodes, ground], "g").path).toEqual(["g", "l1"]);
+  });
+
+  it("an underground fire stairwell can list a landing on the ground floor", () => {
+    const basement = node("b1", -1, { markers: [fireStairs(1, ["up"])] });
+    const up = door("up");
+    expect(findEvacuationRoute([basement, up], "b1")).toMatchObject({ path: ["b1", "up"], ascends: false });
+  });
+
+  it("a fire door node counts as a destination when ticked and is reached on foot", () => {
+    const a = node("a", 1);
+    const fireDoor = node("fd", 1, { isEmergencyDestination: true, markers: [fireStairs(1)] });
+    link(a, fireDoor);
+    expect(findEvacuationRoute([a, fireDoor], "a")).toMatchObject({ path: ["a", "fd"], destinationId: "fd" });
+  });
+
+  it("a landing naming a missing node is skipped, not followed", () => {
+    const start = node("start", 3, { markers: [fireStairs(1, ["ghost"])] });
+    expect(findEvacuationRoute([start], "start")).toBeNull();
+  });
+
+  describe("preference over ordinary stairs", () => {
+    // Floor 2 to the ground, two ways: an ordinary flight of Stairs next door,
+    // or a fire stairwell `k` hops down a corridor.
+    const build = (k) => {
+      const start = node("start", 2);
+      const s2 = node("s2", 2, { type: "stairs" });
+      const s1 = node("s1", 1, { type: "stairs" });
+      const exit = door("exit");
+      chain(start, s2, s1, exit);
+      const corridor = Array.from({ length: k - 1 }, (_, i) => node(`c${i}`, 2));
+      const fireNode = node("fire", 2, { markers: [fireStairs(1, ["out"])] });
+      const out = door("out");
+      chain(start, ...corridor, fireNode);
+      return [start, s2, s1, exit, ...corridor, fireNode, out];
+    };
+
+    it("a fire exit a few hops further than the ordinary stairs still wins", () => {
+      expect(findEvacuationRoute(build(4), "start").path.at(-1)).toBe("out");
+    });
+
+    it("a fire exit far further away loses to the ordinary stairs", () => {
+      expect(findEvacuationRoute(build(12), "start").path).toEqual(["start", "s2", "s1", "exit"]);
+    });
   });
 });

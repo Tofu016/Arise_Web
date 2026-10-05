@@ -16,6 +16,7 @@ import {
   withoutLink,
   withoutMarker,
   renameMarker,
+  withLandings,
   candidateLinks,
 } from "./placement";
 
@@ -133,6 +134,15 @@ describe("links and markers", () => {
   it("renames a marker by id, leaving others untouched", () => {
     expect(renameMarker(current, 1, "New label")).toEqual([{ id: 1, label: "New label" }, { id: 2 }]);
     expect(renameMarker({ id: "a" }, 1, "New label")).toEqual([]);
+  });
+});
+
+describe("withLandings", () => {
+  it("replaces one marker's landing list as a whole, leaving the others untouched", () => {
+    const current = { id: "a", markers: [{ id: 1, landings: ["x", "y"] }, { id: 2, landings: ["z"] }] };
+    expect(withLandings(current, 1, ["w"])).toEqual([{ id: 1, landings: ["w"] }, { id: 2, landings: ["z"] }]);
+    expect(withLandings(current, 1, [])[0].landings).toEqual([]);
+    expect(withLandings({ id: "a" }, 1, ["w"])).toEqual([]);
   });
 });
 

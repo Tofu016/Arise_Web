@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { auditEmergencyCoverage, findEvacuationRoute } from "../../utils/evacuation";
 import { buildingLabel, EMERGENCY_DESTINATION_INDOOR_TYPES, floorLabel, typeLabel } from "../../utils/constants";
+import { fireStairsBetween } from "../../utils/emergencyExits";
 
 function SummaryCard({ label, count, warn }) {
   return (
@@ -15,6 +16,13 @@ function SummaryCard({ label, count, warn }) {
 }
 
 const placeText = (n) => `${buildingLabel(n.building)}, ${floorLabel(Number(n.floor))}`;
+
+const LANDING_PROBLEM_TEXT = {
+  missing: "names a node that no longer exists",
+  self: "lists its own node",
+  building: "is in another building",
+  floor: "is on the same floor, so it is not a way up or down",
+};
 
 // How well the node graph, as authored, actually gets a visitor out when
 // they tap Nearest Exit. It runs the same routing the public viewer does
@@ -40,6 +48,16 @@ export default function EmergencyCoveragePage() {
     setSelectedNodeId(id);
     navigate("/admin/node-editor");
   };
+  // Emergency exit markers and their landings are edited with the node's other
+  // markers, in the Virtual Map Navigation Editor.
+  const openInNavigationEditor = (id) => {
+    setSelectedNodeId(id);
+    navigate("/admin/virtual-map-navigation-editor");
+  };
+  const landingProblems = audit.landingProblems.filter(inScope);
+  const markersWithoutLanding = audit.markersWithoutLanding.filter(inScope);
+  const crossFloorLinks = audit.crossFloorLinks.filter(inScope);
+  const viaFireStairs = audit.entries.filter((e) => inScope(e) && e.viaFireStairs).length;
 
   return (
     <div className="emergency-coverage-page">
@@ -47,9 +65,12 @@ export default function EmergencyCoveragePage() {
         <h2 className="admin-page-heading">Emergency Coverage</h2>
         <p className="signage-page-intro">
           Checks that Nearest Exit works from every node. A visitor is routed to the nearest Emergency Exit
-          Destination Point: an Open Area, Parking, Lobby, Entrance or Fire Exit node on Floor 1 or Underground
-          that you ticked in the Node Editor. Nothing counts unless ticked. Routes never use elevators and never
-          climb above Floor 1 (or the visitor's own floor) unless no other way exists.
+          Destination Point: an Open Area, Parking, Lobby or Entrance node, or a node with an Emergency Exit
+          marker (a fire door), on Floor 1 or Underground that you ticked in the Node Editor. Nothing counts unless
+          ticked. Routes never use elevators and never climb above Floor 1 (or the visitor's own floor) unless no
+          other way exists. A node with an Emergency Exit marker is a fire exit node: its marker lists the landing
+          nodes its hidden fire stairs come out at, and routes take those stairs in preference to an ordinary staircase
+          that is not much closer.
         </p>
       </header>
 
@@ -70,6 +91,7 @@ export default function EmergencyCoveragePage() {
         <SummaryCard label="Route stays level or down" count={audit.entries.filter((e) => inScope(e) && (e.status === "ok" || e.status === "destination")).length} />
         <SummaryCard label="Route must go up" count={problems.filter((e) => e.status === "ascends").length} warn />
         <SummaryCard label="No route" count={problems.filter((e) => e.status === "none").length} warn />
+        <SummaryCard label="Routes via fire stairs" count={viaFireStairs} />
       </div>
 
       {audit.buildingsWithoutDestination.filter((b) => building === "all" || b === building).length > 0 && (
@@ -95,6 +117,50 @@ export default function EmergencyCoveragePage() {
           <strong>Tick ignored:</strong> these nodes are ticked but cannot count, because of their type or
           because they are above Floor 1:{" "}
           {audit.misflagged.filter(inScope).map((n) => n.id).join(", ")}.
+        </div>
+      )}
+
+      {landingProblems.length > 0 && (
+        <div className="emergency-coverage-callout emergency-coverage-callout-bad">
+          <strong>Landing problems:</strong>
+          <ul>
+            {landingProblems.map((p) => (
+              <li key={`${p.markerId}-${p.landingId}`}>
+                {p.nodeId}: landing {p.landingId} {LANDING_PROBLEM_TEXT[p.problem]}.{" "}
+                <button type="button" className="signage-btn" onClick={() => openInNavigationEditor(p.nodeId)}>Open in Navigation Editor</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {markersWithoutLanding.length > 0 && (
+        <div className="emergency-coverage-callout emergency-coverage-callout-bad">
+          <strong>Emergency Exit markers that lead nowhere:</strong>
+          <ul>
+            {markersWithoutLanding.map((n) => (
+              <li key={n.id}>
+                {n.name} <span className="field-hint">{n.id}</span> has no landings and is not ticked as a destination.
+                Add its landings, or tick the node if the door leads outside.{" "}
+                <button type="button" className="signage-btn" onClick={() => openInNavigationEditor(n.id)}>Open in Navigation Editor</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {crossFloorLinks.length > 0 && (
+        <div className="emergency-coverage-callout emergency-coverage-callout-bad">
+          <strong>Fire exit nodes with an ordinary link to another floor:</strong>
+          <ul>
+            {crossFloorLinks.map((l) => (
+              <li key={`${l.nodeId}-${l.neighborId}`}>
+                {l.nodeId} is linked to {l.neighborId} on another floor, which would let ordinary directions use the
+                stairs. Floors change through the marker's landings, or a Stairs node.{" "}
+                <button type="button" className="signage-btn" onClick={() => openInNavigationEditor(l.nodeId)}>Open in Navigation Editor</button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -163,9 +229,15 @@ export default function EmergencyCoveragePage() {
       {preview && (
         <div className="emergency-coverage-preview">
           <ol>
-            {preview.path.map((id) => (
-              <li key={id}>{byId[id].name} <span className="field-hint">{floorLabel(Number(byId[id].floor))}</span></li>
-            ))}
+            {preview.path.map((id, i) => {
+              const stairs = i > 0 ? fireStairsBetween(nodes, preview.path[i - 1], id) : null;
+              return (
+                <li key={id}>
+                  {byId[id].name} <span className="field-hint">{floorLabel(Number(byId[id].floor))}</span>
+                  {stairs && <strong> via the Emergency Exit stairs from {byId[preview.path[i - 1]].name}</strong>}
+                </li>
+              );
+            })}
           </ol>
           {preview.ascends && <p className="directions-error">This route goes up first: no way down exists from here.</p>}
         </div>

@@ -51,6 +51,8 @@ import { useCustomBuildingsVersion } from "../utils/buildingStore";
 import { buildSearchableRooms, findMarkerForRoom, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
 import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
+import { fireStairsAction } from "../utils/emergencyExits";
+import EmergencyStairsBanner from "../components/EmergencyStairsBanner";
 import { speak, stopSpeaking } from "../utils/tts";
 import { DESKTOP_INTRO_SPEECH, KIOSK_INTRO_SPEECH } from "../utils/introScript";
 import {
@@ -753,11 +755,23 @@ function MainPageContent({ onReset }) {
     land: landAtKioskStart,
   });
 
-  const { arrived, nextStopId, nextStopName, nextElevator, turnInstruction, walkStarted, skip } = progress;
+  const { arrived, nextStopId, nextStopName, nextElevator, nextFireStairs, turnInstruction, walkStarted, skip } = progress;
   const autoWalking = directions?.autoWalking ?? false;
   // An elevator step is announced as the ride it is, not "Walk to <landing
   // node's name>" — the landing's node name means little to a visitor.
-  const nextStepAction = nextElevator ? `Ride elevator to ${floorLabel(nextElevator.floor)}` : `Walk to ${nextStopName}`;
+  // A step down the hidden fire stairs is named the same way: the door is a
+  // marker in the photo, not a stop with a place name.
+  const nextStepAction = nextElevator
+    ? `Ride elevator to ${floorLabel(nextElevator.floor)}`
+    : nextFireStairs
+      ? fireStairsAction(nextFireStairs)
+      : `Walk to ${nextStopName}`;
+  // The marker the route's next step goes through, glowing in the photo: an
+  // elevator landing, or the emergency exit marker of the hidden fire stairs.
+  const nextStepMarkerId = nextElevator?.markerId ?? nextFireStairs?.markerId ?? null;
+  // Tapping the glowing emergency exit marker takes the stairs, the same as
+  // the panel's button. Offered only while it is the next step.
+  const handleEmergencyExitMarkerClick = nextFireStairs ? () => flow.walkToNext() : undefined;
 
   // Kiosk: once the route is actually being walked (the visitor is at its
   // start, and hasn't arrived), the big directions dialog steps aside for the
@@ -1221,6 +1235,8 @@ function MainPageContent({ onReset }) {
         Stop {st.stepIndex + 1} of {st.total}
         {st.nextElevator ? (
           <>{": "}<strong>Take the elevator</strong> to {floorLabel(st.nextElevator.floor)}</>
+        ) : st.nextFireStairs ? (
+          <>{": "}<strong>Emergency Exit stairs ahead</strong>, {st.nextFireStairs.goesDown ? "down" : "up"} to {floorLabel(st.nextFireStairs.floor)}</>
         ) : st.nextStopName && (
           <>
             {": "}
@@ -1241,7 +1257,8 @@ function MainPageContent({ onReset }) {
             onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
             disabled={autoWalking}
           >
-            {st.nextElevator && PLACEHOLDER("elevator")} {st.action} {CHEVRON_RIGHT_WHITE}
+            {st.nextElevator && PLACEHOLDER("elevator")}
+            {st.nextFireStairs && <IconPlaceholder name="stairs" variant="white" className="inline-icon-img" />} {st.action} {CHEVRON_RIGHT_WHITE}
           </button>
           {st.skip && (
             <button
@@ -1271,7 +1288,9 @@ function MainPageContent({ onReset }) {
       <p className="field-hint">
         {st.nextElevator
           ? "The elevator is glowing in the photo. Tap it and pick the highlighted floor, or use the button above."
-          : "Follow the yellow hotspot in the photo: it marks the correct path to your destination."}
+          : st.nextFireStairs
+            ? "The Emergency Exit sign is glowing in the photo. Tap it, or use the button above."
+            : "Follow the yellow hotspot in the photo: it marks the correct path to your destination."}
       </p>
     </div>
   );
@@ -1368,6 +1387,7 @@ function MainPageContent({ onReset }) {
         stepIndex: directions.stepIndex,
         total: directions.path.length,
         nextElevator,
+        nextFireStairs,
         nextStopName,
         turnInstruction,
         skip,
@@ -1571,13 +1591,15 @@ function MainPageContent({ onReset }) {
                 initialPitch={entryPitch}
                 aimKey={arrival}
                 highlightedId={nextStopId}
-                highlightedMarkerId={nextElevator?.markerId ?? null}
+                highlightedMarkerId={nextStepMarkerId}
+                onEmergencyExitMarkerClick={handleEmergencyExitMarkerClick}
                 autoPan={!!nextStopId}
                 heightFraction={KIOSK_PANORAMA_FRACTION}
                 alwaysShowPreview
                 zoomable
                 previewsHidden={overlayOpen}
               />
+              {!overlayOpen && <EmergencyStairsBanner step={nextFireStairs} compact />}
             </div>
 
             {/* ---------- Bottom band: the admin's advertisements (signage),
@@ -1778,6 +1800,7 @@ function MainPageContent({ onReset }) {
                 }`}
                 nextStopAction={nextStepAction}
                 isElevator={!!nextElevator}
+                isFireStairs={!!nextFireStairs}
                 autoWalking={autoWalking}
                 stepIndex={directions.stepIndex}
                 onWalk={flow.walkToNext}
@@ -2045,12 +2068,14 @@ function MainPageContent({ onReset }) {
                   initialPitch={entryPitch}
                   aimKey={arrival}
                   highlightedId={nextStopId}
-                  highlightedMarkerId={nextElevator?.markerId ?? null}
+                  highlightedMarkerId={nextStepMarkerId}
+                  onEmergencyExitMarkerClick={handleEmergencyExitMarkerClick}
                   autoPan={!!nextStopId}
                   keyboardNav
                   onBack={goBack}
                   wheelZoomable
                 />
+                <EmergencyStairsBanner step={nextFireStairs} />
 
                 {/* Desktop's session-start walkthrough, scoped to the
                     panorama itself (not the whole screen) — see

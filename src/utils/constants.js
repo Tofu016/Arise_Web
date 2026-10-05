@@ -82,15 +82,14 @@ export function buildingDisplayName(buildingId) {
 }
 
 // Matches the actual Unity node-name vocabulary from the source model.
-// Colours keep their wayfinding hue (blue hallway, green entrance, red
-// fire-exit, \u2026) but are darkened/desaturated to read on the light,
+// Colours keep their wayfinding hue (blue hallway, green entrance, brown
+// lobby, \u2026) but are darkened/desaturated to read on the light,
 // maroon-led SDCA surfaces and to pass WCAG AA against white.
 export const NODE_TYPES = [
   { id: "hallway", label: "Hallway", color: "#2f6db0" },
   { id: "lobby", label: "Lobby", color: "#b87514" },
   { id: "entrance", label: "Entrance", color: "#2e7d46" },
   { id: "stairs", label: "Stairs", color: "#8b3fb5" },
-  { id: "fire_exit", label: "Fire Exit", color: "#c62a2c" },
   // Split from one combined "Open Area (parking)" type \u2014 not every open
   // area is a parking lot (e.g. DC's own open area isn't one), so an
   // admin needs to be able to say which this actually is.
@@ -101,12 +100,12 @@ export const NODE_TYPES = [
   { id: "building_transition", label: "Building Transition", color: "#ad7f00" },
 ];
 
-export const TRANSITION_TYPES = ["stairs", "fire_exit"];
-
 // Node type ids the emergency router (utils/evacuation.js) keys off, named
 // once here so a rename of a type id touches this block and nothing else.
+// A fire exit is not a node type: a node is a fire exit node when it carries
+// an emergency exit marker (see utils/emergencyExits.js), so a hallway that
+// holds a fire stairwell door stays a hallway.
 export const STAIRS_TYPE = "stairs";
-export const FIRE_EXIT_TYPE = "fire_exit";
 export const BUILDING_TRANSITION_TYPE = "building_transition";
 // The ground floor. Floor 1 is the ground in every building, and Underground
 // (-1) lies below it. Emergency routing treats it as fixed: an Emergency Exit
@@ -117,10 +116,20 @@ export const GROUND_FLOOR = 1;
 // (`isEmergencyDestination`): the place a Nearest Exit route ends. Nothing is
 // automatic. Whether someone who reaches the node is out of danger is the
 // admin's call alone, and no type is safe by itself.
-export const EMERGENCY_DESTINATION_TYPES = ["open_area", "parking", "lobby", "entrance", "fire_exit"];
+// A node carrying an emergency exit marker can be ticked too, whatever its type
+// (a fire door to the street): see canBeDestinationPoint in evacuation.js.
+export const EMERGENCY_DESTINATION_TYPES = ["open_area", "parking", "lobby", "entrance"];
 // The ones that are indoor spaces, or can open into one: ticking these needs
 // the most care, so the form and the coverage page warn about them.
 export const EMERGENCY_DESTINATION_INDOOR_TYPES = ["lobby", "entrance"];
+
+// How much a Nearest Exit route favors a protected fire stairwell over an
+// ordinary staircase, in extra hops of walking it will accept to reach one.
+// It is added to the cost of each flight of ordinary stairs (a floor change
+// through a Stairs node), so a fire exit within about this many hops further
+// than an ordinary staircase still wins, and a farther one loses. Distance is
+// hops between panoramas, not meters. 0 treats them alike.
+export const FIRE_STAIRS_PREFERENCE = 5;
 
 // Shown whenever the Nearest Exit route is on screen, so a visitor who gets
 // stuck (no route, blocked way, no way down) always has someone to call.
@@ -130,6 +139,10 @@ export const EMERGENCY_CONTACTS = [
   { label: "Bacoor CDRRMO (Rescue)", number: "(046) 417-0727" },
   { label: "Bacoor Police (PNP)", number: "(046) 417-6366" },
 ];
+
+// Marker type id of an emergency exit marker. It marks a node as a fire exit
+// node, and lists the landing nodes its hidden fire stairs come out at.
+export const EMERGENCY_EXIT_MARKER = "emergency_exit";
 
 // Point-of-interest markers placed *within* a panorama at a fixed yaw/pitch —
 // distinct from hotspots (which navigate to a different node). These just

@@ -20,6 +20,7 @@ export default function KioskWalkBar({
   progressText,
   nextStopAction,
   isElevator,
+  isFireStairs,
   autoWalking,
   stepIndex,
   onWalk,
@@ -42,7 +43,9 @@ export default function KioskWalkBar({
       <p className="kiosk-walkbar-hint">
         {isElevator
           ? "The elevator is glowing in the photo. Tap it, or use the button below."
-          : "Follow the yellow hotspot: it marks the correct path to your destination."}
+          : isFireStairs
+            ? "The Emergency Exit sign is glowing in the photo. Tap it, or use the button below."
+            : "Follow the yellow hotspot: it marks the correct path to your destination."}
       </p>
       {emergency && (
         <p className="kiosk-walkbar-hint kiosk-walkbar-emergency">
@@ -53,7 +56,8 @@ export default function KioskWalkBar({
       )}
 
       <button type="button" className="primary directions-go-btn kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
-        {isElevator && <IconPlaceholder name="elevator" className="inline-icon-img" />} {nextStopAction}{" "}
+        {isElevator && <IconPlaceholder name="elevator" className="inline-icon-img" />}
+        {isFireStairs && <IconPlaceholder name="stairs" variant="white" className="inline-icon-img" />} {nextStopAction}{" "}
         <img src={chevronRightWhite} alt="" className="inline-icon-img" />
       </button>
 

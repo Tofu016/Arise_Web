@@ -28,6 +28,16 @@ describe("inventoryMarkers", () => {
     expect(rows[3].problems).toEqual(["origin"]);
   });
 
+  it("flags an emergency exit that leads nowhere: no landings and not a ticked destination", () => {
+    const exit = (landings) => marker({ type: "emergency_exit", label: "Emergency Exit", landings });
+    const rows = inventoryMarkers([
+      node({ id: "n1", markers: [exit([])] }),
+      node({ id: "n2", markers: [exit(["n9"])] }),
+      node({ id: "n3", isEmergencyDestination: true, markers: [exit([])] }),
+    ]);
+    expect(rows.map((r) => r.problems)).toEqual([["exit-no-landing"], [], []]);
+  });
+
   it("checks elevator landings against their Elevator record", () => {
     const elevators = [{ id: "e1", label: "Lift A", accessibleFloors: [2, 3] }];
     const landing = (elevatorId) => marker({ type: "elevator", label: "", elevatorId });

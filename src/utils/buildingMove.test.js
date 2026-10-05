@@ -17,21 +17,21 @@ describe("planBuildingMove", () => {
     expect(problems).toHaveLength(1);
   });
 
-  it("reports floors and leadsToFloors the target lacks", () => {
-    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "stairs", leadsToFloors: [6] })];
+  it("reports a floor the target building lacks", () => {
+    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "stairs" })];
     const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
-    expect(problems).toHaveLength(2);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("floor -1");
   });
 
-  it("reports every declared floor the target lacks, not just one", () => {
-    const nodes = [node("gd1_f-1_stairs01", "gd1", -1, { type: "stairs", leadsToFloors: [6, 7] })];
-    const { problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2, 3]);
-    expect(problems.find((p) => p.includes("leads to"))).toContain("6, 7");
-  });
-
-  it("ignores a stray leadsToFloors on non-transition nodes", () => {
-    const nodes = [node("gd1_f1_hallway04", "gd1", 1, { type: "hallway", leadsToFloors: [0] })];
-    expect(planBuildingMove(nodes, "gd1", "gd12", [1]).problems).toEqual([]);
+  it("keeps emergency exit landings valid: they move with their building, ids follow the rename", () => {
+    const nodes = [
+      node("gd1_f2_hall01", "gd1", 2, { markers: [{ id: 1, type: "emergency_exit", landings: ["gd1_f1_hall01"] }] }),
+      node("gd1_f1_hall01", "gd1", 1),
+    ];
+    const { moves, problems } = planBuildingMove(nodes, "gd1", "gd12", [1, 2]);
+    expect(problems).toEqual([]);
+    expect(moves.map((m) => m.newId)).toEqual(["gd12_f2_hall01", "gd12_f1_hall01"]);
   });
 
   it("refuses moving a building onto itself", () => {

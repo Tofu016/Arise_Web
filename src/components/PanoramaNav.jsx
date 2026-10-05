@@ -60,6 +60,7 @@ function isTypingTarget(target) {
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" or type:"facility" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
  *  - onElevatorMarkerClick(marker): optional — called when a type:"elevator" marker is clicked (public viewer only; independent of the props above — moves the visitor, unlike every other marker type, which is purely informational)
+ *  - onEmergencyExitMarkerClick(marker): optional — called when the highlighted type:"emergency_exit" marker is clicked, which only exists while it is the next step of a Nearest Exit route (it takes the hidden fire stairs); never wired to any other emergency exit marker
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
  *  - onBack: required when keyboardNav is true — called on S/Down
  *  - onLiveChange(live): optional — called whenever the target scene (sceneKey) finishes loading and
@@ -81,6 +82,7 @@ export default function PanoramaNav({
   onMarkerClick,
   onRoomMarkerClick,
   onElevatorMarkerClick,
+  onEmergencyExitMarkerClick,
   onError,
   placing,
   onPlaceAngle,
@@ -331,6 +333,9 @@ export default function PanoramaNav({
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
           onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}
+          onEmergencyExitClick={
+            onEmergencyExitMarkerClick && !placing && m.id === shownHighlightMarkerId ? () => onEmergencyExitMarkerClick(m) : undefined
+          }
         />
       ))}
       <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-(touchInput ? TOUCH_ROTATE_SPEED : MOUSE_ROTATE_SPEED)} target={[0, 0, 0]} />

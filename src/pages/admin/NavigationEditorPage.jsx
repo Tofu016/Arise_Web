@@ -3,12 +3,13 @@ import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import FilterPanel from "../../components/FilterPanel";
 import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "../../components/GraphEditorControls";
-import { floorLabel, buildingLabel, floorsForBuilding, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
+import { floorLabel, buildingLabel, floorsForBuilding, EMERGENCY_EXIT_MARKER, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
 import { useAutoScrollIntoView } from "../../hooks/useAutoScrollIntoView";
 import { validateElevator, validateElevatorLanding, floorsWithLandingsDropped } from "../../utils/elevators";
 import IconPlaceholder from "../../components/IconPlaceholder";
+import EmergencyExitLandingPicker from "../../components/EmergencyExitLandingPicker";
 
 const defaultFilters = {
   building: "all",
@@ -88,6 +89,11 @@ export default function NavigationEditorPage() {
   const [managingElevatorId, setManagingElevatorId] = useState(null); // editing an existing elevator's floors, from the list below
   const [editElevatorFloors, setEditElevatorFloors] = useState([]);
   const [editElevatorError, setEditElevatorError] = useState("");
+  // An emergency exit marker's landings: the draft while adding one, and the
+  // marker whose landings are being edited from the list (with its draft).
+  const [newMarkerLandings, setNewMarkerLandings] = useState([]);
+  const [editingLandingsId, setEditingLandingsId] = useState(null);
+  const [landingsDraft, setLandingsDraft] = useState([]);
   const [renamingMarkerId, setRenamingMarkerId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
 
@@ -123,19 +129,25 @@ export default function NavigationEditorPage() {
     setNewMarkerType(MARKER_TYPES[0].id);
     setNewMarkerLabel("");
     setNewMarkerElevatorId("");
+    setNewMarkerLandings([]);
     setNewElevatorDraft({ id: "", label: "", accessibleFloors: current ? [current.floor] : [] });
     setElevatorFormError("");
   };
 
   const isElevator = newMarkerType === "elevator";
+  const isEmergencyExit = newMarkerType === EMERGENCY_EXIT_MARKER;
   const isCreatingElevator = isElevator && newMarkerElevatorId === "_new";
   const selectedElevator = isElevator ? elevatorsHere.find((e) => e.id === newMarkerElevatorId) : null;
   const landingErrors =
     isElevator && !isCreatingElevator && current ? validateElevatorLanding(selectedElevator, current) : [];
 
+  // An emergency exit marker's label is optional (it reads "Emergency Exit"),
+  // and its landings may be empty for a fire door that leads straight outside.
   const canConfirmMarker = isElevator
     ? !!selectedElevator && landingErrors.length === 0
-    : !!newMarkerLabel.trim();
+    : isEmergencyExit
+      ? true
+      : !!newMarkerLabel.trim();
 
   const createElevatorFormRef = useAutoScrollIntoView(isCreatingElevator);
 
@@ -176,7 +188,9 @@ export default function NavigationEditorPage() {
     if (!canConfirmMarker) return;
     const marker = isElevator
       ? { id: newMarkerId(), type: "elevator", elevatorId: selectedElevator.id, label: selectedElevator.label }
-      : { id: newMarkerId(), type: newMarkerType, label: newMarkerLabel.trim() };
+      : isEmergencyExit
+        ? { id: newMarkerId(), type: EMERGENCY_EXIT_MARKER, label: newMarkerLabel.trim() || "Emergency Exit", landings: newMarkerLandings }
+        : { id: newMarkerId(), type: newMarkerType, label: newMarkerLabel.trim() };
     editor.startPlacingMarker(marker);
     setAddingMarker(false);
   };
@@ -191,6 +205,15 @@ export default function NavigationEditorPage() {
     setRenameDraft(m.label);
   };
   const cancelRenameMarker = () => setRenamingMarkerId(null);
+
+  const startEditLandings = (m) => {
+    setEditingLandingsId(m.id);
+    setLandingsDraft(m.landings || []);
+  };
+  const confirmEditLandings = () => {
+    editor.setMarkerLandings(editingLandingsId, landingsDraft);
+    setEditingLandingsId(null);
+  };
   const confirmRenameMarker = (id) => {
     const trimmed = renameDraft.trim();
     if (!trimmed) return;
@@ -333,6 +356,13 @@ export default function NavigationEditorPage() {
                             {m.elevatorId} · serves: {(m.accessibleFloors || []).map(floorLabel).join(", ")}
                           </span>
                         )}
+                        {m.type === EMERGENCY_EXIT_MARKER && (
+                          <span className="portal-tag">
+                            {(m.landings || []).length > 0
+                              ? `lands at: ${m.landings.join(", ")}`
+                              : "no landings: a fire door to the outside"}
+                          </span>
+                        )}
                       </span>
                     )}
                     <div className="link-actions">
@@ -346,6 +376,9 @@ export default function NavigationEditorPage() {
                           {canRenameMarker(m) && (
                             <button onClick={() => startRenameMarker(m)}>Rename</button>
                           )}
+                          {m.type === EMERGENCY_EXIT_MARKER && (
+                            <button onClick={() => startEditLandings(m)}>Edit landings</button>
+                          )}
                           <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
                           <button className="danger" onClick={() => {
                             const detailsNote = m.type === "facility" ? " Its saved details are deleted too, unless another room or facility uses the name." : "";
@@ -354,6 +387,15 @@ export default function NavigationEditorPage() {
                         </>
                       )}
                     </div>
+                    {editingLandingsId === m.id && (
+                      <div className="landing-picker-edit">
+                        <EmergencyExitLandingPicker node={current} nodes={nodes} selected={landingsDraft} onChange={setLandingsDraft} />
+                        <div className="link-actions">
+                          <button onClick={confirmEditLandings}>Save landings</button>
+                          <button onClick={() => setEditingLandingsId(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -505,6 +547,14 @@ export default function NavigationEditorPage() {
                     {landingErrors.map((err) => (
                       <p key={err} className="directions-error">{err}</p>
                     ))}
+                  </>
+                ) : isEmergencyExit ? (
+                  <>
+                    <p className="field-hint">
+                      Place this where the fire stairwell door is in the photo. Its node becomes a fire exit node
+                      and stays whatever type it is, such as a hallway.
+                    </p>
+                    <EmergencyExitLandingPicker node={current} nodes={nodes} selected={newMarkerLandings} onChange={setNewMarkerLandings} />
                   </>
                 ) : (
                   <input

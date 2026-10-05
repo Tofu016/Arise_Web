@@ -87,6 +87,9 @@ export const withoutLink = (current, id) => (current.neighbors || []).filter((n)
 export const withoutMarker = (current, id) => (current.markers || []).filter((m) => m.id !== id);
 export const renameMarker = (current, id, label) =>
   (current.markers || []).map((m) => (m.id === id ? { ...m, label } : m));
+// An emergency exit marker's landing node ids, replaced as a whole.
+export const withLandings = (current, id, landings) =>
+  (current.markers || []).map((m) => (m.id === id ? { ...m, landings } : m));
 
 // Points that could be linked from `current` matching a typed query (id or
 // name), leaving out itself and existing neighbors; at most 8.
