@@ -8310,7 +8310,7 @@ html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center));
+  padding-bottom: calc(100vh - 2 * var(--kiosk-card-center) - 160px);
   gap: 24px;
   width: 100%;
   border: 0;
@@ -8318,6 +8318,7 @@ html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   background: #fff;
   color: #000;
   cursor: pointer;
+  font-family: var(--font-sans-body);
   touch-action: manipulation;
   opacity: 1;
   transition: opacity 0.6s ease, visibility 0s;
@@ -8647,14 +8648,145 @@ html.kiosk-mode .pano-zoom-btn:not(:disabled):hover:active {
   opacity: 0.85;
   box-shadow: var(--shadow-2);
 }
+/* The ARISE logo, drawn in the designer's SVG units (expanded logo
+   1470.5 x 601.4; --u is one unit). Resting state is the neutral square;
+   .kiosk-start-screen-playing runs the keyframes, whose percentages are the
+   mobile timeline (hold 300, intro 380, hold 250, expand 650 of 2340ms, sped up 32%) and
+   must stay in step with LOGO_DURATION_MS in KioskStartScreen.jsx. */
+.kiosk-start-logo {
+  --u: calc(min(86vw, 1000px) / 1470.5);
+  position: relative;
+  display: block;
+  width: calc(1470.5 * var(--u));
+  height: calc(601.4 * var(--u));
+  animation: kiosk-logo-breathe 3.6s ease-in-out infinite;
+}
+.kiosk-start-screen-leaving .kiosk-start-logo {
+  animation: none;
+  translate: 0 var(--glide, 0px);
+  transition: translate 0.6s cubic-bezier(.65, 0, .35, 1) 0.25s;
+}
+.kiosk-logo-frame,
+.kiosk-logo-dot,
+.kiosk-logo-cursor,
+.kiosk-logo-button,
+.kiosk-logo-letter {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+.kiosk-logo-frame {
+  top: 0;
+  left: calc(423.2 * var(--u));
+  width: calc(600.8 * var(--u));
+  height: calc(601.4 * var(--u));
+  box-sizing: border-box;
+  border: calc(37 * var(--u)) solid #000;
+  border-radius: calc(104 * var(--u));
+  background: #625c5e;
+}
+.kiosk-logo-button {
+  left: calc(512.8 * var(--u));
+  top: calc(90 * var(--u));
+  width: calc(419.8 * var(--u));
+  height: calc(419.8 * var(--u));
+}
+.kiosk-logo-dot {
+  left: calc(904.5 * var(--u));
+  top: calc(278.5 * var(--u));
+  width: calc(43 * var(--u));
+  height: calc(43 * var(--u));
+  border-radius: 50%;
+  background: #010101;
+  opacity: 0;
+}
+.kiosk-logo-cursor {
+  left: calc(977.7 * var(--u));
+  top: calc(220.6 * var(--u));
+  width: calc(21 * var(--u));
+  height: calc(160 * var(--u));
+  background: #010101;
+  opacity: 0;
+}
+.kiosk-logo-letter {
+  left: calc(var(--l) * var(--u));
+  top: calc(var(--t) * var(--u));
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+  opacity: 0;
+}
+.kiosk-start-screen-playing .kiosk-logo-frame {
+  animation: kiosk-logo-frame 1770ms both;
+}
+.kiosk-start-screen-playing .kiosk-logo-button {
+  animation: kiosk-logo-button 1770ms both;
+}
+.kiosk-start-screen-playing .kiosk-logo-dot {
+  animation: kiosk-logo-dot 1770ms both;
+}
+.kiosk-start-screen-playing .kiosk-logo-cursor {
+  animation: kiosk-logo-cursor 1770ms both, kiosk-logo-blink 610ms steps(1, end) infinite;
+}
+.kiosk-start-screen-playing .kiosk-logo-letter {
+  animation: kiosk-logo-letter 97ms linear var(--delay) both;
+}
+@keyframes kiosk-logo-breathe {
+  50% { scale: 1.08; }
+}
+@keyframes kiosk-logo-frame {
+  0%, 12.82% { left: calc(423.2 * var(--u)); width: calc(600.8 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  29.06%, 39.74% { left: calc(376 * var(--u)); width: calc(695.2 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  67.52%, 100% { left: 0; width: calc(1470.5 * var(--u)); }
+}
+@keyframes kiosk-logo-button {
+  0%, 12.82% { left: calc(512.8 * var(--u)); top: calc(90 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  29.06%, 39.74% { left: calc(473.3 * var(--u)); top: calc(90.7 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  67.52%, 100% { left: calc(94.2 * var(--u)); top: calc(89.5 * var(--u)); }
+}
+@keyframes kiosk-logo-dot {
+  0%, 20.94% { opacity: 0; left: calc(904.5 * var(--u)); top: calc(278.5 * var(--u)); }
+  29.06%, 39.74% { opacity: 1; left: calc(904.5 * var(--u)); top: calc(278.5 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  67.52%, 100% { opacity: 1; left: calc(528.5 * var(--u)); top: calc(278.1 * var(--u)); }
+}
+@keyframes kiosk-logo-cursor {
+  0%, 20.94% { opacity: 0; left: calc(977.7 * var(--u)); top: calc(220.6 * var(--u)); }
+  29.06%, 39.74% { opacity: 1; left: calc(977.7 * var(--u)); top: calc(220.6 * var(--u)); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+  67.52%, 100% { opacity: 1; left: calc(1283.7 * var(--u)); top: calc(227.6 * var(--u)); }
+}
+@keyframes kiosk-logo-blink {
+  0% { background-color: #010101; }
+  52% { background-color: transparent; }
+}
+@keyframes kiosk-logo-letter {
+  from { opacity: 0; translate: 0 calc(18 * var(--u)); }
+  to { opacity: 1; translate: 0 0; }
+}
 .kiosk-start-title {
+  font-family: var(--font-sans-display);
   font-size: 96px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
+  color: #000;
+}
+.kiosk-start-subtitle {
+  font-family: var(--font-sans-body);
+  font-size: 36px;
+  color: #000;
 }
 .kiosk-start-prompt {
   font-size: 36px;
   color: #555;
+}
+/* An animation beats a plain opacity change, and motion.css gives these
+   children a fill-forwards entrance, so the fade is its own animation, with
+   the specificity to replace that one. */
+.kiosk-start-screen.kiosk-start-screen-leaving > .kiosk-start-title,
+.kiosk-start-screen.kiosk-start-screen-leaving > .kiosk-start-prompt {
+  animation: kiosk-start-fade-out 0.25s ease both;
+}
+@keyframes kiosk-start-fade-out {
+  to { opacity: 0; }
 }
 
 /* Kiosk thank-you card (KioskThanks.jsx): small, horizontally centered;
@@ -10974,6 +11106,9 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
   max-width: 360px;
 }
 .emergency-coverage-filter-search .user-panel-search {
+  /* The label is a column flexbox, so .user-panel-search's 240px flex-basis
+     would become its height and push the magnifier far below the input. */
+  flex: none;
   max-width: none;
   font-weight: 400;
   text-transform: none;
