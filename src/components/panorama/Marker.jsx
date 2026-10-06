@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useThree } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
+import * as THREE from "three";
 import { markerTypeInfo } from "../../utils/constants";
 import { toPosition } from "../../utils/panoramaMath";
 import IconPlaceholder from "../IconPlaceholder";
@@ -30,6 +31,24 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
   const uiScale = Math.min(1.5, Math.max(0.75, Math.min(canvasSize.width, canvasSize.height) / 1080));
   const info = markerTypeInfo(type);
   const [hovered, setHovered] = useState(false);
+
+  // `inFront`: the marker is in the half of the sphere the camera faces. The
+  // <Html> is only mounted then. drei re-checks whether it is behind the
+  // camera only when its projected screen position changes, and a point
+  // behind the camera projects onto its mirror image in front. So after a
+  // move (the view swinging round, often by exactly 180 degrees on arrival)
+  // a marker behind you could keep its old placement and sit over another
+  // marker ahead until you looked round to it. Mounting it only while in
+  // front means it always starts from a fresh, correct placement (the same
+  // fix as Hotspot's preview). The threshold is drei's own behind-camera
+  // test, so nothing that should be on screen is hidden.
+  const markerDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch, 1)), [yaw, pitch]);
+  const cameraDir = useMemo(() => new THREE.Vector3(), []);
+  const [inFront, setInFront] = useState(false);
+  useFrame(({ camera }) => {
+    const nowInFront = camera.getWorldDirection(cameraDir).dot(markerDir) > 0;
+    if (nowInFront !== inFront) setInFront(nowInFront);
+  });
 
   // A facility opens the same panel a room does (see utils/search.js).
   const isRoomClickable = (type === "room" || type === "facility") && !!onRoomClick;
@@ -69,43 +88,45 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
           raycaster can actually hit — confirmed this was the real,
           structural cause of room markers never responding to clicks,
           not a data-matching problem. */}
-      <Html
-        center
-        // drei's default z-index range reaches ~16.7 million, which floats
-        // the marker above every dialog and panel. Pin it to the bottom
-        // layer so the page's own UI always sits over it, as with the
-        // (canvas-drawn) hotspots.
-        zIndexRange={[0, 0]}
-        style={{ pointerEvents: isClickable ? "auto" : "none" }}>
-        {/* Layout/colour in index.css → "Panorama overlays"; only the
-            per-marker size, type colour and selected ring are dynamic. */}
-        <div
-          className={"pano-marker" + (highlighted ? " pano-marker-highlighted" : "")}
-          style={{ cursor: isClickable ? "pointer" : "default", opacity: dimmed ? 0.35 : 1 }}
-          onClick={clickHandler}
-          onMouseEnter={() => isClickable && setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-        >
+      {inFront && (
+        <Html
+          center
+          // drei's default z-index range reaches ~16.7 million, which floats
+          // the marker above every dialog and panel. Pin it to the bottom
+          // layer so the page's own UI always sits over it, as with the
+          // (canvas-drawn) hotspots.
+          zIndexRange={[0, 0]}
+          style={{ pointerEvents: isClickable ? "auto" : "none" }}>
+          {/* Layout/colour in index.css → "Panorama overlays"; only the
+              per-marker size, type colour and selected ring are dynamic. */}
           <div
-            className="pano-marker-dot"
-            style={{
-              width: size,
-              height: size,
-              fontSize,
-              background: info.color,
-              // Left to the .pano-marker-highlighted pulse when highlighted.
-              boxShadow: highlighted
-                ? undefined
-                : selected
-                  ? "0 0 0 2px #fff, 0 0 8px rgba(32,27,27,0.55)"
-                  : "0 0 6px rgba(32,27,27,0.55)",
-            }}
+            className={"pano-marker" + (highlighted ? " pano-marker-highlighted" : "")}
+            style={{ cursor: isClickable ? "pointer" : "default", opacity: dimmed ? 0.35 : 1 }}
+            onClick={clickHandler}
+            onMouseEnter={() => isClickable && setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
           >
-            {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} variant="white" /> : info.icon}
+            <div
+              className="pano-marker-dot"
+              style={{
+                width: size,
+                height: size,
+                fontSize,
+                background: info.color,
+                // Left to the .pano-marker-highlighted pulse when highlighted.
+                boxShadow: highlighted
+                  ? undefined
+                  : selected
+                    ? "0 0 0 2px #fff, 0 0 8px rgba(32,27,27,0.55)"
+                    : "0 0 6px rgba(32,27,27,0.55)",
+              }}
+            >
+              {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} variant="white" /> : info.icon}
+            </div>
+            <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
           </div>
-          <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
-        </div>
-      </Html>
+        </Html>
+      )}
     </group>
   );
 }
