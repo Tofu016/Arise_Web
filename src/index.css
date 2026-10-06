@@ -9722,6 +9722,31 @@ html.kiosk-mode .signage-segmented-opt--on:hover:active {
   justify-content: flex-end;
   gap: var(--space-sm);
 }
+/* Directory page: the header (with Save / Discard) stays at the top while
+   the room lists scroll, and says when there's something to save — edits
+   only take effect on Save, and a refresh would otherwise drop them
+   unnoticed. */
+.directory-admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: -20px -20px 0;
+  padding: 20px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+.directory-admin-header .signage-settings-actions {
+  align-items: center;
+}
+.directory-admin-unsaved {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--warning-surface);
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 
 /* Shared plain and accent buttons for this page and its dialog. */
 .signage-btn {

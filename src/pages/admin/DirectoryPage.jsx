@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useDirectorySettings } from "../../hooks/useDirectorySettings";
@@ -248,6 +248,18 @@ export default function DirectoryPage() {
   const clearOne = (id) => setEdits(clearBuilding(draft, id, namesIn(id)));
   const clearAll = () => setEdits(buildings.reduce((acc, b) => clearBuilding(acc, b.id, namesIn(b.id)), draft));
 
+  // Nothing here saves on its own, so a refresh or closing the tab with
+  // unsaved edits asks first (the browser shows its own "Leave site?").
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   const save = async () => {
     setSaving(true);
     try {
@@ -263,8 +275,9 @@ export default function DirectoryPage() {
   const nameOf = (b, siblings) => (siblings > 1 ? `${b.label} Building` : b.label);
 
   return (
-    <div className="signage-page">
-      <header className="signage-page-header">
+    <div className="signage-page directory-admin-page">
+      {/* Sticky, so Save stays in reach while scrolling the room lists. */}
+      <header className="signage-page-header directory-admin-header">
         <div>
           <h2 className="admin-page-heading">Directory</h2>
           <p className="signage-page-intro">
@@ -275,6 +288,11 @@ export default function DirectoryPage() {
           </p>
         </div>
         <div className="signage-settings-actions">
+          {dirty && (
+            <span className="directory-admin-unsaved" role="status">
+              Unsaved changes
+            </span>
+          )}
           {dirty && (
             <button type="button" className="signage-btn" onClick={() => setEdits(null)} disabled={saving}>
               Discard
