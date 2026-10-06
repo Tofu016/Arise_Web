@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   MARKER_RADIUS,
   isFacing,
+  isOnScreen,
   previewScale,
   autoPanStep,
   autoPanToward,
@@ -280,5 +281,18 @@ describe("autoPanToward", () => {
   it("never overshoots", () => {
     const next = autoPanToward({ yaw: 0, pitch: 0 }, { yaw: 1, pitch: 0 }, 0.1);
     expect(next.yaw).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("isOnScreen", () => {
+  it("accepts a point inside the frame and in front of the camera", () => {
+    expect(isOnScreen({ x: 0, y: 0, z: 0.5 })).toBe(true);
+    expect(isOnScreen({ x: 1, y: -1, z: 0.9 })).toBe(true);
+  });
+
+  it("rejects a point outside the frame or behind the camera", () => {
+    expect(isOnScreen({ x: 1.01, y: 0, z: 0.5 })).toBe(false);
+    expect(isOnScreen({ x: 0, y: -1.2, z: 0.5 })).toBe(false);
+    expect(isOnScreen({ x: 0, y: 0, z: 1.2 })).toBe(false);
   });
 });

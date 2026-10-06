@@ -8,7 +8,7 @@ import { useIntroReady } from "../hooks/useIntroReady";
 // Hand-drawn (nothing touch-specific exists in the icon set): a fingertip dot
 // sliding between two arrowheads to read as "drag", and the real hotspot's
 // look (HotspotGlyph) for "tap".
-function DragIcon() {
+export function DragIcon() {
   return (
     <svg className="kiosk-intro-icon-svg" viewBox="0 0 60 60" aria-hidden="true">
       <path d="M12 30 L4 30 M4 30 L9 25 M4 30 L9 35" stroke="var(--white)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -18,7 +18,7 @@ function DragIcon() {
   );
 }
 
-function TapIcon() {
+export function TapIcon() {
   return (
     <svg className="kiosk-intro-icon-svg" viewBox="0 0 60 60" aria-hidden="true">
       <HotspotGlyph cx={30} cy={30} />

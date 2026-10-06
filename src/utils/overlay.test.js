@@ -100,6 +100,14 @@ describe("blocksIdle", () => {
   it("does not count the building dialog", () => {
     expect(blocksIdle({ ...initialOverlay, buildingMenu: true }, ctx)).toBe(false);
   });
+  it("with panels in a drawer, counts only the pairing screen and a route being followed", () => {
+    const drawer = { ...ctx, panelsInDrawer: true };
+    expect(blocksIdle(run({ type: "showPanel", mode: "search" }), drawer)).toBe(false);
+    expect(blocksIdle(run({ type: "showPanel", mode: "room" }), drawer)).toBe(false);
+    expect(blocksIdle(run({ type: "showPanel", mode: "pairing" }), drawer)).toBe(true);
+    expect(blocksIdle(run({ type: "openDirections" }), { ...drawer, routeActive: true })).toBe(true);
+    expect(blocksIdle(run({ type: "openFeedback" }), drawer)).toBe(true);
+  });
 });
 
 describe("coverage", () => {

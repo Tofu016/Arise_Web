@@ -534,14 +534,19 @@ counts the unreviewed rows in the current range, whatever Status is set to.
 ### Kiosks
 
 **Kiosks** (`/admin/kiosks`) — the physical kiosk devices. **Add** one with
-a name and the map node it stands at; the page shows a one-time pairing
-code (8 digits, valid 30 minutes). On the device, tap the logo five times,
-then the node name five times, then the bottom band five times, and type the
-code on the pairing screen. A paired device is recognised from then on (its
-token is kept on the device, only a hash on the server). **Unpair** revokes
-it and issues a new code; wrong codes are rate-limited per IP. Only a
-paired kiosk's sessions count as kiosk sessions in Analytics, and only a
-paired kiosk offers a "Kiosk Location" starting point.
+a name and the map node it stands at; the page shows a one-time pairing code
+(8 digits, valid 30 minutes), typed on the device's pairing screen. Until it
+is paired the device shows the Mobile web layout, where the pairing screen
+opens with: 5 taps on the sidebar logo, close the sidebar, 5 taps on the
+node name, open the sidebar, 1 tap on its question mark button. Pairing
+reloads the page into the kiosk view (the Compact layout), whose own gesture
+(logo, node name, bottom band, 5 taps each) shows which kiosk it is and can
+unpair it. A paired device is recognised from then on, across reloads and
+restarts (its token is kept in the browser's localStorage, only a hash on
+the server; clearing the browser's site data unpairs it). **Unpair** revokes
+it and issues a new code; wrong codes are rate-limited per IP. Only a paired
+kiosk's sessions count as kiosk sessions in Analytics, and only a paired
+kiosk offers a "Kiosk Location" starting point.
 
 ### Emergency Coverage
 
@@ -654,11 +659,47 @@ The public page: no login needed, no editing controls, just the tour. A
 signed-in admin just additionally gets an account button (see
 [Accounts](#accounts)).
 
-It has two layouts of the same app. The **desktop layout** (a sidebar beside
-the panorama) is shown on a normal landscape screen. The **Compact layout**
-(a stacked, touch-first layout with a radial menu and on-screen keyboard)
-is shown on any narrow screen and on any portrait screen taller than 1.3×
-its width, which is also what the portrait kiosk screens get.
+It has three layouts of the same app. The **desktop layout** (a sidebar
+beside the panorama) is shown on a normal landscape screen. A **compact
+screen** (768 px wide or less, a portrait screen taller than 1.3× its width,
+or 500 px tall or less) gets the **Mobile web layout**: the same app with
+the panorama filling the screen and the sidebar as a drawer. The **Compact
+layout** (a stacked, touch-first layout with a radial menu and on-screen
+keyboard) is shown only on a **paired kiosk** with a compact screen.
+
+### Mobile web layout
+
+- The panorama fills the screen; there is no header. The node name sits at
+  the top, always on one line: a long name shrinks first, and only past the
+  smallest size is its end cut off with an ellipsis. Back is inside the
+  name's pill at its left end, with matching space at the right end so the
+  name stays centred.
+- The sidebar is a drawer: the red tab on the left edge opens it, and its
+  close button (top left), a tap on the dimmed panorama, or Escape closes
+  it. The help button sits at its top right. Opening a room from a marker
+  opens the drawer; "Go To" and walking a route close it. While a route is
+  walked, a walk bar at the bottom holds the next-step, skip, auto-walk,
+  Directions (reopens the drawer) and End route buttons.
+- The menu button beside the search box (a kebab, on desktop too) spills
+  Choose a building, Nearest Exit and Give feedback out over the panorama;
+  they close with the drawer.
+- Pinch to zoom the panorama (it holds at x1.0 on the way through); only the
+  zoom level shows, no buttons. The rest of the page does not zoom.
+- No hover: once the view holds still for 2 seconds, every hotspot and room
+  marker on screen opens its preview, until the view moves. A tap on a
+  preview does what a tap on its hotspot or marker does.
+- Picking a room in the directory opens its panel without moving there; the
+  panel's Go To makes the hop. The panel's handle points down once the panel
+  is fully open, and tapping it closes it again.
+- Fields use the phone's own keyboard. A 360 room photo in the room panel is
+  a little taller than square. The photo viewer has a close button above the
+  picture's top right corner; a tap on the dimmed area also closes it.
+- The "Done exploring?" prompt waits 60 seconds of no activity with the
+  drawer closed, and 3 minutes with it open (any tap or scroll restarts the
+  wait). An open drawer panel does not hold it off by itself; a route being
+  followed does.
+- Sessions count as web sessions in Analytics.
+- An unpaired kiosk device shows this layout; see Kiosks for how to pair it.
 
 ### Getting around (desktop layout)
 

@@ -115,7 +115,9 @@ function KioskForm({ kiosk, nodes, onSave, onCancel }) {
 
 // Kiosks: the physical kiosk devices, each tied to a place on the map. A
 // device is paired once, on its own screen (a hidden tap gesture opens the
-// pairing screen), by typing the one-time code shown here.
+// pairing screen), by typing the one-time code shown here. An unpaired
+// device shows the Mobile web layout, where that gesture lives (see
+// utils/kioskPairingGesture.js); pairing reloads it into the kiosk view.
 export default function KiosksPage() {
   const { confirm } = useConfirm();
   const { nodes } = useOutletContext();
@@ -183,15 +185,26 @@ export default function KiosksPage() {
           <span className="signage-card-sub">The prompt is hidden from visitors, so it opens with a tap sequence.</span>
         </div>
         <ol className="kiosks-steps-list">
-          <li>Open the app on the kiosk device so the panorama view is showing.</li>
-          <li>Tap the logo five times.</li>
-          <li>Tap the node name five times.</li>
-          <li>Tap the bottom band five times. The pairing prompt then appears.</li>
-          <li>Type the pairing code shown on this page into the prompt.</li>
+          <li>
+            Open the app on the kiosk device. Until it is paired it shows the phone view: the panorama fills the
+            screen, with a menu button on its left edge.
+          </li>
+          <li>Tap the menu button to open the sidebar, then tap the logo at the top of the sidebar five times.</li>
+          <li>
+            Close the sidebar (its X button at the top left, or a tap on the panorama), then tap the location name at
+            the top of the screen five times.
+          </li>
+          <li>
+            Open the sidebar again and tap the question mark button at its top right once. The pairing prompt then
+            appears.
+          </li>
+          <li>Type the pairing code shown on this page into the prompt. The device reloads into the kiosk view.</li>
         </ol>
         <span className="signage-field-hint">
-          Do the three groups of taps in this order. If the prompt does not appear, start again from the logo. Use New
-          code on a kiosk below to get a fresh code.
+          Do the steps in this order, starting each within ten seconds of the last. If the prompt does not appear,
+          start again from the logo. Use New code on a kiosk below to get a fresh code. To check or unpair a kiosk
+          that is already paired, open the prompt on its kiosk view instead: tap the logo five times, the location
+          name five times, then the bottom band five times.
         </span>
       </section>
 

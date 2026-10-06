@@ -16,7 +16,11 @@ import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 //
 // Anchored with the same viewport-fraction constants the dialog uses
 // (kioskLayout.js), so it follows the dialog's geometry if those change.
+// `mobile`: the Mobile web layout's version, a bottom sheet across the phone
+// screen (positioned by .kiosk-walkbar-mobile) rather than the kiosk column;
+// its Directions button reopens the drawer that holds the full panel.
 export default function KioskWalkBar({
+  mobile = false,
   progressText,
   nextStopAction,
   isElevator,
@@ -38,7 +42,12 @@ export default function KioskWalkBar({
   const bottom = `calc(${(1 - KIOSK_DIALOG_TOP - KIOSK_PANORAMA_FRACTION / 2) * 100}vh + 12px)`;
 
   return (
-    <div className="kiosk-walkbar" style={{ bottom }} role="region" aria-label="Walking controls">
+    <div
+      className={"kiosk-walkbar" + (mobile ? " kiosk-walkbar-mobile" : "")}
+      style={mobile ? undefined : { bottom }}
+      role="region"
+      aria-label="Walking controls"
+    >
       <p className="kiosk-walkbar-progress">{progressText}</p>
       <p className="kiosk-walkbar-hint">
         {isElevator
@@ -55,14 +64,18 @@ export default function KioskWalkBar({
         </p>
       )}
 
-      <button type="button" className="primary directions-go-btn kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
+      {/* Keyed on the step, so each step gets a fresh button. The label
+          changes under the visitor's finger as the step is taken, and a
+          touch browser can then leave the old press (:active, the shrink)
+          stuck on until the next touch elsewhere. */}
+      <button key={`walk-${stepIndex}`} type="button" className="primary directions-go-btn kiosk-walkbar-walk" onClick={onWalk} disabled={autoWalking}>
         {isElevator && <IconPlaceholder name="elevator" className="inline-icon-img" />}
         {isFireStairs && <IconPlaceholder name="stairs" variant="white" className="inline-icon-img" />} {nextStopAction}{" "}
         <img src={chevronRightWhite} alt="" className="inline-icon-img" />
       </button>
 
       {skipCount > 0 && (
-        <button type="button" className="kiosk-walkbar-dialog-btn kiosk-walkbar-skip" onClick={onSkip} disabled={autoWalking}>
+        <button key={`skip-${stepIndex}`} type="button" className="kiosk-walkbar-dialog-btn kiosk-walkbar-skip" onClick={onSkip} disabled={autoWalking}>
           <IconPlaceholder name="skip-forward" /> Skip hallway ({skipCount} stops)
         </button>
       )}

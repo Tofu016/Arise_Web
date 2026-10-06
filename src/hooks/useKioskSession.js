@@ -32,16 +32,18 @@ export function useKioskSession(compact) {
   };
 }
 
-// On the Compact layout the panorama zooms only through its on-screen buttons.
-// Stops the browser from zooming the whole page — header and bottom whitespace
-// included — on a pinch: touch-action via the kiosk-mode class (see
-// index.css), plus the pinch events that bypass it (Safari's gestures,
-// ctrl+wheel from a trackpad pinch or a touchscreen driver that emulates one).
-export function useKioskZoomLock(compact) {
+// On the Compact layout the panorama zooms only through its on-screen buttons,
+// and on the Mobile web layout only through a pinch on the panorama itself
+// (PanoramaNav's pinchZoomable). Stops the browser from zooming the whole page
+// (header, sidebar and buttons included) on a pinch: touch-action via the
+// root class (`kiosk-mode` or `mobile-web-mode`, see index.css), plus the
+// pinch events that bypass it (Safari's gestures, ctrl+wheel from a trackpad
+// pinch or a touchscreen driver that emulates one).
+export function useKioskZoomLock(active, rootClass = "kiosk-mode") {
   useEffect(() => {
-    if (!compact) return;
+    if (!active) return;
     const root = document.documentElement;
-    root.classList.add("kiosk-mode");
+    root.classList.add(rootClass);
     const block = (e) => e.preventDefault();
     const blockCtrlWheel = (e) => {
       if (e.ctrlKey) e.preventDefault();
@@ -50,12 +52,12 @@ export function useKioskZoomLock(compact) {
     document.addEventListener("gesturechange", block);
     document.addEventListener("wheel", blockCtrlWheel, { passive: false });
     return () => {
-      root.classList.remove("kiosk-mode");
+      root.classList.remove(rootClass);
       document.removeEventListener("gesturestart", block);
       document.removeEventListener("gesturechange", block);
       document.removeEventListener("wheel", blockCtrlWheel);
     };
-  }, [compact]);
+  }, [active, rootClass]);
 }
 
 // On the Compact layout, block the right-click context menu and the common

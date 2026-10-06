@@ -133,7 +133,7 @@ button.primary {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
-:where(html:not(.kiosk-mode)) .admin-back-link:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-back-link:hover,
 html.kiosk-mode .admin-back-link:hover:active {
   border-color: var(--accent);
   color: var(--text);
@@ -168,7 +168,7 @@ html.kiosk-mode .admin-back-link:hover:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(html:not(.kiosk-mode)) .admin-header-nav-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-header-nav-btn:hover,
 html.kiosk-mode .admin-header-nav-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -259,7 +259,7 @@ img[data-icon-placeholder="emergency-exit"] {
   width: 1.25em;
   height: 1.25em;
 }
-:where(html:not(.kiosk-mode)) .admin-sidebar-icon-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-icon-btn:hover,
 html.kiosk-mode .admin-sidebar-icon-btn:hover:active {
   background: var(--surface-hover);
   border-color: var(--border);
@@ -276,7 +276,7 @@ html.kiosk-mode .admin-sidebar-icon-btn:hover:active {
 /* Needed because .admin-sidebar-icon-btn:hover (specificity 0,2,0) otherwise
    beats the class above and paints the near-white hover fill behind the
    already-white icon, making it vanish. */
-:where(html:not(.kiosk-mode)) .admin-sidebar-icon-btn-active:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-icon-btn-active:hover,
 html.kiosk-mode .admin-sidebar-icon-btn-active:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -322,7 +322,7 @@ html.kiosk-mode .admin-sidebar-icon-btn-active:hover:active {
   transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
 }
 .admin-sidebar-rail-item:focus-within .admin-sidebar-icon-preview,
-:where(html:not(.kiosk-mode)) .admin-sidebar-rail-item:hover .admin-sidebar-icon-preview,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-rail-item:hover .admin-sidebar-icon-preview,
 html.kiosk-mode .admin-sidebar-rail-item:hover:active .admin-sidebar-icon-preview {
   opacity: 1;
   visibility: visible;
@@ -398,7 +398,7 @@ html.kiosk-mode .admin-sidebar-rail-item:hover:active .admin-sidebar-icon-previe
   padding: 4px 8px;
   margin-bottom: 8px;
 }
-:where(html:not(.kiosk-mode)) .admin-sidebar-close:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-close:hover,
 html.kiosk-mode .admin-sidebar-close:hover:active {
   color: var(--text);
 }
@@ -428,7 +428,7 @@ html.kiosk-mode .admin-sidebar-close:hover:active {
   text-decoration: none;
   color: var(--text);
 }
-:where(html:not(.kiosk-mode)) .admin-sidebar-flyout-item:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-flyout-item:hover,
 html.kiosk-mode .admin-sidebar-flyout-item:hover:active {
   background: var(--surface-hover);
 }
@@ -437,7 +437,7 @@ html.kiosk-mode .admin-sidebar-flyout-item:hover:active {
    exactly as the brand doc specifies: sparing, hairline-only, paired with
    the maroon selected state rather than replacing it. */
 .admin-sidebar-flyout-item-active,
-:where(html:not(.kiosk-mode)) .admin-sidebar-flyout-item-active:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-sidebar-flyout-item-active:hover,
 html.kiosk-mode .admin-sidebar-flyout-item-active:hover:active {
   background: var(--accent);
   color: #fff;
@@ -509,7 +509,7 @@ html.kiosk-mode .admin-sidebar-flyout-item-active:hover:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(html:not(.kiosk-mode)) .node-editor-toolbar > button:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .node-editor-toolbar > button:hover,
 html.kiosk-mode .node-editor-toolbar > button:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -859,11 +859,11 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   letter-spacing: 0.03em;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .pano-view-tab:hover {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .pano-view-tab:hover {
   background: var(--surface-hover);
 }
 .pano-view-tab-active,
-:where(html:not(.kiosk-mode)) .pano-view-tab-active:hover {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .pano-view-tab-active:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
@@ -994,7 +994,7 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   margin: 0;
   background: var(--surface);
 }
-:where(html:not(.kiosk-mode)) .room-photo-tile-actions .rescan-faces-btn:hover:not(:disabled) {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-photo-tile-actions .rescan-faces-btn:hover:not(:disabled) {
   background: var(--surface-hover);
 }
 /* margin-left:auto pins this to the right edge of .room-editor-page
@@ -1056,7 +1056,7 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   font-size: 13px;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .user-panel-page .user-panel-create-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .user-panel-page .user-panel-create-btn:hover,
 html.kiosk-mode .user-panel-page .user-panel-create-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -1296,7 +1296,7 @@ html.kiosk-mode .user-panel-page .user-panel-create-btn:hover:active {
   font-family: var(--font-sans-display);
   letter-spacing: 0.03em;
 }
-:where(html:not(.kiosk-mode)) .file-picker-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .file-picker-btn:hover:not(:disabled),
 html.kiosk-mode .file-picker-btn:hover:active:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -1375,7 +1375,7 @@ html.kiosk-mode .file-picker-btn:hover:active:not(:disabled) {
   color: var(--accent-contrast);
   font-weight: 700;  cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .toolbar button.primary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .toolbar button.primary:hover,
 html.kiosk-mode .toolbar button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -1425,7 +1425,7 @@ html.kiosk-mode .toolbar button.primary:hover:active {
      list past one screenful. */
   flex-shrink: 0;
 }
-:where(html:not(.kiosk-mode)) .node-row:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .node-row:hover,
 html.kiosk-mode .node-row:hover:active {
   background: var(--surface-hover);
 }
@@ -1719,7 +1719,7 @@ html.kiosk-mode .node-row:hover:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(html:not(.kiosk-mode)) .form-actions button:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .form-actions button:hover:not(:disabled),
 html.kiosk-mode .form-actions button:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
@@ -1728,7 +1728,7 @@ html.kiosk-mode .form-actions button:hover:active:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
-:where(html:not(.kiosk-mode)) .form-actions .primary:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .form-actions .primary:hover:not(:disabled),
 html.kiosk-mode .form-actions .primary:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -1738,7 +1738,7 @@ html.kiosk-mode .form-actions .primary:hover:active:not(:disabled) {
   border-color: var(--danger);
   color: var(--accent-contrast);
 }
-:where(html:not(.kiosk-mode)) .form-actions .danger:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .form-actions .danger:hover:not(:disabled),
 html.kiosk-mode .form-actions .danger:hover:active:not(:disabled) {
   background: var(--danger-hover);
   border-color: var(--danger-hover);
@@ -1793,7 +1793,7 @@ html.kiosk-mode .form-actions .danger:hover:active:not(:disabled) {
   cursor: pointer;
   font-size: 12px;
 }
-:where(html:not(.kiosk-mode)) .export-import-bar button.primary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .export-import-bar button.primary:hover,
 html.kiosk-mode .export-import-bar button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -1866,7 +1866,7 @@ html.kiosk-mode .export-import-bar button.primary:hover:active {
   align-items: center;
   justify-content: center;
 }
-:where(html:not(.kiosk-mode)) .sidebar-rail-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-rail-btn:hover,
 html.kiosk-mode .sidebar-rail-btn:hover:active {
   border-color: var(--accent);
 }
@@ -1881,7 +1881,7 @@ html.kiosk-mode .sidebar-rail-btn:hover:active {
   font-size: 13px;
   border-color: var(--accent);
 }
-:where(html:not(.kiosk-mode)) .sidebar-rail-account:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-rail-account:hover,
 html.kiosk-mode .sidebar-rail-account:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -1907,7 +1907,7 @@ html.kiosk-mode .sidebar-rail-account:hover:active {
   align-self: flex-start;
   margin-top: 4px;
 }
-:where(html:not(.kiosk-mode)) .sidebar-toggle-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-toggle-btn:hover,
 html.kiosk-mode .sidebar-toggle-btn:hover:active {
   border-color: var(--accent);
 }
@@ -1938,7 +1938,7 @@ html.kiosk-mode .sidebar-toggle-btn:hover:active {
   text-decoration: none;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .sidebar-admin-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-admin-btn:hover,
 html.kiosk-mode .sidebar-admin-btn:hover:active {
   background: var(--selected-bg);
 }
@@ -2122,7 +2122,7 @@ html.kiosk-mode .sidebar-admin-btn:hover:active {
   text-transform: uppercase;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .directions-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directions-btn:hover,
 html.kiosk-mode .directions-btn:hover:active {
   background: var(--accent-tint);
 }
@@ -2169,7 +2169,7 @@ html.kiosk-mode .directions-btn:hover:active {
   font-size: 13px;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .directions-go-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directions-go-btn:hover:not(:disabled),
 html.kiosk-mode .directions-go-btn:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -2182,7 +2182,7 @@ html.kiosk-mode .directions-go-btn:hover:active:not(:disabled) {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(html:not(.kiosk-mode)) .directions-go-btn:not(.primary):hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directions-go-btn:not(.primary):hover:not(:disabled),
 html.kiosk-mode .directions-go-btn:not(.primary):hover:active:not(:disabled) {
   background: var(--accent-tint);
   border-color: var(--accent);
@@ -2195,7 +2195,7 @@ html.kiosk-mode .directions-go-btn:not(.primary):hover:active:not(:disabled) {
   background: var(--gold);
   border-color: var(--gold);
 }
-:where(html:not(.kiosk-mode)) .directions-get-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directions-get-btn:hover:not(:disabled),
 html.kiosk-mode .directions-get-btn:hover:active:not(:disabled) {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
@@ -2289,7 +2289,7 @@ html.kiosk-mode .directions-get-btn:hover:active:not(:disabled) {
   text-transform: uppercase;
   text-align: left;
 }
-:where(html:not(.kiosk-mode)) .entrance-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .entrance-btn:hover,
 html.kiosk-mode .entrance-btn:hover:active {
   background: var(--accent-tint);
 }
@@ -2515,7 +2515,7 @@ html.kiosk-mode .entrance-btn:hover:active {
   cursor: pointer;
   box-shadow: var(--shadow-2);
 }
-:where(html:not(.kiosk-mode)) .desktop-menu-fab:hover {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .desktop-menu-fab:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -2555,7 +2555,7 @@ html.kiosk-mode .entrance-btn:hover:active {
 .desktop-menu-btn--exit {
   background: var(--success);
 }
-:where(html:not(.kiosk-mode)) .desktop-menu-btn--exit:hover {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .desktop-menu-btn--exit:hover {
   filter: brightness(0.9);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2763,15 +2763,15 @@ html.kiosk-mode .entrance-btn:hover:active {
 .directory-saved .directory-room-row {
   padding-left: 28px;
 }
-:where(html:not(.kiosk-mode)) .directory-building-row:hover,
-:where(html:not(.kiosk-mode)) .directory-campus-row:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directory-building-row:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directory-campus-row:hover,
 html.kiosk-mode .directory-building-row:hover:active,
 html.kiosk-mode .directory-campus-row:hover:active {
   filter: brightness(0.9);
 }
 /* Room hover: a crisp, static maroon highlight (no blur) in the same color
    as the selected highlight — a hard inset outline over a maroon wash. */
-:where(html:not(.kiosk-mode)) .directory-room-row:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directory-room-row:hover,
 html.kiosk-mode .directory-room-row:hover:active {
   /* The same 40% maroon wash as before, flattened onto the sidebar gray
      because the fade over a photo needs an opaque color. */
@@ -2779,7 +2779,7 @@ html.kiosk-mode .directory-room-row:hover:active {
   background: var(--directory-room-fade);
   box-shadow: inset 0 0 0 1px var(--sdca-maroon);
 }
-:where(html:not(.kiosk-mode)) .directory-room-row.directory-row-selected:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directory-room-row.directory-row-selected:hover,
 html.kiosk-mode .directory-room-row.directory-row-selected:hover:active {
   --directory-room-fade: var(--accent-hover);
   background: var(--directory-room-fade);
@@ -2962,7 +2962,7 @@ html.kiosk-mode .directory-room-row.directory-row-selected:hover:active {
   background: var(--accent);
   border: 1px solid var(--accent);
 }
-:where(html:not(.kiosk-mode)) .search-result-goto:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .search-result-goto:hover,
 html.kiosk-mode .search-result-goto:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -2971,7 +2971,7 @@ html.kiosk-mode .search-result-goto:hover:active {
   background: var(--gold);
   border: 1px solid var(--gold);
 }
-:where(html:not(.kiosk-mode)) .search-result-directions:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .search-result-directions:hover,
 html.kiosk-mode .search-result-directions:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
@@ -2999,7 +2999,7 @@ html.kiosk-mode .search-result-directions:hover:active {
 .room-search-result:last-child {
   border-bottom: none;
 }
-:where(html:not(.kiosk-mode)) .room-search-result:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-search-result:hover,
 html.kiosk-mode .room-search-result:hover:active {
   background: var(--surface-hover);
 }
@@ -3121,14 +3121,14 @@ html.kiosk-mode .room-search-result:hover:active {
      off-scale third weight. */
   font-weight: 700;
 }
-:where(html:not(.kiosk-mode)) .elevator-picker-option:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .elevator-picker-option:hover,
 html.kiosk-mode .elevator-picker-option:hover:active {
   background: var(--accent-tint);
 }
 /* The floor the route rides to: branding gold, white text, pulsing hard so
    it reads as the one to tap. */
 .elevator-picker-option-route,
-:where(html:not(.kiosk-mode)) .elevator-picker-option-route:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .elevator-picker-option-route:hover,
 html.kiosk-mode .elevator-picker-option-route:hover:active {
   border-color: var(--sdca-gold);
   background: var(--sdca-gold);
@@ -3295,7 +3295,7 @@ html.kiosk-mode .elevator-picker-option-route:hover:active {
   text-transform: uppercase;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .warning-modal button.primary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .warning-modal button.primary:hover,
 html.kiosk-mode .warning-modal button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -3514,12 +3514,12 @@ html.kiosk-mode .warning-modal button.primary:hover:active {
   font-family: inherit;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .room-edit-tab:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-edit-tab:hover,
 html.kiosk-mode .room-edit-tab:hover:active {
   border-color: var(--border-strong);
 }
 .room-edit-tab-active,
-:where(html:not(.kiosk-mode)) .room-edit-tab-active:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-edit-tab-active:hover,
 html.kiosk-mode .room-edit-tab-active:hover:active {
   border-color: var(--accent);
   background: var(--accent-tint);
@@ -3578,7 +3578,7 @@ html.kiosk-mode .room-edit-tab-active:hover:active {
   font-size: 13px;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .room-editor-page .room-editor-create-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-editor-page .room-editor-create-btn:hover,
 html.kiosk-mode .room-editor-page .room-editor-create-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -3767,12 +3767,12 @@ html.kiosk-mode .room-editor-page .room-editor-create-btn:hover:active {
   font-family: inherit;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .room-editor-list-mode-opt:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-editor-list-mode-opt:hover,
 html.kiosk-mode .room-editor-list-mode-opt:hover:active {
   background: var(--surface);
 }
 .room-editor-list-mode-opt-active,
-:where(html:not(.kiosk-mode)) .room-editor-list-mode-opt-active:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-editor-list-mode-opt-active:hover,
 html.kiosk-mode .room-editor-list-mode-opt-active:hover:active {
   background: var(--accent);
   color: var(--accent-contrast);
@@ -3796,13 +3796,13 @@ html.kiosk-mode .room-editor-list-mode-opt-active:hover:active {
   font-family: inherit;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .node-row-room-pill:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .node-row-room-pill:hover,
 html.kiosk-mode .node-row-room-pill:hover:active {
   border-color: var(--accent);
   color: var(--accent);
 }
 .node-row-room-pill-active,
-:where(html:not(.kiosk-mode)) .node-row-room-pill-active:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .node-row-room-pill-active:hover,
 html.kiosk-mode .node-row-room-pill-active:hover:active {
   border-color: var(--accent);
   background: var(--accent);
@@ -3854,7 +3854,7 @@ html.kiosk-mode .node-row-room-pill-active:hover:active {
   color: var(--text);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .back-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .back-btn:hover,
 html.kiosk-mode .back-btn:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -3897,7 +3897,7 @@ html.kiosk-mode .back-btn:hover:active {
   font-weight: 700;
   flex-shrink: 0;
 }
-:where(html:not(.kiosk-mode)) .placing-banner button:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .placing-banner button:hover,
 html.kiosk-mode .placing-banner button:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -3908,7 +3908,7 @@ html.kiosk-mode .placing-banner button:hover:active {
   border-color: var(--accent);
   color: #fff;
 }
-:where(html:not(.kiosk-mode)) .placing-banner button.placing-banner-save:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .placing-banner button.placing-banner-save:hover,
 html.kiosk-mode .placing-banner button.placing-banner-save:hover:active {
   background: var(--accent);
   border-color: var(--accent);
@@ -4029,7 +4029,7 @@ html.kiosk-mode .placing-banner button.placing-banner-save:hover:active {
   justify-content: space-between;
   gap: 6px;
 }
-:where(html:not(.kiosk-mode)) .add-link-result:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .add-link-result:hover,
 html.kiosk-mode .add-link-result:hover:active {
   background: var(--surface-hover);
 }
@@ -4126,7 +4126,7 @@ html.kiosk-mode .add-link-result:hover:active {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
-:where(html:not(.kiosk-mode)) .account-admin-link:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .account-admin-link:hover,
 html.kiosk-mode .account-admin-link:hover:active {
   border-color: var(--accent);
 }
@@ -4431,7 +4431,7 @@ html.kiosk-mode .account-admin-link:hover:active {
   text-transform: uppercase;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .auth-card button[type="submit"]:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .auth-card button[type="submit"]:hover,
 html.kiosk-mode .auth-card button[type="submit"]:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -4547,7 +4547,7 @@ html.kiosk-mode .auth-card button[type="submit"]:hover:active {
   color: var(--text);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .role-select-option:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .role-select-option:hover,
 html.kiosk-mode .role-select-option:hover:active {
   background: var(--surface-hover);
 }
@@ -4636,7 +4636,7 @@ html.kiosk-mode .role-select-option:hover:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(html:not(.kiosk-mode)) .room-card-actions button:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-card-actions button:hover:not(:disabled),
 html.kiosk-mode .room-card-actions button:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
@@ -4645,7 +4645,7 @@ html.kiosk-mode .room-card-actions button:hover:active:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
-:where(html:not(.kiosk-mode)) .room-card-actions button.primary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .room-card-actions button.primary:hover,
 html.kiosk-mode .room-card-actions button.primary:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -4802,7 +4802,7 @@ html.kiosk-mode .room-card-actions button.primary:hover:active {
   align-items: center;
   justify-content: center;
 }
-:where(html:not(.kiosk-mode)) .sidebar-room-close:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-room-close:hover,
 html.kiosk-mode .sidebar-room-close:hover:active {
   background: var(--gray-100);
   border-color: var(--gray-100);
@@ -4862,7 +4862,7 @@ a.sidebar-room-contact-row {
   text-decoration: none;
 }
 a.sidebar-room-contact-row:focus-visible span,
-:where(html:not(.kiosk-mode)) a.sidebar-room-contact-row:hover span,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) a.sidebar-room-contact-row:hover span,
 html.kiosk-mode a.sidebar-room-contact-row:hover:active span {
   color: var(--accent);
   text-decoration: underline;
@@ -4890,7 +4890,7 @@ html.kiosk-mode a.sidebar-room-contact-row:hover:active span {
   cursor: pointer;
 }
 .sidebar-room-goto:focus-visible,
-:where(html:not(.kiosk-mode)) .sidebar-room-goto:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-room-goto:hover,
 html.kiosk-mode .sidebar-room-goto:hover:active {
   background: #ececec;
 }
@@ -4925,7 +4925,7 @@ html.kiosk-mode .sidebar-room-goto:hover:active {
   border: 1px solid var(--gold);
   color: var(--white);
 }
-:where(html:not(.kiosk-mode)) .sidebar-room-actions button.sidebar-room-directions:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-room-actions button.sidebar-room-directions:hover,
 html.kiosk-mode .sidebar-room-actions button.sidebar-room-directions:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
@@ -4946,7 +4946,7 @@ html.kiosk-mode .sidebar-room-actions button.sidebar-room-directions:hover:activ
   cursor: pointer;
 }
 .sidebar-room-actions .sidebar-room-icon-btn:focus-visible,
-:where(html:not(.kiosk-mode)) .sidebar-room-actions .sidebar-room-icon-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .sidebar-room-actions .sidebar-room-icon-btn:hover,
 html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   background: var(--gray-900);
   border-color: var(--gray-900);
@@ -5124,7 +5124,7 @@ html.kiosk-mode .sidebar-room-actions .sidebar-room-icon-btn:hover:active {
   height: 16px;
 }
 .photo-arrow:focus-visible,
-:where(html:not(.kiosk-mode)) .photo-arrow:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .photo-arrow:hover,
 html.kiosk-mode .photo-arrow:hover:active {
   background: var(--sdca-maroon-deeper);
 }
@@ -5228,7 +5228,7 @@ html.kiosk-mode .photo-arrow:hover:active {
   border-color: var(--gold);
   opacity: 1;
 }
-:where(html:not(.kiosk-mode)) .photo-lightbox-thumb:hover {
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .photo-lightbox-thumb:hover {
   opacity: 1;
 }
 
@@ -5387,7 +5387,7 @@ html.kiosk-mode .room-pano-hint-hand {
   justify-content: center;
   box-shadow: var(--shadow-1);
 }
-:where(html:not(.kiosk-mode)) .floating-rail-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .floating-rail-btn:hover,
 html.kiosk-mode .floating-rail-btn:hover:active {
   border-color: var(--accent);
 }
@@ -5421,7 +5421,7 @@ html.kiosk-mode .floating-rail-btn:hover:active {
   font-size: 13px;
   border-color: var(--accent);
 }
-:where(html:not(.kiosk-mode)) .floating-account-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .floating-account-btn:hover,
 html.kiosk-mode .floating-account-btn:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -5447,7 +5447,7 @@ html.kiosk-mode .floating-account-btn:hover:active {
   background: var(--success);
   border-color: var(--success);
 }
-:where(html:not(.kiosk-mode)) .floating-nearest-exit-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .floating-nearest-exit-btn:hover,
 html.kiosk-mode .floating-nearest-exit-btn:hover:active {
   border-color: var(--success);
   filter: brightness(0.9);
@@ -5593,7 +5593,7 @@ html.kiosk-mode .floating-nearest-exit-btn:hover:active {
   cursor: pointer;
   padding: 2px 6px;
 }
-:where(html:not(.kiosk-mode)) .flyover-cancel:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .flyover-cancel:hover,
 html.kiosk-mode .flyover-cancel:hover:active {
   color: var(--text);
 }
@@ -5671,7 +5671,7 @@ html.kiosk-mode .flyover-cancel:hover:active {
   cursor: pointer;
   font-size: 14px;
 }
-:where(html:not(.kiosk-mode)) .flyover-skip:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .flyover-skip:hover,
 html.kiosk-mode .flyover-skip:hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -5722,7 +5722,7 @@ html.kiosk-mode .flyover-skip:hover:active {
   position: relative;
   z-index: 1;
 }
-:where(html:not(.kiosk-mode)) .campus-map-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .campus-map-btn:hover,
 html.kiosk-mode .campus-map-btn:hover:active {
   border-color: var(--gold);
 }
@@ -5837,7 +5837,7 @@ html.kiosk-mode .campus-map-btn:hover:active {
   font-size: 14px;
   padding: 0;
 }
-:where(html:not(.kiosk-mode)) .floating-title-back:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .floating-title-back:hover,
 html.kiosk-mode .floating-title-back:hover:active {
   color: var(--text);
 }
@@ -6104,7 +6104,7 @@ html.kiosk-mode .floating-title-back:hover:active {
   cursor: pointer;
   margin: -6px 0 4px 0;
 }
-:where(html:not(.kiosk-mode)) .rescan-faces-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .rescan-faces-btn:hover:not(:disabled),
 html.kiosk-mode .rescan-faces-btn:hover:active:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -6280,7 +6280,7 @@ html.kiosk-mode [role="button"]:active {
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease;
 }
-:where(html:not(.kiosk-mode)) .nearby-rooms-item:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .nearby-rooms-item:hover,
 html.kiosk-mode .nearby-rooms-item:hover:active {
   background: rgba(255, 255, 255, 0.1);
 }
@@ -6682,7 +6682,7 @@ html.kiosk-mode .nearby-rooms-item:hover:active {
   cursor: pointer;
   text-align: left;
 }
-:where(html:not(.kiosk-mode)) .mobile-building-option:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .mobile-building-option:hover,
 html.kiosk-mode .mobile-building-option:hover:active {
   background: var(--surface-hover);
 }
@@ -6792,7 +6792,7 @@ html.kiosk-mode .mobile-building-option:hover:active {
   width: 14px;
   height: 14px;
 }
-:where(html:not(.kiosk-mode)) .flowchart-reset-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .flowchart-reset-btn:hover:not(:disabled),
 html.kiosk-mode .flowchart-reset-btn:hover:active:not(:disabled) {
   border-color: var(--accent);
 }
@@ -6817,7 +6817,7 @@ html.kiosk-mode .flowchart-reset-btn:hover:active:not(:disabled) {
   stroke: var(--gray-500);
 }
 .flowchart-canvas .react-flow__edge.selected .react-flow__edge-path,
-:where(html:not(.kiosk-mode)) .flowchart-canvas .react-flow__edge:hover .react-flow__edge-path,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .flowchart-canvas .react-flow__edge:hover .react-flow__edge-path,
 html.kiosk-mode .flowchart-canvas .react-flow__edge:hover:active .react-flow__edge-path {
   stroke: var(--accent);
 }
@@ -6837,7 +6837,7 @@ html.kiosk-mode .flowchart-canvas .react-flow__edge:hover:active .react-flow__ed
   border-bottom: 1px solid var(--border);
   fill: var(--text);
 }
-:where(html:not(.kiosk-mode)) .flowchart-canvas .react-flow__controls-button:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .flowchart-canvas .react-flow__controls-button:hover,
 html.kiosk-mode .flowchart-canvas .react-flow__controls-button:hover:active {
   background: var(--surface-hover);
 }
@@ -7082,7 +7082,7 @@ html.kiosk-mode .flowchart-canvas .react-flow__controls-button:hover:active {
   padding: 2px;
   transition: transform 0.1s ease;
 }
-:where(html:not(.kiosk-mode)) .feedback-star:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .feedback-star:hover,
 html.kiosk-mode .feedback-star:hover:active {
   transform: scale(1.15);
 }
@@ -7956,7 +7956,7 @@ html.kiosk-mode .feedback-star:hover:active {
   color: var(--accent-contrast);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .origin-choice-option:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .origin-choice-option:hover:not(:disabled),
 html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -8388,7 +8388,7 @@ html.kiosk-mode .origin-choice-option:hover:active:not(:disabled) {
   border: 1px solid var(--gold);
   color: var(--white);
 }
-:where(html:not(.kiosk-mode)) .kiosk-dialog .directions-panel .directions-get-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .kiosk-dialog .directions-panel .directions-get-btn:hover,
 html.kiosk-mode .kiosk-dialog .directions-panel .directions-get-btn:hover:active {
   background: var(--gold-strong);
   border-color: var(--gold-strong);
@@ -8533,7 +8533,7 @@ html.kiosk-mode .kiosk-dialog .directions-panel .directions-get-btn:hover:active
   text-transform: uppercase;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .kiosk-walkbar-dialog-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .kiosk-walkbar-dialog-btn:hover:not(:disabled),
 html.kiosk-mode .kiosk-walkbar-dialog-btn:hover:active:not(:disabled) {
   background: var(--accent-tint);
 }
@@ -8904,7 +8904,7 @@ html.kiosk-mode body {
   opacity: 0.4;
   cursor: not-allowed;
 }
-:where(html:not(.kiosk-mode)) .pano-zoom-btn:not(:disabled):hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .pano-zoom-btn:not(:disabled):hover,
 html.kiosk-mode .pano-zoom-btn:not(:disabled):hover:active {
   background: var(--surface-sunken);
 }
@@ -9308,10 +9308,10 @@ html.kiosk-mode .pano-zoom-btn:not(:disabled):hover:active {
   border-radius: var(--admin-radius);
   font-weight: 700;
 }
-:where(html:not(.kiosk-mode)) .admin-layout button.danger:hover,
-:where(html:not(.kiosk-mode)) .admin-layout .form-actions .danger:hover,
-:where(html:not(.kiosk-mode)) .admin-layout .custom-building-row button.danger:hover,
-:where(html:not(.kiosk-mode)) .admin-layout .link-actions button.danger:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout button.danger:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .form-actions .danger:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .custom-building-row button.danger:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .link-actions button.danger:hover,
 html.kiosk-mode .admin-layout button.danger:hover:active,
 html.kiosk-mode .admin-layout .form-actions .danger:hover:active,
 html.kiosk-mode .admin-layout .custom-building-row button.danger:hover:active,
@@ -9334,7 +9334,7 @@ html.kiosk-mode .admin-layout .link-actions button.danger:hover:active {
   font-family: var(--font-sans-display);
   letter-spacing: 0.03em;
 }
-:where(html:not(.kiosk-mode)) .admin-layout .link-actions:not(.link-actions-stack) button:not(.danger):hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .link-actions:not(.link-actions-stack) button:not(.danger):hover:not(:disabled),
 html.kiosk-mode .admin-layout .link-actions:not(.link-actions-stack) button:not(.danger):hover:active:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -9358,7 +9358,7 @@ html.kiosk-mode .admin-layout .link-actions:not(.link-actions-stack) button:not(
   letter-spacing: 0.03em;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .admin-btn-secondary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-btn-secondary:hover,
 html.kiosk-mode .admin-btn-secondary:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -9378,7 +9378,7 @@ html.kiosk-mode .admin-btn-secondary:hover:active {
   font-weight: 700;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .admin-btn-text:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-btn-text:hover,
 html.kiosk-mode .admin-btn-text:hover:active {
   background: var(--surface-hover);
   border-color: var(--border);
@@ -9394,7 +9394,7 @@ html.kiosk-mode .admin-btn-text:hover:active {
   border: 1px solid var(--border);
   color: var(--text);
 }
-:where(html:not(.kiosk-mode)) .admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover,
 html.kiosk-mode .admin-layout .node-editor-toolbar > button.admin-btn-secondary:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
@@ -9452,7 +9452,7 @@ html.kiosk-mode .admin-layout .node-editor-toolbar > button.admin-btn-secondary:
   border-radius: var(--admin-radius);
   font-size: 16px;
 }
-:where(html:not(.kiosk-mode)) .admin-layout .close-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .close-btn:hover,
 html.kiosk-mode .admin-layout .close-btn:hover:active {
   background: var(--surface-hover);
 }
@@ -9559,7 +9559,7 @@ html.kiosk-mode .admin-layout .close-btn:hover:active {
      state kicks in. */
   border-color: var(--border);
 }
-:where(html:not(.kiosk-mode)) .node-row:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .node-row:hover,
 html.kiosk-mode .node-row:hover:active {
   border-color: var(--border-strong);
 }
@@ -9601,7 +9601,7 @@ html.kiosk-mode .node-row:hover:active {
   font-weight: 700;
   font-size: 13px;
 }
-:where(html:not(.kiosk-mode)) .add-link-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .add-link-btn:hover,
 html.kiosk-mode .add-link-btn:hover:active {
   background: var(--surface-hover);
   border-color: var(--accent);
@@ -9618,7 +9618,7 @@ html.kiosk-mode .add-link-btn:hover:active {
   padding: 6px 14px;
   border-radius: var(--admin-radius);
 }
-:where(html:not(.kiosk-mode)) .starting-view-row .link-actions button:not(.danger):hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .starting-view-row .link-actions button:not(.danger):hover,
 html.kiosk-mode .starting-view-row .link-actions button:not(.danger):hover:active {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -9722,7 +9722,7 @@ html.kiosk-mode .starting-view-row .link-actions button:not(.danger):hover:activ
   color: var(--text-muted);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .toast-close:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .toast-close:hover,
 html.kiosk-mode .toast-close:hover:active {
   color: var(--text-body);
 }
@@ -10221,7 +10221,7 @@ html.kiosk-mode .toast-close:hover:active {
   font-family: inherit;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .signage-add-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-add-btn:hover:not(:disabled),
 html.kiosk-mode .signage-add-btn:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -10345,12 +10345,12 @@ html.kiosk-mode .signage-add-btn:hover:active:not(:disabled) {
   opacity: 0;
   pointer-events: none;
 }
-:where(html:not(.kiosk-mode)) .signage-segmented-opt:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-segmented-opt:hover,
 html.kiosk-mode .signage-segmented-opt:hover:active {
   background: var(--surface);
 }
 .signage-segmented-opt--on,
-:where(html:not(.kiosk-mode)) .signage-segmented-opt--on:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-segmented-opt--on:hover,
 html.kiosk-mode .signage-segmented-opt--on:hover:active {
   background: var(--accent);
   color: var(--accent-contrast);
@@ -10417,7 +10417,7 @@ html.kiosk-mode .signage-segmented-opt--on:hover:active {
   letter-spacing: 0.03em;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .signage-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-btn:hover:not(:disabled),
 html.kiosk-mode .signage-btn:hover:active:not(:disabled) {
   border-color: var(--border-strong);
   background: var(--surface-hover);
@@ -10432,7 +10432,7 @@ html.kiosk-mode .signage-btn:hover:active:not(:disabled) {
   color: var(--accent-contrast);
   font-weight: 700;
 }
-:where(html:not(.kiosk-mode)) .signage-btn--accent:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-btn--accent:hover:not(:disabled),
 html.kiosk-mode .signage-btn--accent:hover:active:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -10450,7 +10450,7 @@ html.kiosk-mode .signage-btn--accent:hover:active:not(:disabled) {
   text-transform: none;
   letter-spacing: normal;
 }
-:where(html:not(.kiosk-mode)) .signage-link-btn:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-link-btn:hover,
 html.kiosk-mode .signage-link-btn:hover:active {
   text-decoration: underline;
 }
@@ -10584,7 +10584,7 @@ html.kiosk-mode .signage-link-btn:hover:active {
   background: none;
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .signage-icon-btn:hover:not(:disabled),
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-icon-btn:hover:not(:disabled),
 html.kiosk-mode .signage-icon-btn:hover:active:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border);
@@ -10615,7 +10615,7 @@ html.kiosk-mode .signage-icon-btn:hover:active:not(:disabled) {
   background: var(--surface-sunken);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .signage-row-thumb:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .signage-row-thumb:hover,
 html.kiosk-mode .signage-row-thumb:hover:active {
   border-color: var(--accent);
 }
@@ -11449,7 +11449,7 @@ html.kiosk-mode .signage-row-thumb:hover:active {
   box-shadow: var(--shadow-1);
   cursor: pointer;
 }
-:where(html:not(.kiosk-mode)) .directions-map-zoom button:hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .directions-map-zoom button:hover,
 html.kiosk-mode .directions-map-zoom button:hover:active {
   background: var(--surface-sunken);
 }
@@ -12158,7 +12158,7 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
   background: var(--surface);
   color: #000;
 }
-:where(html:not(.kiosk-mode)) .admin-layout .link-actions-stack button:not(.danger):hover,
+:where(html:not(.kiosk-mode):not(.mobile-web-mode)) .admin-layout .link-actions-stack button:not(.danger):hover,
 html.kiosk-mode .admin-layout .link-actions-stack button:not(.danger):hover:active {
   background: var(--surface-sunken);
 }
@@ -12230,4 +12230,585 @@ html.kiosk-mode .admin-layout .link-actions-stack button:not(.danger):hover:acti
   border-radius: var(--admin-radius);
   background: var(--surface);
   box-shadow: var(--shadow-2);
+}
+
+
+/* =====================================================================
+   Mobile web layout (MainPage's `mobileWeb`, chosen in
+   utils/compactLayout.js): the desktop layout's app reshaped for a phone.
+   The panorama fills the screen (no header, no gray backdrop, no boxed
+   column); the sidebar becomes a drawer that slides over it from the left,
+   opened by the hamburger tab on the left edge and closed by its own close
+   button, a tap on the dimmed panorama, or Escape. Everything here is
+   scoped under .tour-shell-mobile (the layout root) or html.mobile-web-mode
+   (set by useKioskZoomLock), so the desktop and kiosk layouts never see it.
+   Touch targets are at least 40px; safe-area insets clear notches and the
+   home indicator. 100dvh (after a 100vh fallback) is the height the phone
+   actually shows, below its collapsing browser bars.
+   ===================================================================== */
+.main-page-layout.tour-shell-mobile {
+  /* The desktop shell's geometry variables, zeroed or resized, so every
+     rule built on them (the modal recentring rule above included) follows
+     without its own override. */
+  --tour-header-height: 0px;
+  --tour-body-pad: 0px;
+  --tour-sidebar-width: min(340px, calc(100vw - 80px));
+  --tour-modal-inset-left: 0px;
+  --tour-sidebar-height: 100vh;
+  --mobile-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --mobile-drawer-ms: 280ms;
+  height: 100vh;
+  height: 100dvh;
+}
+.tour-shell-mobile .main-page-viewer {
+  height: 100vh;
+  height: 100dvh;
+}
+.tour-shell-mobile .tour-shell-body {
+  padding: 0;
+}
+/* Pinch-zooming the page itself is off; the panorama has its own pinch.
+   See useKioskZoomLock. */
+html.mobile-web-mode,
+html.mobile-web-mode body {
+  touch-action: pan-x pan-y;
+}
+
+/* ---------- The drawer ---------- */
+.tour-shell-mobile .app-sidebar-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  box-sizing: border-box;
+  width: calc(var(--tour-sidebar-width) + env(safe-area-inset-left));
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))
+    calc(16px + env(safe-area-inset-left));
+  transform: translateX(-100%);
+  visibility: hidden;
+  /* visibility waits for the slide out to finish before hiding it. */
+  transition:
+    transform var(--mobile-drawer-ms) var(--mobile-drawer-ease),
+    visibility 0s linear var(--mobile-drawer-ms),
+    box-shadow var(--mobile-drawer-ms) ease;
+}
+.tour-shell-mobile .app-sidebar-drawer-open {
+  transform: translateX(0);
+  visibility: visible;
+  box-shadow: 6px 0 28px rgba(10, 8, 8, 0.4);
+  transition:
+    transform var(--mobile-drawer-ms) var(--mobile-drawer-ease),
+    visibility 0s,
+    box-shadow var(--mobile-drawer-ms) ease;
+}
+/* Dims the panorama behind the open drawer; a tap on it closes the drawer. */
+.app-sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: rgba(10, 8, 8, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mobile-drawer-ms) ease;
+}
+.app-sidebar-scrim-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Close (top left) and help (top right), floating over the drawer's top
+   edge; the logo below is pushed down to make room, overlapping them a
+   little sideways. Above the room panel sheet (z-index 5). */
+.app-sidebar-drawer-bar {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top));
+  left: calc(10px + env(safe-area-inset-left));
+  right: 10px;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.app-sidebar-drawer-btn {
+  pointer-events: auto;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.app-sidebar-drawer-btn .inline-icon-img,
+.app-sidebar-drawer-btn .icon-placeholder-img {
+  width: 18px;
+  height: 18px;
+}
+.tour-shell-mobile .app-sidebar-drawer .app-sidebar-logo {
+  padding: 30px 0 6px;
+}
+.tour-shell-mobile .app-sidebar-drawer .app-sidebar-logo img {
+  width: 62%;
+}
+/* The room panel sheet stops short of the close and help buttons when
+   fully expanded, so neither ever covers the other. */
+.tour-shell-mobile .app-sidebar-drawer .sidebar-room {
+  max-height: calc(100% - 58px - env(safe-area-inset-top));
+}
+/* The menu button's spilled-out buttons (portaled to the body) sit over the
+   drawer and its dimmed backdrop. */
+html.mobile-web-mode .desktop-menu-backdrop {
+  z-index: 51;
+}
+html.mobile-web-mode .desktop-menu-stack {
+  z-index: 52;
+}
+/* Search's own close, since it no longer closes on blur here. */
+.sidebar-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-family: var(--font-sans-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+.sidebar-search-header .app-sidebar-drawer-btn {
+  width: 36px;
+  height: 36px;
+}
+/* The admin account, moved here from the panorama's corner. */
+.app-sidebar-account {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+.app-sidebar-account-name {
+  font-size: 13px;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-sidebar-account .account-signout {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* ---------- Hamburger tab: left edge, mid-height ---------- */
+.mobile-web-menu-btn {
+  position: absolute;
+  top: 50%;
+  left: env(safe-area-inset-left);
+  transform: translateY(-50%);
+  z-index: 29;
+  width: 46px;
+  height: 58px;
+  padding: 0 0 0 4px;
+  border: none;
+  border-radius: 0 29px 29px 0;
+  background: var(--accent);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.mobile-web-menu-btn .inline-icon-img {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---------- Node name: top centre, one line, shrunk to fit (useFitText) ---------- */
+.tour-shell-mobile .floating-title-wrap {
+  top: calc(12px + env(safe-area-inset-top));
+  /* Equal gutters keep the name centred; the right one holds the zoom level. */
+  left: calc(58px + env(safe-area-inset-left));
+  right: calc(58px + env(safe-area-inset-right));
+}
+.tour-shell-mobile .floating-title-center {
+  min-width: 0;
+  max-width: 100%;
+}
+/* As wide as the name, at a fixed height, so a smaller font never shrinks
+   the pill itself. */
+.floating-title-pill-fitted {
+  position: relative;
+  box-sizing: border-box;
+  height: 40px;
+  min-width: 0;
+  padding: 0 16px;
+  font-size: 16px;
+  line-height: 1;
+}
+.floating-title-pill-fitted span {
+  min-width: 0;
+}
+/* With Back: its room (4px inset + 32px button + 8px gap) on BOTH ends, so
+   the name stays centred on the screen. */
+.floating-title-pill-fitted.floating-title-pill-with-back {
+  padding: 0 44px;
+}
+/* Back, inside the pill's left end. Placed with top/left rather than a
+   transform, which the touch press feedback (scale) would override. */
+.floating-title-pill-back {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* back.svg points right; mirrored like the desktop title pill's Back. */
+.floating-title-pill-back .icon-placeholder-img {
+  width: 14px;
+  height: 14px;
+  transform: scaleX(-1);
+}
+
+/* ---------- Panorama extras ---------- */
+/* Pinch zoom keeps only the level indicator: top right, beside the name. */
+.pano-zoom-controls-mobile {
+  top: calc(18px + env(safe-area-inset-top));
+  right: calc(8px + env(safe-area-inset-right));
+  z-index: 20;
+  pointer-events: none;
+}
+.pano-zoom-controls-mobile .pano-zoom-indicator {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+/* Smaller preview cards for a phone-sized panorama. */
+.tour-shell-mobile .pano-hotspot-preview {
+  width: 168px;
+  padding: 6px;
+}
+.tour-shell-mobile .pano-hotspot-preview-thumb {
+  height: 100px;
+}
+.tour-shell-mobile .pano-marker-preview {
+  width: 140px;
+}
+.tour-shell-mobile .pano-marker-preview .pano-hotspot-preview-thumb {
+  height: auto;
+}
+/* A dwell preview opens the room like its marker (the click bubbles to the
+   marker's own handler). */
+.pano-marker-preview.pano-marker-preview-tappable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* Campus map tile: same corner, smaller. */
+.tour-shell-mobile .campus-map-btn {
+  left: calc(12px + env(safe-area-inset-left));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: 76px;
+  height: 76px;
+  padding: 0 7px 7px;
+  gap: 4px;
+  border-radius: 12px;
+}
+.tour-shell-mobile .campus-map-btn-icon {
+  width: 18px;
+  height: 18px;
+}
+.tour-shell-mobile .campus-map-btn-label {
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+.tour-shell-mobile .campus-map-modal {
+  width: min(92vw, 72vh);
+  width: min(92vw, 72dvh);
+  height: min(92vw, 72vh);
+  height: min(92vw, 72dvh);
+}
+.tour-shell-mobile .photo-transition-indicator {
+  bottom: calc(100px + env(safe-area-inset-bottom));
+}
+
+/* ---------- Walk bar: a bottom sheet while a route is walked ---------- */
+.kiosk-walkbar.kiosk-walkbar-mobile {
+  left: calc(10px + env(safe-area-inset-left));
+  right: calc(10px + env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: 520px;
+  min-height: 0;
+  margin: 0 auto;
+  gap: 8px;
+  padding: 10px;
+  z-index: 30;
+}
+.kiosk-walkbar-mobile .kiosk-walkbar-progress {
+  font-size: 14px;
+}
+.kiosk-walkbar-mobile .kiosk-walkbar-hint {
+  font-size: 12px;
+}
+.kiosk-walkbar-mobile button {
+  min-height: 44px;
+  font-size: 14px;
+}
+.kiosk-walkbar-mobile .kiosk-walkbar-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kiosk-walkbar-mobile .kiosk-walkbar-row > * {
+  flex: 1 1 auto;
+}
+
+/* ---------- Room photos ---------- */
+/* A 360 photo in the room panel's carousel is a little taller than square
+   (RoomPhotoCarousel's tall360, TALL_PREVIEW). */
+.sidebar-room-carousel-image.sidebar-room-carousel-image-tall {
+  aspect-ratio: 4 / 5;
+}
+/* The photo viewer uses the phone's height rather than a desktop box, less
+   room above the picture for its close button (40px + 8px gap). */
+.tour-shell-mobile .photo-lightbox {
+  padding: calc(16px + env(safe-area-inset-top)) 10px calc(16px + env(safe-area-inset-bottom));
+}
+.tour-shell-mobile .photo-lightbox-stage {
+  max-width: 100%;
+  margin-top: 48px;
+}
+.tour-shell-mobile .photo-lightbox-pano {
+  width: calc(100vw - 20px);
+  height: min(calc(100vh - 240px), 760px);
+  height: min(calc(100dvh - 240px), 760px);
+}
+.tour-shell-mobile .photo-lightbox-image {
+  max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
+}
+/* Just above the picture's top right corner (PhotoLightbox's closeButton). */
+.photo-lightbox-close {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.photo-lightbox-close .inline-icon-img,
+.photo-lightbox-close .icon-placeholder-img {
+  width: 18px;
+  height: 18px;
+}
+/* Room panel handle: once the sheet is fully open its chevron points down,
+   the way the next tap or drag takes it (RoomCard's `mobile`). Desktop hides
+   the chevron at that point instead (.sidebar-room-expanded rule above). */
+.sidebar-room-handle svg {
+  transition: transform 0.2s ease;
+}
+.sidebar-room-expanded .sidebar-room-handle.sidebar-room-handle-flipped svg {
+  display: block;
+  transform: rotate(180deg);
+}
+/* The touch press shrink replaces `transform`, which would drop the handle's
+   own centring for the length of the press; keep both. */
+@media (hover: none) {
+  .sidebar-room-handle:not(:disabled):active {
+    transform: translateX(-50%) scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-room-handle svg {
+    transition: none;
+  }
+}
+
+/* ---------- Centered modals ---------- */
+/* The modal recentring rule above already spans the whole screen here (its
+   variables are zeroed); keep every dialog inside the visible height, with
+   its own scroll, and clear of notches. */
+.main-page-layout.tour-shell-mobile .modal-overlay,
+.main-page-layout.tour-shell-mobile .flyover-overlay {
+  box-sizing: border-box;
+  padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+    calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+}
+.main-page-layout.tour-shell-mobile .modal-overlay > .modal,
+.main-page-layout.tour-shell-mobile .flyover-panel {
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.tour-shell-mobile .flyover-map {
+  height: 42vh;
+}
+/* iOS zooms the page into any field under 16px when it gains focus, and
+   with page zoom locked the visitor could not zoom back out. */
+.main-page-layout.tour-shell-mobile .feedback-body input,
+.main-page-layout.tour-shell-mobile .feedback-body textarea,
+.main-page-layout.tour-shell-mobile .sidebar-field-label .directions-field {
+  font-size: 16px;
+}
+
+/* ---------- Mobile intro overlay (MobileIntroOverlay.jsx) ---------- */
+.mobile-intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
+    calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
+  overflow-y: auto;
+  background: rgba(10, 8, 8, 0.82);
+  color: var(--white);
+  cursor: pointer;
+  animation: modal-overlay-in 0.2s ease;
+}
+/* Centred when it fits; scrolls from the top when it doesn't (a phone held
+   sideways), instead of cutting off the logo. */
+.mobile-intro-overlay > :first-child {
+  margin-top: auto;
+}
+.mobile-intro-overlay > :last-child {
+  margin-bottom: auto;
+}
+.mobile-intro-overlay:focus {
+  outline: none;
+}
+.mobile-intro-logo {
+  flex-shrink: 0;
+  height: 48px;
+  width: auto;
+}
+.mobile-intro-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 420px;
+}
+.mobile-intro-tips li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.mobile-intro-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-intro-icon .kiosk-intro-icon-svg {
+  width: 48px;
+  height: 48px;
+}
+.mobile-intro-glyph {
+  width: 28px;
+  height: 28px;
+}
+.mobile-intro-menu-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 0 20px 20px 0;
+  background: var(--accent);
+}
+.mobile-intro-dismiss {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.mobile-intro-pinch-a {
+  animation: mobile-intro-pinch-a 1.8s ease-in-out infinite;
+}
+.mobile-intro-pinch-b {
+  animation: mobile-intro-pinch-b 1.8s ease-in-out infinite;
+}
+@keyframes mobile-intro-pinch-a {
+  0%, 100% { transform: translate(3px, -3px); }
+  50% { transform: translate(-6px, 6px); }
+}
+@keyframes mobile-intro-pinch-b {
+  0%, 100% { transform: translate(-3px, 3px); }
+  50% { transform: translate(6px, -6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-shell-mobile .app-sidebar-drawer,
+  .tour-shell-mobile .app-sidebar-drawer-open,
+  .app-sidebar-scrim {
+    transition: none;
+  }
+  .mobile-intro-overlay,
+  .mobile-intro-pinch-a,
+  .mobile-intro-pinch-b {
+    animation: none;
+  }
+}
+/* The drawer is a phone's height: let a tall directions form scroll rather
+   than squeeze the map (the desktop sidebar never scrolls here). */
+.tour-shell-mobile .app-sidebar-drawer.app-sidebar-directions {
+  overflow-y: auto;
+}
+/* A phone held sideways has little height: a smaller logo sits up between
+   the close and help buttons instead of below them, leaving the directory
+   room to show. */
+@media (max-height: 500px) {
+  .tour-shell-mobile .app-sidebar-drawer .app-sidebar-logo {
+    padding: 2px 0 0;
+  }
+  .tour-shell-mobile .app-sidebar-drawer .app-sidebar-logo img {
+    width: auto;
+    height: 40px;
+  }
+}
+/* Touch layouts: a press always lands on the button itself, never on the
+   icon or text inside it. Chrome tracks a touch's :active state from the
+   element actually touched; when that inner node is replaced mid-press (a
+   label that changes as the tap takes effect, like "Walk to <next stop>"),
+   the press could be left stuck on the button, shrunk, until the next touch
+   elsewhere. Nothing interactive belongs inside a button anyway. */
+html.kiosk-mode button *,
+html.mobile-web-mode button * {
+  pointer-events: none;
 }

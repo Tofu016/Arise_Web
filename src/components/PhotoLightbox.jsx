@@ -5,6 +5,7 @@ import { useFlatPhotoUrl, STRIP_PREVIEW } from "../hooks/useFlatPhotoUrl";
 import { isPanorama } from "../utils/roomPhotos";
 import PhotoLoading from "./PhotoLoading";
 import PanoramaPhoto, { Pano360Pill } from "./RoomPanorama";
+import IconPlaceholder from "./IconPlaceholder";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 
@@ -30,7 +31,10 @@ function Thumb({ photo, active, label, onClick }) {
 // shown here, a hand animation saying so. Rendered
 // into .main-page-screen by RoomCard, so it dims only the panorama and goes
 // away with the room panel. A press on the dimmed area (or Escape) closes it.
-export default function PhotoLightbox({ photos, index, onIndexChange, onClose, alt }) {
+// `closeButton` (Mobile web layout) adds a close button just above the
+// picture's top right corner as well, since a phone has no Escape key and an
+// empty-looking area is not an obvious way out.
+export default function PhotoLightbox({ photos, index, onIndexChange, onClose, alt, closeButton = false }) {
   const photo = photos[index];
   const panorama = isPanorama(photo);
   const { url, pending, error } = useHeldPhoto(photo.path);
@@ -53,6 +57,11 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
   return (
     <div className="photo-lightbox" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${alt} photos`}>
       <div className="photo-lightbox-stage" onClick={(e) => e.stopPropagation()}>
+        {closeButton && (
+          <button type="button" className="photo-lightbox-close" onClick={onClose} aria-label="Close photos" title="Close">
+            <IconPlaceholder name="close" className="inline-icon-img" />
+          </button>
+        )}
         {panorama ? (
           <>
             <div className="photo-lightbox-pano">

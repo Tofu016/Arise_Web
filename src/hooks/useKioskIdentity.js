@@ -12,10 +12,14 @@ const HEARTBEAT_MS = 5 * 60 * 1000;
 // instead of after each remount's round trip. Re-checked on every mount.
 let lastKnown = null;
 
-// Who this kiosk is, once an admin has paired the device (Kiosks_API). Only
-// the Compact layout has a pairing flow; elsewhere it stays unpaired.
-// Returns { kiosk, ready, pair(code), unpair() } where kiosk is null when
-// unpaired or when the token was revoked, and otherwise { id, name, nodeId }.
+// Who this kiosk is, once an admin has paired the device (Kiosks_API). Only a
+// compact screen has a pairing flow (the gesture on the Mobile web layout, or
+// on the Compact layout itself to check or unpair); elsewhere it stays unpaired.
+// Returns { kiosk, paired, ready, pair(code), unpair() } where kiosk is null
+// when unpaired or when the token was revoked, and otherwise { id, name, nodeId }.
+// `paired` is whether a token is stored, known at once without a round trip,
+// so a paired kiosk boots straight into the Compact layout (and stays there
+// through a network blip); it drops only when the token is revoked or unpaired.
 // `ready` is false only while a stored token has not been checked yet, so
 // callers that must know paired-or-not (analytics) can wait for it.
 //
@@ -26,6 +30,9 @@ export function useKioskIdentity(enabled) {
   const hasToken = enabled && !!getKioskToken();
   const [kiosk, setKioskState] = useState(hasToken ? lastKnown : null);
   const [checked, setChecked] = useState(!hasToken || lastKnown !== null);
+  // Read regardless of `enabled`, so a device that mounted on a wide screen
+  // still knows it is paired once the screen turns compact.
+  const [tokenStored, setTokenStored] = useState(() => !!getKioskToken());
   const setKiosk = useCallback((next) => {
     lastKnown = next;
     setKioskState(next);
@@ -46,6 +53,7 @@ export function useKioskIdentity(enabled) {
           if (cancelled) return;
           if (err.status === 401) {
             clearKioskToken();
+            setTokenStored(false);
             setKiosk(null);
           }
           // A network failure keeps what was last known (null at worst).
@@ -65,6 +73,7 @@ export function useKioskIdentity(enabled) {
   const pair = useCallback(async (code) => {
     const { token, kiosk: me } = await apiPost("Kiosks_API/pair", { code }, "Couldn't pair this kiosk.");
     setKioskToken(token);
+    setTokenStored(true);
     setKiosk({ id: me.id, name: me.name, nodeId: me.node_id });
   }, [setKiosk]);
 
@@ -75,8 +84,9 @@ export function useKioskIdentity(enabled) {
       // The token is forgotten here either way; the admin can reset the record.
     }
     clearKioskToken();
+    setTokenStored(false);
     setKiosk(null);
   }, [setKiosk]);
 
-  return { kiosk, ready: checked || !hasToken, pair, unpair };
+  return { kiosk, paired: enabled && tokenStored, ready: checked || !hasToken, pair, unpair };
 }

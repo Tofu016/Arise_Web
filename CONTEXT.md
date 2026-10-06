@@ -75,14 +75,21 @@ The one point-of-interest marker type that navigates: it points at an Elevator. 
 Translating between a backend row (snake_case) and the app's object (camelCase), and back into request bodies. Kept in one place per entity; empty-value conventions (e.g. a photo is "" when empty, but a section cover is null) are part of the backend contract.
 
 **Compact layout**:
-The stacked, touch-first layout (radial dock, bottom sheets, on-screen keyboard) shared by phones and portrait kiosk screens. There is no separate kiosk build: any narrow screen, or any portrait screen taller than 1.3× its width, gets it, so the range of kiosk resolutions is deliberately generous (the first kiosk is 1080 × 1920).
-_Avoid_: mobile layout
+The kiosk's stacked, touch-first layout (radial dock, bottom sheets, on-screen keyboard, Kiosk session). Only a Paired kiosk gets it, and only on a compact screen. There is no separate kiosk build: the kiosk device opens the same web app, starts in the Mobile web layout, and reloads into this one once paired.
+_Avoid_: kiosk build
+
+**Compact screen**:
+A screen narrow (768 px or less), portrait (taller than 1.3× its width) or short (500 px or less), in CSS pixels. Deliberately generous so every kiosk resolution counts (the first kiosk is 1080 × 1920), and so does a phone held either way. A compact screen gets the Mobile web layout until the device is paired, then the Compact layout. See `src/utils/compactLayout.js`.
+
+**Mobile web layout**:
+The desktop layout's app reshaped for a compact screen that is not a paired kiosk (phones, tablets held upright, an unpaired kiosk device): the panorama fills the screen, the sidebar is a drawer opened from a hamburger tab on the left edge, the phone's own keyboard is used, the panorama zooms by pinching, and hotspot and marker previews open after the view holds still. Its sessions are web sessions.
+_Avoid_: mobile layout (ambiguous with the Compact layout's old meaning), mobile app (that is the separate codebase)
 
 **Kiosk session**:
 The flow a visitor goes through on the Compact layout: the start screen until it is tapped, then the building screen until a building is picked, then exploring. It ends by remounting the visitor view (finished feedback, or "Start over" on the idle prompt), which drops all visitor state. Desktop skips it.
 
 **Paired kiosk**:
-A physical kiosk device an admin registered on the Kiosks page and paired once, by a hidden tap gesture and a one-time code. Only a paired kiosk's sessions count as kiosk sessions in Analytics; every other session, even one showing the Compact layout, is a web session, except the mobile app's, which reports itself as a mobile session. Unpaired views also lack the "Kiosk Location" starting point.
+A physical kiosk device an admin registered on the Kiosks page and paired once, by a hidden tap gesture and a one-time code. The unpaired device shows the Mobile web layout, whose gesture is: 5 taps on the sidebar logo, close the sidebar, 5 taps on the node name, open the sidebar, 1 tap on its question mark. Pairing stores a token in the browser's localStorage (it survives reloads; clearing site data unpairs) and reloads the page into the Compact layout, whose own gesture (logo, node name, bottom band, 5 taps each) checks or unpairs it. Only a paired kiosk's sessions count as kiosk sessions in Analytics; every other session, the Mobile web layout's included, is a web session, except the mobile app's, which reports itself as a mobile session. Unpaired views also lack the "Kiosk Location" starting point.
 _Avoid_: desktop session (say web session)
 
 **Directions**:

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { toPosition, overlayScale, isFacing, previewScale } from "../../utils/panoramaMath";
+import { toPosition, overlayScale, isFacing, isOnScreen, previewScale } from "../../utils/panoramaMath";
 import { previewShown, resolveHotspotClick } from "../../utils/hotspotPreview";
 import { useHotspotPreview } from "../../hooks/useNodePhoto";
 import { useIsCoarsePointer } from "./useIsCoarsePointer";
@@ -21,8 +21,12 @@ const HIGHLIGHT_RING_PULSE_SECONDS = 0.7;
 
 // A clickable wayfinding arrow toward a linked node, with a sneak-peek
 // preview of where it leads. What the preview shows and when (facing,
-// hover/tap, kiosk) is decided in utils/hotspotPreview.js and panoramaMath.js.
-export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alwaysPreview, previewHidden, fov }) {
+// hover/tap, kiosk, dwell) is decided in utils/hotspotPreview.js and panoramaMath.js.
+// Mobile web layout: `dwellPreview` is true while the view has held still,
+// which opens the preview of a hotspot that is on screen; `previewTappable`
+// makes the preview card and its name tag pressable, walking there like the
+// hotspot itself (a phone's fingertip easily lands on the card instead).
+export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted, alwaysPreview, dwellPreview = false, previewTappable = false, previewHidden, fov }) {
   const pos = toPosition(yaw, pitch);
   // Keeps the marker the same apparent size on any screen (see overlayScale).
   const canvasSize = useThree((state) => state.size);
@@ -41,7 +45,11 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   // Mounting it only while facing it means it always starts from a fresh,
   // correct placement.
   const [facing, setFacing] = useState(false);
-  const showPreview = previewShown({ previewHidden, clicked, facing, alwaysPreview, hovered });
+  // Inside the visible frame, not just in front: what "on screen" means for a
+  // dwell preview. Tracked only where dwell previews exist.
+  const [onScreen, setOnScreen] = useState(false);
+  const dwelling = dwellPreview && onScreen;
+  const showPreview = previewShown({ previewHidden, clicked, facing, alwaysPreview, hovered: hovered || dwelling });
   // Only fetches once the preview is actually shown — a hotspot that never
   // shows one never triggers a photo fetch at all. The preview looks the way
   // the visitor will be facing on arrival (this hotspot's yaw); null until it
@@ -72,7 +80,7 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   };
   const handleClick = (e) => {
     e.stopPropagation();
-    if (resolveHotspotClick({ isTouch, hovered, alwaysPreview }) === "peek") {
+    if (resolveHotspotClick({ isTouch, hovered: hovered || dwelling, alwaysPreview }) === "peek") {
       setHovered(true); // tap-to-preview: show the sneak-peek, don't walk yet
       return;
     }
@@ -94,6 +102,7 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   const dotRef = useRef();
   const previewRef = useRef(); // the preview card; scaled every frame, see useFrame
   const cameraDir = useMemo(() => new THREE.Vector3(), []);
+  const projected = useMemo(() => new THREE.Vector3(), []);
   const hotspotDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch)).normalize(), [yaw, pitch]);
 
   // The hotspot is a permanently-visible wayfinding marker now, not a
@@ -110,7 +119,16 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   const previewY = ringOuter + (50 - ringOuter) * PREVIEW_GAP_FRACTION;
   // The "To: <node>" tag mirrors the preview: the same gap, but below the ring.
   const destinationY = -previewY;
-  const showDestination = hovered && facing && !clicked && !previewHidden && Boolean(label);
+  const showDestination = (hovered || dwelling) && facing && !clicked && !previewHidden && Boolean(label);
+  // A press on the preview or the name tag: always a walk, the preview being
+  // already open by definition.
+  const handlePreviewClick = (e) => {
+    e.stopPropagation();
+    setHovered(false);
+    setClicked(true);
+    onClick();
+  };
+  const previewStyle = previewTappable ? { pointerEvents: "auto", cursor: "pointer" } : { pointerEvents: "none" };
 
   // A wide upside-down "V" (chevron) sized to sit inside the dot, centred
   // vertically. Flat 2D geometry with a constant stroke thickness.
@@ -136,6 +154,10 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
     const lookDot = camera.getWorldDirection(cameraDir).dot(hotspotDir);
     const nowFacing = isFacing(lookDot);
     if (nowFacing !== facing) setFacing(nowFacing);
+    if (previewTappable) {
+      const nowOnScreen = isOnScreen(projected.copy(groupRef.current.position).project(camera));
+      if (nowOnScreen !== onScreen) setOnScreen(nowOnScreen);
+    }
     // Preview card: big when looked at directly, smaller the further away
     // you look. Imperative (no re-render), anchored at the card's bottom
     // centre so it stays put above the marker.
@@ -223,11 +245,17 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
           // card grows with a long label. previewY (see above) clears the
           // ring by a small gap; -50% on X keeps it
           // horizontally centred over the hotspot.
-          style={{ pointerEvents: "none", transform: "translate(-50%, -100%)" }}
+          style={{ ...previewStyle, transform: "translate(-50%, -100%)" }}
         >
           {/* Styling lives in index.css → "Panorama overlays" so it stays on
               the brand tokens; only the image src is dynamic here. */}
-          <div className="pano-hotspot-preview" ref={previewRef}>
+          <div
+            className="pano-hotspot-preview"
+            ref={previewRef}
+            onClick={previewTappable ? handlePreviewClick : undefined}
+            role={previewTappable ? "button" : undefined}
+            aria-label={previewTappable ? `Walk to ${label}` : undefined}
+          >
             <div className="pano-hotspot-preview-thumb">
               {previewUrl ? (
                 <img src={previewUrl} alt={label} />
@@ -247,9 +275,9 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
         <Html
           zIndexRange={[0, 0]}
           position={[0, destinationY, 0]}
-          style={{ pointerEvents: "none", transform: "translate(-50%, 0)" }}
+          style={{ ...previewStyle, transform: "translate(-50%, 0)" }}
         >
-          <div className="pano-hotspot-destination">To: {label}</div>
+          <div className="pano-hotspot-destination" onClick={previewTappable ? handlePreviewClick : undefined}>To: {label}</div>
         </Html>
       )}
     </group>

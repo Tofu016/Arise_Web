@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { markerTypeInfo } from "../../utils/constants";
-import { toPosition } from "../../utils/panoramaMath";
+import { isOnScreen, toPosition } from "../../utils/panoramaMath";
 import IconPlaceholder from "../IconPlaceholder";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { useFlatPhotoUrl, SQUARE_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "../../hooks/useFlatPhotoUrl";
@@ -14,11 +14,11 @@ import { focusPosition, isPanorama } from "../../utils/roomPhotos";
 // the marker is actually hovered. Same square crop as the room panel's
 // carousel (a 360 photo flattened around its thumbnail view, a flat one
 // cropped around its focus), so the preview matches what clicking opens.
-function MarkerPreview({ photo, label }) {
+function MarkerPreview({ photo, label, tappable }) {
   const { url: loaded } = useSecurePhotoUrl(photo.path, { thumbnail: isPanorama(photo) ? PANORAMA_THUMBNAIL_WIDTH : true, cached: true });
   const url = useFlatPhotoUrl(loaded, photo, SQUARE_PREVIEW);
   return (
-    <div className="pano-hotspot-preview pano-marker-preview">
+    <div className={"pano-hotspot-preview pano-marker-preview" + (tappable ? " pano-marker-preview-tappable" : "")}>
       <div className="pano-hotspot-preview-thumb">
         {url ? (
           <img src={url} alt={label} style={{ objectPosition: focusPosition(isPanorama(photo) ? null : photo) }} />
@@ -46,7 +46,11 @@ function MarkerPreview({ photo, label }) {
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, onEmergencyExitClick, previewPhoto, dimmed, selected, highlighted }) {
+// `dwellPreview` (Mobile web layout, no hover): the view has held still, so a
+// marker with a preview photo that is on screen shows it, and the preview is
+// pressable, opening the room like the marker itself (it sits inside the
+// marker's own clickable box, so the click reaches the same handler).
+export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, onEmergencyExitClick, previewPhoto, dwellPreview = false, dimmed, selected, highlighted }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
@@ -69,9 +73,15 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
   const markerDir = useMemo(() => new THREE.Vector3(...toPosition(yaw, pitch, 1)), [yaw, pitch]);
   const cameraDir = useMemo(() => new THREE.Vector3(), []);
   const [inFront, setInFront] = useState(false);
+  const projected = useMemo(() => new THREE.Vector3(), []);
+  const [onScreen, setOnScreen] = useState(false);
   useFrame(({ camera }) => {
     const nowInFront = camera.getWorldDirection(cameraDir).dot(markerDir) > 0;
     if (nowInFront !== inFront) setInFront(nowInFront);
+    if (previewPhoto) {
+      const nowOnScreen = isOnScreen(projected.set(...pos).project(camera));
+      if (nowOnScreen !== onScreen) setOnScreen(nowOnScreen);
+    }
   });
 
   // A facility opens the same panel a room does (see utils/search.js).
@@ -148,7 +158,9 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
               {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} variant="white" /> : info.icon}
             </div>
             <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
-            {hovered && previewPhoto && <MarkerPreview photo={previewPhoto} label={label} />}
+            {(hovered || (dwellPreview && onScreen)) && previewPhoto && (
+              <MarkerPreview photo={previewPhoto} label={label} tappable={dwellPreview && isClickable} />
+            )}
           </div>
         </Html>
       )}

@@ -128,9 +128,14 @@ function openTarget(state, target) {
 // idle prompt must not appear over it. Off while the kiosk's start/building
 // screens are up too (`awaitingStart`): nobody is exploring yet. The building
 // dialog isn't counted; it has always been left out here.
-export function blocksIdle(state, { flyover, awaitingStart }) {
+// `panelsInDrawer` (Mobile web layout): the sidebar panels sit in a drawer
+// with its own, longer idle wait, so an open panel doesn't count by itself;
+// only the pairing screen (a modal) and a route being followed
+// (`routeActive`) do.
+export function blocksIdle(state, { flyover, awaitingStart, panelsInDrawer = false, routeActive = false }) {
+  const panelBusy = panelsInDrawer ? state.panel === "pairing" || routeActive : !!state.panel;
   return (
-    !!state.panel ||
+    panelBusy ||
     state.dock ||
     state.feedback ||
     state.endSessionThanks ||

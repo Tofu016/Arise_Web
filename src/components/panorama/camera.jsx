@@ -81,3 +81,41 @@ export function FovController({ fov }) {
   });
   return null;
 }
+
+// Reports whether the view has held still (no turn, no zoom) for `delayMs`,
+// for previews that open on their own once the visitor stops to look (the
+// Mobile web layout, which has no hover). Goes false on the first frame the
+// view moves, and on a new scene (`sceneKey`), so a preview never opens over
+// a view that only just arrived.
+const SETTLE_ANGLE_RAD = 1e-4;
+const SETTLE_FOV_DEG = 1e-3;
+export function ViewSettleWatcher({ delayMs, sceneKey, onChange }) {
+  const camera = useThree((state) => state.camera);
+  const track = useRef({ quaternion: new THREE.Quaternion(), fov: 0, movedAt: 0, settled: false, sceneKey });
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  useFrame(({ clock }) => {
+    const t = track.current;
+    const now = clock.elapsedTime * 1000;
+    const moved =
+      t.sceneKey !== sceneKey ||
+      t.quaternion.angleTo(camera.quaternion) > SETTLE_ANGLE_RAD ||
+      Math.abs(camera.fov - t.fov) > SETTLE_FOV_DEG;
+    if (moved) {
+      t.quaternion.copy(camera.quaternion);
+      t.fov = camera.fov;
+      t.sceneKey = sceneKey;
+      t.movedAt = now;
+      if (t.settled) {
+        t.settled = false;
+        onChangeRef.current(false);
+      }
+    } else if (!t.settled && now - t.movedAt >= delayMs) {
+      t.settled = true;
+      onChangeRef.current(true);
+    }
+  });
+  return null;
+}

@@ -3,6 +3,10 @@ import { isPanorama, thumbnailView } from "../utils/roomPhotos";
 
 // Output sizes of the flat-looking view of a 360 photo, per place it is shown.
 export const SQUARE_PREVIEW = { width: 480, height: 480 }; // room panel carousel
+// Room panel carousel on the Mobile web layout, for a 360 photo only: 4:5, a
+// little taller than square, since a phone has height to spare and a flat
+// view out of a 360 shows more of the room the taller it is.
+export const TALL_PREVIEW = { width: 480, height: 600 };
 // Directory cell: the shape of a one-line row at the sidebar's 340px (340 by
 // 60), doubled for sharpness, so what it shows is what the row shows.
 export const CELL_PREVIEW = { width: 680, height: 120 };

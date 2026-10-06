@@ -100,6 +100,13 @@ export function isFacing(lookDot) {
   return lookDot > FACING_DOT;
 }
 
+// Whether a point projected into normalized device coordinates (three's
+// Vector3.project: x and y in -1..1 across the canvas, z below 1 in front of
+// the camera) lands inside the visible frame.
+export function isOnScreen(ndc) {
+  return ndc.z < 1 && Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1;
+}
+
 // The sneak-peek preview card scales with how directly the visitor looks at
 // its hotspot: PREVIEW_MAX_SCALE when looking straight at it, shrinking
 // linearly to PREVIEW_MIN_SCALE once the hotspot is PREVIEW_FALLOFF_DEG away

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import PanoramaNav from "../components/PanoramaNav";
 import LoadingScreen from "../components/LoadingScreen";
@@ -20,6 +21,7 @@ import KioskModeChoice from "../components/KioskModeChoice";
 import KioskPairingScreen from "../components/KioskPairingScreen";
 import { useKioskIdentity } from "../hooks/useKioskIdentity";
 import { usePairingGesture } from "../hooks/usePairingGesture";
+import { KIOSK_GESTURE, MOBILE_GESTURE } from "../utils/kioskPairingGesture";
 import KioskWalkBar from "../components/KioskWalkBar";
 import AutoWalkCountdown from "../components/AutoWalkCountdown";
 import ArrivalModal from "../components/ArrivalModal";
@@ -30,10 +32,12 @@ import IdlePrompt from "../components/IdlePrompt";
 import DesktopIntroOverlay from "../components/DesktopIntroOverlay";
 import KioskIntroOverlay from "../components/KioskIntroOverlay";
 import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
+import MobileIntroOverlay from "../components/MobileIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
 import { useLiveDirectorySettings } from "../hooks/useDirectorySettings";
 import menuIconWhite from "../assets/icons/menu-white.svg";
+import moreVerticalWhite from "../assets/icons/more-vertical-white.svg";
 import powerIcon from "../assets/icons/power.svg";
 import questionMarkIcon from "../assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
@@ -43,7 +47,9 @@ import IconPlaceholder from "../components/IconPlaceholder";
 import { useIdleDetector } from "../hooks/useIdleDetector";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useOverlay } from "../hooks/useOverlay";
-import { useCompactLayout } from "../hooks/useCompactLayout";
+import { useCompactScreen } from "../hooks/useCompactScreen";
+import { pickViewLayout } from "../utils/compactLayout";
+import { useFitText } from "../hooks/useFitText";
 import { useKioskSession, useKioskZoomLock, useKioskInspectLock } from "../hooks/useKioskSession";
 import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingDisplayName, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
@@ -56,7 +62,7 @@ import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevat
 import { fireStairsAction } from "../utils/emergencyExits";
 import EmergencyStairsBanner from "../components/EmergencyStairsBanner";
 import { speak, stopSpeaking } from "../utils/tts";
-import { DESKTOP_INTRO_SPEECH, KIOSK_INTRO_SPEECH } from "../utils/introScript";
+import { DESKTOP_INTRO_SPEECH, KIOSK_INTRO_SPEECH, MOBILE_INTRO_SPEECH } from "../utils/introScript";
 import {
   floorsForBuilding,
   findKioskEntranceShortcuts,
@@ -117,8 +123,56 @@ const PLACEHOLDER = (name) => <IconPlaceholder name={name} className="inline-ico
 // IconPlaceholder assets do with two prebaked colors — same reason this
 // needs its own white copy for the accent-filled FAB, not a CSS override.
 const MENU_ICON_WHITE = <img src={menuIconWhite} alt="" className="inline-icon-img" />;
+// The sidebar's menu button (building, Nearest Exit, feedback), a kebab so it
+// can't be mistaken for the Mobile web layout's hamburger, which opens the
+// sidebar itself. Feather Icons "more-vertical" (MIT), white baked in.
+const KEBAB_ICON_WHITE = <img src={moreVerticalWhite} alt="" className="inline-icon-img" />;
 const CHEVRON_RIGHT_WHITE = <img src={chevronRightWhite} alt="" className="inline-icon-img" />;
 const POWER_ICON = <img src={powerIcon} alt="" className="inline-icon-img" />;
+
+// Development only: `?kiosk` in the URL shows the Compact layout on a compact
+// screen without pairing, since only a paired kiosk gets it otherwise. Never
+// in a production build, so nobody can turn a phone into a kiosk this way.
+const FORCE_KIOSK_LAYOUT =
+  import.meta.env.DEV && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("kiosk");
+
+// Mobile web layout: the node name's font size range (px). It starts at the
+// largest and shrinks to fit one line before the ellipsis is allowed to cut it.
+const TITLE_MAX_PX = 16;
+const TITLE_MIN_PX = 12;
+
+// The Mobile web layout's node name: always one line at the top of the screen,
+// shrunk to fit (see useFitText). Its taps feed the hidden pairing gesture.
+// Back (`onBack`, null with nothing to go back to) sits inside it at the left
+// end, with the same space added at the right end so the name stays centred
+// on the screen. The pill keeps its usual size otherwise: as wide as the name.
+function FittedTitlePill({ name, onTap, onBack }) {
+  // Re-fitted when Back comes or goes, since it takes width from the name.
+  const [ref] = useFitText(`${name}|${!!onBack}`, { max: TITLE_MAX_PX, min: TITLE_MIN_PX });
+  return (
+    <div
+      className={"floating-title-pill floating-title-pill-fitted" + (onBack ? " floating-title-pill-with-back" : "")}
+      onClick={onTap}
+    >
+      {onBack && (
+        <button
+          type="button"
+          className="floating-title-pill-back"
+          onClick={(e) => {
+            // A Back tap is not a tap on the name (the pairing gesture).
+            e.stopPropagation();
+            onBack();
+          }}
+          title="Back"
+          aria-label="Back"
+        >
+          {PLACEHOLDER("back")}
+        </button>
+      )}
+      <span ref={ref}>{name}</span>
+    </div>
+  );
+}
 
 // Kiosk: finishing feedback resets the whole system to the start screen and
 // starting node. Remounting the page under a fresh key drops every piece of
@@ -131,7 +185,20 @@ export default function MainPage() {
 function MainPageContent({ onReset }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, signOut } = useAuth();
-  const compact = useCompactLayout();
+  // Which layout (see utils/compactLayout.js): a compact screen is a phone
+  // (the Mobile web layout) until it is a paired kiosk (the Compact layout).
+  // Pairing is known from the stored token at once, so a paired kiosk never
+  // flashes the Mobile web layout on boot. Set by an admin through the
+  // hidden pairing gesture; without it the origin modal also has no
+  // "Kiosk Location" (see KioskPairingScreen).
+  const compactScreen = useCompactScreen();
+  const kioskIdentity = useKioskIdentity(compactScreen);
+  const layout = pickViewLayout({ compactScreen, paired: kioskIdentity.paired || FORCE_KIOSK_LAYOUT });
+  // `compact`: the Compact layout (kiosk). `mobileWeb`: the Mobile web
+  // layout, which is the desktop layout's app reshaped for a phone, so it
+  // takes every !compact branch below and adds its own changes on top.
+  const compact = layout === "kiosk";
+  const mobileWeb = layout === "mobile";
   // The bottom band's advertisements (signage); only the Compact layout has
   // that band, so desktop never fetches them.
   const signage = useLiveSignage(compact);
@@ -142,14 +209,13 @@ function MainPageContent({ onReset }) {
   // screen, then exploring
   // — see utils/kioskSession.js. Desktop skips straight to exploring.
   const kiosk = useKioskSession(compact);
-  // Set by an admin through the hidden pairing gesture; without it the
-  // origin modal simply has no "Kiosk Location" (see KioskPairingScreen).
-  const kioskIdentity = useKioskIdentity(compact);
   useKioskZoomLock(compact);
+  useKioskZoomLock(mobileWeb, "mobile-web-mode");
   useKioskInspectLock(compact);
 
   // Analytics session: one per Compact-layout mount (a mount IS a session)
-  // or one per browser tab on the desktop layout (see useAnalytics.js).
+  // or one per browser tab on the desktop and Mobile web layouts (see
+  // useAnalytics.js); a phone's session is a web session like a desktop's.
   // Whether it counts as "kiosk" or "web" is the server's call, from the
   // paired kiosk token. stage_reached fires on every kiosk.stage change;
   // desktop never leaves "exploring", so this also covers desktop's
@@ -279,6 +345,38 @@ function MainPageContent({ onReset }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [desktopMenuOpen]);
+
+  // Mobile web layout: the sidebar is a drawer over the full-screen panorama,
+  // closed until the hamburger opens it. Closing it also closes the menu
+  // button's spilled-out buttons, which belong to it. Focus moves into the
+  // drawer when it opens and back to the hamburger when it closes, so a
+  // screen reader or switch user is never left on something hidden.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const drawerOpen = mobileWeb && sidebarOpen;
+  const drawerCloseRef = useRef(null);
+  const drawerOpenRef = useRef(null);
+  const openSidebar = () => setSidebarOpen(true);
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    setDesktopMenuOpen(false);
+  };
+  const drawerWasOpenRef = useRef(false);
+  useEffect(() => {
+    if (drawerOpen) drawerCloseRef.current?.focus({ preventScroll: true });
+    else if (drawerWasOpenRef.current) drawerOpenRef.current?.focus({ preventScroll: true });
+    drawerWasOpenRef.current = drawerOpen;
+  }, [drawerOpen]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+        setDesktopMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
 
   const byId = useMemo(() => Object.fromEntries((nodes || []).map((n) => [n.id, n])), [nodes]);
 
@@ -413,21 +511,6 @@ function MainPageContent({ onReset }) {
     () => (current ? findNearbyRooms(nodes, current.id, { maxHops: 8, limit: 5 }) : []),
     [nodes, current]
   );
-
-  // A single named constant, easy to retune. Suppressed entirely (enabled: false, no
-  // timer even running) whenever any other overlay is already open, so
-  // this can never appear stacked on top of the search panel, the
-  // feedback panel itself, a room's 360 view, or a flyover — each of
-  // those already means the visitor is actively doing
-  // something, not idle in the sense this prompt cares about. Declared
-  // here, after all of those, since it reads their current values —
-  // JS's temporal dead zone would break this if placed any earlier.
-  const IDLE_TIMEOUT_MS = 60000;
-  // Also off while the kiosk's start/building screens are up — nobody is
-  // exploring yet, so "Done exploring?" would make no sense there.
-  const idleDetectorEnabled =
-    !blocksIdle(overlay, { flyover, awaitingStart: kiosk.awaitingStart });
-  const [isIdle, resetIdle] = useIdleDetector(IDLE_TIMEOUT_MS, idleDetectorEnabled);
 
   const hotspots = useMemo(
     () => (current ? buildHotspots(current, byId, { withPhoto: true }) : []),
@@ -676,11 +759,14 @@ function MainPageContent({ onReset }) {
   // list still opens the sidebar's "No information." state, anchored to
   // the node the marker was clicked from.
   // Tapping a marker is a deliberate pick like search's "Go To", so the
-  // desktop room panel opens fully expanded.
+  // desktop room panel opens fully expanded. On the Mobile web layout the
+  // room panel lives in the closed drawer, so the drawer opens with it.
   const handleRoomMarkerClick = (marker) => {
     const match = findRoomForMarker(marker, searchableRooms);
     if (match) goToRoom(match);
     else if (marker.label?.trim()) goToRoom({ roomName: marker.label.trim(), node: current, placard: null });
+    else return;
+    if (mobileWeb) openSidebar();
   };
 
   // Desktop: the photo a room/facility marker previews on hover, the room's
@@ -718,8 +804,12 @@ function MainPageContent({ onReset }) {
 
   // The room panel's "Go To": jumps to the room's node, facing its marker.
   // Not goToRoom, so the panel keeps the expanded/collapsed state it has.
+  // On the Mobile web layout the drawer closes so the place itself is what
+  // the visitor sees; the room panel is still there when they reopen it.
   const handleRoomGoTo = () => {
-    if (selectedRoomCard) openRoomCard(selectedRoomCard);
+    if (!selectedRoomCard) return;
+    if (mobileWeb) closeSidebar();
+    openRoomCard(selectedRoomCard);
   };
 
   // Kiosk: Directions first asks where to start from (see KioskOriginChoice);
@@ -742,9 +832,27 @@ function MainPageContent({ onReset }) {
 
   const kioskNode = kioskIdentity.kiosk?.nodeId ? byId[kioskIdentity.kiosk.nodeId] ?? null : null;
 
-  // Taps on the logo, the node name and the advertisement band feed the
-  // hidden pairing gesture; its last step opens the pairing screen.
-  const tapForPairing = usePairingGesture(() => overlay.showPanel("pairing"));
+  // Taps on the logo, the node name and the advertisement band (Compact
+  // layout), or the sidebar logo, the node name and the sidebar's question
+  // mark (Mobile web layout), feed the hidden pairing gesture; its last step
+  // opens the pairing screen.
+  const tapForPairing = usePairingGesture(() => {
+    if (mobileWeb) closeSidebar();
+    overlay.showPanel("pairing");
+  }, compact ? KIOSK_GESTURE : MOBILE_GESTURE);
+
+  // Pairing or unpairing changes which layout this device gets, so the page
+  // reloads into it: a fresh mount in the right layout, with a fresh analytics
+  // session that the server now counts as kiosk (or web again). The token is
+  // in localStorage, so the pairing survives this reload and every later one.
+  const pairAndReload = async (code) => {
+    await kioskIdentity.pair(code);
+    window.location.reload();
+  };
+  const unpairAndReload = async () => {
+    await kioskIdentity.unpair();
+    window.location.reload();
+  };
 
   // Every Compact-layout Building dialog / kiosk campus-building-floor screen pick —
   // see hooks/useKioskPicks.js. Every pick here is a fresh start (jump).
@@ -790,6 +898,37 @@ function MainPageContent({ onReset }) {
   // start, and hasn't arrived), the big directions dialog steps aside for the
   // compact KioskWalkBar, so the panorama stays visible. `overlay.walkDialog`
   // brings the big dialog back on request.
+  // A single named constant, easy to retune. Suppressed entirely (enabled: false, no
+  // timer even running) whenever any other overlay is already open, so
+  // this can never appear stacked on top of the search panel, the
+  // feedback panel itself, a room's 360 view, or a flyover — each of
+  // those already means the visitor is actively doing
+  // something, not idle in the sense this prompt cares about. Declared
+  // here, after all of those, since it reads their current values —
+  // JS's temporal dead zone would break this if placed any earlier.
+  const IDLE_TIMEOUT_MS = 60000;
+  // Mobile web layout, drawer open: reading the directory or a room panel on
+  // a phone is slow, unhurried activity, so the prompt waits three minutes
+  // there instead. Any tap or scroll in the drawer restarts the wait (the
+  // detector listens window-wide), and opening or closing the drawer
+  // restarts it at that state's own length.
+  const DRAWER_IDLE_TIMEOUT_MS = 3 * 60000;
+  // Also off while the kiosk's start/building screens are up — nobody is
+  // exploring yet, so "Done exploring?" would make no sense there. On the
+  // Mobile web layout the sidebar panels live in the drawer, so they don't
+  // hold the prompt off on their own; a route being followed still does
+  // (auto-walk moves with nobody touching the screen).
+  const idleDetectorEnabled = !blocksIdle(overlay, {
+    flyover,
+    awaitingStart: kiosk.awaitingStart,
+    panelsInDrawer: mobileWeb,
+    routeActive: !!directions?.path && !arrived,
+  });
+  const [isIdle, resetIdle] = useIdleDetector(
+    mobileWeb && sidebarOpen ? DRAWER_IDLE_TIMEOUT_MS : IDLE_TIMEOUT_MS,
+    idleDetectorEnabled
+  );
+
   const { walkBarShown, kioskDialogOpen, coversPanorama } = coverage(overlay, {
     compact,
     directions,
@@ -797,8 +936,35 @@ function MainPageContent({ onReset }) {
     walkStarted,
     flyover,
   });
+  // Mobile web layout: once a route is being walked, the drawer gets out of
+  // the panorama's way and the walk bar (KioskWalkBar) takes over at the
+  // bottom; every step closes it again, including one taken from the
+  // drawer's own buttons. Its Directions button reopens the drawer.
+  const walkingAt = mobileWeb && directions?.path && walkStarted && !arrived ? { path: directions.path, step: directions.stepIndex } : null;
+  const [lastWalkingAt, setLastWalkingAt] = useState(null);
+  if (walkingAt?.path !== lastWalkingAt?.path || walkingAt?.step !== lastWalkingAt?.step) {
+    setLastWalkingAt(walkingAt);
+    if (walkingAt) {
+      setSidebarOpen(false);
+      setDesktopMenuOpen(false);
+    }
+  }
+  const mobileWalkBar = !!walkingAt && panelMode === "directions" && !sidebarOpen;
+
+  // What hides the hotspot and marker previews on the Mobile web layout. Its
+  // sidebar panels (room, directions, search) sit in the drawer, so they
+  // cover nothing while it is closed, unlike the desktop panel coverage above.
+  const mobileCovered =
+    sidebarOpen ||
+    !!showFeedback ||
+    !!overlay.endSessionThanks ||
+    !!overlay.elevatorPicker ||
+    !!flyover ||
+    campusMapOpen ||
+    panelMode === "pairing";
+
   // The idle prompt covers the panorama too, so it hides the hotspot previews as well.
-  const overlayOpen = coversPanorama || isIdle;
+  const overlayOpen = (mobileWeb ? mobileCovered : coversPanorama) || isIdle;
 
   // The intro overlays only make sense once the visitor is actually looking
   // at a photo with nothing else already open over it — and, on the kiosk,
@@ -812,9 +978,9 @@ function MainPageContent({ onReset }) {
   const narrating = narrateIntro && introVisible;
   useEffect(() => {
     if (!narrating) return;
-    speak(compact ? KIOSK_INTRO_SPEECH : DESKTOP_INTRO_SPEECH);
+    speak(compact ? KIOSK_INTRO_SPEECH : mobileWeb ? MOBILE_INTRO_SPEECH : DESKTOP_INTRO_SPEECH);
     return stopSpeaking;
-  }, [narrating, compact]);
+  }, [narrating, compact, mobileWeb]);
 
   if (loadError) {
     return (
@@ -940,10 +1106,20 @@ function MainPageContent({ onReset }) {
       title: "Give feedback",
       onClick: () => {
         closeModals();
+        if (mobileWeb) closeSidebar();
         overlay.openFeedback();
       },
     },
   ];
+
+  // The sidebar's question mark (Mobile web layout): replays the tips, unless
+  // this tap is the last step of the hidden pairing gesture, which opens the
+  // pairing screen instead.
+  const handleDrawerHelp = () => {
+    if (tapForPairing("help")) return;
+    closeSidebar();
+    replayIntro();
+  };
 
   // Shared by the Compact layout's Building modal and the desktop sidebar's
   // building selector; only the chrome around the list differs.
@@ -1046,7 +1222,11 @@ function MainPageContent({ onReset }) {
       <button
         type="button"
         className="search-result-btn search-result-goto"
-        onMouseDown={(e) => { e.preventDefault(); onGoTo(); }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          if (mobileWeb) closeSidebar();
+          onGoTo();
+        }}
         title="Go to this location"
       >
         <IconPlaceholder name="location-pin" variant="white" className="inline-icon-img" /> Go To
@@ -1251,7 +1431,10 @@ function MainPageContent({ onReset }) {
         <button className="primary directions-go-btn" onClick={() => flow.startWalking()}>Start walking</button>
       ) : (
         <>
+          {/* Keyed on the step for the same stuck-press reason as
+              KioskWalkBar's walk button. */}
           <button
+            key={`walk-${st.stepIndex}`}
             className="primary directions-go-btn"
             onClick={() => { overlay.setWalkDialog(false); flow.walkToNext(); }}
             disabled={autoWalking}
@@ -1261,6 +1444,7 @@ function MainPageContent({ onReset }) {
           </button>
           {st.skip && (
             <button
+              key={`skip-${st.stepIndex}`}
               className="directions-go-btn directions-skip-btn"
               onClick={() => { overlay.setWalkDialog(false); flow.skipAhead(); }}
               disabled={autoWalking}
@@ -1396,7 +1580,7 @@ function MainPageContent({ onReset }) {
   );
 
   return (
-    <div className={"main-page-layout" + (compact ? "" : " tour-shell")}>
+    <div className={"main-page-layout" + (compact ? "" : " tour-shell") + (mobileWeb ? " tour-shell-mobile" : "")}>
       <Presence show={!!(directions?.path && arrived)}>
         {directions?.path && arrived && (
           <ArrivalModal kiosk={compact} emergency={!!directions.emergency} onDone={flow.close} />
@@ -1525,7 +1709,7 @@ function MainPageContent({ onReset }) {
       )}
       {compact && <KioskStartScreen hidden={kiosk.stage !== "start"} onStart={kiosk.start} signageSlides={startingSlides} signageSettings={signage.settings} />}
       <div className="main-page-viewer">
-        {!compact && (
+        {!compact && !mobileWeb && (
           <header className="tour-shell-header">
             <img src={sdcaLogo} alt="St. Dominic College of Asia" className="tour-shell-logo" />
           </header>
@@ -1751,8 +1935,8 @@ function MainPageContent({ onReset }) {
             {panelMode === "pairing" && (
               <KioskPairingScreen
                 kiosk={kioskIdentity.kiosk}
-                onPair={kioskIdentity.pair}
-                onUnpair={kioskIdentity.unpair}
+                onPair={pairAndReload}
+                onUnpair={unpairAndReload}
                 onClose={overlay.closePanel}
               />
             )}
@@ -1835,6 +2019,15 @@ function MainPageContent({ onReset }) {
         ) : (
           <div className="tour-shell-body">
             <div className="tour-shell-viewport">
+              {/* Mobile web layout: dims the panorama while the drawer is
+                  open; a tap on it closes the drawer. */}
+              {mobileWeb && (
+                <div
+                  className={"app-sidebar-scrim" + (sidebarOpen ? " app-sidebar-scrim-open" : "")}
+                  onClick={closeSidebar}
+                  aria-hidden="true"
+                />
+              )}
               {/* Static left sidebar — every function module (search,
                   buildings/entrances, room card, directions) now renders
                   here instead of as a floating panel over the panorama. */}
@@ -1865,20 +2058,54 @@ function MainPageContent({ onReset }) {
                   "app-sidebar" +
                   (panelMode === "room" && selectedRoomCard ? " app-sidebar-with-room" : "") +
                   (emergencySidebar ? " app-sidebar-emergency" : "") +
-                  (directionsSidebar ? " app-sidebar-directions" : "")
+                  (directionsSidebar ? " app-sidebar-directions" : "") +
+                  (mobileWeb ? " app-sidebar-drawer" + (sidebarOpen ? " app-sidebar-drawer-open" : "") : "")
                 }
+                id="app-sidebar"
+                // Closed, the drawer is off screen: out of the tab order and
+                // hidden from assistive tech too.
+                inert={mobileWeb && !sidebarOpen}
+                role={mobileWeb ? "dialog" : undefined}
+                aria-modal={mobileWeb ? true : undefined}
+                aria-label={mobileWeb ? "Menu" : undefined}
               >
                 {/* The sidebar's own session-start walkthrough — see
                     SidebarIntroOverlay.jsx and the sidebarIntroSeen state
                     above. Shares dismissIntro with DesktopIntroOverlay
                     below, so clicking either one closes both. */}
-                <Presence show={hintsAllowed && !compact && !sidebarIntroSeen} ms={250}>
+                <Presence show={hintsAllowed && !compact && !mobileWeb && !sidebarIntroSeen} ms={250}>
                   <SidebarIntroOverlay
-                    open={hintsAllowed && !compact && !sidebarIntroSeen}
+                    open={hintsAllowed && !compact && !mobileWeb && !sidebarIntroSeen}
                     onDismiss={dismissIntro}
                   />
                 </Presence>
-                <div className="app-sidebar-logo">
+                {/* Mobile web layout: the drawer's close button (top left)
+                    and, mirroring it, the help button that lives on the
+                    panorama on desktop (top right). */}
+                {mobileWeb && (
+                  <div className="app-sidebar-drawer-bar">
+                    <button
+                      ref={drawerCloseRef}
+                      type="button"
+                      className="app-sidebar-drawer-btn"
+                      onClick={closeSidebar}
+                      aria-label="Close menu"
+                      title="Close menu"
+                    >
+                      <IconPlaceholder name="close" className="inline-icon-img" />
+                    </button>
+                    <button
+                      type="button"
+                      className="app-sidebar-drawer-btn"
+                      onClick={handleDrawerHelp}
+                      aria-label="How to use this tour"
+                      title="How to use this tour"
+                    >
+                      <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                    </button>
+                  </div>
+                )}
+                <div className="app-sidebar-logo" onClick={mobileWeb ? () => tapForPairing("logo") : undefined}>
                   <img src={sdcaLogoReversedWhite} alt="St. Dominic College of Asia" />
                 </div>
 
@@ -1894,7 +2121,12 @@ function MainPageContent({ onReset }) {
                         overlay.closeBuildingMenu();
                         overlay.showPanel("search");
                       }}
-                      onBlur={overlay.blurSearch}
+                      // Mobile web layout: hiding the phone's keyboard blurs
+                      // the field, which must not throw away the results
+                      // the visitor wanted to scroll; the view's own close
+                      // button ends the search instead.
+                      onBlur={mobileWeb ? undefined : overlay.blurSearch}
+                      enterKeyHint="search"
                       placeholder="Search St. Dominic:"
                       aria-label="Search"
                     />
@@ -1942,9 +2174,13 @@ function MainPageContent({ onReset }) {
                   >
                     {desktopMenuOpen
                       ? <IconPlaceholder name="close" variant="white" className="inline-icon-img" />
-                      : MENU_ICON_WHITE}
+                      : KEBAB_ICON_WHITE}
                   </button>
-                  {desktopMenuOpen && desktopMenuPos && (
+                  {/* Portaled to the body: the Mobile web layout's drawer
+                      is transformed (it slides), which would otherwise make
+                      it the containing block of these fixed buttons and clip
+                      them inside it. */}
+                  {desktopMenuOpen && desktopMenuPos && (!mobileWeb || sidebarOpen) && createPortal(
                     <>
                       <div className="desktop-menu-backdrop" onClick={() => setDesktopMenuOpen(false)} />
                       <div className="desktop-menu-stack" style={{ top: desktopMenuPos.top, left: desktopMenuPos.left }}>
@@ -1964,7 +2200,8 @@ function MainPageContent({ onReset }) {
                           </button>
                         ))}
                       </div>
-                    </>
+                    </>,
+                    document.body
                   )}
                 </div>
 
@@ -1984,6 +2221,25 @@ function MainPageContent({ onReset }) {
                   className="app-sidebar-content"
                   style={directionsSidebar && reservedFormHeight ? { minHeight: reservedFormHeight } : undefined}
                 >
+                  {/* Mobile web layout: search no longer closes on blur
+                      (see the field above), so it gets its own way out. */}
+                  {panelMode === "search" && mobileWeb && (
+                    <div className="sidebar-search-header">
+                      <span>Search</span>
+                      <button
+                        type="button"
+                        className="app-sidebar-drawer-btn"
+                        onClick={() => {
+                          setSearchQuery("");
+                          overlay.closePanel();
+                        }}
+                        aria-label="Close search"
+                        title="Close search"
+                      >
+                        <IconPlaceholder name="close" className="inline-icon-img" />
+                      </button>
+                    </div>
+                  )}
                   {panelMode === "search" && searchResultsContent}
 
                   {/* The building selector: the Compact layout's modal, shown
@@ -2008,7 +2264,10 @@ function MainPageContent({ onReset }) {
                         rooms={searchableRooms}
                         savedRooms={savedRooms}
                         settings={directorySettings}
-                        onSelect={openRoomCard}
+                        // Mobile web layout: a pick only opens the room panel,
+                        // like a search result row; its Go To does the hop.
+                        // Moving behind the drawer would go unseen anyway.
+                        onSelect={mobileWeb ? overlay.previewRoom : openRoomCard}
                         selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}
                       />
@@ -2054,7 +2313,19 @@ function MainPageContent({ onReset }) {
                     onGoTo={handleRoomGoTo}
                     onGetDirections={handleRoomGetDirections}
                     onExpandedChange={trackRoomExpanded}
+                    mobile={mobileWeb}
                   />
+                )}
+
+                {/* Mobile web layout: the admin account, which sits in the
+                    panorama's top-left corner on desktop, where the phone
+                    has no room for it. */}
+                {mobileWeb && user && (
+                  <div className="app-sidebar-account">
+                    <span className="app-sidebar-account-name" title={displayName}>{displayName}</span>
+                    <Link to="/admin" className="sidebar-admin-btn">{PLACEHOLDER("tools-wrench")} Admin Panel</Link>
+                    <button type="button" onClick={signOut} className="subtle account-signout">Sign out</button>
+                  </div>
                 )}
               </aside>
 
@@ -2088,7 +2359,10 @@ function MainPageContent({ onReset }) {
                   autoPan={!!nextStopId}
                   keyboardNav
                   onBack={goBack}
-                  wheelZoomable
+                  wheelZoomable={!mobileWeb}
+                  pinchZoomable={mobileWeb}
+                  dwellPreviews={mobileWeb}
+                  previewsHidden={mobileWeb && overlayOpen}
                 />
                 <EmergencyStairsBanner step={nextFireStairs} />
 
@@ -2097,12 +2371,32 @@ function MainPageContent({ onReset }) {
                     DesktopIntroOverlay.jsx and the desktopIntroSeen state
                     above. Shares dismissIntro with SidebarIntroOverlay, so
                     clicking either one closes both. */}
-                <Presence show={hintsAllowed && !compact && !desktopIntroSeen} ms={250}>
+                <Presence show={hintsAllowed && !compact && !mobileWeb && !desktopIntroSeen} ms={250}>
                   <DesktopIntroOverlay
-                    open={hintsAllowed && !compact && !desktopIntroSeen}
+                    open={hintsAllowed && !compact && !mobileWeb && !desktopIntroSeen}
                     onDismiss={dismissIntro}
                   />
                 </Presence>
+                <Presence show={hintsAllowed && mobileWeb && !desktopIntroSeen} ms={250}>
+                  <MobileIntroOverlay open={hintsAllowed && mobileWeb && !desktopIntroSeen} onDismiss={dismissIntro} />
+                </Presence>
+
+                {/* Mobile web layout: the hamburger that opens the drawer,
+                    on the left edge at mid-height, where a thumb reaches. */}
+                {mobileWeb && (
+                  <button
+                    ref={drawerOpenRef}
+                    type="button"
+                    className="mobile-web-menu-btn"
+                    onClick={openSidebar}
+                    aria-label="Open menu"
+                    aria-expanded={sidebarOpen}
+                    aria-controls="app-sidebar"
+                    title="Menu"
+                  >
+                    {MENU_ICON_WHITE}
+                  </button>
+                )}
                 {/* .floating-title-center is the ONLY flex item .floating-title-wrap
                     centers — its own width is just the pill's (the back
                     button is position: absolute inside it, so it adds no
@@ -2115,7 +2409,7 @@ function MainPageContent({ onReset }) {
                     button's own width whenever it was present. */}
                 <div className="floating-title-wrap">
                   <div className="floating-title-center">
-                    {history.length > 0 && (
+                    {history.length > 0 && !mobileWeb && (
                       <button
                         type="button"
                         className="floating-title-back"
@@ -2126,28 +2420,39 @@ function MainPageContent({ onReset }) {
                         {PLACEHOLDER("back")}
                       </button>
                     )}
-                    <div className="floating-title-pill">
-                      <span>{current.name}</span>
-                    </div>
+                    {mobileWeb ? (
+                      <FittedTitlePill
+                        name={current.name}
+                        onTap={() => tapForPairing("title")}
+                        onBack={history.length > 0 ? goBack : null}
+                      />
+                    ) : (
+                      <div className="floating-title-pill">
+                        <span>{current.name}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Bottom-left: layer button showing the current building,
-                    opening the campus map in the middle of the panorama. */}
-                <button
-                  type="button"
-                  className="campus-map-btn"
-                  onClick={() => {
-                    closeModals();
-                    setCampusMapOpen(true);
-                  }}
-                  aria-label="Open campus map"
-                  title="Campus map"
-                >
-                  <CampusMapPreview campusId={campusForBuilding(current.building)} />
-                  <IconPlaceholder name="map-layers" variant="white" className="campus-map-btn-icon" />
-                  <span className="campus-map-btn-label">{buildingDisplayName(current.building)}</span>
-                </button>
+                    opening the campus map in the middle of the panorama.
+                    Steps aside for the Mobile web layout's walk bar. */}
+                {!mobileWalkBar && (
+                  <button
+                    type="button"
+                    className="campus-map-btn"
+                    onClick={() => {
+                      closeModals();
+                      setCampusMapOpen(true);
+                    }}
+                    aria-label="Open campus map"
+                    title="Campus map"
+                  >
+                    <CampusMapPreview campusId={campusForBuilding(current.building)} />
+                    <IconPlaceholder name="map-layers" variant="white" className="campus-map-btn-icon" />
+                    <span className="campus-map-btn-label">{buildingDisplayName(current.building)}</span>
+                  </button>
+                )}
                 <Presence show={campusMapOpen}>
                   {campusMapOpen && (
                     <CampusMapModal
@@ -2157,21 +2462,52 @@ function MainPageContent({ onReset }) {
                   )}
                 </Presence>
 
-                {/* Top-right corner: replays the intro walkthrough. */}
-                <button
-                  type="button"
-                  className="floating-rail-btn floating-help-btn"
-                  onClick={replayIntro}
-                  aria-label="How to use this tour"
-                  title="How to use this tour"
-                >
-                  <img src={questionMarkIcon} alt="" className="inline-icon-img" />
-                </button>
+                {/* Top-right corner: replays the intro walkthrough. Inside
+                    the drawer instead on the Mobile web layout. */}
+                {!mobileWeb && (
+                  <button
+                    type="button"
+                    className="floating-rail-btn floating-help-btn"
+                    onClick={replayIntro}
+                    aria-label="How to use this tour"
+                    title="How to use this tour"
+                  >
+                    <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                  </button>
+                )}
+
+                {/* Mobile web layout: the route's controls while it is being
+                    walked, with the drawer closed (see walkingAt). The
+                    kiosk's walk bar, laid out as a bottom sheet. */}
+                <Presence show={mobileWalkBar}>
+                  {mobileWalkBar && (
+                    <KioskWalkBar
+                      mobile
+                      progressText={`Stop ${directions.stepIndex + 1} of ${directions.path.length}${
+                        turnInstruction ? `: ${turnInstruction}` : ""
+                      }`}
+                      nextStopAction={nextStepAction}
+                      isElevator={!!nextElevator}
+                      isFireStairs={!!nextFireStairs}
+                      autoWalking={autoWalking}
+                      stepIndex={directions.stepIndex}
+                      onWalk={flow.walkToNext}
+                      skipCount={skip?.count ?? 0}
+                      onSkip={flow.skipAhead}
+                      onToggleAutoWalk={() => flow.toggleAutoWalk()}
+                      onShowDialog={openSidebar}
+                      emergency={directions.emergency}
+                      onBlocked={flow.reportBlocked}
+                      onEnd={flow.close}
+                    />
+                  )}
+                </Presence>
 
                 {/* Top-left corner; its popover opens downward. */}
                 {/* Hidden entirely for a logged-out visitor — same
-                    reasoning as the Compact layout's account button above. */}
-                {user && (
+                    reasoning as the Compact layout's account button above.
+                    In the drawer instead on the Mobile web layout. */}
+                {user && !mobileWeb && (
                   <div className="floating-account-wrap floating-account-wrap-corner" ref={accountMenuRef}>
                     {accountMenuOpen && (
                       <div className="account-popover">
@@ -2218,6 +2554,19 @@ function MainPageContent({ onReset }) {
         />
       )}
       </Presence>
+
+      {/* Mobile web layout: where an unpaired kiosk device is paired, by its
+          hidden gesture (see tapForPairing), typing on the device's own
+          keyboard. */}
+      {mobileWeb && panelMode === "pairing" && (
+        <KioskPairingScreen
+          nativeKeyboard
+          kiosk={kioskIdentity.kiosk}
+          onPair={pairAndReload}
+          onUnpair={unpairAndReload}
+          onClose={overlay.closePanel}
+        />
+      )}
 
       {/* End Session, feedback already given: straight to the same
           thank-you card/countdown/"Keep exploring" cancel FeedbackPanel

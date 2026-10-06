@@ -4,13 +4,14 @@ import { MOUSE } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { initialCameraPosition, zoomedFov } from "../utils/panoramaMath";
 import { PanoramaSphere, FadingSphere } from "./panorama/Spheres";
-import { CameraAim, AutoPan, FovController, CaptureAngle } from "./panorama/camera";
+import { CameraAim, AutoPan, FovController, CaptureAngle, ViewSettleWatcher } from "./panorama/camera";
 import { KeyboardNav } from "./panorama/KeyboardNav";
 import { usePanoramaFov, TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panorama/cameraSettings";
 import { Hotspot } from "./panorama/Hotspot";
 import { Marker } from "./panorama/Marker";
 import { ZoomControls } from "./panorama/ZoomControls";
-import { useZoom } from "./panorama/useZoom";
+import { ZoomIndicator } from "./panorama/ZoomIndicator";
+import { useZoom, pinchedZoom } from "./panorama/useZoom";
 import { usePanoramaScene } from "./panorama/usePanoramaScene";
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
 import noImagePanorama from "../assets/images/no-image.jpg";
@@ -18,6 +19,10 @@ import noImagePanorama from "../assets/images/no-image.jpg";
 // How long the "No location in front." hint stays up after W/Up finds
 // nothing to walk to.
 const NOTHING_AHEAD_HINT_MS = 1800;
+
+// Mobile web layout: how long the view must hold still before every hotspot
+// and room marker on screen opens its preview on its own (there is no hover).
+const DWELL_PREVIEW_MS = 2000;
 
 // Held-Shift/Control keyboard zoom: how many wheel-deltaY-equivalent units
 // per second of holding feed into zoomByWheel (tuned to land roughly where
@@ -57,6 +62,8 @@ function isTypingTarget(target) {
  *  - alwaysShowPreview: bool — kiosk view: every hotspot's photo preview is always shown, and a single tap navigates (no tap-to-preview step)
  *  - zoomable: bool — kiosk view: on-screen + / - / reset buttons zoom the panorama (no pinch), with a small level indicator; hidden along with the previews while previewsHidden
  *  - wheelZoomable: bool — desktop view: the mouse scroll wheel zooms the panorama, with the same small level indicator (shown only away from the default 1.0x)
+ *  - pinchZoomable: bool — Mobile web layout: a two-finger pinch on the panorama zooms it (with a detent at 1.0x), showing only the level indicator, no buttons
+ *  - dwellPreviews: bool — Mobile web layout (no hover): once the view has held still for DWELL_PREVIEW_MS, every hotspot and room/facility marker on screen opens its preview, until the view moves again; a press on a preview does what pressing its hotspot/marker does
  *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" or type:"facility" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
@@ -108,6 +115,8 @@ export default function PanoramaNav({
   previewsHidden = false,
   zoomable = false,
   wheelZoomable = false,
+  pinchZoomable = false,
+  dwellPreviews = false,
   autoPan = false,
   keyboardNav = false,
   onBack,
@@ -126,7 +135,9 @@ export default function PanoramaNav({
   // viewer is already open, not just on initial mount.
   const baseFov = usePanoramaFov(heightFraction);
   const { zoom, setZoom, zoomByWheel } = useZoom();
-  const zoomActive = zoomable || wheelZoomable;
+  const zoomActive = zoomable || wheelZoomable || pinchZoomable;
+  // Whether the view has held still long enough to open dwell previews.
+  const [viewSettled, setViewSettled] = useState(false);
   const fov = zoomActive ? zoomedFov(baseFov, zoom) : baseFov;
 
   // Native (non-passive) wheel listener: React's own onWheel is attached
@@ -146,6 +157,43 @@ export default function PanoramaNav({
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, [wheelZoomable, zoomByWheel]);
+
+  // Mobile web two-finger pinch. Native listeners: touchmove has to be
+  // non-passive to stop the browser treating the pinch as a page zoom.
+  // OrbitControls ignores two fingers here (its zoom and pan are off), so the
+  // pinch and the one-finger look-around never fight.
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  });
+  useEffect(() => {
+    if (!pinchZoomable) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    let pinch = null;
+    const spread = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onStart = (e) => {
+      if (e.touches.length === 2) pinch = { spread: spread(e.touches) || 1, zoom: zoomRef.current };
+    };
+    const onMove = (e) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      setZoom(pinchedZoom(pinch.zoom, spread(e.touches) / pinch.spread));
+    };
+    const onEnd = (e) => {
+      if (e.touches.length < 2) pinch = null;
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [pinchZoomable, setZoom]);
 
   // Desktop keyboard zoom: Shift zooms in, Control zooms out, continuously
   // while held (fed through the same zoomByWheel curve the scroll wheel
@@ -289,6 +337,7 @@ export default function PanoramaNav({
   const canvas = (
     <Canvas camera={{ position: firstCameraPosition, fov: baseFov }} style={{ cursor }}>
       {zoomActive && <FovController fov={fov} />}
+      {dwellPreviews && <ViewSettleWatcher delayMs={DWELL_PREVIEW_MS} sceneKey={scene.sceneKey} onChange={setViewSettled} />}
       {visible && <PanoramaSphere texture={visible.texture} placing={placing} onSurfaceClick={onPlaceAngle} />}
       {leaving && <FadingSphere key={leaving.uuid} texture={leaving} onDone={scene.dismissLeaving} />}
       {scene.holdsScene && shown && <CameraAim aimKey={shown.texture.uuid} yaw={shown.yaw} pitch={shown.pitch} />}
@@ -321,6 +370,8 @@ export default function PanoramaNav({
           highlighted={!placing && h.id === shownHighlightId}
           fov={fov}
           alwaysPreview={alwaysShowPreview && !placing}
+          dwellPreview={dwellPreviews && viewSettled && !placing}
+          previewTappable={dwellPreviews && !placing}
           // Also hidden while a move is loading: `!live` means the screen is
           // still showing the scene being left.
           previewHidden={previewsHidden || !live}
@@ -343,6 +394,7 @@ export default function PanoramaNav({
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
           previewPhoto={roomMarkerPhoto && !placing && live && !previewsHidden && (m.type === "room" || m.type === "facility") ? roomMarkerPhoto(m) : null}
+          dwellPreview={dwellPreviews && viewSettled}
           onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}
           onEmergencyExitClick={
             onEmergencyExitMarkerClick && !placing && m.id === shownHighlightMarkerId ? () => onEmergencyExitMarkerClick(m) : undefined
@@ -359,6 +411,11 @@ export default function PanoramaNav({
       {/* Hidden, like the hotspot previews, while a menu/dialog is open over the panorama. */}
       {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
       {wheelZoomable && <ZoomControls zoom={zoom} setZoom={setZoom} desktop />}
+      {pinchZoomable && (
+        <div className="pano-zoom-controls pano-zoom-controls-mobile">
+          <ZoomIndicator zoom={zoom} />
+        </div>
+      )}
       {nothingAheadHint && <div className="pano-nothing-ahead-hint">No location in front.</div>}
     </div>
   );

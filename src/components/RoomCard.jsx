@@ -16,7 +16,7 @@ import IconPlaceholder from "./IconPlaceholder";
 import PhotoLightbox from "./PhotoLightbox";
 import PhotoLoading from "./PhotoLoading";
 import { focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
-import { useFlatPhotoUrl, SQUARE_PREVIEW } from "../hooks/useFlatPhotoUrl";
+import { useFlatPhotoUrl, SQUARE_PREVIEW, TALL_PREVIEW } from "../hooks/useFlatPhotoUrl";
 import { Pano360Pill } from "./RoomPanorama";
 
 // How far (as a fraction of the collapsed-to-expanded travel) a drag has to
@@ -35,8 +35,11 @@ const SWIPE_MIN_PX = 40;
 // up to the sidebar's full height to reveal the description
 // and photos below. A room opened with search's "Go To" (room.openExpanded)
 // starts fully expanded instead. MainPage keys it on the room and that flag,
-// so each new pick starts in its own state.
-export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, onGetDirections, onExpandedChange }) {
+// so each new pick starts in its own state. `mobile` (Mobile web layout):
+// 360 photos in the carousel get a taller frame (see TALL_PREVIEW), the
+// handle's chevron turns to point down once the sheet is fully open (the way
+// it will go), and the photo viewer gets its own close button.
+export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, onGetDirections, onExpandedChange, mobile = false }) {
   const { roomName, placard, node } = room;
   const toast = useToast();
 
@@ -75,6 +78,9 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
       startHeight: sheet.offsetHeight,
       maxHeight: sheet.parentElement.clientHeight,
       moved: false,
+      // Read here, not on release: the capture below retargets the release
+      // to the peek, so its target is never the handle.
+      onHandle: !!e.target.closest(".sidebar-room-handle"),
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -97,7 +103,7 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
     if (!drag.moved) {
       // A tap on the handle toggles; a tap anywhere else in the peek only
       // expands, so a stray tap on the open sheet never collapses it.
-      if (e.target.closest(".sidebar-room-handle")) setExpanded((v) => !v);
+      if (drag.onHandle) setExpanded((v) => !v);
       else setExpanded(true);
       return;
     }
@@ -183,7 +189,7 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
       >
         <button
           type="button"
-          className="sidebar-room-handle"
+          className={"sidebar-room-handle" + (mobile && expanded ? " sidebar-room-handle-flipped" : "")}
           aria-expanded={expanded}
           aria-label={expanded ? "Collapse room details" : "Expand room details"}
         >
@@ -295,11 +301,11 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
           )}
         </div>
 
-        <RoomPhotoCarousel photos={photos} alt={roomName} onOpen={setViewerIndex} />
+        <RoomPhotoCarousel photos={photos} alt={roomName} onOpen={setViewerIndex} tall360={mobile} />
       </div>
 
       {screen && photos.length > 0 && createPortal(
-        <PhotoLightbox photos={photos} index={Math.min(viewerIndex, photos.length - 1)} onIndexChange={setViewerIndex} onClose={() => setViewerIndex(null)} alt={roomName} />,
+        <PhotoLightbox photos={photos} index={Math.min(viewerIndex, photos.length - 1)} onIndexChange={setViewerIndex} onClose={() => setViewerIndex(null)} alt={roomName} closeButton={mobile} />,
         screen
       )}
     </div>
@@ -310,15 +316,17 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
 // panel opens its viewer from it). A 360 photo shows here as a flat-looking
 // view of itself with a "360°" pill over it; `onOpenPanorama(photo)`, when given,
 // makes that pill a button that opens it for looking around (the kiosk, which
-// has no viewer; on desktop the photo itself opens the viewer).
-export function RoomPhotoCarousel({ photos, alt, onOpen, onOpenPanorama }) {
+// has no viewer; on desktop the photo itself opens the viewer). `tall360`
+// shows a 360 photo in a taller 4:5 frame instead of a square.
+export function RoomPhotoCarousel({ photos, alt, onOpen, onOpenPanorama, tall360 = false }) {
   const [index, setIndex] = useState(0);
   usePreloadPhotos(photos.map((p) => p.path));
   // The previous photo stays up (same size) while the next resolves; the
   // spinner only appears if that drags on (see .photo-loading-veil).
   const { url, path: shownPath, pending, error } = useHeldPhoto(photos[index]?.path);
   const shown = photos.find((p) => p.path === shownPath);
-  const flatUrl = useFlatPhotoUrl(url, shown, SQUARE_PREVIEW);
+  const tall = tall360 && isPanorama(shown);
+  const flatUrl = useFlatPhotoUrl(url, shown, tall ? TALL_PREVIEW : SQUARE_PREVIEW);
   const multiple = photos.length > 1;
 
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
@@ -368,7 +376,7 @@ export function RoomPhotoCarousel({ photos, alt, onOpen, onOpenPanorama }) {
       <img
         src={flatUrl}
         alt={alt}
-        className={"sidebar-room-carousel-image photo-swap" + (pending ? " photo-dimmed" : "")}
+        className={"sidebar-room-carousel-image photo-swap" + (tall ? " sidebar-room-carousel-image-tall" : "") + (pending ? " photo-dimmed" : "")}
         style={{ objectPosition: focusPosition(isPanorama(shown) ? null : shown) }}
       />
     );

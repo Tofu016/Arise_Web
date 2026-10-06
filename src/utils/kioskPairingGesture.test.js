@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { advanceGesture, initialGesture, TAP_WINDOW_MS, STEP_GAP_MS } from "./kioskPairingGesture";
+import { advanceGesture, initialGesture, MOBILE_GESTURE, TAP_WINDOW_MS, STEP_GAP_MS } from "./kioskPairingGesture";
 
 // Feeds taps ({ target, at }) through the gesture; returns the last result
 // and whether any tap completed it.
@@ -57,5 +57,37 @@ describe("advanceGesture", () => {
   it("resets after completing so it can be done again", () => {
     const taps = [...burst("logo", 0), ...burst("title", 2000), ...burst("signage", 4000)];
     expect(run(taps).state).toEqual(initialGesture);
+  });
+});
+
+describe("advanceGesture with the mobile gesture", () => {
+  function runMobile(taps) {
+    let state = initialGesture;
+    let completed = false;
+    for (const { target, at } of taps) {
+      const next = advanceGesture(state, target, at, MOBILE_GESTURE);
+      state = next.state;
+      completed = completed || next.complete;
+    }
+    return { state, completed };
+  }
+
+  it("completes on 5 logo taps, 5 title taps, then a single help tap", () => {
+    const taps = [...burst("logo", 0), ...burst("title", 3000), { target: "help", at: 7000 }];
+    expect(runMobile(taps).completed).toBe(true);
+  });
+
+  it("does not complete on a help tap alone, which just replays the tips", () => {
+    expect(runMobile([{ target: "help", at: 0 }]).completed).toBe(false);
+  });
+
+  it("does not complete when help comes before the title step is done", () => {
+    const taps = [...burst("logo", 0), ...burst("title", 2000, 3), { target: "help", at: 4000 }];
+    expect(runMobile(taps).completed).toBe(false);
+  });
+
+  it("starts over when the help tap comes too long after the title step", () => {
+    const taps = [...burst("logo", 0), ...burst("title", 2000), { target: "help", at: 2800 + STEP_GAP_MS + 1 }];
+    expect(runMobile(taps).completed).toBe(false);
   });
 });

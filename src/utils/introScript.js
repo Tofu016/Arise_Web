@@ -27,5 +27,17 @@ export const KIOSK_INTRO_TEXT = {
   menu: "Tap the menu button for search, directions and more.",
 };
 
+// Mobile web layout: the touch controls, then where everything else went
+// (the sidebar slides in from the left, and the help button moved into it).
+export const MOBILE_INTRO_TEXT = {
+  drag: "Touch and drag to look around.",
+  hotspot: "Tap a glowing arrow to walk that way.",
+  zoom: "Pinch with two fingers to zoom in and out.",
+  preview: "Hold the view still for a moment to preview where each arrow and room leads. Tap a preview to go there.",
+  menu: "Tap the menu button on the left for the directory, search, directions, buildings, Nearest Exit and feedback.",
+  help: "Tap the question mark at the top right of the menu to see these tips again.",
+};
+
 export const DESKTOP_INTRO_SPEECH = [...Object.values(DESKTOP_INTRO_TEXT), ...Object.values(SIDEBAR_INTRO_TEXT)].join(" ");
 export const KIOSK_INTRO_SPEECH = Object.values(KIOSK_INTRO_TEXT).join(" ");
+export const MOBILE_INTRO_SPEECH = Object.values(MOBILE_INTRO_TEXT).join(" ");
