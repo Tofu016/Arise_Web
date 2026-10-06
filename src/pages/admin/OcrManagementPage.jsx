@@ -606,8 +606,27 @@ export default function OcrManagementPage() {
 
   return (
     <div className="signage-page directory-admin-page">
-      {/* Sticky, so Save stays in reach while scrolling the room lists. */}
-      <header className="signage-page-header directory-admin-header">
+      {/* Zero-height and sticky, so Save floats over the header's right edge and
+          stays in reach while the title scrolls away with the page. */}
+      <div className="ocr-admin-save-bar">
+        <div className="signage-settings-actions">
+            {dirty && (
+              <span className="directory-admin-unsaved" role="status">
+                {problems.length > 0 ? "Fix the highlighted rooms to save" : "Unsaved changes"}
+              </span>
+            )}
+            {dirty && (
+              <button type="button" className="signage-btn" onClick={cancelChanges} disabled={saving}>
+                Discard
+              </button>
+            )}
+            <button type="button" className="signage-add-btn" onClick={save} disabled={!dirty || saving || problems.length > 0}>
+              {saving ? "Saving..." : "Save OCR settings"}
+            </button>
+          </div>
+      </div>
+      {/* Scrolls away with the page (unlike the Directory's sticky header). */}
+      <header className="signage-page-header directory-admin-header ocr-admin-header">
         <div>
           <h2 className="admin-page-heading">OCR Management</h2>
           <p className="signage-page-intro">
@@ -617,21 +636,6 @@ export default function OcrManagementPage() {
             misreads. After a scan, View in AR shows the room's AR 360 image (or a placeholder). The scanner message
             shows at the top of the phone's scanner. Changes apply when you save.
           </p>
-        </div>
-        <div className="signage-settings-actions">
-          {dirty && (
-            <span className="directory-admin-unsaved" role="status">
-              {problems.length > 0 ? "Fix the highlighted rooms to save" : "Unsaved changes"}
-            </span>
-          )}
-          {dirty && (
-            <button type="button" className="signage-btn" onClick={cancelChanges} disabled={saving}>
-              Discard
-            </button>
-          )}
-          <button type="button" className="signage-add-btn" onClick={save} disabled={!dirty || saving || problems.length > 0}>
-            {saving ? "Saving..." : "Save OCR settings"}
-          </button>
         </div>
       </header>
 
@@ -661,8 +665,8 @@ export default function OcrManagementPage() {
             </div>
           )}
 
-          <div className="directory-admin-layout">
-            <aside className="directory-admin-nav">
+          <div className="ocr-admin-layout">
+              <aside className="ocr-admin-side-col">
               <section className="signage-card ocr-admin-side-card" aria-label="Summary">
                 <div className="signage-card-head">
                   <h3>On OCR</h3>
@@ -686,9 +690,44 @@ export default function OcrManagementPage() {
               </section>
               <ScannerMessageCard message={message} loadError={messageError} onChange={setMessage} />
               <TestReadCard rooms={eligiblePreview} />
-            </aside>
+              </aside>
 
-            <div className="directory-admin-editor">
+              <section className="panel directory-admin-panel" aria-label="Rooms on OCR">
+                <div className="node-list-header">
+                  <h3>
+                    On OCR ({eligible.length}
+                    {filtersActive ? ` of ${totalEligible}` : ""})
+                  </h3>
+                  <button
+                    type="button"
+                    className="signage-btn"
+                    disabled={eligible.length === 0}
+                    onClick={() => setStatesFor(eligible, (s) => removeFromOcr(s))}
+                  >
+                    Remove {eligible.length > 0 ? `all ${eligible.length} ` : ""}shown
+                  </button>
+                </div>
+                <ul className="ocr-admin-room-list">
+                  {eligible.map((r) => (
+                    <EligibleRoom
+                      key={keyOf(r)}
+                      room={r}
+                      state={stateFor(r)}
+                      collisions={collisions.get(keyOf(r))}
+                      unsaved={changedKeys.has(keyOf(r))}
+                      onChange={(next) => setStateFor(r, next)}
+                      onRemove={() => setStateFor(r, removeFromOcr(stateFor(r)))}
+                    />
+                  ))}
+                </ul>
+                {eligible.length === 0 && (
+                  <p className="empty-hint">
+                    {totalEligible === 0 ? "No room is on OCR yet. The scanner recognizes nothing." : "No room on OCR matches these filters."}
+                  </p>
+                )}
+              </section>
+
+              <div className="ocr-admin-filter-col">
               <section className="panel directory-admin-panel" aria-label="Search and filter">
                 <h3>Search and Filter</h3>
                 <div className="filter-panel-grid">
@@ -754,41 +793,6 @@ export default function OcrManagementPage() {
                 )}
               </section>
 
-              <section className="panel directory-admin-panel" aria-label="Rooms on OCR">
-                <div className="node-list-header">
-                  <h3>
-                    On OCR ({eligible.length}
-                    {filtersActive ? ` of ${totalEligible}` : ""})
-                  </h3>
-                  <button
-                    type="button"
-                    className="signage-btn"
-                    disabled={eligible.length === 0}
-                    onClick={() => setStatesFor(eligible, (s) => removeFromOcr(s))}
-                  >
-                    Remove {eligible.length > 0 ? `all ${eligible.length} ` : ""}shown
-                  </button>
-                </div>
-                <ul className="ocr-admin-room-list">
-                  {eligible.map((r) => (
-                    <EligibleRoom
-                      key={keyOf(r)}
-                      room={r}
-                      state={stateFor(r)}
-                      collisions={collisions.get(keyOf(r))}
-                      unsaved={changedKeys.has(keyOf(r))}
-                      onChange={(next) => setStateFor(r, next)}
-                      onRemove={() => setStateFor(r, removeFromOcr(stateFor(r)))}
-                    />
-                  ))}
-                </ul>
-                {eligible.length === 0 && (
-                  <p className="empty-hint">
-                    {totalEligible === 0 ? "No room is on OCR yet. The scanner recognizes nothing." : "No room on OCR matches these filters."}
-                  </p>
-                )}
-              </section>
-
               <section className="panel directory-admin-panel" aria-label="Add rooms">
                 <div className="node-list-header">
                   <h3>Add rooms ({available.length})</h3>
@@ -810,7 +814,7 @@ export default function OcrManagementPage() {
                   <p className="empty-hint">{filtersActive ? "No room off OCR matches these filters." : "Every room is already on OCR."}</p>
                 )}
               </section>
-            </div>
+              </div>
           </div>
         </>
       )}

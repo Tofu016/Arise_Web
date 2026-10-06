@@ -6,7 +6,14 @@ import * as placement from "../utils/placement";
 
 // The panorama sits at the top of the page; bring it into view when a
 // placement / default-view capture starts from a button far down the lists.
-const scrollToPanorama = () => window.scrollTo({ top: 0, behavior: "smooth" });
+// The editor scrolls inside its own column (.navigation-editor-main), not the
+// window, so scroll that column (which also keeps the placing banner above the
+// panorama in view) rather than the window.
+const scrollToPanorama = () => {
+  const column = document.querySelector(".navigation-editor-screen")?.closest(".navigation-editor-main");
+  if (column) column.scrollTo({ top: 0, behavior: "auto" });
+  else window.scrollTo({ top: 0, behavior: "auto" });
+};
 
 // React adapter over utils/placement.js for the navigation editor: holds
 // the session, the add-link box and the photo-missing flag, and turns a
@@ -161,7 +168,10 @@ export function useGraphEditor({
       setSession(placement.startPlacingLink(session, id));
     },
     cancelLinkPlacement: () => setSession(placement.cancelLinkPlacement(session)),
-    startPlacingMarker: (marker) => setSession(placement.startPlacingMarker(session, marker)),
+    startPlacingMarker: (marker) => {
+      setSession(placement.startPlacingMarker(session, marker));
+      scrollToPanorama();
+    },
     startRepositionMarker: (id) => {
       scrollToPanorama();
       setSession(placement.startRepositionMarker(session, id));

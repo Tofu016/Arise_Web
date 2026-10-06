@@ -186,8 +186,17 @@ export default function NavigationEditorPage() {
     }
   };
 
-  const confirmStartPlacingNewMarker = () => {
+  const confirmStartPlacingNewMarker = async () => {
     if (!canConfirmMarker) return;
+    // A room marker's label must match a "Rooms served" entry, so a node with
+    // none gets the typed name added first (the same list the Node Editor edits).
+    if (newMarkerType === "room" && (current.rooms || []).length === 0) {
+      try {
+        await updateNode(current.id, { rooms: [newMarkerLabel.trim()] });
+      } catch {
+        return; // updateNode already toasted the failure; keep the box open
+      }
+    }
     const marker = isElevator
       ? { id: newMarkerId(), type: "elevator", elevatorId: selectedElevator.id, label: selectedElevator.label }
       : isEmergencyExit
@@ -506,9 +515,19 @@ export default function NavigationEditorPage() {
                       ))}
                     </select>
                   ) : (
-                    <p className="empty-hint">
-                      This node has no "Rooms served" yet. Add one via Node Editor first.
-                    </p>
+                    <>
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="New room name, e.g. GD1-101"
+                        value={newMarkerLabel}
+                        onChange={(e) => setNewMarkerLabel(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && confirmStartPlacingNewMarker()}
+                      />
+                      <p className="field-hint">
+                        This node has no "Rooms served" yet. Placing adds this name to its Rooms served.
+                      </p>
+                    </>
                   )
                 ) : isElevator ? (
                   <>

@@ -147,7 +147,7 @@ export function AddLinkBox({ editor, itemNoun }) {
               <p className="empty-hint">No matches.</p>
             )}
           </div>
-          <button onClick={editor.cancelAddingLink}>Cancel</button>
+          <button className="admin-btn-secondary" onClick={editor.cancelAddingLink}>Cancel</button>
         </div>
       )}
     </div>

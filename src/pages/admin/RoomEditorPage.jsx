@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import RoomList from "../../components/RoomList";
 import FilterPanel from "../../components/FilterPanel";
-import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
+import { usePlacardDialogs, deleteDialogsByName } from "../../hooks/usePlacardDialogs";
 import { useRoomPhotoUploads } from "../../hooks/useRoomPhotoUploads";
 import RoomDetailsForm from "../../components/admin/RoomDetailsForm";
 import CreateRoomDialog from "../../components/admin/CreateRoomDialog";
@@ -42,9 +42,9 @@ const LIST_MODES = [
 // way a selection is a (node, room) pair.
 
 export default function RoomEditorPage() {
-  const { alert } = useConfirm();
+  const { alert, confirm } = useConfirm();
   const { nodes, selectedNodeId, setSelectedNodeId, updateNode, setMarkers } = useOutletContext();
-  const { getForRoom, saveRoomDialog } = usePlacardDialogs();
+  const { getForRoom, saveRoomDialog, refresh: refreshDialogs } = usePlacardDialogs();
   const toast = useToast();
 
   const node = nodes.find((n) => n.id === selectedNodeId) || null;
@@ -205,6 +205,38 @@ export default function RoomEditorPage() {
     }
   };
 
+  // Removes the room or facility everywhere it lives: its marker(s) on this
+  // node, its "Rooms served" entry (a room only; a facility is just its
+  // marker) and its saved details. A facility's details are dropped by
+  // setMarkers itself once nothing else uses the name.
+  const handleDelete = async () => {
+    if (!selectedRoom || !node || saving) return;
+    const ok = await confirm({
+      title: `Delete ${kind}?`,
+      message: `Delete ${kind} "${selectedRoom}" from "${node.name}"? This also removes its marker and its saved details, photos and contact info.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+
+    setSaving(true);
+    try {
+      const left = markersAfterSave(node, { kind, oldName: selectedRoom, remove: true });
+      if (left) await setMarkers(node.id, left);
+      if (!isFacility) {
+        await updateNode(node.id, { rooms: servedRooms.filter((r) => r !== selectedRoom) });
+        await deleteDialogsByName([selectedRoom]);
+      }
+      await refreshDialogs();
+      setSelectedRoom(rooms.find((r) => r !== selectedRoom) || null);
+      toast.success(`${kindName} "${selectedRoom}" deleted.`);
+    } catch (err) {
+      toast.error(err.message || `Couldn't delete the ${kind}.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreated = (nodeId, name) => {
     setShowCreate(false);
     setListMode("rooms");
@@ -346,6 +378,10 @@ export default function RoomEditorPage() {
                 }}
               >
                 Cancel
+              </button>
+              {/* Last, after Cancel, so a stray click on the way to Save or Cancel can't hit it. */}
+              <button className="danger" onClick={handleDelete} disabled={saving || uploadState === "uploading"}>
+                Delete
               </button>
             </div>
           </div>

@@ -95,5 +95,5 @@ export function usePlacardDialogs() {
     [mutate]
   );
 
-  return { getForRoom, saveRoomDialog, saveOcrSettings, loading, error };
+  return { getForRoom, saveRoomDialog, saveOcrSettings, refresh, loading, error };
 }

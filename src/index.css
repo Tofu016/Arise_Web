@@ -12165,3 +12165,69 @@ html.kiosk-mode .admin-layout .link-actions-stack button:not(.danger):hover:acti
 .link-actions-stack button:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
+
+/* OCR Management: the summary, scanner message and test cards on the left,
+   then the On OCR list alone, then Search and Filter stacked above the
+   (slightly narrower) Add rooms list. */
+.ocr-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 5fr) minmax(0, 4fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+.ocr-admin-side-col,
+.ocr-admin-filter-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+/* Too narrow for three columns: the cards go first, full width. */
+@media (max-width: 1200px) {
+  .ocr-admin-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .ocr-admin-side-col {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 900px) {
+  .ocr-admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* OCR Management's title row scrolls with the page; the Directory page keeps
+   the sticky bar this overrides. */
+.directory-admin-header.ocr-admin-header {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border-bottom: none;
+}
+
+/* OCR Management's Save / Discard: a zero-height sticky row (its flex gap is
+   cancelled by the negative margin) so the buttons sit at the header's right
+   edge at rest and follow the scroll afterwards. The card look keeps them
+   readable over the lists. */
+.ocr-admin-save-bar {
+  position: sticky;
+  top: 20px;
+  z-index: 6;
+  height: 0;
+  margin-bottom: calc(-1 * var(--space-lg));
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.ocr-admin-save-bar .signage-settings-actions {
+  pointer-events: auto;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
