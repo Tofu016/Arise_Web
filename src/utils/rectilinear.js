@@ -17,6 +17,93 @@ export function directionToPixel(x, y, z, width, height) {
   return [u * width, v * height];
 }
 
+// Where a view direction (yaw, pitch in degrees) sits on the equirect photo, as
+// fractions 0..1 from its left and top edges; the inverse of the pair below.
+export function anglesToEquirect(yaw, pitch) {
+  const u = (((yaw - 90) / 360) % 1 + 1) % 1;
+  return [u, (90 - pitch) / 180];
+}
+
+// The view direction under a point of the equirect photo (fractions 0..1),
+// yaw in (-180, 180] and pitch in [-90, 90].
+export function equirectToAngles(u, v) {
+  let yaw = u * 360 + 90;
+  if (yaw > 180) yaw -= 360;
+  return [yaw, 90 - v * 180];
+}
+
+// Camera basis for a view looking along (yaw, pitch): forward, right
+// (horizontal) and up.
+function viewBasis(yaw, pitch) {
+  const yawRad = (yaw * Math.PI) / 180;
+  const pitchRad = (pitch * Math.PI) / 180;
+  const fx = Math.sin(yawRad) * Math.cos(pitchRad);
+  const fy = Math.sin(pitchRad);
+  const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
+  const rx = Math.cos(yawRad);
+  const rz = Math.sin(yawRad);
+  // up = right × forward (right has no y component)
+  return { fx, fy, fz, rx, rz, ux: -rz * fy, uy: rz * fx - rx * fz, uz: rx * fy };
+}
+
+// A flat view { yaw, pitch, fov (horizontal), aspect (height / width of the
+// picture) } is a curved region on the equirect map: it bows more the further
+// from the horizon it looks. This is where a point of that view lands, as
+// fractions of the map, for sx, sy in -1..1 across and up the picture's half
+// width and half height. The column is continued past the map's edge (rather
+// than wrapped) so a region crossing the seam stays in one piece.
+export function viewPoint({ yaw, pitch, fov, aspect }, sx, sy) {
+  const { fx, fy, fz, rx, rz, ux, uy, uz } = viewBasis(yaw, pitch);
+  const halfW = Math.tan((fov * Math.PI) / 360);
+  const a = sx * halfW;
+  const b = sy * halfW * aspect;
+  const x = fx + a * rx + b * ux;
+  const y = fy + b * uy;
+  const z = fz + a * rz + b * uz;
+  const [px, py] = directionToPixel(x / Math.hypot(x, y, z), y / Math.hypot(x, y, z), z / Math.hypot(x, y, z), 1, 1);
+  const [centerU] = anglesToEquirect(yaw, pitch);
+  return [centerU + ((((px - centerU) % 1) + 1.5) % 1) - 0.5, py];
+}
+
+// The region's outline, clockwise from the top left, as points on the map.
+export function viewOutline(view, steps = 12) {
+  const corners = [[-1, 1], [1, 1], [1, -1], [-1, -1]];
+  const points = [];
+  corners.forEach(([ax, ay], i) => {
+    const [bx, by] = corners[(i + 1) % 4];
+    for (let k = 0; k < steps; k++) {
+      points.push(viewPoint(view, ax + ((bx - ax) * k) / steps, ay + ((by - ay) * k) / steps));
+    }
+  });
+  return points;
+}
+
+// The width and height, as fractions of the map, of the box around the region.
+export function viewBounds(view) {
+  const points = viewOutline(view);
+  const us = points.map((p) => p[0]);
+  const vs = points.map((p) => p[1]);
+  return { width: Math.max(...us) - Math.min(...us), height: Math.max(...vs) - Math.min(...vs) };
+}
+
+// The field of view a view keeping its center and shape would need to reach
+// the map point (u, v) with its edge: how far out that point is across or up
+// the picture, whichever is larger. null when the point is behind the view.
+export function viewFovAt({ yaw, pitch, aspect }, u, v) {
+  const { fx, fy, fz, rx, rz, ux, uy, uz } = viewBasis(yaw, pitch);
+  const [py, pp] = equirectToAngles(u, v);
+  const yawRad = (py * Math.PI) / 180;
+  const pitchRad = (pp * Math.PI) / 180;
+  const dx = Math.sin(yawRad) * Math.cos(pitchRad);
+  const dy = Math.sin(pitchRad);
+  const dz = -Math.cos(yawRad) * Math.cos(pitchRad);
+  const forward = dx * fx + dy * fy + dz * fz;
+  if (forward < 0.02) return null;
+  const across = Math.abs(dx * rx + dz * rz) / forward;
+  const up = Math.abs(dx * ux + dy * uy + dz * uz) / forward;
+  return (2 * Math.atan(Math.max(across, up / aspect)) * 180) / Math.PI;
+}
+
 /**
  * src: { data: Uint8ClampedArray (RGBA), width, height } — the equirect image.
  * view: { yaw, pitch (degrees), fov (horizontal, degrees), width, height } — the output.
@@ -24,19 +111,7 @@ export function directionToPixel(x, y, z, width, height) {
  */
 export function projectRectilinear(src, { yaw, pitch = 0, fov = 80, width, height }) {
   const out = new Uint8ClampedArray(width * height * 4);
-  const yawRad = (yaw * Math.PI) / 180;
-  const pitchRad = (pitch * Math.PI) / 180;
-
-  // Camera basis: forward, right (horizontal), up.
-  const fx = Math.sin(yawRad) * Math.cos(pitchRad);
-  const fy = Math.sin(pitchRad);
-  const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
-  const rx = Math.cos(yawRad);
-  const rz = Math.sin(yawRad);
-  // up = right × forward (right has no y component)
-  const ux = -rz * fy;
-  const uy = rz * fx - rx * fz;
-  const uz = rx * fy;
+  const { fx, fy, fz, rx, rz, ux, uy, uz } = viewBasis(yaw, pitch);
 
   const halfW = Math.tan(((fov * Math.PI) / 180) / 2);
   const halfH = (halfW * height) / width;

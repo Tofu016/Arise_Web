@@ -188,7 +188,24 @@ export function toDialog(row) {
     // Every photo in the order an admin sorted them, each with its kind
     // ("flat" or "360") and, for a flat one, its square thumbnail focus as CSS
     // object-position percentages (50/50 = the middle of the picture).
-    photos: (row.photos || []).map((p) => ({ path: p.path, kind: p.kind === "360" ? "360" : "flat", x: p.thumb_x ?? 50, y: p.thumb_y ?? 50 })),
+    // A 360 photo also has the view the viewer opens on (viewYaw/viewPitch) and
+    // the centre of its flattened thumbnail (thumbYaw/thumbPitch) and how wide
+    // that thumbnail looks (thumbFov), in degrees. The directory cell's wide
+    // thumbnail has its own (cellYaw/cellPitch/cellFov).
+    photos: (row.photos || []).map((p) => ({
+      path: p.path,
+      kind: p.kind === "360" ? "360" : "flat",
+      x: p.thumb_x ?? 50,
+      y: p.thumb_y ?? 50,
+      viewYaw: Number(p.view_yaw) || 0,
+      viewPitch: Number(p.view_pitch) || 0,
+      thumbYaw: Number(p.thumb_yaw) || 0,
+      thumbPitch: Number(p.thumb_pitch) || 0,
+      thumbFov: Number(p.thumb_fov) || 80,
+      cellYaw: Number(p.cell_yaw) || 0,
+      cellPitch: Number(p.cell_pitch) || 0,
+      cellFov: Number(p.cell_fov) || 80,
+    })),
     // The first photo is the room's thumbnail; "" when it has none.
     photo: row.photos?.[0]?.path || "",
     // OCR Management (see utils/ocrTerms.js): whether the mobile placard
@@ -218,7 +235,20 @@ export function dialogPatchBody(patch) {
     ocrExtraTerms: "extra_search_terms",
   });
   if (patch.photos) {
-    body.photos = patch.photos.map((p) => ({ path: p.path, kind: p.kind, thumb_x: p.x, thumb_y: p.y }));
+    body.photos = patch.photos.map((p) => ({
+      path: p.path,
+      kind: p.kind,
+      thumb_x: p.x,
+      thumb_y: p.y,
+      view_yaw: p.viewYaw ?? 0,
+      view_pitch: p.viewPitch ?? 0,
+      thumb_yaw: p.thumbYaw ?? 0,
+      thumb_pitch: p.thumbPitch ?? 0,
+      thumb_fov: p.thumbFov ?? 80,
+      cell_yaw: p.cellYaw ?? 0,
+      cell_pitch: p.cellPitch ?? 0,
+      cell_fov: p.cellFov ?? 80,
+    }));
   }
   return body;
 }
@@ -311,6 +341,7 @@ export function toDirectorySettings(row) {
     showSaved: row.show_saved !== false,
     hiddenCampuses: row.hidden_campuses || [],
     hiddenBuildings: row.hidden_buildings || [],
+    expandedBuildings: row.expanded_buildings || [],
     // An empty map comes back from PHP as an empty list. A map stored by an
     // earlier version (building id to a bare list) is read as no entry.
     buildingRooms: Array.isArray(row.building_rooms) ? {} : row.building_rooms || {},
@@ -322,6 +353,7 @@ export function directorySettingsBody(patch) {
     showSaved: "show_saved",
     hiddenCampuses: "hidden_campuses",
     hiddenBuildings: "hidden_buildings",
+    expandedBuildings: "expanded_buildings",
     buildingRooms: "building_rooms",
   });
 }

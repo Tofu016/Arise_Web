@@ -11,6 +11,9 @@ export const DEFAULT_DIRECTORY_SETTINGS = {
   showSaved: true,
   hiddenCampuses: [],
   hiddenBuildings: [],
+  // Buildings the sidebar opens expanded (a solo campus counts as its one
+  // building); the rest start collapsed.
+  expandedBuildings: [],
   buildingRooms: {},
 };
 
@@ -91,6 +94,7 @@ export function sameDirectorySettings(a, b) {
     a.showSaved === b.showSaved &&
     sameList(a.hiddenCampuses, b.hiddenCampuses) &&
     sameList(a.hiddenBuildings, b.hiddenBuildings) &&
+    sameList(a.expandedBuildings, b.expandedBuildings) &&
     [...ids].every((id) => sameEntry(entryFor(a, id), entryFor(b, id)))
   );
 }

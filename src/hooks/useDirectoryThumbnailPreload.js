@@ -3,7 +3,7 @@ import { acquireThumbnail } from "../utils/photoStore";
 import { planDirectoryPreload } from "../utils/directoryPreload";
 import { preloadRectilinear } from "./useRectilinearPreview";
 import { CELL_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "./useFlatPhotoUrl";
-import { isPanorama } from "../utils/roomPhotos";
+import { cellView, isPanorama } from "../utils/roomPhotos";
 
 // Each building's top cells are warmed straight away, two at a time; the rest
 // follow one at a time with a pause between, so a directory of hundreds of
@@ -17,7 +17,8 @@ async function warm(photo) {
     const panorama = isPanorama(photo);
     const { url } = await acquireThumbnail(photo.path, panorama ? PANORAMA_THUMBNAIL_WIDTH : undefined);
     // A 360 cell shows a projection of the photo, which is the slow part.
-    if (panorama) await preloadRectilinear(url, 0, CELL_PREVIEW);
+    const view = cellView(photo);
+    if (panorama) await preloadRectilinear(url, view.yaw, CELL_PREVIEW, view.pitch, view.fov);
   } catch {
     // The row loads it itself when it scrolls into view.
   }

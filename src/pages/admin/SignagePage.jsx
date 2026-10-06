@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "../../context/ToastContext";
 import { useSignage } from "../../hooks/useSignage";
 import KioskSignage from "../../components/KioskSignage";
 import SignageMedia from "../../components/SignageMedia";
@@ -57,6 +58,7 @@ function Segmented({ name, value, options, onChange }) {
 }
 
 function RotationSettings({ settings, onSave }) {
+  const toast = useToast();
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const current = draft ?? settings;
@@ -137,7 +139,11 @@ function RotationSettings({ settings, onSave }) {
       </label>
       <div className="signage-settings-actions">
         {dirty && (
-          <button type="button" className="signage-btn" onClick={() => setDraft(null)} disabled={saving}>
+          <button type="button" className="signage-btn" onClick={() => {
+              setDraft(null);
+              toast.info("Changes cancelled.");
+            }}
+            disabled={saving}>
             Discard
           </button>
         )}

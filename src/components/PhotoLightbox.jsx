@@ -56,7 +56,7 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
         {panorama ? (
           <>
             <div className="photo-lightbox-pano">
-              <PanoramaPhoto key={photo.path} path={photo.path} alt={alt} hint={!hintPlayed} onHintDone={() => setHintPlayed(true)} />
+              <PanoramaPhoto key={photo.path} path={photo.path} yaw={photo.viewYaw} pitch={photo.viewPitch} alt={alt} hint={!hintPlayed} onHintDone={() => setHintPlayed(true)} />
             </div>
             <Pano360Pill />
           </>

@@ -3,9 +3,11 @@ import { createPortal } from "react-dom";
 import { useHeldPhoto, usePreloadPhotos } from "../hooks/useHeldPhoto";
 import { useToast } from "../context/ToastContext";
 import { buildingLabel, floorLabel } from "../utils/constants";
+import chevronDownWhite from "../assets/icons/chevron-down-white.svg";
 import chevronLeftWhite from "../assets/icons/chevron-left-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import locationIcon from "../assets/icons/location.svg";
+import departmentIcon from "../assets/icons/department.svg";
 import linkIcon from "../assets/icons/link.svg";
 import linkIconWhite from "../assets/icons/link-white.svg";
 import bookmarkIconWhite from "../assets/icons/bookmark-white.svg";
@@ -141,7 +143,25 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
   const locationText = node ? `${buildingLabel(node.building)} · ${floorLabel(node.floor)}` : "";
 
   // Rooms with no Room Edit record (placard is null) or an empty one.
-  const hasInfo = !!(placard?.roomDescription || placard?.link || placard?.contactNumber);
+  const hasInfo = !!(placard?.roomDescription || placard?.department || placard?.link || placard?.contactNumber);
+
+  // The description starts clamped so the whole preview photo is on screen
+  // without scrolling; "Show more" expands it in place and the panel's body
+  // scrolls instead. The toggle only appears when the text is actually cut.
+  const descriptionRef = useRef(null);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [descriptionClipped, setDescriptionClipped] = useState(false);
+  useLayoutEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      if (!descriptionOpen) setDescriptionClipped(el.scrollHeight > el.clientHeight + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [descriptionOpen, expanded]);
 
   return (
     <div
@@ -179,12 +199,18 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
           </button>
         </div>
 
-        {(node || placard?.link || placard?.contactNumber) && (
+        {(node || placard?.department || placard?.link || placard?.contactNumber) && (
           <div className="sidebar-room-contact sidebar-room-contact-truncate">
             {node && (
               <p className="sidebar-room-contact-row">
                 <img src={locationIcon} alt="" className="inline-icon-img" />
                 <span title={locationText}>{locationText}</span>
+              </p>
+            )}
+            {placard?.department && (
+              <p className="sidebar-room-contact-row">
+                <img src={departmentIcon} alt="" className="inline-icon-img" />
+                <span title={placard.department}>{placard.department}</span>
               </p>
             )}
             {placard?.link && (
@@ -249,9 +275,25 @@ export default function RoomCard({ room, saved, onToggleSave, onClose, onGoTo, o
       {/* Hidden from assistive tech and the tab order while collapsed, since
           it's clipped out of view below the peek. */}
       <div className="sidebar-room-body" inert={!expanded}>
-        <p className="sidebar-room-description">
-          {placard?.roomDescription || (hasInfo ? "No description." : "No information.")}
-        </p>
+        <div className="sidebar-room-description-wrap">
+          <p
+            ref={descriptionRef}
+            className={"sidebar-room-description" + (descriptionOpen ? " sidebar-room-description-open" : "")}
+          >
+            {placard?.roomDescription || (hasInfo ? "No description." : "No information.")}
+          </p>
+          {(descriptionClipped || descriptionOpen) && (
+            <button
+              type="button"
+              className="sidebar-room-description-toggle"
+              aria-expanded={descriptionOpen}
+              onClick={() => setDescriptionOpen((v) => !v)}
+            >
+              {descriptionOpen ? "Show less" : "Show more"}
+              <img src={chevronDownWhite} alt="" className="inline-icon-img" />
+            </button>
+          )}
+        </div>
 
         <RoomPhotoCarousel photos={photos} alt={roomName} onOpen={setViewerIndex} />
       </div>

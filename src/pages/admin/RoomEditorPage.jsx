@@ -476,7 +476,14 @@ export default function RoomEditorPage() {
               >
                 {saving ? "Saving…" : savedFlash ? "✓ Saved" : "Save"}
               </button>
-              <button onClick={resetFromSaved}>Cancel</button>
+              <button
+                onClick={() => {
+                  resetFromSaved();
+                  toast.info("Changes cancelled.");
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}

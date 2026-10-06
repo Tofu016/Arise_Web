@@ -250,9 +250,20 @@ describe("room placard dialogs", () => {
     });
   });
 
+  it("maps a 360 photo's default view and thumbnail angles, 0 when unset", () => {
+    const row = {
+      id: 1,
+      room_name: "A",
+      photos: [{ path: "b.webp", kind: "360", view_yaw: "-40", view_pitch: 5, thumb_yaw: 120, thumb_pitch: "-10", thumb_fov: "100", cell_yaw: 30, cell_pitch: "-4", cell_fov: 70 }, { path: "c.webp", kind: "360" }],
+    };
+    const { photos } = toDialog(row);
+    expect(photos[0]).toMatchObject({ viewYaw: -40, viewPitch: 5, thumbYaw: 120, thumbPitch: -10, thumbFov: 100, cellYaw: 30, cellPitch: -4, cellFov: 70 });
+    expect(photos[1]).toMatchObject({ viewYaw: 0, viewPitch: 0, thumbYaw: 0, thumbPitch: 0, thumbFov: 80, cellYaw: 0, cellPitch: 0, cellFov: 80 });
+  });
+
   it("patch sends the photo list under the wire names", () => {
-    expect(dialogPatchBody({ photos: [{ path: "b.webp", kind: "360", x: 3, y: 4 }] })).toEqual({
-      photos: [{ path: "b.webp", kind: "360", thumb_x: 3, thumb_y: 4 }],
+    expect(dialogPatchBody({ photos: [{ path: "b.webp", kind: "360", x: 3, y: 4, viewYaw: 10, viewPitch: -5, thumbYaw: 90, thumbPitch: 2, thumbFov: 110, cellYaw: -20, cellPitch: 3, cellFov: 65 }] })).toEqual({
+      photos: [{ path: "b.webp", kind: "360", thumb_x: 3, thumb_y: 4, view_yaw: 10, view_pitch: -5, thumb_yaw: 90, thumb_pitch: 2, thumb_fov: 110, cell_yaw: -20, cell_pitch: 3, cell_fov: 65 }],
     });
   });
 

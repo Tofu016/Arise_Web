@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useToast } from "../../context/ToastContext";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useDirectorySettings } from "../../hooks/useDirectorySettings";
 import { NODE_TYPES, allBuildings, allCampuses, buildingLabel, campusForBuilding, floorLabel, floorsForBuilding } from "../../utils/constants";
@@ -228,6 +229,7 @@ function RoomPicker({ rooms, draft, onChange }) {
 // facilities created later on its own. Search and the visitor-side filters
 // are not affected: a visitor can still find an unlisted room by searching.
 export default function DirectoryPage() {
+  const toast = useToast();
   const { nodes } = useOutletContext();
   const { getForRoom } = usePlacardDialogs();
   const { settings, loading, error, saveSettings } = useDirectorySettings();
@@ -294,7 +296,11 @@ export default function DirectoryPage() {
             </span>
           )}
           {dirty && (
-            <button type="button" className="signage-btn" onClick={() => setEdits(null)} disabled={saving}>
+            <button type="button" className="signage-btn" onClick={() => {
+                setEdits(null);
+                toast.info("Changes cancelled.");
+              }}
+              disabled={saving}>
               Discard
             </button>
           )}
@@ -348,6 +354,7 @@ export default function DirectoryPage() {
                       const listedCount = buildingRooms.filter((r) => isRoomListed(draft, b.id, r.roomName)).length;
                       const label = nameOf(b, members.length);
                       const incoming = entryFor(draft, b.id).incoming;
+                      const expanded = draft.expandedBuildings.includes(b.id);
                       return (
                         <li key={b.id} className="directory-admin-building">
                           <div className="directory-admin-row">
@@ -371,6 +378,15 @@ export default function DirectoryPage() {
                               onChange={(on) => setEdits(setIncoming(draft, b.id, on))}
                               label={`List incoming rooms and facilities in ${label}`}
                               title={incoming ? "New rooms are listed" : "New rooms are not listed"}
+                            />
+                          </div>
+                          <div className="directory-admin-row directory-admin-incoming">
+                            <span className="signage-row-meta">Expanded by default</span>
+                            <Toggle
+                              checked={expanded}
+                              onChange={(on) => patch({ expandedBuildings: toggleInList(draft.expandedBuildings, b.id, on) })}
+                              label={`Expand ${label} by default`}
+                              title={expanded ? "Starts expanded" : "Starts collapsed"}
                             />
                           </div>
                           <button

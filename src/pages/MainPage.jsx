@@ -889,8 +889,9 @@ function MainPageContent({ onReset }) {
   ].filter(Boolean);
 
   // Desktop menu FAB (right of the sidebar search bar): same actions as the
-  // Compact layout dock minus Search, which the sidebar already shows, and
-  // plus Directions, which used to sit inside the search bar. The buttons
+  // Compact layout dock minus Search, which the sidebar already shows,
+  // minus Directions (an icon inside the search bar) and the help button (top
+  // right of the panorama). The buttons
   // stack downward from the FAB's own level, over the panorama.
   // Opening one UI closes the others, so nothing opens hidden behind (or
   // stacked under) what was already up. Modals never outlive a menu action;
@@ -902,16 +903,6 @@ function MainPageContent({ onReset }) {
     setAccountMenuOpen(false);
   };
   const desktopMenuItems = [
-    {
-      key: "directions",
-      icon: PLACEHOLDER("directions"),
-      title: "Get directions",
-      onClick: () => {
-        closeModals();
-        overlay.closeBuildingMenu();
-        flow.open();
-      },
-    },
     {
       key: "building",
       icon: PLACEHOLDER("building"),
@@ -945,12 +936,6 @@ function MainPageContent({ onReset }) {
         closeModals();
         overlay.openFeedback();
       },
-    },
-    {
-      key: "help",
-      icon: <img src={questionMarkIcon} alt="" className="inline-icon-img" />,
-      title: "How to use this tour",
-      onClick: replayIntro,
     },
   ];
 
@@ -1920,6 +1905,20 @@ function MainPageContent({ onReset }) {
                     >
                       {PLACEHOLDER("search-magnifier")}
                     </button>
+                    <button
+                      type="button"
+                      className="floating-search-icon floating-search-directions"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        closeModals();
+                        overlay.closeBuildingMenu();
+                        flow.open();
+                      }}
+                      title="Get directions"
+                      aria-label="Get directions"
+                    >
+                      {PLACEHOLDER("directions")}
+                    </button>
                   </div>
 
                   {/* Desktop menu FAB, right of the search bar. Its buttons
@@ -2150,6 +2149,17 @@ function MainPageContent({ onReset }) {
                     />
                   )}
                 </Presence>
+
+                {/* Top-right corner: replays the intro walkthrough. */}
+                <button
+                  type="button"
+                  className="floating-rail-btn floating-help-btn"
+                  onClick={replayIntro}
+                  aria-label="How to use this tour"
+                  title="How to use this tour"
+                >
+                  <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                </button>
 
                 {/* Top-left corner; its popover opens downward. */}
                 {/* Hidden entirely for a logged-out visitor — same

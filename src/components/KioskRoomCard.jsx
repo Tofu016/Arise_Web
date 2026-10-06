@@ -99,7 +99,7 @@ export default function KioskRoomCard({ room, onClose, onGoTo, onGetDirections }
 
         {panorama && (
           <div className="kiosk-room-card-pano">
-            <PanoramaPhoto key={panorama.path} path={panorama.path} alt={roomName} hint />
+            <PanoramaPhoto key={panorama.path} path={panorama.path} yaw={panorama.viewYaw} pitch={panorama.viewPitch} alt={roomName} hint />
             <Pano360Pill />
             <button type="button" className="kiosk-dialog-close kiosk-room-card-close" onClick={() => setPanorama(null)} aria-label="Close 360 view">
               <IconPlaceholder name="close" className="inline-icon-img" />

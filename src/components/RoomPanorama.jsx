@@ -8,17 +8,18 @@ import { TOUCH_ROTATE_SPEED, MOUSE_ROTATE_SPEED } from "./panorama/cameraSetting
 import { useIsCoarsePointer } from "./panorama/useIsCoarsePointer";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
 import PhotoLoading from "./PhotoLoading";
+import view360Icon from "../assets/icons/view-360-orbit-white.svg";
 import handIcon from "../assets/icons/hand-pointing-white.svg";
 
 const FOV = 75;
-const START_POSITION = initialCameraPosition(0, 0);
 
 // A room's 360 photo to look around in, dragged the same way as the main
-// panorama (same rotate speeds, no pan, no zoom). Fills its parent. `hint`
+// panorama (same rotate speeds, no pan, no zoom), opening on the admin's
+// default view (`yaw`/`pitch`, degrees). Fills its parent. `hint`
 // plays the drag animation once over it; `onHintDone` fires when it ends or
 // the visitor first drags, so a caller can play it only for the first 360
 // photo it shows.
-export function RoomPanorama({ url, hint = false, onHintDone, alt }) {
+export function RoomPanorama({ url, yaw = 0, pitch = 0, hint = false, onHintDone, alt }) {
   const touchInput = useIsCoarsePointer();
   const [texture, setTexture] = useState(null);
   const [failed, setFailed] = useState(false);
@@ -53,7 +54,7 @@ export function RoomPanorama({ url, hint = false, onHintDone, alt }) {
 
   return (
     <div className="room-pano" role="img" aria-label={alt} onPointerDownCapture={() => onHintDone?.()}>
-      <Canvas camera={{ position: START_POSITION, fov: FOV }}>
+      <Canvas camera={{ position: initialCameraPosition(yaw, pitch), fov: FOV }}>
         <PanoramaSphere texture={texture} />
         <OrbitControls
           makeDefault
@@ -92,10 +93,11 @@ export default function PanoramaPhoto({ path, ...props }) {
 // is given (the kiosk, where it opens the photo).
 export function Pano360Pill({ onClick, className = "" }) {
   const cls = `pano-360-pill ${className}`.trim();
-  if (!onClick) return <span className={cls}>360°</span>;
+  const icon = <img src={view360Icon} alt="" draggable={false} />;
+  if (!onClick) return <span className={cls} role="img" aria-label="360 degree photo">{icon}</span>;
   return (
     <button type="button" className={cls} onClick={onClick} aria-label="View in 360 degrees">
-      360°
+      {icon}
     </button>
   );
 }

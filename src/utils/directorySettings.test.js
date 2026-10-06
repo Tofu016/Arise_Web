@@ -61,4 +61,10 @@ describe("directorySettings", () => {
     expect(sameDirectorySettings(a, DEFAULTS)).toBe(false);
     expect(sameDirectorySettings(setIncoming(DEFAULTS, "gd1", true), DEFAULTS)).toBe(true);
   });
+
+  it("notices a change to which buildings start expanded", () => {
+    expect(DEFAULTS.expandedBuildings).toEqual([]);
+    expect(sameDirectorySettings({ ...DEFAULTS, expandedBuildings: ["gd1"] }, DEFAULTS)).toBe(false);
+    expect(sameDirectorySettings({ ...DEFAULTS, expandedBuildings: [] }, DEFAULTS)).toBe(true);
+  });
 });

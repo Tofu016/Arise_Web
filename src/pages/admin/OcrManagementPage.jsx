@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useToast } from "../../context/ToastContext";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { NODE_TYPES, allBuildings, buildingLabel, floorLabel, floorsForBuilding } from "../../utils/constants";
 import { buildSearchableRooms, rankRoomMatches } from "../../utils/search";
@@ -257,6 +258,7 @@ export default function OcrManagementPage() {
   const [regenerate, setRegenerate] = useState(() => new Set());
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const rooms = useMemo(() => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: true }), [nodes, getForRoom]);
   const stateFor = (room) => edits[keyOf(room)] ?? ocrStateOf(room);
@@ -303,6 +305,10 @@ export default function OcrManagementPage() {
   const discard = () => {
     setEdits({});
     setRegenerate(new Set());
+  };
+  const cancelChanges = () => {
+    discard();
+    toast.info("Changes cancelled.");
   };
 
   const save = async () => {
@@ -372,7 +378,7 @@ export default function OcrManagementPage() {
             </span>
           )}
           {dirty && (
-            <button type="button" className="signage-btn" onClick={discard} disabled={saving}>
+            <button type="button" className="signage-btn" onClick={cancelChanges} disabled={saving}>
               Discard
             </button>
           )}

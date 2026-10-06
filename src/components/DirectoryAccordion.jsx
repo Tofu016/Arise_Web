@@ -5,7 +5,7 @@ import { DEFAULT_DIRECTORY_SETTINGS, listedRooms, roomsInBuilding } from "../uti
 import { buildingsForCampus } from "../utils/navigation";
 import { useFlatPhotoUrl, CELL_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "../hooks/useFlatPhotoUrl";
 import { useDirectoryThumbnailPreload } from "../hooks/useDirectoryThumbnailPreload";
-import { focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
+import { cellView, focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
 
 // A room's row fades from the sidebar's own gray on the left into the room's
 // photo on the right. The thumbnail is only requested once the row scrolls
@@ -29,7 +29,7 @@ function RoomRow({ room, isSelected, onSelect }) {
   // photo needs since only part of it is used.
   const photo = roomPhotos(room.placard)[0] ?? null;
   const { url: loaded } = useSecurePhotoUrl(seen ? photo?.path : null, { thumbnail: isPanorama(photo) ? PANORAMA_THUMBNAIL_WIDTH : true, cached: true });
-  const url = useFlatPhotoUrl(loaded, photo, CELL_PREVIEW);
+  const url = useFlatPhotoUrl(loaded, photo, CELL_PREVIEW, cellView(photo));
 
   return (
     <button
@@ -86,8 +86,8 @@ function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, se
 //
 // This is the sidebar's resting state now (see MainPage.jsx), not
 // something opened from a hamburger, so there's no collapse-everything
-// affordance — Main Campus starts expanded and stays that way; a visitor
-// only ever expands further into it or into another campus.
+// affordance. Which campuses start expanded is an admin setting
+// (`expandedBuildings`; Main Campus itself always starts open).
 //
 // `savedRooms` (the visitor's saved rooms, already resolved to directory
 // rooms, see utils/savedRooms.js) adds a "Saved Directories" group above
@@ -109,8 +109,18 @@ export default function DirectoryAccordion({
   const otherCampuses = campuses.filter((c) => c.id !== "main");
   const currentCampusId = currentBuildingId ? campusForBuilding(currentBuildingId) : null;
 
+  // Main Campus always starts open; which buildings (and solo campuses, as
+  // their one building) start expanded is the admin's setting. The settings
+  // arrive after the first render, so the default is re-applied when it
+  // changes; a visitor's own toggles stand until then.
+  const defaultExpanded = settings.expandedBuildings.join("|");
   const [expandedCampuses, setExpandedCampuses] = useState(() => new Set(mainCampus ? [mainCampus.id] : []));
-  const [expandedBuildings, setExpandedBuildings] = useState(() => new Set());
+  const [expandedBuildings, setExpandedBuildings] = useState(() => new Set(settings.expandedBuildings));
+  const [appliedDefault, setAppliedDefault] = useState(defaultExpanded);
+  if (appliedDefault !== defaultExpanded) {
+    setAppliedDefault(defaultExpanded);
+    setExpandedBuildings(new Set(settings.expandedBuildings));
+  }
   const [savedExpanded, setSavedExpanded] = useState(false);
 
   const toggleCampus = (id) =>
@@ -191,15 +201,15 @@ export default function DirectoryAccordion({
         // rooms render as this row's own children, skipping the building tier.
         const soloBuildingId = campus.buildingIds[0];
         if (settings.hiddenBuildings.includes(soloBuildingId)) return null;
-        const expanded = expandedCampuses.has(campus.id);
+        const expanded = expandedBuildings.has(soloBuildingId);
         const isHere = campus.id === currentCampusId;
         return (
           <div className="directory-campus" key={campus.id}>
             <button
               type="button"
-              className={"directory-building-row" + (isHere ? " directory-row-selected" : "")}
+              className={"directory-campus-row" + (isHere ? " directory-row-selected" : "")}
               aria-expanded={expanded}
-              onClick={() => toggleCampus(campus.id)}
+              onClick={() => toggleBuilding(soloBuildingId)}
             >
               <span>{campus.label}</span>
             </button>

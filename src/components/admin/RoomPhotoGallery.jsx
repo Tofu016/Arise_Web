@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import FilePickerButton from "../FilePickerButton";
 import PhotoFocusPicker from "../PhotoFocusPicker";
+import PanoramaViewDialog from "./PanoramaViewDialog";
 import IconPlaceholder from "../IconPlaceholder";
 import moveIcon from "../../assets/icons/arrows-out-cardinal.svg";
 import { Pano360Pill } from "../RoomPanorama";
@@ -10,11 +11,12 @@ import { isPanorama, moveItem } from "../../utils/roomPhotos";
 
 const TILE_PREVIEW = { width: 320, height: 200 };
 
-function Tile({ photo, index, version, alt, over, onKind, onFocus, onRemove, onReblur, onDragStart, onDragEnter, onDrop, onDragEnd, busy }) {
+function Tile({ photo, index, version, alt, roomName, over, onKind, onFocus, onRemove, onReblur, onDragStart, onDragEnter, onDrop, onDragEnd, busy }) {
   const panorama = isPanorama(photo);
   const { url: loaded } = useSecurePhotoUrl(photo.path, { version, thumbnail: panorama ? 1024 : true });
   const flatUrl = useFlatPhotoUrl(loaded, photo, TILE_PREVIEW);
   const tileRef = useRef(null);
+  const [editingView, setEditingView] = useState(false);
 
   return (
     <li
@@ -57,6 +59,15 @@ function Tile({ photo, index, version, alt, over, onKind, onFocus, onRemove, onR
         <button type="button" className={"room-photo-kind-btn" + (panorama ? " room-photo-kind-btn-active" : "")} aria-pressed={panorama} onClick={() => onKind("360")}>360°</button>
       </div>
 
+      {panorama && (
+        <>
+          <button type="button" className="admin-btn-secondary room-photo-set-views" onClick={() => setEditingView(true)} disabled={!loaded}>
+            Set thumbnail views
+          </button>
+          {editingView && loaded && <PanoramaViewDialog url={loaded} photo={photo} alt={alt} roomName={roomName} onChange={onFocus} onClose={() => setEditingView(false)} />}
+        </>
+      )}
+
       <div className="room-photo-tile-actions">
         <button type="button" className="rescan-faces-btn" onClick={onReblur} disabled={busy}>
           <IconPlaceholder name="edit-pencil" /> Edit blur regions
@@ -71,7 +82,7 @@ function Tile({ photo, index, version, alt, over, onKind, onFocus, onRemove, onR
 // flat and 360 photos alike, each photo marked flat or 360, dragged by the
 // four-arrow grip at the top into the order visitors see. The
 // first is the room's thumbnail in the directory. `photos` is [{ path, kind,
-// x, y }]; `versions` maps a path to a number bumped when that photo was
+// x, y, viewYaw, viewPitch, thumbYaw, thumbPitch, thumbFov, cellYaw, cellPitch, cellFov }] (the last eight for 360 photos); `versions` maps a path to a number bumped when that photo was
 // edited in place, so its preview reloads.
 export default function RoomPhotoGallery({ photos, versions, roomName, uploadState, onChange, onFilesPick, onReblur }) {
   const [dragIndex, setDragIndex] = useState(null);
@@ -98,7 +109,7 @@ export default function RoomPhotoGallery({ photos, versions, roomName, uploadSta
       </label>
       {photos.length > 0 && (
         <p className="field-hint">
-          Mark each photo Flat or 360°, and sort them by dragging the four-arrow grip at the top of each. The first photo is the thumbnail in the directory. On a flat photo, drag the gold frame to choose its square thumbnail in the room panel; a 360° photo is flattened there and can be looked around in the viewer.
+          Mark each photo Flat or 360°, and sort them by dragging the four-arrow grip at the top of each. The first photo is the thumbnail in the directory. On a flat photo, drag the gold frame to choose its square thumbnail in the room panel; a 360° photo is flattened there around the thumbnail you set, and opens on the default view you set in the viewer.
         </p>
       )}
       {photos.length > 0 && (
@@ -110,6 +121,7 @@ export default function RoomPhotoGallery({ photos, versions, roomName, uploadSta
               index={i}
               version={versions[p.path] || 0}
               alt={`${roomName} photo ${i + 1}`}
+              roomName={roomName}
               over={dragIndex != null && overIndex === i && dragIndex !== i}
               busy={uploading}
               onKind={(kind) => update(i, { kind })}

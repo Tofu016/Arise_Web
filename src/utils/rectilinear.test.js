@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { directionToPixel, projectRectilinear } from "./rectilinear";
+import { directionToPixel, projectRectilinear, anglesToEquirect, equirectToAngles, viewPoint, viewOutline, viewBounds, viewFovAt } from "./rectilinear";
 import { toPosition } from "./panoramaMath";
 
 // A 8×4 equirect image whose red channel encodes the column and green the row.
@@ -59,5 +59,65 @@ describe("projectRectilinear", () => {
     const a = projectRectilinear(src, { yaw: 0, fov: 10, width: 3, height: 3 });
     const b = projectRectilinear(src, { yaw: 180, fov: 10, width: 3, height: 3 });
     expect(Math.abs(a[(4) * 4] - b[(4) * 4])).toBeGreaterThan(60); // red differs by ~half the image
+  });
+});
+
+describe("anglesToEquirect / equirectToAngles", () => {
+  it("agrees with directionToPixel", () => {
+    for (const [yaw, pitch] of [[0, 0], [90, 20], [-135, -30], [179, 60]]) {
+      const [x, y, z] = toPosition(yaw, pitch, 1);
+      const [px, py] = directionToPixel(x, y, z, 1000, 500);
+      const [u, v] = anglesToEquirect(yaw, pitch);
+      expect(Math.min(Math.abs(u * 1000 - px), 1000 - Math.abs(u * 1000 - px))).toBeCloseTo(0, 4);
+      expect(v * 500).toBeCloseTo(py, 4);
+    }
+  });
+  it("round-trips", () => {
+    for (const [yaw, pitch] of [[0, 0], [90, 20], [-135, -30], [179, 60]]) {
+      const [u, v] = anglesToEquirect(yaw, pitch);
+      const [y2, p2] = equirectToAngles(u, v);
+      expect(y2).toBeCloseTo(yaw, 6);
+      expect(p2).toBeCloseTo(pitch, 6);
+    }
+  });
+});
+
+describe("a view's region on the map", () => {
+  const view = { yaw: 40, pitch: 0, fov: 80, aspect: 60 / 340 };
+  it("its middle is the view's own direction", () => {
+    const [u, v] = viewPoint(view, 0, 0);
+    const [cu, cv] = anglesToEquirect(40, 0);
+    expect(u).toBeCloseTo(cu, 6);
+    expect(v).toBeCloseTo(cv, 6);
+  });
+  it("is as wide as the field of view across the horizon", () => {
+    const [left] = viewPoint(view, -1, 0);
+    const [right] = viewPoint(view, 1, 0);
+    expect(right - left).toBeCloseTo(80 / 360, 6);
+  });
+  it("is symmetric about the horizon when looking along it", () => {
+    const [, top] = viewPoint(view, 0, 1);
+    const [, bottom] = viewPoint(view, 0, -1);
+    expect(top + bottom).toBeCloseTo(1, 6);
+  });
+  it("bows: looking down, the sides of the region sit higher than its middle", () => {
+    const down = { ...view, pitch: -24 };
+    const [, topMiddle] = viewPoint(down, 0, 1);
+    const [, topCorner] = viewPoint(down, 1, 1);
+    expect(topCorner).toBeLessThan(topMiddle); // a smaller row is higher up the map
+  });
+  it("stays in one piece across the map's seam", () => {
+    const { width } = viewBounds({ ...view, yaw: 90 });
+    expect(width).toBeCloseTo(80 / 360, 2);
+    expect(viewOutline({ ...view, yaw: 90 }).length).toBeGreaterThan(8);
+  });
+  it("reads back the field of view from where an edge lies", () => {
+    const [u, v] = viewPoint(view, 1, 0);
+    expect(viewFovAt(view, u, v)).toBeCloseTo(80, 4);
+    const [u2, v2] = viewPoint(view, 0, 1);
+    expect(viewFovAt(view, u2, v2)).toBeCloseTo(80, 4);
+  });
+  it("has no field of view for a point behind the view", () => {
+    expect(viewFovAt(view, (anglesToEquirect(40, 0)[0] + 0.5) % 1, 0.5)).toBeNull();
   });
 });
