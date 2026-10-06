@@ -5,6 +5,30 @@ import * as THREE from "three";
 import { markerTypeInfo } from "../../utils/constants";
 import { toPosition } from "../../utils/panoramaMath";
 import IconPlaceholder from "../IconPlaceholder";
+import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { useFlatPhotoUrl, SQUARE_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "../../hooks/useFlatPhotoUrl";
+import { focusPosition, isPanorama } from "../../utils/roomPhotos";
+
+// The room's thumbnail, shown over a hovered room/facility marker like a
+// hotspot's sneak-peek. Its own component so the photo is only fetched once
+// the marker is actually hovered. Same square crop as the room panel's
+// carousel (a 360 photo flattened around its thumbnail view, a flat one
+// cropped around its focus), so the preview matches what clicking opens.
+function MarkerPreview({ photo, label }) {
+  const { url: loaded } = useSecurePhotoUrl(photo.path, { thumbnail: isPanorama(photo) ? PANORAMA_THUMBNAIL_WIDTH : true, cached: true });
+  const url = useFlatPhotoUrl(loaded, photo, SQUARE_PREVIEW);
+  return (
+    <div className="pano-hotspot-preview pano-marker-preview">
+      <div className="pano-hotspot-preview-thumb">
+        {url ? (
+          <img src={url} alt={label} style={{ objectPosition: focusPosition(isPanorama(photo) ? null : photo) }} />
+        ) : (
+          <div className="loading-spinner" role="status" aria-label="Loading preview" />
+        )}
+      </div>
+    </div>
+  );
+}
 
 // NOTE: sized by the canvas's shorter side alone, while Hotspot uses
 // overlayScale (which also follows the FOV). The two are inconsistent;
@@ -22,7 +46,7 @@ import IconPlaceholder from "../IconPlaceholder";
 // that room's info panel — these two click paths are independent and can
 // both be present without conflicting (admin editing never sets
 // onRoomClick; the public viewer never sets onClick).
-export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, onEmergencyExitClick, dimmed, selected, highlighted }) {
+export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevatorClick, onEmergencyExitClick, previewPhoto, dimmed, selected, highlighted }) {
   const pos = toPosition(yaw, pitch);
   // Sized in real CSS pixels (no distanceFactor on the <Html> below — that
   // tied the size to the camera's FOV and left icons ~13px on desktop and
@@ -124,6 +148,7 @@ export function Marker({ yaw, pitch, label, type, onClick, onRoomClick, onElevat
               {info.iconPlaceholder ? <IconPlaceholder name={info.iconPlaceholder} variant="white" /> : info.icon}
             </div>
             <div className="pano-marker-label" style={{ fontSize: labelFontSize }}>{label}</div>
+            {hovered && previewPhoto && <MarkerPreview photo={previewPhoto} label={label} />}
           </div>
         </Html>
       )}

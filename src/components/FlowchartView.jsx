@@ -5,6 +5,7 @@ import PhotoFlowNode from "./PhotoFlowNode";
 import { getLayoutedElements } from "../utils/flowchartLayout";
 import { allBuildings, buildingLabel, floorsForBuilding, floorLabel } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
+import { useConfirm } from "../context/useConfirm";
 
 const nodeTypes = { photo: PhotoFlowNode };
 
@@ -80,6 +81,7 @@ function buildFlowElements(inScope) {
 }
 
 export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
+  const { confirm } = useConfirm();
   const buildings = allBuildings();
   useCustomBuildingsVersion(); // re-render when an admin-created building is added/removed
   const [selectedBuilding, setSelectedBuilding] = useState(buildings[0]?.id || "");
@@ -136,7 +138,7 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
   // to dagre's automatic layout again — the escape hatch for when a
   // manual layout gets messy and an admin just wants the clean, computed
   // one back, rather than having to drag everything by hand a second time.
-  const handleResetLayout = () => {
+  const handleResetLayout = async () => {
     const inScope = nodes.filter(
       (n) =>
         n.building === selectedBuilding &&
@@ -144,7 +146,12 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
     );
     const positioned = inScope.filter((n) => n.flowchartPosition);
     if (positioned.length === 0) return;
-    if (!confirm(`Reset ${positioned.length} manually-positioned node(s) back to automatic layout?`)) return;
+    const ok = await confirm({
+      title: "Reset layout?",
+      message: `Reset ${positioned.length} manually-positioned node(s) back to automatic layout?`,
+      confirmLabel: "Reset layout",
+    });
+    if (!ok) return;
     for (const n of positioned) {
       onUpdateNode?.(n.id, { flowchartPosition: null });
     }

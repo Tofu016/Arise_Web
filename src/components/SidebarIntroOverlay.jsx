@@ -1,40 +1,30 @@
 import { useEffect, useRef } from "react";
-import directionsIconWhite from "../assets/icons/directions-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
 import { SIDEBAR_INTRO_TEXT } from "../utils/introScript";
 
 // The white variant of each icon actually used by the sidebar buttons below
-// it (search-magnifier, question-help are grey by default there — see
-// PLACEHOLDER in MainPage.jsx — since those sit on light/transparent
+// it (search-magnifier, directions, question-help are grey by default there,
+// see PLACEHOLDER in MainPage.jsx, since those sit on light/transparent
 // surfaces). "directory" is a dedicated icon (a location pin with list
 // lines, i.e. a list of places, not a file-folder glyph), not reused from
-// elsewhere — nothing else in the app already represents "browse the
-// directory" specifically (the sidebar's directory list itself has no icon
-// of its own; "building" would only cover one campus, not the whole
-// directory). directionsIcon (directions.svg) turned out NOT to actually be
-// white — it looks white over a light background purely by background
-// contrast, but its mask-based "recolor" only whitens an invisible helper
-// copy used to build the alpha mask, not the visible image itself, so on
-// this overlay's dark background it rendered as its real (dark) color and
-// was effectively invisible. directions-white.svg is a plain, genuinely
-// white icon instead, same fix pattern as the grey/white icon pairs
-// elsewhere. Nearest Exit itself lives in the menu FAB's buttons, which spill over
-// the panorama, not inside .app-sidebar — listed here anyway (first, same
-// safety-first ordering as the kiosk's own radialItems) since it's one of
-// the app's core functions this walkthrough covers, same "emergency-exit"
-// icon as that button.
+// elsewhere: nothing else in the app already represents "browse the
+// directory" specifically. Building and Nearest Exit live in the menu FAB's
+// buttons, which spill over the panorama, not inside .app-sidebar, but are
+// listed here anyway since they're core functions this walkthrough covers,
+// with the same icons as those buttons. Order follows SIDEBAR_INTRO_TEXT.
 const TIPS = [
-  { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.exit },
-  { icon: <IconPlaceholder name="search-magnifier" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.search },
-  { icon: <img src={directionsIconWhite} alt="" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directions },
   { icon: <IconPlaceholder name="directory" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directory },
+  { icon: <IconPlaceholder name="search-magnifier" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.search },
+  { icon: <IconPlaceholder name="directions" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directions },
+  { icon: <IconPlaceholder name="building" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.building },
+  { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.exit },
   { icon: <IconPlaceholder name="question-help" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.help },
 ];
 
 // The desktop app sidebar's own session-start walkthrough — a companion to
 // DesktopIntroOverlay (the panorama's mouse/keyboard controls), covering
-// the sidebar's own functions instead: search, directions, the directory,
-// and help. Scoped to .app-sidebar (position: relative — see index.css)
+// the sidebar's own functions instead: the directory, search, directions,
+// the building selector, Nearest Exit and help. Scoped to .app-sidebar (position: relative — see index.css)
 // rather than the full viewport, same reasoning as the panorama overlay:
 // it should only cover the region it's actually explaining. Deliberately
 // near-opaque (not translucent like the panorama overlay) since the

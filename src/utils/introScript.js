@@ -10,12 +10,15 @@ export const DESKTOP_INTRO_TEXT = {
   shiftCtrl: "Shift to zoom in, Control to zoom out.",
 };
 
+// Key order is display order: SidebarIntroOverlay lists them in this order
+// and DESKTOP_INTRO_SPEECH reads them aloud in it.
 export const SIDEBAR_INTRO_TEXT = {
-  exit: "Nearest Exit shows the fastest way outside from wherever you are.",
-  search: "Search for a room, building, or place by name.",
+  directory: "Browse the directory below to jump to highlighted locations.",
+  search: "Search for a room or facility by name.",
   directions: "Get directions to any room.",
-  directory: "Browse the directory below to jump to any building or room.",
-  help: "Come back here anytime to replay these tips.",
+  building: "Hop straight to a specific building floor.",
+  exit: "Nearest Exit shows the fastest way outside from wherever you are.",
+  help: "Click the question mark button on the upper right corner to replay these tips.",
 };
 
 export const KIOSK_INTRO_TEXT = {

@@ -6,6 +6,7 @@ import { allBuildings, allCampuses, BUILDINGS, buildingLabel, floorsForBuilding 
 import { planBuildingMove } from "../utils/buildingMove";
 import { addCustomBuilding, deleteCustomBuilding, getServerBuildingNames, updateBuilding, useCustomBuildingsVersion } from "../utils/buildingStore";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/useConfirm";
 
 // No real campus coordinates were known at the time this was built — a
 // generic, low-zoom world view until real coordinates make a better
@@ -14,6 +15,7 @@ const DEFAULT_MAP_CENTER = { lat: 0, lng: 0 };
 const DEFAULT_MAP_ZOOM = 2;
 
 export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) {
+  const { confirm } = useConfirm();
   useCustomBuildingsVersion(); // keep the "existing buildings" list below in sync as they're added/deleted
   const toast = useToast();
 
@@ -67,10 +69,10 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
 
   const handleDelete = async (building) => {
     const affected = nodes.filter((n) => n.building === building.id).length;
-    const warning = affected > 0
-      ? `${affected} node(s) currently use "${building.label}". They won't be deleted, but this building will disappear from filters and dropdowns until you re-add it.\n\nDelete "${building.label}" anyway?`
+    const message = affected > 0
+      ? `${affected} node(s) currently use "${building.label}". They won't be deleted, but this building will disappear from filters and dropdowns until you re-add it.`
       : `Delete building "${building.label}"?`;
-    if (!confirm(warning)) return;
+    if (!(await confirm({ title: "Delete building?", message, confirmLabel: "Delete", danger: true }))) return;
     try {
       await deleteCustomBuilding(building.id);
       toast.success(`Building "${building.label}" deleted.`);
@@ -91,9 +93,15 @@ export default function AddBuildingDialog({ onClose, nodes = [], onMoveNodes }) 
       edit.floorCount = floorsDraft;
       const newCount = Math.floor(Number(floorsDraft));
       const stranded = nodes.filter((n) => n.building === building.id && n.floor > newCount).length;
-      if (stranded > 0 && !confirm(`${stranded} node(s) are on floors above ${newCount}. They won't be deleted, but those floors will no longer exist for "${building.label}".
-
-Reduce the floor count anyway?`)) {
+      if (
+        stranded > 0 &&
+        !(await confirm({
+          title: "Reduce floor count?",
+          message: `${stranded} node(s) are on floors above ${newCount}. They won't be deleted, but those floors will no longer exist for "${building.label}".`,
+          confirmLabel: "Reduce floors",
+          danger: true,
+        }))
+      ) {
         return;
       }
     }

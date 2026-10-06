@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
-import { toDialog, normalizeRoomName, dialogPatchBody, dialogCreateBody, ocrSaveBody } from "../utils/entities";
+import { toDialog, normalizeRoomName, dialogPatchBody, dialogCreateBody, ocrSaveBody, toOcrSettings } from "../utils/entities";
 import { useCollection } from "./useCollection";
 
 // PlacardDialogs_API hook. Minimal public interface (getForRoom,
@@ -17,6 +17,13 @@ import { useCollection } from "./useCollection";
 async function loadAll() {
   const data = await apiGet("PlacardDialogs_API/getAll");
   return data.dialogs.map(toDialog);
+}
+
+// The OCR settings that aren't per room ({ scannerMessage }); only the OCR
+// Management page reads them.
+export async function loadOcrSettings() {
+  const data = await apiGet("PlacardDialogs_API/getOcrSettings");
+  return toOcrSettings(data.settings);
 }
 
 // Deletes the saved details of each named room or facility, when there are any.
@@ -75,11 +82,12 @@ export function usePlacardDialogs() {
 
   // The OCR Management page's save: every changed room in one request (and
   // one transaction), creating a record for a room that has none. Rows are
-  // { roomName, ocrEnabled, placardName, extraTerms }; see ocrSaveBody.
+  // { roomName, ocrEnabled, placardName, extraTerms, photoPath }; settings
+  // ({ scannerMessage }) only when it changed. See ocrSaveBody.
   const saveOcrSettings = useCallback(
-    async (rows) => {
-      if (rows.length === 0) return;
-      await mutate(() => apiPost("PlacardDialogs_API/saveOcr", ocrSaveBody(rows)), {
+    async (rows, settings) => {
+      if (rows.length === 0 && !settings) return;
+      await mutate(() => apiPost("PlacardDialogs_API/saveOcr", ocrSaveBody(rows, settings)), {
         success: "OCR settings saved.",
         errorPrefix: "Couldn't save the OCR settings",
       });

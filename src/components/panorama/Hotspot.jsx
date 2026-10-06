@@ -108,6 +108,9 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
   // that. Raise PREVIEW_GAP_FRACTION for more space, lower it for less.
   const ringOuter = highlighted ? 26 : 20;
   const previewY = ringOuter + (50 - ringOuter) * PREVIEW_GAP_FRACTION;
+  // The "To: <node>" tag mirrors the preview: the same gap, but below the ring.
+  const destinationY = -previewY;
+  const showDestination = hovered && facing && !clicked && !previewHidden && Boolean(label);
 
   // A wide upside-down "V" (chevron) sized to sit inside the dot, centred
   // vertically. Flat 2D geometry with a constant stroke thickness.
@@ -233,6 +236,20 @@ export function Hotspot({ yaw, pitch, label, photo, onClick, dimmed, highlighted
               )}
             </div>
           </div>
+        </Html>
+      )}
+
+      {/* Hover tag naming where this hotspot leads, the text counterpart of
+          the preview card above. Mounted only while facing for the same
+          stale-placement reason as the preview. Top-anchored so it always
+          hangs fully below the marker. */}
+      {showDestination && (
+        <Html
+          zIndexRange={[0, 0]}
+          position={[0, destinationY, 0]}
+          style={{ pointerEvents: "none", transform: "translate(-50%, 0)" }}
+        >
+          <div className="pano-hotspot-destination">To: {label}</div>
         </Html>
       )}
     </group>

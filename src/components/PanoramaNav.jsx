@@ -59,6 +59,7 @@ function isTypingTarget(target) {
  *  - autoPan: bool — directions: slowly turns the view to centre the highlighted hotspot (a drag by the visitor stops it until the next stop)
  *  - previewsHidden: bool — hides every hotspot preview (used while a menu/dialog is open over the panorama)
  *  - onRoomMarkerClick(marker): optional — called when a type:"room" or type:"facility" marker is clicked (public viewer only; independent of onMarkerClick, which is for admin editing)
+ *  - roomMarkerPhoto(marker): optional, desktop view: returns the room photo (its thumbnail, i.e. the first photo) a type:"room" or type:"facility" marker previews on hover, or null for none
  *  - onElevatorMarkerClick(marker): optional — called when a type:"elevator" marker is clicked (public viewer only; independent of the props above — moves the visitor, unlike every other marker type, which is purely informational)
  *  - onEmergencyExitMarkerClick(marker): optional — called when the highlighted type:"emergency_exit" marker is clicked, which only exists while it is the next step of a Nearest Exit route (it takes the hidden fire stairs); never wired to any other emergency exit marker
  *  - keyboardNav: bool — regular desktop view: WASD/arrow-key controls, Street-View-style (A/D or Left/Right pan, W/Up walks to the nearest hotspot currently on screen, S/Down calls onBack)
@@ -81,6 +82,7 @@ export default function PanoramaNav({
   onNavigate,
   onMarkerClick,
   onRoomMarkerClick,
+  roomMarkerPhoto,
   onElevatorMarkerClick,
   onEmergencyExitMarkerClick,
   onError,
@@ -332,6 +334,7 @@ export default function PanoramaNav({
           highlighted={!placing && m.id === shownHighlightMarkerId}
           onClick={onMarkerClick && !placing ? () => onMarkerClick(m.id) : undefined}
           onRoomClick={onRoomMarkerClick && !placing ? () => onRoomMarkerClick(m) : undefined}
+          previewPhoto={roomMarkerPhoto && !placing && live && !previewsHidden && (m.type === "room" || m.type === "facility") ? roomMarkerPhoto(m) : null}
           onElevatorClick={onElevatorMarkerClick && !placing ? () => onElevatorMarkerClick(m) : undefined}
           onEmergencyExitClick={
             onEmergencyExitMarkerClick && !placing && m.id === shownHighlightMarkerId ? () => onEmergencyExitMarkerClick(m) : undefined

@@ -10,6 +10,7 @@ import { useAutoScrollIntoView } from "../../hooks/useAutoScrollIntoView";
 import { validateElevator, validateElevatorLanding, floorsWithLandingsDropped } from "../../utils/elevators";
 import IconPlaceholder from "../../components/IconPlaceholder";
 import EmergencyExitLandingPicker from "../../components/EmergencyExitLandingPicker";
+import { useConfirm } from "../../context/useConfirm";
 
 const defaultFilters = {
   building: "all",
@@ -35,6 +36,7 @@ const defaultFilters = {
 // the panorama) lives in useGraphEditor. What is specific to nodes lives
 // here: the typed markers, and the sidebar.
 export default function NavigationEditorPage() {
+  const { confirm } = useConfirm();
   const {
     nodes,
     selectedNodeId,
@@ -380,9 +382,16 @@ export default function NavigationEditorPage() {
                             <button onClick={() => startEditLandings(m)}>Edit landings</button>
                           )}
                           <button onClick={() => editor.startRepositionMarker(m.id)}>Reposition</button>
-                          <button className="danger" onClick={() => {
-                            const detailsNote = m.type === "facility" ? " Its saved details are deleted too, unless another room or facility uses the name." : "";
-                            if (m.type !== "facility" || window.confirm(`Remove the facility "${m.label}"?${detailsNote}`)) editor.removeMarker(m.id);
+                          <button className="danger" onClick={async () => {
+                            const ok =
+                              m.type !== "facility" ||
+                              (await confirm({
+                                title: "Remove facility?",
+                                message: `Remove the facility "${m.label}"? Its saved details are deleted too, unless another room or facility uses the name.`,
+                                confirmLabel: "Remove",
+                                danger: true,
+                              }));
+                            if (ok) editor.removeMarker(m.id);
                           }}>Remove</button>
                         </>
                       )}
@@ -447,7 +456,15 @@ export default function NavigationEditorPage() {
                         <button onClick={() => startManageElevator(e)}>Edit floors</button>
                         <button
                           className="danger"
-                          onClick={() => window.confirm(`Delete elevator "${e.label}"? This removes all ${e.landings.length} of its landing markers too.`) && deleteElevator(e.id)}
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete elevator?",
+                              message: `Delete elevator "${e.label}"? This removes all ${e.landings.length} of its landing markers too.`,
+                              confirmLabel: "Delete",
+                              danger: true,
+                            });
+                            if (ok) deleteElevator(e.id);
+                          }}
                         >
                           Delete
                         </button>

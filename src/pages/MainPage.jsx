@@ -49,6 +49,7 @@ import { blocksIdle, coverage } from "../utils/overlay";
 import { allBuildings, buildingDisplayName, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { buildHotspots } from "../utils/hotspots";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
+import { roomPhotos } from "../utils/roomPhotos";
 import { buildSearchableRooms, findMarkerForRoom, findRoomForMarker, pickLocationSuggestions, searchCampus } from "../utils/search";
 import { findNearbyRooms } from "../utils/nearbyRooms";
 import { elevatorDestinationsFrom, arrivalYawFromLanding } from "../utils/elevators";
@@ -681,6 +682,11 @@ function MainPageContent({ onReset }) {
     if (match) goToRoom(match);
     else if (marker.label?.trim()) goToRoom({ roomName: marker.label.trim(), node: current, placard: null });
   };
+
+  // Desktop: the photo a room/facility marker previews on hover, the room's
+  // thumbnail (its first photo). None for a marker without saved room details
+  // or photos, so it shows no card at all.
+  const roomMarkerPhoto = (marker) => roomPhotos(findRoomForMarker(marker, searchableRooms)?.placard)[0] ?? null;
 
   // Riding an elevator is a Walk, not a Jump: history is kept, so Back rides
   // you down again. It lands on that elevator's own landing node on the
@@ -2068,6 +2074,7 @@ function MainPageContent({ onReset }) {
                   markers={markers}
                   onNavigate={goTo}
                   onRoomMarkerClick={handleRoomMarkerClick}
+                  roomMarkerPhoto={roomMarkerPhoto}
                   onElevatorMarkerClick={handleElevatorMarkerClick}
                   onError={() => {}}
                   placing={false}

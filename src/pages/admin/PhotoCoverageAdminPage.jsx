@@ -3,6 +3,7 @@ import { useNodes } from "../../hooks/useNodes";
 import { usePhotos } from "../../hooks/usePhotos";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
 import { isVideoPath } from "../../utils/signage";
+import { useConfirm } from "../../context/useConfirm";
 
 function CoverageSummary({ label, total, withPhoto }) {
   const missing = total - withPhoto;
@@ -29,6 +30,7 @@ function formatBytes(bytes) {
 // Its own component so useSecurePhotoUrl (a hook) can be called once
 // per card, since hooks can't be called inside a loop.
 function PhotoCard({ photo, onDelete, deleting }) {
+  const { confirm } = useConfirm();
   // "Photos" scans every photo on disk of every kind at once — with hundreds
   // of them, fetching every card's full-resolution image on mount would fire
   // that many multi-MB fetch+decodes simultaneously. A card doesn't request
@@ -57,8 +59,14 @@ function PhotoCard({ photo, onDelete, deleting }) {
 
   const { url } = useSecurePhotoUrl(visible ? photo.path : null, { thumbnail: true });
 
-  const handleDelete = () => {
-    if (!window.confirm(`Delete "${photo.path}" permanently? This can't be undone.`)) return;
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: "Delete photo?",
+      message: `Delete "${photo.path}" permanently? This can't be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     onDelete(photo.path);
   };
 

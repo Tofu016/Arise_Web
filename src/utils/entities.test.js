@@ -9,6 +9,7 @@ import {
   dialogPatchBody,
   dialogCreateBody,
   ocrSaveBody,
+  toOcrSettings,
 } from "./entities";
 
 const nodeRow = {
@@ -207,11 +208,13 @@ describe("room placard dialogs", () => {
       room_name: "GD1-101",
       ocr_enabled: 1,
       placard_name: "GD1-101",
+      ocr_photo_path: "room360/gd1/gd1-101.webp",
       search_terms: [{ term: "gd1-101", is_extra: 0 }, { term: "gd1101", is_extra: 0 }, { term: "rm101", is_extra: 1 }],
     };
     expect(toDialog(row)).toMatchObject({
       ocrEnabled: true,
       placardName: "GD1-101",
+      ocrPhotoPath: "room360/gd1/gd1-101.webp",
       ocrSearchTerms: ["gd1-101", "gd1101", "rm101"],
       ocrGeneratedTerms: ["gd1-101", "gd1101"],
       ocrExtraTerms: ["rm101"],
@@ -221,8 +224,8 @@ describe("room placard dialogs", () => {
   it("the OCR save generates terms for an eligible room and clears them for one taken off", () => {
     expect(
       ocrSaveBody([
-        { roomName: "Office of the Dean", ocrEnabled: true, placardName: " Dean's Office ", extraTerms: ["dean"] },
-        { roomName: "Canteen", ocrEnabled: false, placardName: "Canteen", extraTerms: ["food"] },
+        { roomName: "Office of the Dean", ocrEnabled: true, placardName: " Dean's Office ", extraTerms: ["dean"], photoPath: "room360/a/dean.webp" },
+        { roomName: "Canteen", ocrEnabled: false, placardName: "Canteen", extraTerms: ["food"], photoPath: "" },
       ])
     ).toEqual({
       rooms: [
@@ -232,10 +235,18 @@ describe("room placard dialogs", () => {
           placard_name: "Dean's Office",
           search_terms: ["dean'soffice", "deansoffice", "dean's office"],
           extra_search_terms: ["dean"],
+          ocr_photo_path: "room360/a/dean.webp",
         },
-        { room_name: "Canteen", ocr_enabled: 0, placard_name: "Canteen", search_terms: [], extra_search_terms: ["food"] },
+        { room_name: "Canteen", ocr_enabled: 0, placard_name: "Canteen", search_terms: [], extra_search_terms: ["food"], ocr_photo_path: "" },
       ],
     });
+  });
+
+  it("the OCR save sends the scanner message only when given, trimmed", () => {
+    expect(ocrSaveBody([], { scannerMessage: "  Look around!  " })).toEqual({ rooms: [], scanner_message: "Look around!" });
+    expect(ocrSaveBody([])).not.toHaveProperty("scanner_message");
+    expect(toOcrSettings({ scanner_message: null })).toEqual({ scannerMessage: "" });
+    expect(toOcrSettings({ scanner_message: "Hi" })).toEqual({ scannerMessage: "Hi" });
   });
 
   it("maps photos in order with their kind and thumbnail focus, centered when unset", () => {

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useNodes } from "../hooks/useNodes";
 import { useElevators } from "../hooks/useElevators";
 import { useAuth } from "../context/useAuth";
+import { ConfirmProvider } from "../context/ConfirmContext";
 import accountIcon from "../assets/icons/account.svg";
 import locationIcon from "../assets/icons/location.svg";
 import IconPlaceholder from "../components/IconPlaceholder";
@@ -33,10 +34,7 @@ const GROUPS = [
       { path: "navigation-editor", icon: PLACEHOLDER("route"), label: "Navigation Editor" },
       { path: "room-and-facility-editor", icon: PLACEHOLDER("door"), label: "Room and Facility Editor" },
       { path: "directory", icon: PLACEHOLDER("directory"), label: "Directory" },
-      // The mobile app's placard scanner: which rooms it can recognize.
-      { path: "ocr-management", icon: PLACEHOLDER("camera"), label: "OCR Management" },
       { path: "marker-management", icon: LOCATION_ICON, label: "Marker Management" },
-      { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" },
     ],
   },
 ];
@@ -50,6 +48,12 @@ const GROUPS = [
 // picture-frame icon below.
 // Photo Coverage: covers every photo type (the former standalone Photos
 // page was merged into it), so it uses that page's own picture-frame icon.
+// OCR Management: the mobile app's placard scanner (which rooms it can
+// recognize), a separate client from the Virtual Map editors.
+// Emergency Coverage: an audit of Nearest Exit routing across every node,
+// not an editor of the map itself.
+const OCR_MANAGEMENT = { path: "ocr-management", icon: PLACEHOLDER("camera"), label: "OCR Management" };
+const EMERGENCY_COVERAGE = { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" };
 const USER_PANEL = { path: "user-panel", icon: ACCOUNT_ICON, label: "User Panel" };
 const ANALYTICS = { path: "analytics", icon: PLACEHOLDER("bar-chart"), label: "Analytics" };
 const PHOTO_COVERAGE = { path: "photo-coverage", icon: PLACEHOLDER("picture-frame"), label: "Photo Coverage" };
@@ -59,7 +63,7 @@ const ADVERTISEMENTS = { path: "advertisements", icon: PLACEHOLDER("megaphone"),
 // Kiosks: the physical kiosk devices and where each stands on the map.
 // Kiosk-wide like Advertisements, so it stands alone too.
 const KIOSKS = { path: "kiosks", icon: PLACEHOLDER("kiosk"), label: "Kiosks" };
-const STANDALONE_ITEMS = [USER_PANEL, ANALYTICS, PHOTO_COVERAGE, ADVERTISEMENTS, KIOSKS];
+const STANDALONE_ITEMS = [ANALYTICS, USER_PANEL, PHOTO_COVERAGE, EMERGENCY_COVERAGE, OCR_MANAGEMENT, KIOSKS, ADVERTISEMENTS];
 
 // Shared shell for every admin section — header, collapsible sidebar, and
 // the actual page content via <Outlet>. useNodes() is called ONCE here,
@@ -98,103 +102,105 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-layout">
-      <div className="admin-header">
-        <div className="admin-header-side admin-header-nav">
-          <Link to="/" className="admin-header-nav-btn primary">Back to Virtual Map</Link>
+      <ConfirmProvider>
+        <div className="admin-header">
+          <div className="admin-header-side admin-header-nav">
+            <Link to="/" className="admin-header-nav-btn primary">Back to Virtual Map</Link>
+          </div>
+          <div className="admin-header-center">
+            <div className="admin-header-title-line" />
+            <span className="admin-header-title">Admin Editor</span>
+          </div>
+          <div className="admin-header-side admin-header-account">
+            <div className="admin-account-badge">Admin</div>
+            <span className="account-name" title={displayName}>{displayName}</span>
+            <button onClick={signOut} className="admin-btn-secondary">Sign out</button>
+          </div>
         </div>
-        <div className="admin-header-center">
-          <div className="admin-header-title-line" />
-          <span className="admin-header-title">Admin Editor</span>
-        </div>
-        <div className="admin-header-side admin-header-account">
-          <div className="admin-account-badge">Admin</div>
-          <span className="account-name" title={displayName}>{displayName}</span>
-          <button onClick={signOut} className="admin-btn-secondary">Sign out</button>
-        </div>
-      </div>
 
-      <div className="admin-layout-body">
-        <div className="admin-sidebar-rail">
-          {/* Each icon sits in its own positioning wrapper so its hover
-              preview (name, and a group's own sub-items) can be absolutely
-              positioned off the icon without the rail's own flex layout
-              interfering — see .admin-sidebar-icon-preview. */}
-          {GROUPS.map((g) => {
-            const active = g.items.some((s) => isActivePath(s.path));
-            return (
-              <div key={g.id} className="admin-sidebar-rail-item">
-                <button
-                  className={"admin-sidebar-icon-btn" + (active ? " admin-sidebar-icon-btn-active" : "")}
-                  onClick={() => setExpandedGroupId(g.id)}
-                  aria-label={g.label}
+        <div className="admin-layout-body">
+          <div className="admin-sidebar-rail">
+            {/* Each icon sits in its own positioning wrapper so its hover
+                preview (name, and a group's own sub-items) can be absolutely
+                positioned off the icon without the rail's own flex layout
+                interfering — see .admin-sidebar-icon-preview. */}
+            {GROUPS.map((g) => {
+              const active = g.items.some((s) => isActivePath(s.path));
+              return (
+                <div key={g.id} className="admin-sidebar-rail-item">
+                  <button
+                    className={"admin-sidebar-icon-btn" + (active ? " admin-sidebar-icon-btn-active" : "")}
+                    onClick={() => setExpandedGroupId(g.id)}
+                    aria-label={g.label}
+                  >
+                    {g.icon}
+                  </button>
+                  <div className="admin-sidebar-icon-preview" role="tooltip">
+                    <div className="admin-sidebar-icon-preview-title">{g.label}</div>
+                    <ul className="admin-sidebar-icon-preview-list">
+                      {g.items.map((s) => (
+                        <li key={s.path}>
+                          <span>{s.icon}</span>
+                          <span>{s.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
+            {STANDALONE_ITEMS.map((entry) => (
+              <div key={entry.path} className="admin-sidebar-rail-item">
+                <Link
+                  to={`/admin/${entry.path}`}
+                  className={"admin-sidebar-icon-btn" + (isActivePath(entry.path) ? " admin-sidebar-icon-btn-active" : "")}
+                  aria-label={entry.label}
                 >
-                  {g.icon}
-                </button>
+                  {entry.icon}
+                </Link>
+                {/* No sub-item list — a standalone entry's "contents" is
+                    just itself, so the preview is name-only. */}
                 <div className="admin-sidebar-icon-preview" role="tooltip">
-                  <div className="admin-sidebar-icon-preview-title">{g.label}</div>
-                  <ul className="admin-sidebar-icon-preview-list">
-                    {g.items.map((s) => (
-                      <li key={s.path}>
-                        <span>{s.icon}</span>
-                        <span>{s.label}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="admin-sidebar-icon-preview-title">{entry.label}</div>
                 </div>
               </div>
-            );
-          })}
-          {STANDALONE_ITEMS.map((entry) => (
-            <div key={entry.path} className="admin-sidebar-rail-item">
-              <Link
-                to={`/admin/${entry.path}`}
-                className={"admin-sidebar-icon-btn" + (isActivePath(entry.path) ? " admin-sidebar-icon-btn-active" : "")}
-                aria-label={entry.label}
-              >
-                {entry.icon}
-              </Link>
-              {/* No sub-item list — a standalone entry's "contents" is
-                  just itself, so the preview is name-only. */}
-              <div className="admin-sidebar-icon-preview" role="tooltip">
-                <div className="admin-sidebar-icon-preview-title">{entry.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {expandedGroup && (
-          <>
-            <div className="admin-sidebar-backdrop" onClick={() => setExpandedGroupId(null)} />
-            <div className="admin-sidebar-flyout">
-              <button
-                className="admin-sidebar-close"
-                onClick={() => setExpandedGroupId(null)}
-                title="Close"
-              >
-                ✕
-              </button>
-              <div className="admin-sidebar-flyout-group-label">{expandedGroup.label}</div>
-              {expandedGroup.items.map((s) => (
-                <NavLink
-                  key={s.path}
-                  to={`/admin/${s.path}`}
-                  className={({ isActive }) =>
-                    "admin-sidebar-flyout-item" + (isActive ? " admin-sidebar-flyout-item-active" : "")
-                  }
+          {expandedGroup && (
+            <>
+              <div className="admin-sidebar-backdrop" onClick={() => setExpandedGroupId(null)} />
+              <div className="admin-sidebar-flyout">
+                <button
+                  className="admin-sidebar-close"
                   onClick={() => setExpandedGroupId(null)}
+                  title="Close"
                 >
-                  <span className="admin-sidebar-flyout-icon">{s.icon}</span>
-                  <span className="admin-sidebar-flyout-label">{s.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          </>
-        )}
+                  ✕
+                </button>
+                <div className="admin-sidebar-flyout-group-label">{expandedGroup.label}</div>
+                {expandedGroup.items.map((s) => (
+                  <NavLink
+                    key={s.path}
+                    to={`/admin/${s.path}`}
+                    className={({ isActive }) =>
+                      "admin-sidebar-flyout-item" + (isActive ? " admin-sidebar-flyout-item-active" : "")
+                    }
+                    onClick={() => setExpandedGroupId(null)}
+                  >
+                    <span className="admin-sidebar-flyout-icon">{s.icon}</span>
+                    <span className="admin-sidebar-flyout-label">{s.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </>
+          )}
 
-        <div className="admin-layout-content">
-          <Outlet context={{ ...nodesState, ...elevatorsState, elevatorsLoading }} />
+          <div className="admin-layout-content">
+            <Outlet context={{ ...nodesState, ...elevatorsState, elevatorsLoading }} />
+          </div>
         </div>
-      </div>
+      </ConfirmProvider>
     </div>
   );
 }

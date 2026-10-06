@@ -6,6 +6,7 @@ import NodeForm from "../../components/NodeForm";
 import ExportImportBar from "../../components/ExportImportBar";
 import PreviewTour from "../../components/PreviewTour";
 import AddBuildingDialog from "../../components/AddBuildingDialog";
+import { useConfirm } from "../../context/useConfirm";
 
 const defaultFilters = {
   building: "all",
@@ -26,6 +27,7 @@ const defaultFilters = {
 // NeighborPicker removed; Navigation Editor is now the sole
 // place that's managed, per the redesign.
 export default function NodeEditorPage() {
+  const { confirm } = useConfirm();
   const {
     nodes,
     selectedNodeId,
@@ -68,8 +70,14 @@ export default function NodeEditorPage() {
     setSelectedNodeId(draft.id);
   };
 
-  const handleDelete = (id) => {
-    if (confirm(`Delete node "${id}"? This also removes it from any connected node's neighbor list.`)) {
+  const handleDelete = async (id) => {
+    const ok = await confirm({
+      title: "Delete node?",
+      message: `Delete node "${id}"? This also removes it from any connected node's neighbor list.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (ok) {
       deleteNode(id);
       setSelectedNodeId(null);
     }

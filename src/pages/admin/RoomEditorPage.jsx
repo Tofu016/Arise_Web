@@ -12,6 +12,7 @@ import IconPlaceholder from "../../components/IconPlaceholder";
 import linkIcon from "../../assets/icons/link.svg";
 import { listAllRooms, namesOfKind } from "../../utils/search";
 import { allBuildings, buildingLabel, floorLabel } from "../../utils/constants";
+import { useConfirm } from "../../context/useConfirm";
 
 const defaultFilters = {
   building: "all",
@@ -91,6 +92,7 @@ function guessKind(file) {
 }
 
 export default function RoomEditorPage() {
+  const { alert } = useConfirm();
   const { nodes, selectedNodeId, setSelectedNodeId, updateNode, setMarkers } = useOutletContext();
   const { getForRoom, saveRoomDialog } = usePlacardDialogs();
   const toast = useToast();
@@ -211,11 +213,11 @@ export default function RoomEditorPage() {
 
     if (isRenaming) {
       if (!trimmedTitle) {
-        alert(`${kindName} title can't be empty.`);
+        alert({ title: "Title required", message: `${kindName} title can't be empty.` });
         return;
       }
       if (isRoomNameTaken(trimmedTitle, nodes, node.id, selectedRoom)) {
-        alert(`"${trimmedTitle}" is already used by another room or facility. Names must be unique.`);
+        alert({ title: "Name already in use", message: `"${trimmedTitle}" is already used by another room or facility. Names must be unique.` });
         return;
       }
     }

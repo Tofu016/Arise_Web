@@ -22,6 +22,7 @@ import {
   slidesInCategory,
 } from "../../utils/signage";
 import chevronIcon from "../../assets/icons/chevron-right.svg";
+import { useConfirm } from "../../context/useConfirm";
 
 const STATUS_LABELS = { live: "Live", scheduled: "Scheduled", ended: "Ended", off: "Off" };
 // How often the Live/Scheduled/Ended badges are re-judged while the page
@@ -230,6 +231,7 @@ function SlideRow({ slide, position, count, status, busy, onMove, onToggle, onEd
 // advertisements themselves. One uploaded file can be used by both
 // categories; it is deleted only with the last advertisement using it.
 export default function SignagePage() {
+  const { confirm } = useConfirm();
   const {
     slides,
     settings,
@@ -285,12 +287,18 @@ export default function SignagePage() {
     if (ids) run(slide.id, () => reorderSlides(ids));
   };
 
-  const remove = (slide) => {
+  const remove = async (slide) => {
     const shared = slides.some((s) => s.id !== slide.id && s.mediaPath === slide.mediaPath);
     const fileNote = shared
       ? "Its file stays, because another advertisement still uses it."
       : "Its file is deleted too.";
-    if (!window.confirm(`Delete "${slide.title}"? ${fileNote} This can't be undone.`)) return;
+    const ok = await confirm({
+      title: "Delete advertisement?",
+      message: `Delete "${slide.title}"? ${fileNote} This can't be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     run(slide.id, () => deleteSlide(slide));
   };
 

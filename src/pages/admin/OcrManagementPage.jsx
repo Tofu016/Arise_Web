@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useToast } from "../../context/ToastContext";
-import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
+import { loadOcrSettings, usePlacardDialogs } from "../../hooks/usePlacardDialogs";
+import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { NODE_TYPES, allBuildings, buildingLabel, floorLabel, floorsForBuilding } from "../../utils/constants";
 import { buildSearchableRooms, rankRoomMatches } from "../../utils/search";
 import { normalizeRoomName } from "../../utils/entities";
@@ -11,7 +13,7 @@ import { matchRoomsFromOcr } from "../../utils/ocrRoomMatch";
 import {
   addExtraTerm,
   addToOcr,
-  hasRoom360Photo,
+  hasOcrPhoto,
   hasStaleTerms,
   ocrCollisions,
   ocrStateOf,
@@ -22,9 +24,106 @@ import {
   withOcrState,
 } from "../../utils/ocrSettings";
 import IconPlaceholder from "../../components/IconPlaceholder";
+import FilePickerButton from "../../components/FilePickerButton";
 
 const DEFAULT_FILTERS = { search: "", building: "all", floor: "all", type: "all", photo360: "all" };
 const keyOf = (room) => normalizeRoomName(room.roomName);
+// ocr_settings.scanner_message's column width.
+const MAX_SCANNER_MESSAGE = 300;
+
+function slugify(text) {
+  return (text || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+// An equirectangular 360 image is twice as wide as it is tall.
+function isPanoramaShaped(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(Math.abs(img.naturalWidth / img.naturalHeight - 2) < 0.1);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(true); // can't tell; the upload itself says if it's no image
+    };
+    img.src = url;
+  });
+}
+
+function OcrPhotoDot({ state }) {
+  const has = hasOcrPhoto(state);
+  return (
+    <span
+      className={`photo-dot ${has ? "has-photo" : "no-photo"}`}
+      title={has ? "Has its own AR 360 image" : "Shows the placeholder 360 image in AR"}
+    />
+  );
+}
+
+// The 360 image the mobile AR portal shows after a scan of this room. It is
+// uploaded here (under room360/, like a room's 360 photos) but kept apart
+// from the room's photos: the room card's 360 VIEW keeps showing those.
+// Uploading stores the file straight away; the room only points at it once
+// the page is saved.
+function OcrPhotoField({ room, state, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [hint, setHint] = useState("");
+  const { url } = useSecurePhotoUrl(state.photoPath || null, { thumbnail: 1024 });
+  const toast = useToast();
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setHint("");
+    try {
+      const shaped = await isPanoramaShaped(file);
+      const filename = photoFilename(file, `ocr_${slugify(room.roomName)}-${Date.now().toString(36)}`);
+      const { path } = await uploadPhoto("room360", file, { building: room.node.building, filename });
+      onChange({ ...state, photoPath: path });
+      if (!shaped) setHint("This image isn't twice as wide as it is tall, so it will look stretched in AR.");
+    } catch (err) {
+      toast.error(`Couldn't upload the image: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="ocr-admin-field">
+      <span className="ocr-admin-field-label">AR 360 image after a scan</span>
+      <div className="ocr-admin-photo">
+        <div className="ocr-admin-photo-preview">
+          {!state.photoPath && <span className="field-hint">Placeholder</span>}
+          {state.photoPath && !url && <span className="field-hint">Loading...</span>}
+          {state.photoPath && url && <img src={url} alt={`AR 360 image for ${room.roomName}`} />}
+        </div>
+        <div className="ocr-admin-photo-actions">
+          <FilePickerButton
+            accept="image/*"
+            label={uploading ? "Uploading..." : state.photoPath ? "Replace image" : "Upload 360 image"}
+            onChange={pick}
+            disabled={uploading}
+          />
+          {state.photoPath && (
+            <button type="button" className="signage-btn" onClick={() => onChange({ ...state, photoPath: "" })} disabled={uploading}>
+              Use placeholder
+            </button>
+          )}
+        </div>
+      </div>
+      <span className="ocr-admin-field-hint">
+        {hint ||
+          (state.photoPath
+            ? "Shown in the AR portal after a scan. The room card's 360 VIEW still shows the room's own photos."
+            : "Without one, the AR portal after a scan shows the placeholder 360 image.")}
+      </span>
+    </div>
+  );
+}
 
 function roomMeta(room) {
   const { node, kind, placard } = room;
@@ -108,10 +207,7 @@ function EligibleRoom({ room, state, collisions, unsaved, onChange, onRemove }) 
   return (
     <li className={"ocr-admin-room" + (problem ? " ocr-admin-room--problem" : "")}>
       <div className="ocr-admin-room-head">
-        <span
-          className={`photo-dot ${hasRoom360Photo(room) ? "has-photo" : "no-photo"}`}
-          title={hasRoom360Photo(room) ? "Has a 360 photo" : "No 360 photo yet"}
-        />
+        <OcrPhotoDot state={state} />
         <div className="node-row-main">
           <div className="node-row-name">
             {room.roomName}
@@ -162,31 +258,26 @@ function EligibleRoom({ room, state, collisions, unsaved, onChange, onRemove }) 
           )}
         </div>
         <ExtraTermsField roomName={room.roomName} state={state} onChange={onChange} />
+        <OcrPhotoField room={room} state={state} onChange={onChange} />
       </div>
 
-      {(collisions?.length > 0 || !hasRoom360Photo(room)) && (
+      {collisions?.length > 0 && (
         <ul className="ocr-admin-notes">
-          {collisions?.map((c) => (
+          {collisions.map((c) => (
             <li key={c.term} className="ocr-admin-note">
               "{c.term}" is also a search term of {c.roomNames.join(", ")}. A scan reading it asks the visitor which room they mean.
             </li>
           ))}
-          {!hasRoom360Photo(room) && (
-            <li className="ocr-admin-note">No 360 photo yet, so View in AR has nothing to show after a scan. Add one in the Room and Facility Editor.</li>
-          )}
         </ul>
       )}
     </li>
   );
 }
 
-function AvailableRoom({ room, onAdd }) {
+function AvailableRoom({ room, state, onAdd }) {
   return (
     <li className="node-row directory-admin-room-row">
-      <span
-        className={`photo-dot ${hasRoom360Photo(room) ? "has-photo" : "no-photo"}`}
-        title={hasRoom360Photo(room) ? "Has a 360 photo" : "No 360 photo yet"}
-      />
+      <OcrPhotoDot state={state} />
       <div className="node-row-main">
         <div className="node-row-name">{room.roomName}</div>
         <div className="node-row-meta">{roomMeta(room)}</div>
@@ -208,6 +299,49 @@ function testBadge(match) {
   if (match.isExact) return "Opens";
   if (match.matchesTerm) return "Shared term";
   return `${Math.round(match.score * 100)}%`;
+}
+
+// The message at the top of the mobile placard scanner, in the same place
+// and style as the AR portal's how-to tip. `message` is null until loaded.
+function ScannerMessageCard({ message, loadError, onChange }) {
+  return (
+    <section className="signage-card ocr-admin-side-card" aria-label="Scanner message">
+      <div className="signage-card-head">
+        <h3>Scanner message</h3>
+        <span className="signage-card-sub">Every room</span>
+      </div>
+      {loadError && (
+        <p className="ocr-admin-field-error" role="alert">
+          Couldn't load the scanner message: {loadError}
+        </p>
+      )}
+      {!loadError && (
+        <label className="ocr-admin-field">
+          <span className="ocr-admin-field-label">Shown at the top of the phone's placard scanner</span>
+          <textarea
+            className="ocr-admin-input ocr-admin-textarea"
+            value={message ?? ""}
+            maxLength={MAX_SCANNER_MESSAGE}
+            rows={3}
+            disabled={message === null}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="e.g. Point your camera at the room sign beside the door."
+          />
+          <span className="ocr-admin-field-hint">
+            {(message ?? "").length} / {MAX_SCANNER_MESSAGE}. Leave empty for no message.
+          </span>
+        </label>
+      )}
+      {message?.trim() && (
+        // A sketch of the phone's scanner: the pill over a dark camera feed.
+        <div className="ocr-admin-ar-preview" aria-label="Preview on the phone">
+          <div className="ocr-admin-ar-pill">
+            <span>{message.trim()}</span>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 // What a phone would do with a read, against the rooms as they'd be saved.
@@ -258,7 +392,27 @@ export default function OcrManagementPage() {
   const [regenerate, setRegenerate] = useState(() => new Set());
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [saving, setSaving] = useState(false);
+  // The scanner message as saved and as edited; both null until loaded.
+  const [savedMessage, setSavedMessage] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [messageError, setMessageError] = useState("");
   const toast = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    loadOcrSettings()
+      .then(({ scannerMessage }) => {
+        if (cancelled) return;
+        setSavedMessage(scannerMessage);
+        setMessage(scannerMessage);
+      })
+      .catch((err) => {
+        if (!cancelled) setMessageError(err.message || "Unknown error.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const rooms = useMemo(() => buildSearchableRooms(nodes, getForRoom, { includeWithoutDetails: true }), [nodes, getForRoom]);
   const stateFor = (room) => edits[keyOf(room)] ?? ocrStateOf(room);
@@ -287,7 +441,8 @@ export default function OcrManagementPage() {
 
   const staleRooms = rooms.filter((r) => hasStaleTerms(r) && !regenerate.has(keyOf(r)) && !edits[keyOf(r)]);
   const changedKeys = new Set([...Object.keys(edits), ...regenerate]);
-  const dirty = changedKeys.size > 0;
+  const messageDirty = message !== null && message.trim() !== savedMessage;
+  const dirty = changedKeys.size > 0 || messageDirty;
   const problems = rooms.filter((r) => edits[keyOf(r)] && ocrStateProblem(edits[keyOf(r)]));
 
   // Nothing here saves on its own, so a refresh or closing the tab with
@@ -305,6 +460,7 @@ export default function OcrManagementPage() {
   const discard = () => {
     setEdits({});
     setRegenerate(new Set());
+    setMessage(savedMessage);
   };
   const cancelChanges = () => {
     discard();
@@ -315,8 +471,12 @@ export default function OcrManagementPage() {
     const rows = rooms.filter((r) => changedKeys.has(keyOf(r))).map((r) => ({ roomName: r.roomName, ...stateFor(r) }));
     setSaving(true);
     try {
-      await saveOcrSettings(rows);
-      discard();
+      await saveOcrSettings(rows, messageDirty ? { scannerMessage: message } : undefined);
+      const saved = messageDirty ? message.trim() : savedMessage;
+      setSavedMessage(saved);
+      setEdits({});
+      setRegenerate(new Set());
+      setMessage(saved);
     } catch {
       // usePlacardDialogs' mutate already reported it.
     } finally {
@@ -335,8 +495,9 @@ export default function OcrManagementPage() {
       if (filters.building !== "all" && node.building !== filters.building) return false;
       if (filters.floor !== "all" && String(node.floor) !== String(filters.floor)) return false;
       if (filters.type !== "all" && node.type !== filters.type) return false;
-      if (filters.photo360 === "missing" && hasRoom360Photo(room)) return false;
-      if (filters.photo360 === "has" && !hasRoom360Photo(room)) return false;
+      const hasPhoto = hasOcrPhoto(edits[keyOf(room)] ?? ocrStateOf(room));
+      if (filters.photo360 === "missing" && hasPhoto) return false;
+      if (filters.photo360 === "has" && !hasPhoto) return false;
       return true;
     });
     // The usual room search, plus the Placard name and extra terms, which
@@ -356,7 +517,7 @@ export default function OcrManagementPage() {
   }, [rooms, filters, edits]);
 
   const totalEligible = eligiblePreview.length;
-  const without360 = eligiblePreview.filter((r) => !hasRoom360Photo(r)).length;
+  const withPlaceholder = eligiblePreview.filter((r) => !r.placard.ocrPhotoPath).length;
 
   return (
     <div className="signage-page directory-admin-page">
@@ -368,7 +529,8 @@ export default function OcrManagementPage() {
             Choose which rooms and facilities the mobile app's placard scanner can recognize. Each one is matched by the
             name printed on its placard: its Placard name starts as the room name and can be changed to match the sign.
             Search terms are generated from it, ignoring case, spacing and accents, and you can add extra ones for
-            misreads. Changes apply when you save.
+            misreads. After a scan, View in AR shows the room's AR 360 image (or a placeholder). The scanner message
+            shows at the top of the phone's scanner. Changes apply when you save.
           </p>
         </div>
         <div className="signage-settings-actions">
@@ -428,8 +590,8 @@ export default function OcrManagementPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Without a 360 photo</dt>
-                    <dd>{without360}</dd>
+                    <dt>Showing the placeholder in AR</dt>
+                    <dd>{withPlaceholder}</dd>
                   </div>
                   <div>
                     <dt>Sharing a search term</dt>
@@ -437,6 +599,7 @@ export default function OcrManagementPage() {
                   </div>
                 </dl>
               </section>
+              <ScannerMessageCard message={message} loadError={messageError} onChange={setMessage} />
               <TestReadCard rooms={eligiblePreview} />
             </aside>
 
@@ -491,11 +654,11 @@ export default function OcrManagementPage() {
                     </select>
                   </label>
                   <label>
-                    360 photo
+                    AR 360 image
                     <select value={filters.photo360} onChange={(e) => setFilter("photo360", e.target.value)}>
                       <option value="all">All</option>
-                      <option value="missing">Missing 360 photo</option>
-                      <option value="has">Has 360 photo</option>
+                      <option value="missing">Placeholder</option>
+                      <option value="has">Own image</option>
                     </select>
                   </label>
                 </div>
@@ -555,7 +718,7 @@ export default function OcrManagementPage() {
                 </div>
                 <ul className="directory-admin-results">
                   {available.map((r) => (
-                    <AvailableRoom key={keyOf(r)} room={r} onAdd={() => setStateFor(r, addToOcr(stateFor(r), r.roomName))} />
+                    <AvailableRoom key={keyOf(r)} room={r} state={stateFor(r)} onAdd={() => setStateFor(r, addToOcr(stateFor(r), r.roomName))} />
                   ))}
                 </ul>
                 {available.length === 0 && (

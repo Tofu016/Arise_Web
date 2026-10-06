@@ -4,6 +4,7 @@ import { useKiosks } from "../../hooks/useKiosks";
 import { fuzzyIncludes } from "../../utils/fuzzy";
 import IconPlaceholder from "../../components/IconPlaceholder";
 import { buildingLabel, floorLabel } from "../../utils/constants";
+import { useConfirm } from "../../context/useConfirm";
 
 // A kiosk that has checked in within two heartbeats (see useKioskIdentity)
 // counts as online. Both sides are the server's own clock strings, so the
@@ -116,6 +117,7 @@ function KioskForm({ kiosk, nodes, onSave, onCancel }) {
 // device is paired once, on its own screen (a hidden tap gesture opens the
 // pairing screen), by typing the one-time code shown here.
 export default function KiosksPage() {
+  const { confirm } = useConfirm();
   const { nodes } = useOutletContext();
   const { kiosks, serverTime, loading, error, createKiosk, updateKiosk, resetPairing, deleteKiosk } = useKiosks();
   // null: closed; { kiosk: null }: adding; { kiosk }: editing.
@@ -134,7 +136,13 @@ export default function KiosksPage() {
   };
 
   const reset = async (kiosk) => {
-    if (!window.confirm(`Unpair "${kiosk.name}"? The device stops being recognised until it is paired again.`)) return;
+    const ok = await confirm({
+      title: "Unpair kiosk?",
+      message: `Unpair "${kiosk.name}"? The device stops being recognised until it is paired again.`,
+      confirmLabel: "Unpair",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       const code = await resetPairing(kiosk);
       setIssued({ name: kiosk.name, code });
@@ -143,8 +151,14 @@ export default function KiosksPage() {
     }
   };
 
-  const remove = (kiosk) => {
-    if (!window.confirm(`Delete "${kiosk.name}"? This can't be undone.`)) return;
+  const remove = async (kiosk) => {
+    const ok = await confirm({
+      title: "Delete kiosk?",
+      message: `Delete "${kiosk.name}"? This can't be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     deleteKiosk(kiosk).catch(() => {});
   };
 

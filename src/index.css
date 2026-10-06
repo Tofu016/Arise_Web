@@ -1151,6 +1151,57 @@ html.kiosk-mode .user-panel-page .user-panel-create-btn:hover:active {
   opacity: 0.5;
   cursor: default;
 }
+/* ---------- Confirm / alert dialog (ConfirmContext.jsx) ---------- */
+/* Replaces window.confirm/alert in the admin CMS. Same shell as the New
+   Account dialog above (header, close icon, right-aligned actions) so every
+   admin popup reads as one family. */
+/* Opened from inside other modals too (AddBuildingDialog, the flowchart),
+   so it sits above the .modal-overlay tier (100) but under toasts (700). */
+.modal-overlay.confirm-dialog-overlay {
+  z-index: 300;
+}
+.confirm-dialog {
+  width: 420px;
+  max-width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.admin-layout .confirm-dialog .preview-header {
+  margin-bottom: 0;
+}
+.confirm-dialog .close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.confirm-dialog-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.confirm-dialog-message p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  /* Photo paths and emails have no spaces to break on. */
+  overflow-wrap: anywhere;
+}
+.confirm-dialog-actions {
+  justify-content: flex-end;
+  padding-top: var(--space-xs);
+}
+.form-actions.confirm-dialog-actions button {
+  flex: 0 0 auto;
+}
+.confirm-dialog-actions button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 /* ---------- Custom file picker (polish pass) ---------- */
 /* Replaces the browser's own native "Choose File" button chrome, which
    can't be styled consistently across browsers, with a real, styled
@@ -5565,11 +5616,44 @@ html.kiosk-mode .floating-title-back:hover:active {
   height: 36px;
   border-width: 4px;
 }
+/* Hover tag under a hotspot naming the node it leads to; same chip as
+   .pano-marker-label so the two overlays read as one family. */
+.pano-hotspot-destination {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(32, 27, 27, 0.82);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  user-select: none;
+  animation: pano-hotspot-preview-in 0.15s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pano-hotspot-destination { animation: none; }
+}
 .pano-marker {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   user-select: none;
+}
+/* Desktop: a hovered room/facility marker's thumbnail, on the hotspot
+   preview's card. Absolutely placed above the dot so it never shifts the
+   marker, whose <Html> is centred on its own box; pointer-events off so
+   moving onto the card doesn't end the hover that shows it. Square, as the
+   room panel's thumbnail is. */
+.pano-marker-preview {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  pointer-events: none;
+}
+.pano-marker-preview .pano-hotspot-preview-thumb {
+  height: auto;
+  aspect-ratio: 1;
 }
 .pano-marker-dot {
   border-radius: 50%;
@@ -11609,4 +11693,60 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
 .ocr-admin-badge--exact {
   background: var(--success-surface);
   color: var(--success);
+}
+/* A room's AR 360 image: a 2:1 strip, as wide as the field allows. */
+.ocr-admin-photo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.ocr-admin-photo-preview {
+  width: 200px;
+  aspect-ratio: 2 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.ocr-admin-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ocr-admin-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.ocr-admin-textarea {
+  height: auto;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.45;
+}
+/* The AR message as the phone shows it: a white pill over the camera feed,
+   like the mobile app's ArStatusPill. */
+.ocr-admin-ar-preview {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--admin-radius);
+  background: #2b2b2b;
+}
+.ocr-admin-ar-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }

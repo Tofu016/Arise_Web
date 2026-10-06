@@ -4,6 +4,7 @@ import { useAdmins } from "../../hooks/useAdmins";
 import { fuzzyIncludes } from "../../utils/fuzzy";
 import CreateAdminDialog from "../../components/admin/CreateAdminDialog";
 import IconPlaceholder from "../../components/IconPlaceholder";
+import { useConfirm } from "../../context/useConfirm";
 
 function formatJoined(createdAt) {
   if (!createdAt) return "N/A";
@@ -22,6 +23,7 @@ function formatJoined(createdAt) {
 // row opposite the title, the same place a reader looks for it on any
 // list page.
 export default function UserPanelPage() {
+  const { confirm } = useConfirm();
   const { user: currentUser } = useAuth();
   const { admins, loading, createAdmin, approveAdmin, deleteAdmin } = useAdmins();
   const [deletingUid, setDeletingUid] = useState(null);
@@ -51,12 +53,16 @@ export default function UserPanelPage() {
   };
 
   const handleDelete = async (a) => {
-    const prompt = a.status === "pending"
-      ? `Reject and delete the pending request from ${a.email}? This can't be undone.`
-      : `Permanently delete ${a.email}? They will no longer be able to sign in. This can't be undone.`;
-    if (!confirm(prompt)) {
-      return;
-    }
+    const pending = a.status === "pending";
+    const ok = await confirm({
+      title: pending ? "Reject request?" : "Delete account?",
+      message: pending
+        ? `Reject and delete the pending request from ${a.email}? This can't be undone.`
+        : `Permanently delete ${a.email}? They will no longer be able to sign in. This can't be undone.`,
+      confirmLabel: pending ? "Reject" : "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     setDeletingUid(a.uid);
     try {
       await deleteAdmin(a.uid);

@@ -1,5 +1,8 @@
 // The OCR Management page's per-room settings, as the page edits them before
-// saving: { ocrEnabled, placardName, extraTerms }. Search terms generated
+// saving: { ocrEnabled, placardName, extraTerms, photoPath }. photoPath is
+// the room's own 360 image for the mobile AR portal after a scan ("" for
+// none, which shows the placeholder); it is separate from the room's photos,
+// which the room card's 360 VIEW keeps showing. Search terms generated
 // from the Placard name are not part of it: they are recomputed on save
 // (entities.js ocrSaveBody), so they can't drift from the name.
 import { findTermCollisions, generateOcrTerms, generatedTermsStale, normalizeExtraTerm } from "./ocrTerms";
@@ -8,13 +11,19 @@ import { findTermCollisions, generateOcrTerms, generatedTermsStale, normalizeExt
 // with no details record yet is simply off.
 export function ocrStateOf(room) {
   const p = room.placard;
-  return { ocrEnabled: !!p?.ocrEnabled, placardName: p?.placardName || "", extraTerms: p?.ocrExtraTerms || [] };
+  return {
+    ocrEnabled: !!p?.ocrEnabled,
+    placardName: p?.placardName || "",
+    extraTerms: p?.ocrExtraTerms || [],
+    photoPath: p?.ocrPhotoPath || "",
+  };
 }
 
 export function sameOcrState(a, b) {
   return (
     a.ocrEnabled === b.ocrEnabled &&
     a.placardName === b.placardName &&
+    a.photoPath === b.photoPath &&
     a.extraTerms.length === b.extraTerms.length &&
     a.extraTerms.every((t, i) => t === b.extraTerms[i])
   );
@@ -26,8 +35,8 @@ export function addToOcr(state, roomName) {
   return { ...state, ocrEnabled: true, placardName: state.placardName.trim() || roomName };
 }
 
-// Taking a room off keeps its Placard name and extra terms, so adding it
-// back restores them.
+// Taking a room off keeps its Placard name, extra terms and AR 360 image, so
+// adding it back restores them.
 export function removeFromOcr(state) {
   return { ...state, ocrEnabled: false };
 }
@@ -65,6 +74,7 @@ export function withOcrState(room, state) {
       ...room.placard,
       ocrEnabled: state.ocrEnabled,
       placardName: state.placardName,
+      ocrPhotoPath: state.photoPath,
       ocrSearchTerms: [...generateOcrTerms(state.placardName), ...state.extraTerms],
     },
   };
@@ -84,7 +94,8 @@ export function ocrCollisions(rooms, keyOf) {
   return findTermCollisions(rooms.map((r) => ({ key: keyOf(r), roomName: r.roomName, terms: r.placard.ocrSearchTerms })));
 }
 
-// Does the room have a 360 photo, which View in AR shows after a scan?
-export function hasRoom360Photo(room) {
-  return (room.placard?.photos || []).some((p) => p.kind === "360");
+// Has the room its own AR 360 image, which View in AR shows after a scan
+// (instead of the placeholder)?
+export function hasOcrPhoto(state) {
+  return !!state.photoPath;
 }

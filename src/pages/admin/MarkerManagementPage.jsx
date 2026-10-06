@@ -5,6 +5,7 @@ import { MARKER_PROBLEMS, inventoryMarkers } from "../../utils/markers";
 import { normalize } from "../../utils/fuzzy";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import IconPlaceholder from "../../components/IconPlaceholder";
+import { useConfirm } from "../../context/useConfirm";
 
 function SummaryCard({ label, count, warn }) {
   return (
@@ -23,6 +24,7 @@ function SummaryCard({ label, count, warn }) {
 // whole campus and removing markers in bulk. Editing a label is not offered
 // because the backend call behind it only carries position (see planMarkers).
 export default function MarkerManagementPage() {
+  const { confirm } = useConfirm();
   const { nodes, elevators = [], setMarkers, setSelectedNodeId } = useOutletContext();
   const navigate = useNavigate();
   const [building, setBuilding] = useState("all");
@@ -54,7 +56,13 @@ export default function MarkerManagementPage() {
   const remove = async (row) => {
     const name = row.label || markerTypeInfo(row.type).label;
     const detailsNote = row.type === "facility" ? " Its saved details are deleted too, unless another room or facility uses the name." : "";
-    if (!window.confirm(`Delete the ${markerTypeInfo(row.type).label} marker "${name}" on ${row.nodeName}?${detailsNote} This can't be undone.`)) return;
+    const ok = await confirm({
+      title: "Delete marker?",
+      message: `Delete the ${markerTypeInfo(row.type).label} marker "${name}" on ${row.nodeName}?${detailsNote} This can't be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     const node = nodes.find((n) => n.id === row.nodeId);
     setBusyId(row.id);
     try {
