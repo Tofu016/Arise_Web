@@ -10,6 +10,7 @@ import { startReview, reviewExisting, confirmReview, cancelReview } from "../uti
 import { useToast } from "../context/ToastContext";
 import IconPlaceholder from "./IconPlaceholder";
 import FilePickerButton from "./FilePickerButton";
+import { useConfirm } from "../context/useConfirm";
 
 const emptyDraft = () => ({
   id: "",
@@ -26,9 +27,10 @@ const emptyDraft = () => ({
   neighbors: [],
 });
 
-export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete }) {
+export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete, onAddMarkers }) {
   useCustomBuildingsVersion(); // re-render when an admin-created building is added
   const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [draft, setDraft] = useState(() =>
     mode === "edit" ? { ...node, rooms: node.rooms || [] } : emptyDraft()
@@ -211,10 +213,11 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     setDraft((d) => ({ ...d, rooms: (d.rooms || []).filter((r) => r !== room) }));
   };
 
-  const handleSave = () => {
+  // Saves the draft; returns the saved node, or null if it was rejected.
+  const saveDraft = () => {
     if (copyState === "copying") {
       setErrors(["The photo is still uploading. Wait for it to finish before saving."]);
-      return;
+      return null;
     }
     const normalized = {
       ...draft,
@@ -223,9 +226,32 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
     const validationErrors = validateNode(normalized, nodes, mode === "edit" ? node.id : null);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
-      return;
+      return null;
     }
     onSave(normalized, mode === "edit" ? node.id : null);
+    return normalized;
+  };
+
+  const handleSave = () => {
+    saveDraft();
+  };
+
+  // Markers live on a saved node, so a new node is saved first. Cancelling
+  // the dialog leaves the form as it was.
+  const handleAddMarkers = async () => {
+    if (mode === "edit") {
+      onAddMarkers(node.id);
+      return;
+    }
+    const ok = await confirm({
+      title: "Save node first?",
+      message: "Markers are added to a saved node. Save this node to continue to the Navigation Editor.",
+      confirmLabel: "Save",
+      cancelLabel: "Cancel",
+    });
+    if (!ok) return;
+    const saved = saveDraft();
+    if (saved) onAddMarkers(saved.id);
   };
 
   // The floors a Stairs node actually reaches, read from its neighbor links
@@ -420,7 +446,7 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
             }}
             placeholder="e.g. 203"
           />
-          <button type="button" onClick={addRoom}>Add</button>
+          <button type="button" className="admin-btn-secondary" onClick={addRoom}>Add</button>
         </div>
         <div className="room-chips">
           {(draft.rooms || []).length === 0 && (
@@ -467,16 +493,26 @@ export default function NodeForm({ mode, node, nodes, onSave, onCancel, onDelete
         </span>
       </label>
 
-      {mode === "edit" && draft.photo && (
+      <div className="node-form-photo-actions">
+        {mode === "edit" && draft.photo && (
+          <button
+            type="button"
+            className="rescan-faces-btn"
+            onClick={handleRescanExisting}
+            disabled={rescanning || copyState === "copying"}
+          >
+            {rescanning ? "Loading photo…" : <><IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo</>}
+          </button>
+        )}
         <button
           type="button"
           className="rescan-faces-btn"
-          onClick={handleRescanExisting}
-          disabled={rescanning || copyState === "copying"}
+          onClick={handleAddMarkers}
+          disabled={copyState === "copying"}
         >
-          {rescanning ? "Loading photo…" : <><IconPlaceholder name="edit-pencil" /> Edit blur regions on this photo</>}
+          Add markers
         </button>
-      )}
+      </div>
 
       {previewUrl && (
         <img src={previewUrl} alt="preview" className="photo-preview" />

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import FilterPanel from "../../components/FilterPanel";
-import { GraphEditorBanners, GraphEditorPreview, LinkList, AddLinkBox } from "../../components/GraphEditorControls";
+import { GraphEditorPreview, LinkList, AddLinkBox } from "../../components/GraphEditorControls";
 import { floorLabel, buildingLabel, floorsForBuilding, EMERGENCY_EXIT_MARKER, MARKER_TYPES, markerTypeInfo } from "../../utils/constants";
 import { newMarkerId } from "../../utils/placement";
 import { useGraphEditor } from "../../hooks/useGraphEditor";
@@ -290,17 +290,17 @@ export default function NavigationEditorPage() {
       <div className="navigation-editor-main">
         <h2 className="admin-page-heading">Navigation Editor</h2>
 
-        <GraphEditorBanners editor={editor}>
+        <GraphEditorPreview editor={editor} itemNoun="node">
           {settingStartingView && (
             <div className="placing-banner">
               Drag to orbit to the view visitors should land on when dropped here from the floor/building picker, then Save.
-              <button onClick={editor.requestCapture}>Save this view</button>
-              <button onClick={cancelStartingView}>Cancel</button>
+              <div className="placing-banner-actions">
+                <button className="placing-banner-save" onClick={editor.requestCapture}>Save this view</button>
+                <button onClick={cancelStartingView}>Cancel</button>
+              </div>
             </div>
           )}
-        </GraphEditorBanners>
-
-        <GraphEditorPreview editor={editor} itemNoun="node" />
+        </GraphEditorPreview>
 
         <div className="navigation-editor-title-row">
           <h3>{current.name}</h3>
@@ -551,7 +551,7 @@ export default function NavigationEditorPage() {
                           ))}
                         </div>
                         {elevatorFormError && <p className="directions-error">{elevatorFormError}</p>}
-                        <button onClick={confirmCreateElevator}>Create elevator</button>
+                        <button className="admin-btn-secondary" onClick={confirmCreateElevator}>Create elevator</button>
                       </div>
                     ) : (
                       selectedElevator && (
@@ -583,10 +583,10 @@ export default function NavigationEditorPage() {
                     onKeyDown={(e) => e.key === "Enter" && confirmStartPlacingNewMarker()}
                   />
                 )}
-                <button onClick={confirmStartPlacingNewMarker} disabled={!canConfirmMarker}>
+                <button className="admin-btn-secondary" onClick={confirmStartPlacingNewMarker} disabled={!canConfirmMarker}>
                   Place on panorama
                 </button>
-                <button onClick={() => setAddingMarker(false)}>Cancel</button>
+                <button className="admin-btn-secondary" onClick={() => setAddingMarker(false)}>Cancel</button>
               </div>
             )}
           </div>

@@ -281,7 +281,7 @@ document database.
   - **Room details** — `placard_dialogs` and `placard_search_terms`. The
     mobile app's placard scanner matches the rooms with `ocr_enabled` set,
     by search terms generated from their `placard_name` or typed in as
-    extras (`is_extra`); after a scan its AR portal shows `ocr_photo_path`.
+    extras (`is_extra`); after a scan its AR portal pages through `placard_ocr_photos`.
     The one-row `ocr_settings.scanner_message` is shown on the scanner. See
     "OCR Management" in the admin guide.
 - **App feedback** — `app_feedback` table, general experience feedback from
@@ -508,8 +508,14 @@ Type, Photo status (all, missing, or has a photo filename), and a search
 - **Room and Facility Editor** — each room's and facility's details
   (description, contact number, link, photos, 360° view), shown on the room
   panel and used by search. A facility is a Facility marker; it is renamed
-  here (which relabels the marker) but placed and moved in Virtual Map
-  Navigation Editor.
+  here (which relabels the marker). The form shows the node's panorama, where
+  the room's or facility's marker can be placed or repositioned; the move is
+  saved with the form, and Navigation Editor can still place and move every
+  marker. The node field is a searchable dropdown. **+ New Room or Facility**
+  (top right, beside the list) opens the same form in a dialog to create one:
+  a room is added to its node's "Rooms served" (its marker optional), a
+  facility needs its marker placed first. The node is prefilled from the node
+  selected in the list, or the selected room's or facility's node.
 ### Analytics
 
 **Analytics** — session and behavior tracking for `/`: sessions over time,
@@ -567,11 +573,16 @@ removed one at a time or all shown at once. Each room on OCR has:
   phone may read (en dash, curly quote, ...) counts as the plain one.
 - **extra search terms** typed in by an admin, for a misread seen on a real
   phone, say.
-- an **AR 360 image** (`ocr_photo_path`): what the phone's AR portal shows
-  after a scan of this room. It is uploaded here (stored under `room360/`)
-  and is separate from the room's photos, which the room card's 360° VIEW
-  keeps showing. A room without one shows the "NO IMAGE" placeholder
-  panorama (`src/assets/images/no-image.jpg`, copied into the mobile app).
+- **AR 360 images** (`placard_ocr_photos`, up to 20, in order): what the
+  phone's AR portal shows after a scan of this room. The visitor starts on
+  the first and pages through the rest with the portal's previous and next
+  buttons, which show which one they're on ("2 / 5"). They are uploaded here
+  (stored under `room360/`) and are separate from the room's photos, which
+  the room card's 360° VIEW keeps showing. Each one goes through the same
+  manual blur review as a room photo before it is uploaded, and **Edit
+  blur** on a tile reopens a stored one. A room without any shows the
+  "NO IMAGE" placeholder panorama (`src/assets/images/no-image.jpg`, copied
+  into the mobile app).
 
 The **scanner message** (`ocr_settings.scanner_message`, one for every room,
 up to 300 characters) is shown at the top of the phone's placard scanner, in

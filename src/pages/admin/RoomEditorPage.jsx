@@ -4,14 +4,13 @@ import NodeList from "../../components/NodeList";
 import RoomList from "../../components/RoomList";
 import FilterPanel from "../../components/FilterPanel";
 import { usePlacardDialogs } from "../../hooks/usePlacardDialogs";
-import { useBlurReview } from "../../hooks/useBlurReview";
-import RoomPhotoGallery from "../../components/admin/RoomPhotoGallery";
-import { photoFilename, uploadPhoto } from "../../utils/photoStore";
+import { useRoomPhotoUploads } from "../../hooks/useRoomPhotoUploads";
+import RoomDetailsForm from "../../components/admin/RoomDetailsForm";
+import CreateRoomDialog from "../../components/admin/CreateRoomDialog";
 import { useToast } from "../../context/ToastContext";
-import IconPlaceholder from "../../components/IconPlaceholder";
-import linkIcon from "../../assets/icons/link.svg";
-import { listAllRooms, namesOfKind } from "../../utils/search";
-import { allBuildings, buildingLabel, floorLabel } from "../../utils/constants";
+import { listAllRooms, namesOfKind, isRoomNameTaken } from "../../utils/search";
+import { markersAfterSave } from "../../utils/roomMarkers";
+import { buildingLabel, floorLabel } from "../../utils/constants";
 import { useConfirm } from "../../context/useConfirm";
 
 const defaultFilters = {
@@ -21,34 +20,6 @@ const defaultFilters = {
   photoStatus: "all",
   search: "",
 };
-
-function slugify(text) {
-  return (text || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-
-function normalize(name) {
-  return (name || "").trim().toUpperCase();
-}
-
-// Checks whether newName is already used by any room or facility on any
-// node — since the name is the key that links a node's "Rooms served" entry
-// (or a facility marker's label) to its placardDialogs record, two entries
-// silently sharing a name would share one record, and break both search and
-// the mobile app's OCR matching, unable to tell which one is the "real"
-// match. currentNodeId/currentRoomName are excluded from the check — renaming
-// to the name it already has (a no-op) shouldn't conflict with itself.
-function isRoomNameTaken(newName, nodes, currentNodeId, currentRoomName) {
-  const key = normalize(newName);
-  for (const n of nodes) {
-    for (const kind of ["room", "facility"]) {
-      for (const r of namesOfKind(n, kind)) {
-        if (n.id === currentNodeId && normalize(r) === normalize(currentRoomName)) continue;
-        if (normalize(r) === key) return true;
-      }
-    }
-  }
-  return false;
-}
 
 const LIST_MODES = [
   { id: "rooms", label: "Rooms and Facilities" },
@@ -69,27 +40,6 @@ const LIST_MODES = [
 // A room can be reached two ways: straight from the Rooms list, or through
 // its node in the Nodes list (the row, or one of its room pills). Either
 // way a selection is a (node, room) pair.
-const CENTERED = { x: 50, y: 50 };
-
-const uniqueSuffix = () => Date.now().toString(36);
-
-// An equirectangular 360 photo is exactly twice as wide as it is tall, so a
-// photo of that shape is marked 360 up front; the admin can still flip it.
-function guessKind(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(Math.abs(img.naturalWidth / img.naturalHeight - 2) < 0.02 ? "360" : "flat");
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve("flat");
-    };
-    img.src = url;
-  });
-}
 
 export default function RoomEditorPage() {
   const { alert } = useConfirm();
@@ -121,17 +71,26 @@ export default function RoomEditorPage() {
   const isFacility = !!selectedRoom && facilities.includes(selectedRoom);
   const kindName = isFacility ? "Facility" : "Room";
 
-  const [roomTitle, setRoomTitle] = useState(selectedRoom || "");
-  const [roomNodeId, setRoomNodeId] = useState(node?.id || "");
-  const [description, setDescription] = useState("");
-  const [department, setDepartment] = useState("");
-  const [contactNumber, setContactNumber] = useState("");
-  const [link, setLink] = useState("");
-  // The room's photos in the order visitors see them, each marked flat or 360.
-  const [photos, setPhotos] = useState([]); // [{ path, kind, x, y }]
-  const [uploadState, setUploadState] = useState("idle"); // idle | uploading | done | error
-  // Bumped for a photo edited in place (same path, new bytes), so its preview reloads.
-  const [photoVersions, setPhotoVersions] = useState({});
+  const kind = isFacility ? "facility" : "room";
+  const [showCreate, setShowCreate] = useState(false);
+
+  // The form's draft (see RoomDetailsForm). Its marker placement is part of
+  // it, so a marker moved here is written on Save and undone by Cancel,
+  // like every other field.
+  const savedDraft = () => ({
+    title: selectedRoom || "",
+    nodeId: node?.id || "",
+    description: existing?.roomDescription || "",
+    department: existing?.department || "",
+    contactNumber: existing?.contactNumber || "",
+    link: existing?.link || "",
+    photos: existing?.photos || [],
+    markerPlacement: null,
+  });
+  const [draft, setDraft] = useState(savedDraft);
+  const setPhotos = (update) => setDraft((d) => ({ ...d, photos: typeof update === "function" ? update(d.photos) : update }));
+  const photoUploads = useRoomPhotoUploads(setPhotos);
+  const { uploadState, setUploadState } = photoUploads;
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -141,13 +100,7 @@ export default function RoomEditorPage() {
   // a full page the way a modal had, so reverting the form in place is
   // the sensible reading of what Cancel means here.
   const resetFromSaved = () => {
-    setRoomTitle(selectedRoom || "");
-    setRoomNodeId(node?.id || "");
-    setDescription(existing?.roomDescription || "");
-    setDepartment(existing?.department || "");
-    setContactNumber(existing?.contactNumber || "");
-    setLink(existing?.link || "");
-    setPhotos(existing?.photos || []);
+    setDraft(savedDraft());
     setUploadState("idle");
     setSavedFlash(false);
   };
@@ -159,57 +112,19 @@ export default function RoomEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoom, existing?.id, node?.id]);
 
-  const { requestBlur, reblurStored, blurDialog } = useBlurReview();
-  // "Edit blur regions" on an already-saved photo. Saves straight over it;
-  // if that ever lands on a different path (old .jpg re-saved as .webp) the
-  // photo adopts the new one, and Save then stores it on the room.
-  const handleReblur = async (path) => {
-    try {
-      const saved = await reblurStored(path);
-      if (!saved) return;
-      setPhotos((prev) => prev.map((p) => (p.path === path ? { ...p, path: saved.path } : p)));
-      setPhotoVersions((prev) => ({ ...prev, [saved.path]: (prev[saved.path] || 0) + 1 }));
-      toast.success("Blur regions updated.");
-    } catch (err) {
-      toast.error(err.message || "Couldn't update the photo.");
-    }
-  };
-
-  // Each picked file gets its own blur review, one after another; cancelling
-  // one review skips only that file. Every file needs a name of its own or it
-  // would replace the others.
-  const handleFilesPick = async (e) => {
-    const input = e.target;
-    const files = Array.from(input.files || []);
-    input.value = ""; // so picking the same file again (e.g. after Cancel) still fires
-    if (!files.length || !selectedRoom || !node) return;
-    setUploadState("uploading");
-    let added = 0;
-    try {
-      for (const file of files) {
-        const kind = await guessKind(file);
-        const reviewed = await requestBlur(file); // null = cancelled
-        if (!reviewed) continue;
-        const filename = photoFilename(file, `${slugify(selectedRoom)}-${uniqueSuffix()}-${added}`);
-        const { path } = await uploadPhoto("roomPhoto", reviewed, { building: node.building, filename });
-        setPhotos((prev) => [...prev, { path, kind, ...CENTERED }]);
-        added++;
-      }
-      setUploadState(added ? "done" : "idle");
-      if (added) setTimeout(() => setUploadState((s) => (s === "done" ? "idle" : s)), 2500);
-    } catch (err) {
-      setUploadState("error");
-      toast.error(err.message || "Couldn't upload the room photos.");
-    }
+  const handleFilesPick = (e) => {
+    if (!selectedRoom || !node) return;
+    photoUploads.pickFiles(e, { name: selectedRoom, building: node.building });
   };
 
   const handleSave = async () => {
     if (!selectedRoom || !node || uploadState === "uploading") return;
 
-    const trimmedTitle = roomTitle.trim();
+    const trimmedTitle = draft.title.trim();
     const isRenaming = trimmedTitle !== selectedRoom;
-    const targetNode = isFacility ? node : nodes.find((n) => n.id === roomNodeId) || node;
+    const targetNode = isFacility ? node : nodes.find((n) => n.id === draft.nodeId) || node;
     const isMoving = targetNode.id !== node.id;
+    const placement = draft.markerPlacement;
 
     if (isRenaming) {
       if (!trimmedTitle) {
@@ -222,52 +137,63 @@ export default function RoomEditorPage() {
       }
     }
 
+    // No OCR fields here: the scanner matches a room by its Placard name
+    // and search terms, which the OCR Management page owns, and a rename
+    // here leaves them alone (that page flags the names drifting apart).
+    //
+    // saveRoomDialog looks the existing record up by the OLD name
+    // (selectedRoom) — passing the new name in the patch renames it in
+    // place, same record, not a new one, since the record's own id is
+    // never tied to the room name.
+    const saveDetails = () =>
+      saveRoomDialog(selectedRoom, {
+        roomName: trimmedTitle,
+        roomDescription: draft.description.trim(),
+        department: draft.department.trim(),
+        contactNumber: draft.contactNumber.trim(),
+        link: draft.link.trim(),
+        photos: draft.photos,
+      });
+
     setSaving(true);
     try {
       if (isFacility) {
-        // A facility's name is its marker's label. Every facility marker on
-        // this node with the old label takes the new one together, so none
-        // is left pointing at a record that no longer matches.
-        if (isRenaming) {
-          await setMarkers(
-            node.id,
-            (node.markers || []).map((m) => (m.type === "facility" && (m.label || "").trim() === selectedRoom ? { ...m, label: trimmedTitle } : m))
-          );
+        // A facility's name is its marker's label. Its details are renamed
+        // first: a marker change deletes the details of any facility name it
+        // leaves behind, which would otherwise be this record, mid-rename.
+        // Every facility marker on this node with the old label takes the
+        // new one together, so none is left pointing at a stale record.
+        await saveDetails();
+        const markers = markersAfterSave(node, { kind, oldName: selectedRoom, newName: trimmedTitle, placement });
+        if (markers) await setMarkers(node.id, markers);
+      } else {
+        if (isMoving) {
+          // Added to the new node before it leaves the old one: if the second
+          // write fails the room is listed twice (fixable here) rather than
+          // on no node at all. Its saved details are keyed by room name, not
+          // node, so they follow it with no extra write. Its marker can't
+          // follow (it was placed in the old node's photo), so it is removed
+          // there, and placed anew on the new node if one was picked.
+          await updateNode(targetNode.id, { rooms: [...(targetNode.rooms || []), trimmedTitle] });
+          await updateNode(node.id, { rooms: (node.rooms || []).filter((r) => r !== selectedRoom) });
+          const left = markersAfterSave(node, { kind, oldName: selectedRoom, remove: true });
+          if (left) await setMarkers(node.id, left);
+        } else if (isRenaming) {
+          // Replace the old name with the new one at the same position,
+          // leaving every other room on this node untouched.
+          await updateNode(node.id, { rooms: (node.rooms || []).map((r) => (r === selectedRoom ? trimmedTitle : r)) });
         }
-      } else if (isMoving) {
-        // Added to the new node before it leaves the old one: if the second
-        // write fails the room is listed twice (fixable here) rather than
-        // on no node at all. Its saved details are keyed by room name, not
-        // node, so they follow it with no extra write.
-        await updateNode(targetNode.id, { rooms: [...(targetNode.rooms || []), trimmedTitle] });
-        await updateNode(node.id, { rooms: (node.rooms || []).filter((r) => r !== selectedRoom) });
-      } else if (isRenaming) {
-        // Update "Rooms served" first — replace the old name with the new
-        // one at the same position, leaving every other room on this node
-        // untouched.
-        const updatedRooms = (node.rooms || []).map((r) => (r === selectedRoom ? trimmedTitle : r));
-        await updateNode(node.id, { rooms: updatedRooms });
+        // A room marker reads the room's name, so a rename relabels it too.
+        const markers = markersAfterSave(targetNode, { kind, oldName: selectedRoom, newName: trimmedTitle, placement });
+        if (markers) await setMarkers(targetNode.id, markers);
+        await saveDetails();
       }
-
-      // No OCR fields here: the scanner matches a room by its Placard name
-      // and search terms, which the OCR Management page owns, and a rename
-      // here leaves them alone (that page flags the names drifting apart).
-      //
-      // saveRoomDialog looks the existing record up by the OLD name
-      // (selectedRoom) — passing the new name in the patch renames it in
-      // place, same record, not a new one, since the record's own id is
-      // never tied to the room name.
-      await saveRoomDialog(selectedRoom, {
-        roomName: trimmedTitle,
-        roomDescription: description.trim(),
-        department: department.trim(),
-        contactNumber: contactNumber.trim(),
-        link: link.trim(),
-        photos,
-      });
 
       if (isMoving) setSelectedNodeId(targetNode.id);
       if (isRenaming || isMoving) setSelectedRoom(trimmedTitle);
+      // Nothing re-keys on a marker-only save, so drop the placement here;
+      // the marker itself now shows where it was put.
+      setDraft((d) => ({ ...d, markerPlacement: null }));
 
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
@@ -279,14 +205,11 @@ export default function RoomEditorPage() {
     }
   };
 
-  // The Node picker's options, grouped by building in sidebar order. A
-  // node on a building that's no longer listed still needs an option, or
-  // the picker can't show the node its room is actually on.
-  const buildings = allBuildings();
-  const nodeOptionGroups = [
-    ...buildings.map((b) => ({ id: b.id, label: b.label, nodes: nodes.filter((n) => n.building === b.id) })),
-    { id: "__other", label: "Other", nodes: nodes.filter((n) => !buildings.some((b) => b.id === n.building)) },
-  ].filter((g) => g.nodes.length > 0);
+  const handleCreated = (nodeId, name) => {
+    setShowCreate(false);
+    setListMode("rooms");
+    handleSelectRoom(nodeId, name);
+  };
 
   // Takes the place of the list's usual counts header: which list the
   // sidebar shows matters more on this page than how many have photos.
@@ -342,16 +265,20 @@ export default function RoomEditorPage() {
   return (
     <div className="room-editor-page">
       <div className="room-editor-main">
-        <h2 className="admin-page-heading">Room and Facility Editor</h2>
+        <div className="room-editor-header">
+          <h2 className="admin-page-heading">Room and Facility Editor</h2>
+          <button type="button" className="primary room-editor-create-btn" onClick={() => setShowCreate(true)}>
+            + New Room or Facility
+          </button>
+        </div>
 
         {!node && (
-          <p className="empty-hint">Select a room, a facility or a node from the list on the right first.</p>
+          <p className="empty-hint">Select a room, a facility or a node from the list on the right, or create a new one.</p>
         )}
 
         {node && rooms.length === 0 && (
           <p className="empty-hint">
-            "{node.name}" has no rooms or facilities yet. Add a room under "Rooms served" in Node Editor, or a
-            facility marker in Navigation Editor, first.
+            "{node.name}" has no rooms or facilities yet. Create one with "New Room or Facility" above.
           </p>
         )}
 
@@ -381,93 +308,27 @@ export default function RoomEditorPage() {
               </div>
             )}
 
-            {/* Top row: title/description (left) and department/contact number/link
-                (right) side by side. Below it, the photo
-                gallery spans the full width. */}
-            <div className="room-editor-top-row">
-              <div className="room-editor-top-col">
-                <label>
-                  {kindName} title
-                  <input type="text" value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} />
-                </label>
-                <p className="field-hint">
-                  {isFacility
-                    ? "Renaming here updates this facility's marker label and its saved details together; "
-                    : 'Renaming here updates both "Rooms served" on this node and this room\'s saved details together; '}
-                  names must stay unique across every room and facility on campus.
-                </p>
-
-                <label>
-                  Node
-                  <select value={roomNodeId} onChange={(e) => setRoomNodeId(e.target.value)} disabled={isFacility}>
-                    {nodeOptionGroups.map((g) => (
-                      <optgroup key={g.id} label={g.label}>
-                        {g.nodes.map((n) => (
-                          <option key={n.id} value={n.id}>
-                            {n.name} ({floorLabel(n.floor)}, {n.id})
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </label>
-                <p className="field-hint">
-                  {isFacility
-                    ? "A facility stays on the node whose panorama its marker is placed in. Move the marker itself in Navigation Editor."
-                    : "Where this room is reached from. Choosing another node moves the room to that node's \"Rooms served\" on Save; its details and photos come with it."}
-                </p>
-
-                <label>
-                  Description
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
-                </label>
-              </div>
-
-              <div className="room-editor-top-col">
-                <label>
-                  Department
-                  <input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Registrar's Office"
-                  />
-                </label>
-
-                <label>
-                  <IconPlaceholder name="call" /> Contact number
-                  <input
-                    type="tel"
-                    value={contactNumber}
-                    onChange={(e) => setContactNumber(e.target.value)}
-                    placeholder="e.g. (02) 8123-4567 loc. 210"
-                    maxLength={50}
-                  />
-                </label>
-                <p className="field-hint">Optional: shown on the public panel.</p>
-
-                <label>
-                  <img src={linkIcon} alt="" className="icon-placeholder-img" /> Link
-                  <input
-                    type="text"
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    placeholder="https://…"
-                    className="room-edit-link-input"
-                  />
-                </label>
-                <p className="field-hint">Optional: shown as a clickable link on the public panel.</p>
-              </div>
-            </div>
-
-            <RoomPhotoGallery
-              photos={photos}
-              versions={photoVersions}
-              roomName={selectedRoom}
-              uploadState={uploadState}
-              onChange={setPhotos}
+            <RoomDetailsForm
+              draft={draft}
+              onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+              kind={kind}
+              nodes={nodes}
+              nodeDisabled={isFacility}
+              titleHint={
+                (isFacility
+                  ? "Renaming here updates this facility's marker label and its saved details together; "
+                  : 'Renaming here updates "Rooms served" on this node, the room\'s marker and its saved details together; ') +
+                "names must stay unique across every room and facility on campus."
+              }
+              nodeHint={
+                isFacility
+                  ? "A facility stays on the node whose panorama its marker is placed in. Move the marker below, or in Navigation Editor."
+                  : 'Where this room is reached from. Choosing another node moves the room to that node\'s "Rooms served" on Save; its details and photos come with it, and its marker is placed anew there.'
+              }
+              markerRoomName={draft.nodeId === node.id ? selectedRoom : null}
+              markerFocusKey={selectedRoom}
+              photoUploads={photoUploads}
               onFilesPick={handleFilesPick}
-              onReblur={handleReblur}
             />
 
             <div className="form-actions">
@@ -492,7 +353,18 @@ export default function RoomEditorPage() {
       </div>
 
       {sidebar}
-      {blurDialog}
+      {photoUploads.blurDialog}
+      {showCreate && (
+        <CreateRoomDialog
+          nodes={nodes}
+          initialNodeId={selectedNodeId}
+          updateNode={updateNode}
+          setMarkers={setMarkers}
+          saveRoomDialog={saveRoomDialog}
+          onCreated={handleCreated}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
     </div>
   );
 }

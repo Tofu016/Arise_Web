@@ -5,6 +5,7 @@ import PhotoFlowNode from "./PhotoFlowNode";
 import { getLayoutedElements } from "../utils/flowchartLayout";
 import { allBuildings, buildingLabel, floorsForBuilding, floorLabel } from "../utils/constants";
 import { useCustomBuildingsVersion } from "../utils/buildingStore";
+import restartIcon from "../assets/icons/restart.svg";
 import { useConfirm } from "../context/useConfirm";
 
 const nodeTypes = { photo: PhotoFlowNode };
@@ -88,6 +89,12 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
   const [selectedFloor, setSelectedFloor] = useState("all");
 
   const floorOptions = floorsForBuilding(selectedBuilding);
+  const manualCount = nodes.filter(
+    (n) =>
+      n.building === selectedBuilding &&
+      (selectedFloor === "all" || n.floor === selectedFloor) &&
+      n.flowchartPosition
+  ).length;
 
   // Controlled node/edge state (useNodesState + onNodesChange), not a
   // plain useMemo-computed array — this is what lets React Flow actually
@@ -155,6 +162,12 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
     for (const n of positioned) {
       onUpdateNode?.(n.id, { flowchartPosition: null });
     }
+    // The rebuild effect above deliberately ignores `nodes`, so the canvas
+    // must be re-laid-out here or the reset would only show after a scope change.
+    const { flowNodes: rebuilt } = buildFlowElements(
+      inScope.map((n) => ({ ...n, flowchartPosition: null }))
+    );
+    setFlowNodes(rebuilt);
   };
 
   return (
@@ -195,8 +208,15 @@ export default function FlowchartView({ nodes, onUpdateNode, onClose }) {
           </label>
 
           {onUpdateNode && flowNodes.length > 0 && (
-            <button type="button" className="flowchart-reset-btn" onClick={handleResetLayout}>
-              ↺ Reset layout
+            <button
+              type="button"
+              className="flowchart-reset-btn"
+              onClick={handleResetLayout}
+              disabled={manualCount === 0}
+              title={manualCount === 0 ? "Every node is already on the automatic layout" : "Clear manually placed positions in this view"}
+            >
+              <img className="flowchart-reset-icon" src={restartIcon} alt="" aria-hidden="true" />
+              Reset layout{manualCount > 0 ? ` (${manualCount})` : ""}
             </button>
           )}
 

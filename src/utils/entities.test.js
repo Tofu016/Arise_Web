@@ -208,13 +208,13 @@ describe("room placard dialogs", () => {
       room_name: "GD1-101",
       ocr_enabled: 1,
       placard_name: "GD1-101",
-      ocr_photo_path: "room360/gd1/gd1-101.webp",
+      ocr_photos: ["room360/gd1/gd1-101.webp", "room360/gd1/gd1-101b.webp"],
       search_terms: [{ term: "gd1-101", is_extra: 0 }, { term: "gd1101", is_extra: 0 }, { term: "rm101", is_extra: 1 }],
     };
     expect(toDialog(row)).toMatchObject({
       ocrEnabled: true,
       placardName: "GD1-101",
-      ocrPhotoPath: "room360/gd1/gd1-101.webp",
+      ocrPhotos: ["room360/gd1/gd1-101.webp", "room360/gd1/gd1-101b.webp"],
       ocrSearchTerms: ["gd1-101", "gd1101", "rm101"],
       ocrGeneratedTerms: ["gd1-101", "gd1101"],
       ocrExtraTerms: ["rm101"],
@@ -224,8 +224,8 @@ describe("room placard dialogs", () => {
   it("the OCR save generates terms for an eligible room and clears them for one taken off", () => {
     expect(
       ocrSaveBody([
-        { roomName: "Office of the Dean", ocrEnabled: true, placardName: " Dean's Office ", extraTerms: ["dean"], photoPath: "room360/a/dean.webp" },
-        { roomName: "Canteen", ocrEnabled: false, placardName: "Canteen", extraTerms: ["food"], photoPath: "" },
+        { roomName: "Office of the Dean", ocrEnabled: true, placardName: " Dean's Office ", extraTerms: ["dean"], photoPaths: ["room360/a/dean.webp", "room360/a/dean2.webp"] },
+        { roomName: "Canteen", ocrEnabled: false, placardName: "Canteen", extraTerms: ["food"], photoPaths: [] },
       ])
     ).toEqual({
       rooms: [
@@ -235,9 +235,9 @@ describe("room placard dialogs", () => {
           placard_name: "Dean's Office",
           search_terms: ["dean'soffice", "deansoffice", "dean's office"],
           extra_search_terms: ["dean"],
-          ocr_photo_path: "room360/a/dean.webp",
+          ocr_photos: ["room360/a/dean.webp", "room360/a/dean2.webp"],
         },
-        { room_name: "Canteen", ocr_enabled: 0, placard_name: "Canteen", search_terms: [], extra_search_terms: ["food"], ocr_photo_path: "" },
+        { room_name: "Canteen", ocr_enabled: 0, placard_name: "Canteen", search_terms: [], extra_search_terms: ["food"], ocr_photos: [] },
       ],
     });
   });

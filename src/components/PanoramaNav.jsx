@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { MOUSE } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { initialCameraPosition, zoomedFov } from "../utils/panoramaMath";
 import { PanoramaSphere, FadingSphere } from "./panorama/Spheres";
@@ -74,6 +75,13 @@ function isTypingTarget(target) {
  *  - captureRequestId: optional — admin editors only. Bump this (any changing value) to capture the live camera's current yaw/pitch once, reported via onCaptureAngle; used to record a default/arrival view by orbiting to it and confirming, rather than clicking a point on the sphere
  *  - onCaptureAngle({yaw, pitch}): required when captureRequestId is used
  */
+// While placing, a left click puts the marker/arrow down, so right-drag is
+// the dependable way to look around (OrbitControls maps RIGHT to pan, which
+// is disabled here, so it would otherwise do nothing).
+const PLACING_MOUSE_BUTTONS = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
+
+const DEFAULT_MOUSE_BUTTONS = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN };
+
 export default function PanoramaNav({
   url,
   ready = true,
@@ -341,15 +349,15 @@ export default function PanoramaNav({
           }
         />
       ))}
-      <OrbitControls makeDefault enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-(touchInput ? TOUCH_ROTATE_SPEED : MOUSE_ROTATE_SPEED)} target={[0, 0, 0]} />
+      <OrbitControls makeDefault mouseButtons={placing ? PLACING_MOUSE_BUTTONS : DEFAULT_MOUSE_BUTTONS} enableDamping={false} enablePan={false} enableZoom={false} rotateSpeed={-(touchInput ? TOUCH_ROTATE_SPEED : MOUSE_ROTATE_SPEED)} target={[0, 0, 0]} />
     </Canvas>
   );
 
   return (
-    <div className="pano-zoom-wrap" ref={wrapRef}>
+    <div className="pano-zoom-wrap" ref={wrapRef} onContextMenu={placing ? (e) => e.preventDefault() : undefined}>
       {canvas}
       {/* Hidden, like the hotspot previews, while a menu/dialog is open over the panorama. */}
-      {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} showReset />}
+      {zoomable && !previewsHidden && <ZoomControls zoom={zoom} setZoom={setZoom} />}
       {wheelZoomable && <ZoomControls zoom={zoom} setZoom={setZoom} desktop />}
       {nothingAheadHint && <div className="pano-nothing-ahead-hint">No location in front.</div>}
     </div>

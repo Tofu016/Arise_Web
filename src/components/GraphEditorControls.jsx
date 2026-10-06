@@ -9,43 +9,11 @@ import PanoramaNav from "./PanoramaNav";
 // a page already holds it in that shape, so passing it whole costs
 // callers nothing extra to learn.
 
-// The three placing/capture banners, in the order they can appear. `children`
-// renders after them, for a page's own extra banner (NavigationEditorPage's
-// "settingStartingView").
-export function GraphEditorBanners({ editor, children }) {
-  const { placingFor, placingMarker, defaultViewTarget, byId } = editor;
-  return (
-    <>
-      {placingFor && (
-        <div className="placing-banner">
-          Click on the panorama to place the arrow toward "{byId[placingFor]?.name || placingFor}"
-          <button onClick={editor.cancelLinkPlacement}>Cancel</button>
-        </div>
-      )}
-      {placingMarker && (
-        <div className="placing-banner">
-          Click on the panorama to place the marker
-          {placingMarker.mode === "new" ? ` "${placingMarker.marker.label}"` : ""}
-          <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
-        </div>
-      )}
-      {defaultViewTarget && (
-        <div className="placing-banner">
-          Drag to orbit to the view visitors should see on arrival here from "{defaultViewTarget.fromName}", then Save.
-          <button onClick={editor.requestCapture}>Save this view</button>
-          <button onClick={editor.cancelSetDefaultView}>Cancel</button>
-        </div>
-      )}
-      {children}
-    </>
-  );
-}
-
 // The panorama itself, plus the missing/loading photo notes and the
 // look-around hint with its Back button. `itemNoun` is "node" or "stop",
 // for the missing-photo copy.
-export function GraphEditorPreview({ editor, itemNoun }) {
-  const { current, hotspots, markers, photoUrl, photoMissing, history } = editor;
+export function GraphEditorPreview({ editor, itemNoun, children }) {
+  const { current, hotspots, markers, photoUrl, photoMissing, history, defaultViewTarget, placingFor, placingMarker, byId } = editor;
   return (
     <>
       <div className="preview-screen navigation-editor-screen">
@@ -72,12 +40,48 @@ export function GraphEditorPreview({ editor, itemNoun }) {
       {current.photo && !photoUrl && !photoMissing && (
         <p className="photo-missing-note">Loading photo…</p>
       )}
-      <p className="preview-hint">
-        Left-click and drag to look around · click a link to change locations
-        {history.length > 0 && (
-          <button className="back-btn" onClick={editor.goBack}>← Back</button>
-        )}
-      </p>
+      {editor.placing ? (
+        // Keyed on the placing session so the red blink replays each time placing starts.
+        <p className="preview-hint preview-hint-placing" key={`${placingFor || ""}:${placingMarker ? placingMarker.mode : ""}`}>
+          <span className="preview-hint-blink">
+            Right-click and drag to look around while repositioning · left-click to place
+          </span>
+        </p>
+      ) : (
+        <p className="preview-hint">
+          Left-click and drag to look around · click a link to change locations
+          {history.length > 0 && (
+            <button className="back-btn" onClick={editor.goBack}>Back</button>
+          )}
+        </p>
+      )}
+      {placingFor && (
+        <div className="placing-banner">
+          Click on the panorama to place the arrow toward "{byId[placingFor]?.name || placingFor}"
+          <div className="placing-banner-actions">
+            <button onClick={editor.cancelLinkPlacement}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {placingMarker && (
+        <div className="placing-banner">
+          Click on the panorama to place the marker
+          {placingMarker.mode === "new" ? ` "${placingMarker.marker.label}"` : ""}
+          <div className="placing-banner-actions">
+            <button onClick={editor.cancelMarkerPlacement}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {defaultViewTarget && (
+        <div className="placing-banner">
+          Drag to orbit to the view visitors should see on arrival here from "{defaultViewTarget.fromName}", then Save.
+          <div className="placing-banner-actions">
+            <button className="placing-banner-save" onClick={editor.requestCapture}>Save this view</button>
+            <button onClick={editor.cancelSetDefaultView}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {children}
     </>
   );
 }
@@ -99,13 +103,13 @@ export function LinkList({ editor }) {
                 · {h.defaultYaw != null ? "manual default view" : "automatic default view"}
               </span>
             </span>
-            <div className="link-actions">
+            <div className="link-actions link-actions-stack">
               <button onClick={() => editor.startRepositionLink(h.id)}>Reposition</button>
               <button onClick={() => editor.startSetDefaultView(h.id)}>
                 {h.defaultYaw != null ? "Change" : "Override"} default view
               </button>
               {h.defaultYaw != null && (
-                <button onClick={() => editor.clearDefaultView(h.id)}>Back to automatic</button>
+                <button onClick={() => editor.clearDefaultView(h.id)}>Remove default view</button>
               )}
               <button className="danger" onClick={() => editor.removeLink(h.id)}>Remove</button>
             </div>

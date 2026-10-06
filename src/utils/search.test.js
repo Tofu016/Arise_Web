@@ -11,6 +11,8 @@ import {
   rankNodeMatches,
   listAllRooms,
   rankRoomMatches,
+  markersForRoom,
+  isRoomNameTaken,
 } from "./search";
 
 const nodes = [
@@ -250,5 +252,40 @@ describe("rankRoomMatches", () => {
 
   it("forgives typos in the room name", () => {
     expect(names("registar")).toEqual(["Registrar"]);
+  });
+});
+
+describe("markersForRoom", () => {
+  const node = {
+    markers: [
+      { id: "m1", type: "facility", label: "Clinic" },
+      { id: "m2", type: "room", label: " clinic " },
+      { id: "m3", type: "facility", label: "CLINIC" },
+      { id: "m4", type: "facility", label: "Library" },
+    ],
+  };
+  it("returns every marker of that kind named for the room", () => {
+    expect(markersForRoom(node, "facility", "Clinic").map((m) => m.id)).toEqual(["m1", "m3"]);
+    expect(markersForRoom(node, "room", "Clinic").map((m) => m.id)).toEqual(["m2"]);
+  });
+  it("returns nothing for a blank name or a node without markers", () => {
+    expect(markersForRoom(node, "facility", " ")).toEqual([]);
+    expect(markersForRoom(null, "room", "Clinic")).toEqual([]);
+  });
+});
+
+describe("isRoomNameTaken", () => {
+  const campus = [
+    { id: "n1", rooms: ["203"], markers: [{ id: "m1", type: "facility", label: "Clinic" }] },
+    { id: "n2", rooms: ["Registrar"] },
+  ];
+  it("finds a room or facility name used anywhere, ignoring case and spacing", () => {
+    expect(isRoomNameTaken(" registrar ", campus)).toBe(true);
+    expect(isRoomNameTaken("clinic", campus)).toBe(true);
+    expect(isRoomNameTaken("Library", campus)).toBe(false);
+  });
+  it("does not count the entry being renamed against itself", () => {
+    expect(isRoomNameTaken("203", campus, "n1", "203")).toBe(false);
+    expect(isRoomNameTaken("203", campus, "n2", "Registrar")).toBe(true);
   });
 });

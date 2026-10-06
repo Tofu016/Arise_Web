@@ -13,12 +13,12 @@ import {
   hasOcrPhoto,
 } from "./ocrSettings";
 
-const OFF = { ocrEnabled: false, placardName: "", extraTerms: [], photoPath: "" };
+const OFF = { ocrEnabled: false, placardName: "", extraTerms: [], photoPaths: [] };
 
 describe("ocrStateOf", () => {
   it("reads a saved record", () => {
-    const room = { roomName: "A", placard: { ocrEnabled: true, placardName: "Rm A", ocrExtraTerms: ["x"], ocrPhotoPath: "room360/gd1/a.webp" } };
-    expect(ocrStateOf(room)).toEqual({ ocrEnabled: true, placardName: "Rm A", extraTerms: ["x"], photoPath: "room360/gd1/a.webp" });
+    const room = { roomName: "A", placard: { ocrEnabled: true, placardName: "Rm A", ocrExtraTerms: ["x"], ocrPhotos: ["room360/gd1/a.webp"] } };
+    expect(ocrStateOf(room)).toEqual({ ocrEnabled: true, placardName: "Rm A", extraTerms: ["x"], photoPaths: ["room360/gd1/a.webp"] });
   });
   it("is off for a room with no record", () => {
     expect(ocrStateOf({ roomName: "A", placard: null })).toEqual(OFF);
@@ -26,13 +26,15 @@ describe("ocrStateOf", () => {
 });
 
 describe("sameOcrState", () => {
-  it("compares every field, extra terms in order", () => {
-    const a = { ocrEnabled: true, placardName: "A", extraTerms: ["x", "y"], photoPath: "" };
+  it("compares every field, extra terms and AR 360 images in order", () => {
+    const a = { ocrEnabled: true, placardName: "A", extraTerms: ["x", "y"], photoPaths: ["p1", "p2"] };
     expect(sameOcrState(a, { ...a, extraTerms: ["x", "y"] })).toBe(true);
     expect(sameOcrState(a, { ...a, extraTerms: ["y", "x"] })).toBe(false);
     expect(sameOcrState(a, { ...a, placardName: "B" })).toBe(false);
     expect(sameOcrState(a, { ...a, ocrEnabled: false })).toBe(false);
-    expect(sameOcrState(a, { ...a, photoPath: "room360/gd1/a.webp" })).toBe(false);
+    expect(sameOcrState(a, { ...a, photoPaths: ["p1", "p2"] })).toBe(true);
+    expect(sameOcrState(a, { ...a, photoPaths: ["p2", "p1"] })).toBe(false);
+    expect(sameOcrState(a, { ...a, photoPaths: ["p1"] })).toBe(false);
   });
 });
 
@@ -44,7 +46,7 @@ describe("addToOcr and removeFromOcr", () => {
     expect(addToOcr({ ...OFF, placardName: "Rm 101" }, "Room 101").placardName).toBe("Rm 101");
   });
   it("keeps the name, extra terms and AR 360 image when taken off", () => {
-    const on = { ocrEnabled: true, placardName: "Rm 101", extraTerms: ["x"], photoPath: "room360/gd1/a.webp" };
+    const on = { ocrEnabled: true, placardName: "Rm 101", extraTerms: ["x"], photoPaths: ["room360/gd1/a.webp"] };
     expect(removeFromOcr(on)).toEqual({ ...on, ocrEnabled: false });
   });
 });
@@ -107,8 +109,8 @@ describe("ocrCollisions", () => {
 });
 
 describe("hasOcrPhoto", () => {
-  it("is only the room's own AR 360 image, not its photos", () => {
-    expect(hasOcrPhoto({ ...OFF, photoPath: "room360/gd1/a.webp" })).toBe(true);
+  it("is only the room's own AR 360 images, not its photos", () => {
+    expect(hasOcrPhoto({ ...OFF, photoPaths: ["room360/gd1/a.webp"] })).toBe(true);
     expect(hasOcrPhoto(OFF)).toBe(false);
   });
 });

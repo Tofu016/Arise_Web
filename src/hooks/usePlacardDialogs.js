@@ -82,7 +82,7 @@ export function usePlacardDialogs() {
 
   // The OCR Management page's save: every changed room in one request (and
   // one transaction), creating a record for a room that has none. Rows are
-  // { roomName, ocrEnabled, placardName, extraTerms, photoPath }; settings
+  // { roomName, ocrEnabled, placardName, extraTerms, photoPaths }; settings
   // ({ scannerMessage }) only when it changed. See ocrSaveBody.
   const saveOcrSettings = useCallback(
     async (rows, settings) => {

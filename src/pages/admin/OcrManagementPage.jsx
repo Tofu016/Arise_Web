@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useToast } from "../../context/ToastContext";
 import { loadOcrSettings, usePlacardDialogs } from "../../hooks/usePlacardDialogs";
 import { useSecurePhotoUrl } from "../../hooks/useSecurePhotoUrl";
+import { useBlurReview } from "../../hooks/useBlurReview";
 import { photoFilename, uploadPhoto } from "../../utils/photoStore";
 import { NODE_TYPES, allBuildings, buildingLabel, floorLabel, floorsForBuilding } from "../../utils/constants";
 import { buildSearchableRooms, rankRoomMatches } from "../../utils/search";
@@ -30,6 +31,8 @@ const DEFAULT_FILTERS = { search: "", building: "all", floor: "all", type: "all"
 const keyOf = (room) => normalizeRoomName(room.roomName);
 // ocr_settings.scanner_message's column width.
 const MAX_SCANNER_MESSAGE = 300;
+// PlacardDialogs_API::MAX_OCR_PHOTOS.
+const MAX_OCR_PHOTOS = 20;
 
 function slugify(text) {
   return (text || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -53,74 +56,156 @@ function isPanoramaShaped(file) {
 }
 
 function OcrPhotoDot({ state }) {
-  const has = hasOcrPhoto(state);
+  const count = state.photoPaths.length;
   return (
     <span
-      className={`photo-dot ${has ? "has-photo" : "no-photo"}`}
-      title={has ? "Has its own AR 360 image" : "Shows the placeholder 360 image in AR"}
+      className={`photo-dot ${count ? "has-photo" : "no-photo"}`}
+      title={count ? `${count} AR 360 ${count === 1 ? "image" : "images"}` : "Shows the placeholder 360 image in AR"}
     />
   );
 }
 
-// The 360 image the mobile AR portal shows after a scan of this room. It is
-// uploaded here (under room360/, like a room's 360 photos) but kept apart
-// from the room's photos: the room card's 360 VIEW keeps showing those.
-// Uploading stores the file straight away; the room only points at it once
-// the page is saved.
-function OcrPhotoField({ room, state, onChange }) {
+// One AR 360 image: its preview, its place in the order, and buttons to move,
+// re-blur or remove it. `version` is bumped when the stored file was blurred
+// again under the same path, so the preview reloads.
+function OcrPhotoTile({ path, version, index, count, roomName, disabled, onMove, onReblur, onRemove }) {
+  const { url } = useSecurePhotoUrl(path, { version, thumbnail: 1024 });
+  return (
+    <li className="ocr-admin-photo-tile">
+      <div className="ocr-admin-photo-preview">
+        {url ? <img src={url} alt={`AR 360 image ${index + 1} for ${roomName}`} /> : <span className="field-hint">Loading...</span>}
+        <span className="ocr-admin-photo-number">
+          {index + 1} / {count}
+        </span>
+      </div>
+      <div className="ocr-admin-photo-tile-actions">
+        <button type="button" className="signage-btn" onClick={() => onMove(-1)} disabled={disabled || index === 0} aria-label={`Move image ${index + 1} earlier`}>
+          Earlier
+        </button>
+        <button type="button" className="signage-btn" onClick={() => onMove(1)} disabled={disabled || index === count - 1} aria-label={`Move image ${index + 1} later`}>
+          Later
+        </button>
+        <button type="button" className="signage-btn" onClick={onReblur} disabled={disabled} aria-label={`Edit blur regions on image ${index + 1}`}>
+          Edit blur
+        </button>
+        <button type="button" className="signage-btn" onClick={onRemove} disabled={disabled} aria-label={`Remove image ${index + 1}`}>
+          Remove
+        </button>
+      </div>
+    </li>
+  );
+}
+
+// The 360 images the mobile AR portal shows after a scan of this room, in
+// order: the visitor starts on the first and pages through the rest with the
+// portal's next and previous buttons. They are uploaded here (under room360/,
+// like a room's 360 photos) but kept apart from the room's photos: the room
+// card's 360 VIEW keeps showing those. Each picked file goes through the
+// manual blur review before it is sent, so an unblurred face never reaches
+// storage; uploading then stores it straight away, and the room only points
+// at it once the page is saved.
+function OcrPhotosField({ room, state, onChange }) {
   const [uploading, setUploading] = useState(false);
   const [hint, setHint] = useState("");
-  const { url } = useSecurePhotoUrl(state.photoPath || null, { thumbnail: 1024 });
+  const [versions, setVersions] = useState({});
   const toast = useToast();
+  const { requestBlur, reblurStored, blurDialog } = useBlurReview();
+  const paths = state.photoPaths;
+  const slotsLeft = MAX_OCR_PHOTOS - paths.length;
 
   const pick = async (e) => {
-    const file = e.target.files?.[0];
+    const files = [...(e.target.files || [])];
     e.target.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
+    if (files.length > slotsLeft) {
+      toast.warning(`A room can have at most ${MAX_OCR_PHOTOS} AR 360 images. Only the first ${slotsLeft} were added.`);
+    }
     setUploading(true);
     setHint("");
+    const added = [];
+    let stretched = 0;
     try {
-      const shaped = await isPanoramaShaped(file);
-      const filename = photoFilename(file, `ocr_${slugify(room.roomName)}-${Date.now().toString(36)}`);
-      const { path } = await uploadPhoto("room360", file, { building: room.node.building, filename });
-      onChange({ ...state, photoPath: path });
-      if (!shaped) setHint("This image isn't twice as wide as it is tall, so it will look stretched in AR.");
+      // One review after another; cancelling one skips only that file.
+      for (const [i, file] of files.slice(0, slotsLeft).entries()) {
+        const shaped = await isPanoramaShaped(file);
+        const reviewed = await requestBlur(file);
+        if (!reviewed) continue;
+        if (!shaped) stretched += 1;
+        const filename = photoFilename(file, `ocr_${slugify(room.roomName)}-${Date.now().toString(36)}-${i}`);
+        const { path } = await uploadPhoto("room360", reviewed, { building: room.node.building, filename });
+        added.push(path);
+      }
     } catch (err) {
       toast.error(`Couldn't upload the image: ${err.message}`);
     } finally {
       setUploading(false);
+      // Whatever uploaded before a failure is still added.
+      if (added.length > 0) onChange({ ...state, photoPaths: [...paths, ...added] });
+      if (stretched > 0) {
+        setHint(
+          `${stretched === 1 ? "An image isn't" : `${stretched} images aren't`} twice as wide as tall, so ${stretched === 1 ? "it" : "they"} will look stretched in AR.`
+        );
+      }
     }
   };
 
+  // Saves straight over the stored file. If that lands on a new path (an old
+  // .jpg re-saved as .webp) the list adopts it, and Save stores it on the room.
+  const reblur = async (path) => {
+    try {
+      const saved = await reblurStored(path);
+      if (!saved) return;
+      if (saved.path !== path) onChange({ ...state, photoPaths: paths.map((p) => (p === path ? saved.path : p)) });
+      setVersions((prev) => ({ ...prev, [saved.path]: (prev[saved.path] || 0) + 1 }));
+      toast.success("Blur regions updated.");
+    } catch (err) {
+      toast.error(err.message || "Couldn't update the image.");
+    }
+  };
+
+  const move = (index, step) => {
+    const next = [...paths];
+    [next[index], next[index + step]] = [next[index + step], next[index]];
+    onChange({ ...state, photoPaths: next });
+  };
+
   return (
-    <div className="ocr-admin-field">
-      <span className="ocr-admin-field-label">AR 360 image after a scan</span>
-      <div className="ocr-admin-photo">
-        <div className="ocr-admin-photo-preview">
-          {!state.photoPath && <span className="field-hint">Placeholder</span>}
-          {state.photoPath && !url && <span className="field-hint">Loading...</span>}
-          {state.photoPath && url && <img src={url} alt={`AR 360 image for ${room.roomName}`} />}
-        </div>
-        <div className="ocr-admin-photo-actions">
-          <FilePickerButton
-            accept="image/*"
-            label={uploading ? "Uploading..." : state.photoPath ? "Replace image" : "Upload 360 image"}
-            onChange={pick}
-            disabled={uploading}
-          />
-          {state.photoPath && (
-            <button type="button" className="signage-btn" onClick={() => onChange({ ...state, photoPath: "" })} disabled={uploading}>
-              Use placeholder
-            </button>
-          )}
-        </div>
+    <div className="ocr-admin-field ocr-admin-photos-field">
+      <span className="ocr-admin-field-label">AR 360 images after a scan</span>
+      {paths.length > 0 && (
+        <ol className="ocr-admin-photo-list">
+          {paths.map((path, i) => (
+            <OcrPhotoTile
+              key={path}
+              path={path}
+              version={versions[path] || 0}
+              index={i}
+              count={paths.length}
+              roomName={room.roomName}
+              disabled={uploading}
+              onMove={(step) => move(i, step)}
+              onReblur={() => reblur(path)}
+              onRemove={() => onChange({ ...state, photoPaths: paths.filter((p) => p !== path) })}
+            />
+          ))}
+        </ol>
+      )}
+      <div className="ocr-admin-photo-actions">
+        <FilePickerButton
+          accept="image/*"
+          multiple
+          label={uploading ? "Uploading..." : paths.length ? "Add 360 images" : "Upload 360 images"}
+          onChange={pick}
+          disabled={uploading || slotsLeft <= 0}
+        />
       </div>
       <span className="ocr-admin-field-hint">
         {hint ||
-          (state.photoPath
-            ? "Shown in the AR portal after a scan. The room card's 360 VIEW still shows the room's own photos."
-            : "Without one, the AR portal after a scan shows the placeholder 360 image.")}
+          (paths.length
+            ? "The visitor starts on image 1 and pages through the rest in this order. The room card's 360 VIEW still shows the room's own photos."
+            : "Without any, the AR portal after a scan shows the placeholder 360 image.")}
       </span>
+      {blurDialog}
     </div>
   );
 }
@@ -175,7 +260,7 @@ function ExtraTermsField({ roomName, state, onChange }) {
           placeholder="e.g. a misread you saw on the phone"
           aria-label={`Add an extra search term for ${roomName}`}
         />
-        <button type="button" onClick={add} disabled={!text.trim()}>
+        <button type="button" className="admin-btn-secondary" onClick={add} disabled={!text.trim()}>
           Add
         </button>
       </div>
@@ -258,7 +343,7 @@ function EligibleRoom({ room, state, collisions, unsaved, onChange, onRemove }) 
           )}
         </div>
         <ExtraTermsField roomName={room.roomName} state={state} onChange={onChange} />
-        <OcrPhotoField room={room} state={state} onChange={onChange} />
+        <OcrPhotosField room={room} state={state} onChange={onChange} />
       </div>
 
       {collisions?.length > 0 && (
@@ -517,7 +602,7 @@ export default function OcrManagementPage() {
   }, [rooms, filters, edits]);
 
   const totalEligible = eligiblePreview.length;
-  const withPlaceholder = eligiblePreview.filter((r) => !r.placard.ocrPhotoPath).length;
+  const withPlaceholder = eligiblePreview.filter((r) => r.placard.ocrPhotos.length === 0).length;
 
   return (
     <div className="signage-page directory-admin-page">

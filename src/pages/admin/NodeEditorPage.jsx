@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import NodeList from "../../components/NodeList";
 import FilterPanel from "../../components/FilterPanel";
 import NodeForm from "../../components/NodeForm";
@@ -28,6 +28,7 @@ const defaultFilters = {
 // place that's managed, per the redesign.
 export default function NodeEditorPage() {
   const { confirm } = useConfirm();
+  const navigate = useNavigate();
   const {
     nodes,
     selectedNodeId,
@@ -46,7 +47,14 @@ export default function NodeEditorPage() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
+  // Blinks the form's edge red. Only a deliberate create -> edit swap (or
+  // pressing New Node) counts; hopping between nodes in the list must not.
+  // `n` re-keys the overlay so the animation restarts on every trigger.
+  const [flash, setFlash] = useState({ kind: null, n: 0 });
+  const triggerFlash = (kind) => setFlash((f) => ({ kind, n: f.n + 1 }));
+
   const handleSelect = (id) => {
+    if (creating) triggerFlash("edit");
     setCreating(false);
     setSelectedNodeId(id);
   };
@@ -54,6 +62,7 @@ export default function NodeEditorPage() {
   const handleStartCreate = () => {
     setSelectedNodeId(null);
     setCreating(true);
+    triggerFlash("create");
   };
 
   const handleCreateSave = (draft) => {
@@ -68,6 +77,11 @@ export default function NodeEditorPage() {
     }
     updateNode(draft.id, draft);
     setSelectedNodeId(draft.id);
+  };
+
+  const openInNavigationEditor = (id) => {
+    setSelectedNodeId(id);
+    navigate("/admin/navigation-editor");
   };
 
   const handleDelete = async (id) => {
@@ -116,34 +130,33 @@ export default function NodeEditorPage() {
       </div>
 
       <div className="node-editor-body">
-        <NodeList
-          nodes={nodes}
-          filters={filters}
-          selectedNodeId={selectedNodeId}
-          onSelect={handleSelect}
-        />
-
-        <div className="node-editor-sidebar">
-          <FilterPanel filters={filters} onChange={setFilters} />
-
+        <div className="node-editor-sidebar node-editor-form-column">
           {creating && (
-            <NodeForm
-              mode="create"
-              nodes={nodes}
-              onSave={handleCreateSave}
-              onCancel={() => setCreating(false)}
-            />
+            <div className="node-form-flash-frame">
+              <NodeForm
+                mode="create"
+                nodes={nodes}
+                onSave={handleCreateSave}
+                onCancel={() => setCreating(false)}
+                onAddMarkers={openInNavigationEditor}
+              />
+              {flash.kind === "create" && <span key={flash.n} className="node-form-flash" aria-hidden="true" />}
+            </div>
           )}
 
           {selectedNode && !creating && (
-            <NodeForm
-              mode="edit"
-              node={selectedNode}
-              nodes={nodes}
-              onSave={handleEditSave}
-              onCancel={() => setSelectedNodeId(null)}
-              onDelete={handleDelete}
-            />
+            <div className="node-form-flash-frame">
+              <NodeForm
+                mode="edit"
+                node={selectedNode}
+                nodes={nodes}
+                onSave={handleEditSave}
+                onCancel={() => setSelectedNodeId(null)}
+                onDelete={handleDelete}
+                onAddMarkers={openInNavigationEditor}
+              />
+              {flash.kind === "edit" && <span key={flash.n} className="node-form-flash" aria-hidden="true" />}
+            </div>
           )}
 
           {!selectedNode && !creating && (
@@ -151,6 +164,16 @@ export default function NodeEditorPage() {
               <p>Select a node from the list to edit it, or create a new one.</p>
             </div>
           )}
+        </div>
+
+        <div className="node-editor-list-column">
+          <FilterPanel filters={filters} onChange={setFilters} />
+          <NodeList
+            nodes={nodes}
+            filters={filters}
+            selectedNodeId={selectedNodeId}
+            onSelect={handleSelect}
+          />
         </div>
       </div>
 

@@ -172,6 +172,37 @@ export function findMarkerForRoom(node, roomName) {
   return named.find((m) => m.type === "room") || named.find((m) => m.type === "facility");
 }
 
+// Every marker of one kind ("room" or "facility") on a node that stands for
+// the named room, by the same name rule as findMarkerForRoom. More than one
+// is a "duplicate" problem in Marker Management, but a rename or move still
+// has to carry all of them along.
+export function markersForRoom(node, kind, roomName) {
+  const key = normalize(roomName);
+  if (!key) return [];
+  return (node?.markers || []).filter((m) => m.type === kind && normalize(m.label) === key);
+}
+
+// Whether newName is already used by any room or facility on any node. The
+// name is what links a "Rooms served" entry (or a facility marker's label)
+// to its details record, so two entries sharing a name would share one
+// record and the mobile scanner could not tell them apart. The entry being
+// renamed (currentNodeId + currentRoomName) is skipped so keeping its own
+// name is not a conflict; pass nulls when creating a new one.
+export function isRoomNameTaken(newName, nodes, currentNodeId = null, currentRoomName = null) {
+  const key = (newName || "").trim().toUpperCase();
+  const current = (currentRoomName || "").trim().toUpperCase();
+  for (const n of nodes || []) {
+    for (const kind of ["room", "facility"]) {
+      for (const r of namesOfKind(n, kind)) {
+        const name = r.trim().toUpperCase();
+        if (n.id === currentNodeId && name === current) continue;
+        if (name === key) return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Resolves typed text to a node by EXACT name (case/space/punctuation-
 // insensitive): node names first, then room names (a room's navigable
 // target is its node). Deliberately no typo tolerance — a wrong guess here

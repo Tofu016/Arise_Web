@@ -211,11 +211,11 @@ export function toDialog(row) {
     // OCR Management (see utils/ocrTerms.js): whether the mobile placard
     // scanner matches this room, the Placard name its terms are generated
     // from ("" when never set), its search terms, all of them and split
-    // into generated and admin-typed extras, and the 360 image the mobile AR
-    // portal shows after a scan ("" for none: the placeholder is shown).
+    // into generated and admin-typed extras, and the 360 images the mobile AR
+    // portal pages through after a scan, in order (none: the placeholder).
     ocrEnabled: Number(row.ocr_enabled) === 1,
     placardName: row.placard_name || "",
-    ocrPhotoPath: row.ocr_photo_path || "",
+    ocrPhotos: row.ocr_photos || [],
     ocrSearchTerms: (row.search_terms || []).map((t) => t.term),
     ocrGeneratedTerms: (row.search_terms || []).filter((t) => !Number(t.is_extra)).map((t) => t.term),
     ocrExtraTerms: (row.search_terms || []).filter((t) => Number(t.is_extra)).map((t) => t.term),
@@ -269,7 +269,7 @@ export function dialogCreateBody(roomName, patch) {
 // The OCR Management page's save (PlacardDialogs_API/saveOcr): one row per
 // changed room. Generated terms are recomputed from the Placard name here,
 // so what is stored is always what the current rules give; a room taken
-// off OCR keeps its Placard name, extra terms and AR 360 image for when it
+// off OCR keeps its Placard name, extra terms and AR 360 images for when it
 // comes back, but loses its generated terms. `settings` ({ scannerMessage }) is
 // sent only when the page-wide settings changed.
 export function ocrSaveBody(rows, settings) {
@@ -280,7 +280,7 @@ export function ocrSaveBody(rows, settings) {
       placard_name: r.placardName.trim(),
       search_terms: r.ocrEnabled ? generateOcrTerms(r.placardName) : [],
       extra_search_terms: r.extraTerms,
-      ocr_photo_path: r.photoPath,
+      ocr_photos: r.photoPaths,
     })),
   };
   if (settings) body.scanner_message = settings.scannerMessage.trim();

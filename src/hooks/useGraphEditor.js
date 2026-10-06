@@ -4,6 +4,10 @@ import { buildHotspots } from "../utils/hotspots";
 import { arrivalView } from "../utils/arrivalView";
 import * as placement from "../utils/placement";
 
+// The panorama sits at the top of the page; bring it into view when a
+// placement / default-view capture starts from a button far down the lists.
+const scrollToPanorama = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
 // React adapter over utils/placement.js for the navigation editor: holds
 // the session, the add-link box and the photo-missing flag, and turns a
 // placement into the right backend call.
@@ -99,6 +103,7 @@ export function useGraphEditor({
   // what actually saves it — see handleCapturedAngle.
   const startSetDefaultView = (neighborId) => {
     if (!current) return;
+    scrollToPanorama();
     const angle = current.hotspots?.[neighborId];
     setDefaultViewTarget({ fromId: current.id, fromName: current.name, neighborId });
     navigateTo(neighborId, angle);
@@ -151,10 +156,16 @@ export function useGraphEditor({
       setAddSearch("");
     },
     removeLink: (id) => setNeighbors(current.id, placement.withoutLink(current, id)),
-    startRepositionLink: (id) => setSession(placement.startPlacingLink(session, id)),
+    startRepositionLink: (id) => {
+      scrollToPanorama();
+      setSession(placement.startPlacingLink(session, id));
+    },
     cancelLinkPlacement: () => setSession(placement.cancelLinkPlacement(session)),
     startPlacingMarker: (marker) => setSession(placement.startPlacingMarker(session, marker)),
-    startRepositionMarker: (id) => setSession(placement.startRepositionMarker(session, id)),
+    startRepositionMarker: (id) => {
+      scrollToPanorama();
+      setSession(placement.startRepositionMarker(session, id));
+    },
     cancelMarkerPlacement: () => setSession(placement.cancelMarkerPlacement(session)),
     removeMarker: (id) => setMarkers(current.id, placement.withoutMarker(current, id)),
     renameMarker: (id, label) => setMarkers(current.id, placement.renameMarker(current, id, label)),

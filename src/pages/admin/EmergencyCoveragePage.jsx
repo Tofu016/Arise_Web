@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { auditEmergencyCoverage, findEvacuationRoute } from "../../utils/evacuation";
 import { buildingLabel, EMERGENCY_DESTINATION_INDOOR_TYPES, floorLabel, typeLabel } from "../../utils/constants";
-import { fireStairsBetween } from "../../utils/emergencyExits";
+import { emergencyExitMarkers, fireStairsBetween } from "../../utils/emergencyExits";
 
 function SummaryCard({ label, count, warn }) {
   return (
@@ -57,6 +57,15 @@ export default function EmergencyCoveragePage() {
   const landingProblems = audit.landingProblems.filter(inScope);
   const markersWithoutLanding = audit.markersWithoutLanding.filter(inScope);
   const crossFloorLinks = audit.crossFloorLinks.filter(inScope);
+  // Every Emergency Exit marker (one row per marker, not per node).
+  const fireExitMarkers = useMemo(
+    () =>
+      nodes.filter(inScope).flatMap((n) =>
+        emergencyExitMarkers(n).map((m) => ({ node: n, marker: m })),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, building],
+  );
   const viaFireStairs = audit.entries.filter((e) => inScope(e) && e.viaFireStairs).length;
 
   return (
@@ -91,6 +100,7 @@ export default function EmergencyCoveragePage() {
         <SummaryCard label="Route stays level or down" count={audit.entries.filter((e) => inScope(e) && (e.status === "ok" || e.status === "destination")).length} />
         <SummaryCard label="Route must go up" count={problems.filter((e) => e.status === "ascends").length} warn />
         <SummaryCard label="No route" count={problems.filter((e) => e.status === "none").length} warn />
+        <SummaryCard label="Fire exit markers" count={fireExitMarkers.length} />
         <SummaryCard label="Routes via fire stairs" count={viaFireStairs} />
       </div>
 
@@ -209,6 +219,39 @@ export default function EmergencyCoveragePage() {
                 <td className="emergency-coverage-actions"><button type="button" className="signage-btn" onClick={() => openInEditor(s.id)}>Open in Node Editor</button></td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      )}
+      </section>
+
+      <section className="signage-card">
+      <div className="signage-card-head"><h3>Fire Exit Markers</h3></div>
+      {fireExitMarkers.length === 0 ? (
+        <p className="field-hint">None in this view.</p>
+      ) : (
+        <table className="emergency-coverage-table">
+          <thead>
+            <tr><th>Node</th><th>Where</th><th>Marker</th><th>Leads to</th><th /></tr>
+          </thead>
+          <tbody>
+            {fireExitMarkers.map(({ node, marker }) => {
+              const landings = marker.landings || [];
+              return (
+                <tr key={`${node.id}-${marker.id}`}>
+                  <td>{node.name}<span className="field-hint"> {node.id}</span></td>
+                  <td>{placeText(node)}</td>
+                  <td>{marker.label || "Emergency Exit"}</td>
+                  <td>
+                    {landings.length > 0
+                      ? landings.map((id) => byId[id]?.name ?? id).join(", ")
+                      : node.isEmergencyDestination
+                        ? "Outside (fire door)"
+                        : "Nowhere yet"}
+                  </td>
+                  <td className="emergency-coverage-actions"><button type="button" className="signage-btn" onClick={() => openInNavigationEditor(node.id)}>Open in Navigation Editor</button></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

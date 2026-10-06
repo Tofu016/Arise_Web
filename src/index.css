@@ -543,6 +543,45 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   flex: 1;
   min-width: 0;
 }
+/* Node Editor: the edit/new form takes the wide column; the filter panel
+   stays pinned at the top of the narrow column and only the node list
+   below it scrolls, so scrolling the list never pushes the filters away. */
+/* Overlay (not a class on the form) so restarting the blink never remounts
+   NodeForm and wipes its draft. */
+.node-form-flash-frame {
+  position: relative;
+  flex-shrink: 0;
+}
+.node-form-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--admin-radius, var(--radius-md));
+  pointer-events: none;
+  animation: node-form-flash 0.6s ease-out 1;
+}
+@keyframes node-form-flash {
+  0% { box-shadow: inset 0 0 0 3px rgba(200, 40, 40, 0.55); }
+  100% { box-shadow: inset 0 0 0 3px rgba(200, 40, 40, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-form-flash { animation: none; }
+}
+.node-editor-list-column {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.node-editor-list-column > .filter-panel,
+.node-editor-list-column > :first-child {
+  flex-shrink: 0;
+}
+.node-editor-list-column .node-list-panel {
+  flex: 1;
+  min-height: 0;
+}
 /* ---------- Navigation Editor page (Phase 3) ---------- */
 /* Promoted from the old nav-tester-modal — reuses its inner component
    styling (.link-list, .link-row, .add-link-btn, .placing-banner, etc.)
@@ -648,6 +687,21 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
    max-width:900px cleanly governs width instead. */
 .room-editor-form-wrap.room-edit-modal {
   width: auto;
+}
+/* White panel like the other admin pages' cards (.signage-card). Scoped to
+   the page: the create dialog already sits in its own white modal. */
+.room-editor-main > .room-editor-form-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--space-lg);
+}
+.room-editor-optional {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 /* Top row: title/description (left) and department/use/link (right) side
    by side — replaced the earlier "all text left, both photos right"
@@ -851,7 +905,7 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-sunken);
 }
 /* Where a dragged photo would land. */
 .room-photo-tile-over {
@@ -916,7 +970,7 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
   flex: 1;
   padding: 5px 10px;
   border: none;
-  background: var(--surface-sunken);
+  background: var(--surface);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -938,6 +992,10 @@ html.kiosk-mode .node-editor-toolbar > button:hover:active {
 }
 .room-photo-tile-actions .rescan-faces-btn {
   margin: 0;
+  background: var(--surface);
+}
+:where(html:not(.kiosk-mode)) .room-photo-tile-actions .rescan-faces-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
 }
 /* margin-left:auto pins this to the right edge of .room-editor-page
    regardless of how much space .room-editor-main's own content actually
@@ -1724,15 +1782,6 @@ html.kiosk-mode .form-actions .danger:hover:active:not(:disabled) {
   background: var(--warning-surface);
   color: var(--warning);
   border: 1px solid var(--warning);
-}
-.export-import-bar button.subtle {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 11px;
 }
 .export-import-bar button.primary {
   padding: 6px 12px;
@@ -3509,6 +3558,196 @@ html.kiosk-mode .room-edit-tab-active:hover:active {
   opacity: 0.7;
 }
 
+/* Title opposite its one primary action, "New Room or Facility", which so
+   sits right beside the list panel. Same button as the User Panel's
+   "New Account". */
+.room-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: 8px;
+}
+.room-editor-page .room-editor-create-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--admin-radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 13px;
+  cursor: pointer;
+}
+:where(html:not(.kiosk-mode)) .room-editor-page .room-editor-create-btn:hover,
+html.kiosk-mode .room-editor-page .room-editor-create-btn:hover:active {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* "New Room or Facility": the editor's form in a dialog, scrolling inside
+   it. Wide enough for the form's two columns and the marker panorama. */
+.modal.room-edit-modal.room-create-modal {
+  width: 980px;
+  max-width: 94vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-layout .room-create-modal .preview-header {
+  margin-bottom: 8px;
+}
+.room-create-modal .close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.room-create-kind {
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+.room-create-modal .form-actions {
+  margin-top: 8px;
+}
+
+/* A form field whose control isn't a plain input (the node picker), so it
+   can't be a <label>: clicking inside the picker's list would re-fire the
+   label's click on its toggle button. Matches .room-edit-modal label. */
+.room-edit-field {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.room-edit-field > span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Searchable node dropdown (NodePicker). The closed control matches the
+   form's inputs; the popover holds a search box above the grouped list. */
+.node-picker {
+  position: relative;
+}
+.node-picker-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 28px 6px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+/* A CSS caret, not a glyph or icon file: it only marks the control as a
+   dropdown, like a native select's own arrow. */
+.node-picker-toggle::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+.node-picker-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.node-picker-toggle[aria-expanded="true"],
+.node-picker-toggle:focus-visible {
+  outline: none;
+  border-color: var(--focus-ring);
+}
+.node-picker-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.node-picker-placeholder {
+  color: var(--text-muted);
+}
+.node-picker-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+}
+.room-edit-modal .node-picker-popover .node-picker-search {
+  margin-top: 0;
+}
+.node-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+.node-picker-group {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.node-picker-option {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.node-picker-option-active {
+  background: var(--surface-sunken);
+}
+.node-picker-option-selected {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* The room's or facility's marker on its node's panorama, in the form. */
+.room-marker-placer {
+  margin: 4px 0 16px;
+}
+.room-marker-placer-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.preview-screen.room-marker-screen {
+  height: 380px;
+  min-height: 380px;
+}
+.room-marker-placer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.room-marker-placer .field-hint {
+  margin: 0;
+}
+.room-marker-placer > .field-hint {
+  margin-top: 4px;
+}
+
 /* Room and Facility Editor's list switch, in the list panel's header. */
 .room-editor-list-mode {
   display: inline-flex;
@@ -3607,12 +3846,18 @@ html.kiosk-mode .node-row-room-pill-active:hover:active {
 .back-btn {
   margin-left: 10px;
   font-size: 11px;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--surface-sunken);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
+}
+:where(html:not(.kiosk-mode)) .back-btn:hover,
+html.kiosk-mode .back-btn:hover:active {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 .placing-banner {
   display: flex;
@@ -3626,15 +3871,48 @@ html.kiosk-mode .node-row-room-pill-active:hover:active {
   font-size: 12px;
   margin-bottom: 8px;
 }
+.preview-hint-blink {
+  animation: preview-hint-blink 0.5s ease-in-out 2;
+}
+@keyframes preview-hint-blink {
+  0%, 100% { color: var(--text-muted); }
+  50% { color: #d32f2f; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preview-hint-blink { animation: none; color: #d32f2f; }
+}
+.placing-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .placing-banner button {
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--surface-sunken);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
   font-size: 11px;
+  font-weight: 700;
   flex-shrink: 0;
+}
+:where(html:not(.kiosk-mode)) .placing-banner button:hover,
+html.kiosk-mode .placing-banner button:hover:active {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+/* White text on the accent fill. */
+.placing-banner button.placing-banner-save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+:where(html:not(.kiosk-mode)) .placing-banner button.placing-banner-save:hover,
+html.kiosk-mode .placing-banner button.placing-banner-save:hover:active {
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(0.92);
 }
 .photo-missing-note {
   font-size: 11px;
@@ -5835,6 +6113,15 @@ html.kiosk-mode .rescan-faces-btn:hover:active:not(:disabled) {
   opacity: 0.5;
   cursor: default;
 }
+.node-form-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 4px 0;
+}
+.node-form-photo-actions .rescan-faces-btn {
+  margin: 0;
+}
 /* =====================================================================
    Touch press feedback — hover has no meaning on a touchscreen, so every
    tappable control needs a visible pressed state instead, or there's no
@@ -6483,6 +6770,9 @@ html.kiosk-mode .mobile-building-option:hover:active {
   font-size: 13px;
 }
 .flowchart-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -6492,8 +6782,18 @@ html.kiosk-mode .mobile-building-option:hover:active {
   font-size: 12px;
   align-self: flex-end;
 }
-:where(html:not(.kiosk-mode)) .flowchart-reset-btn:hover,
-html.kiosk-mode .flowchart-reset-btn:hover:active {
+.flowchart-reset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* restart.svg is loaded via <img>, so its grey is baked into the file. */
+.flowchart-reset-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+:where(html:not(.kiosk-mode)) .flowchart-reset-btn:hover:not(:disabled),
+html.kiosk-mode .flowchart-reset-btn:hover:active:not(:disabled) {
   border-color: var(--accent);
 }
 .flowchart-canvas {
@@ -6502,7 +6802,10 @@ html.kiosk-mode .flowchart-reset-btn:hover:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--surface-sunken);
+  /* Page behind it is --surface-sunken (see .node-editor-page override), so
+     the canvas is dark to stand out as its own panel and keep the cursor
+     and the white node cards clearly visible. */
+  background: var(--gray-900);
 }
 .flowchart-canvas .react-flow__attribution {
   background: rgba(255, 255, 255, 0.7);
@@ -6511,7 +6814,7 @@ html.kiosk-mode .flowchart-reset-btn:hover:active {
   color: var(--text-muted);
 }
 .flowchart-canvas .react-flow__edge-path {
-  stroke: var(--border-strong);
+  stroke: var(--gray-500);
 }
 .flowchart-canvas .react-flow__edge.selected .react-flow__edge-path,
 :where(html:not(.kiosk-mode)) .flowchart-canvas .react-flow__edge:hover .react-flow__edge-path,
@@ -8551,6 +8854,15 @@ html.kiosk-mode body {
   left: 7px;
   width: 2px;
 }
+.pano-zoom-reset-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.pano-zoom-controls-desktop .pano-zoom-reset-icon {
+  width: 16px;
+  height: 16px;
+}
 .pano-zoom-controls-desktop .pano-zoom-indicator {
   padding: 4px 10px;
   font-size: 13px;
@@ -9008,6 +9320,29 @@ html.kiosk-mode .admin-layout .link-actions button.danger:hover:active {
   border-color: var(--admin-danger-hover);
   color: var(--white);
 }
+/* Row actions (Reposition, Rename, Edit landings, Place marker, ...): pill
+   buttons in the same family as the placing-banner and Back buttons. The
+   joined .link-actions-stack variant keeps its own rectangular look. */
+.admin-layout .link-actions:not(.link-actions-stack) button {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-sans-display);
+  letter-spacing: 0.03em;
+}
+:where(html:not(.kiosk-mode)) .admin-layout .link-actions:not(.link-actions-stack) button:not(.danger):hover:not(:disabled),
+html.kiosk-mode .admin-layout .link-actions:not(.link-actions-stack) button:not(.danger):hover:active:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.admin-layout .link-actions:not(.link-actions-stack) button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 /* A standalone, reusable secondary button — outlined neutral, same
    radius/sizing as .primary, for "Close"/"Cancel"/non-destructive
    secondary actions that shouldn't compete with the primary action. */
@@ -9027,6 +9362,10 @@ html.kiosk-mode .admin-layout .link-actions button.danger:hover:active {
 html.kiosk-mode .admin-btn-secondary:hover:active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
+}
+.admin-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 /* Text-only button — no border, no fill (the sidebar "Sign out", etc). */
 .admin-btn-text {
@@ -9127,11 +9466,9 @@ html.kiosk-mode .admin-layout .close-btn:hover:active {
 .admin-layout .node-row-meta,
 .admin-layout .neighbor-id,
 .admin-layout .empty-hint,
-.admin-layout .link-actions button,
 .admin-layout .custom-building-row button {
   font-size: 12px;
 }
-.admin-layout .link-actions button,
 .admin-layout .portal-tag {
   border-radius: var(--radius-sm);
 }
@@ -9307,6 +9644,19 @@ html.kiosk-mode .starting-view-row .link-actions button:not(.danger):hover:activ
   border-radius: var(--admin-radius-lg);
   padding: var(--space-lg);
   box-shadow: var(--shadow-1);
+}
+/* Scrolling editor panels: breathing room below the last control so it
+   doesn't sit flush against the panel edge when scrolled to the end, and
+   between the last field/photo and the Save/Delete/Cancel row. */
+.node-editor-sidebar,
+.room-editor-sidebar,
+.navigation-editor-sidebar,
+.room-editor-main {
+  padding-bottom: var(--space-lg);
+}
+.node-editor-sidebar .form-actions,
+.room-editor-main .form-actions {
+  margin-top: var(--space-lg);
 }
 
 /* --- Toasts --- */
@@ -11694,14 +12044,45 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
   background: var(--success-surface);
   color: var(--success);
 }
-/* A room's AR 360 image: a 2:1 strip, as wide as the field allows. */
-.ocr-admin-photo {
+/* A room's AR 360 images: numbered 2:1 tiles in the visitor's order. Spans
+   both columns of the room editor. */
+.ocr-admin-photos-field {
+  grid-column: 1 / -1;
+}
+.ocr-admin-photo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+}
+.ocr-admin-photo-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.ocr-admin-photo-tile-actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+.ocr-admin-photo-tile-actions .signage-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.ocr-admin-photo-number {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 .ocr-admin-photo-preview {
+  position: relative;
   width: 200px;
   aspect-ratio: 2 / 1;
   display: flex;
@@ -11749,4 +12130,38 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
   line-height: 1.4;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* "Links added" row actions: the same joined, flat-grey rectangular stack as
+   the panorama zoom buttons, laid out two per row so the name keeps its
+   width. The container's background shows through the 1px gaps as the
+   hairline dividers; a lone last button (Remove) spans both columns. Remove
+   keeps its red fill from the shared .danger rule. */
+.link-actions-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 104px));
+  gap: 6px;
+}
+.admin-layout .link-actions-stack button,
+.admin-layout .link-actions-stack button.danger {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 8px;
+  line-height: 1.25;
+  font-weight: 700;
+  min-height: 0;
+}
+.admin-layout .link-actions-stack button.danger {
+  border-color: var(--admin-danger);
+}
+.admin-layout .link-actions-stack button:not(.danger) {
+  background: var(--surface);
+  color: #000;
+}
+:where(html:not(.kiosk-mode)) .admin-layout .link-actions-stack button:not(.danger):hover,
+html.kiosk-mode .admin-layout .link-actions-stack button:not(.danger):hover:active {
+  background: var(--surface-sunken);
+}
+.link-actions-stack button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
