@@ -278,8 +278,10 @@ document database.
 - **Analytics** — `analytics_sessions` and `analytics_events`: one row per
   visitor session (`kiosk` only when it comes from a paired kiosk, `web`
   for everything else) and one per tracked action.
-  - **Room details** — `placard_dialogs` and `placard_search_terms`, matched
-    against AR placard scans.
+  - **Room details** — `placard_dialogs` and `placard_search_terms`. The
+    mobile app's placard scanner matches the rooms with `ocr_enabled` set,
+    by search terms generated from their `placard_name` or typed in as
+    extras (`is_extra`); see "OCR Management" in the admin guide.
 - **App feedback** — `app_feedback` table, general experience feedback from
   MainPage visitors (see [Admin guide](#admin-guide-admin)).
 - **360° photos and room photos** — real files, not database blobs. Indoor
@@ -542,6 +544,36 @@ no destination point at all, ticked Lobby and Entrance nodes to confirm are
 really safe, and ticks that are ignored because of the node's type or floor.
 It also lists every destination point and previews the route from any node. Check it after any change to
 node types, floors or links.
+
+### OCR Management
+
+Under Virtual Map (`/admin/ocr-management`). Chooses which rooms and
+facilities the mobile app's placard scanner can recognize; a room not on
+OCR is never matched by a scan, though visitors still find it by search.
+Rooms are searched and filtered like on the Directory page and added or
+removed one at a time or all shown at once. Each room on OCR has:
+
+- a **Placard name**, the name printed on its sign. It starts as the room
+  name (or the Placard name it had before, if it was on OCR earlier) and
+  can be changed freely; renaming the room in the Room and Facility Editor
+  leaves it alone, and the page points out a Placard name that differs.
+- **search terms generated from it** (`src/utils/ocrTerms.js`): lowercase,
+  accents folded to plain letters, symbols dropped except dashes and
+  apostrophes, as one word ("gd1-101"), the same without dashes or
+  apostrophes ("gd1101", for a read that dropped the dash), and, for a name
+  of several words, with its spaces. Every dash or apostrophe character a
+  phone may read (en dash, curly quote, ...) counts as the plain one.
+- **extra search terms** typed in by an admin, for a misread seen on a real
+  phone, say.
+
+A scan whose whole text is one room's search term opens that room; a term
+two rooms share makes the phone ask which one (the page warns about shared
+terms), and anything else is offered as suggestions. **Test a read** shows
+what a phone would do with a given text, including unsaved changes. The
+page also flags rooms without a 360° photo, since View in AR has nothing to
+show for them, and offers to regenerate search terms stored in an older
+format. Nothing is saved until **Save OCR settings**, which saves every
+changed room in one request.
 
 ### Photo Coverage
 

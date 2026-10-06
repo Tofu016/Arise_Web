@@ -12,6 +12,7 @@ import PhotoCoverageAdminPage from "./pages/admin/PhotoCoverageAdminPage";
 import EmergencyCoveragePage from "./pages/admin/EmergencyCoveragePage";
 import SignagePage from "./pages/admin/SignagePage";
 import DirectoryPage from "./pages/admin/DirectoryPage";
+import OcrManagementPage from "./pages/admin/OcrManagementPage";
 import KiosksPage from "./pages/admin/KiosksPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="room-and-facility-editor" element={<RoomEditorPage />} />
             <Route path="marker-management" element={<MarkerManagementPage />} />
             <Route path="directory" element={<DirectoryPage />} />
+            <Route path="ocr-management" element={<OcrManagementPage />} />
             <Route path="emergency-coverage" element={<EmergencyCoveragePage />} />
             <Route path="user-panel" element={<UserPanelPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />

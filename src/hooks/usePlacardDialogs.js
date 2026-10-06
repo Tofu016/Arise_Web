@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../utils/apiClient";
-import { toDialog, normalizeRoomName, dialogPatchBody, dialogCreateBody } from "../utils/entities";
+import { toDialog, normalizeRoomName, dialogPatchBody, dialogCreateBody, ocrSaveBody } from "../utils/entities";
 import { useCollection } from "./useCollection";
 
 // PlacardDialogs_API hook. Minimal public interface (getForRoom,
@@ -33,7 +33,7 @@ export async function deleteDialogsByName(names) {
 }
 
 export function usePlacardDialogs() {
-  const { items, refresh, itemsRef: docsRef } = useCollection(loadAll);
+  const { items, loading, error, refresh, mutate, itemsRef: docsRef } = useCollection(loadAll);
 
   // Depends on `items` (read through the ref) so its identity changes when
   // the list loads or refreshes. Callers memoize room lists on getForRoom
@@ -73,5 +73,19 @@ export function usePlacardDialogs() {
     [getForRoom, refresh]
   );
 
-  return { getForRoom, saveRoomDialog };
+  // The OCR Management page's save: every changed room in one request (and
+  // one transaction), creating a record for a room that has none. Rows are
+  // { roomName, ocrEnabled, placardName, extraTerms }; see ocrSaveBody.
+  const saveOcrSettings = useCallback(
+    async (rows) => {
+      if (rows.length === 0) return;
+      await mutate(() => apiPost("PlacardDialogs_API/saveOcr", ocrSaveBody(rows)), {
+        success: "OCR settings saved.",
+        errorPrefix: "Couldn't save the OCR settings",
+      });
+    },
+    [mutate]
+  );
+
+  return { getForRoom, saveRoomDialog, saveOcrSettings, loading, error };
 }

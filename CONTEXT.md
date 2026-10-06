@@ -96,6 +96,10 @@ _Avoid_: amenity, service
 The optional telephone number an admin sets on a room's or facility's details in the Room and Facility Editor (`contactNumber` / `contact_number`), shown on the desktop room panel. It replaced the old free-text "Use" field.
 _Avoid_: phone number, phone
 
+**Placard name**:
+The name printed on a room's or facility's placard, which the mobile app's placard scanner looks for (`placardName` / `placard_name`). Set on the OCR Management page: it starts as the room name when the room is put on OCR and can then differ from it freely; renaming the room does not change it. Its **search terms** are generated from it (see `src/utils/ocrTerms.js`), plus any **extra search terms** an admin types. A room is **on OCR** (`ocrEnabled` / `ocr_enabled`) when the scanner may match it.
+_Avoid_: sign name, OCR name, label (that's a Facility marker's name)
+
 **Saved room**:
 A room a visitor bookmarked with the save button on a room panel. On the web it is kept only in that browser's localStorage, by room name, with no account involved, so renaming the room in the Room and Facility Editor drops it from the list.
 _Avoid_: favorite, starred room

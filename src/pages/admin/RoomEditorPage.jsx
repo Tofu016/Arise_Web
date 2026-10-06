@@ -247,13 +247,10 @@ export default function RoomEditorPage() {
         await updateNode(node.id, { rooms: updatedRooms });
       }
 
-      // ocrSearchTerms only ever gets set from the room name (there's no
-      // manual editing UI for it) — regenerating it from the current title
-      // on every save, not just when renaming, keeps it from ever drifting
-      // stale, same normalization saveRoomDialog itself uses when first
-      // creating a record.
-      const ocrTerm = trimmedTitle.toLowerCase().replace(/[^a-z0-9]/g, "");
-
+      // No OCR fields here: the scanner matches a room by its Placard name
+      // and search terms, which the OCR Management page owns, and a rename
+      // here leaves them alone (that page flags the names drifting apart).
+      //
       // saveRoomDialog looks the existing record up by the OLD name
       // (selectedRoom) — passing the new name in the patch renames it in
       // place, same record, not a new one, since the record's own id is
@@ -265,7 +262,6 @@ export default function RoomEditorPage() {
         contactNumber: contactNumber.trim(),
         link: link.trim(),
         photos,
-        ocrSearchTerms: ocrTerm ? [ocrTerm] : [],
       });
 
       if (isMoving) setSelectedNodeId(targetNode.id);

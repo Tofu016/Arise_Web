@@ -8,6 +8,7 @@ import {
   normalizeRoomName,
   dialogPatchBody,
   dialogCreateBody,
+  ocrSaveBody,
 } from "./entities";
 
 const nodeRow = {
@@ -194,7 +195,46 @@ describe("room placard dialogs", () => {
       roomDescription: "",
       photo: "",
       photos: [],
+      ocrEnabled: false,
+      placardName: "",
       ocrSearchTerms: ["203", "two"],
+    });
+  });
+
+  it("maps the OCR fields, splitting generated terms from extra ones", () => {
+    const row = {
+      id: 1,
+      room_name: "GD1-101",
+      ocr_enabled: 1,
+      placard_name: "GD1-101",
+      search_terms: [{ term: "gd1-101", is_extra: 0 }, { term: "gd1101", is_extra: 0 }, { term: "rm101", is_extra: 1 }],
+    };
+    expect(toDialog(row)).toMatchObject({
+      ocrEnabled: true,
+      placardName: "GD1-101",
+      ocrSearchTerms: ["gd1-101", "gd1101", "rm101"],
+      ocrGeneratedTerms: ["gd1-101", "gd1101"],
+      ocrExtraTerms: ["rm101"],
+    });
+  });
+
+  it("the OCR save generates terms for an eligible room and clears them for one taken off", () => {
+    expect(
+      ocrSaveBody([
+        { roomName: "Office of the Dean", ocrEnabled: true, placardName: " Dean's Office ", extraTerms: ["dean"] },
+        { roomName: "Canteen", ocrEnabled: false, placardName: "Canteen", extraTerms: ["food"] },
+      ])
+    ).toEqual({
+      rooms: [
+        {
+          room_name: "Office of the Dean",
+          ocr_enabled: 1,
+          placard_name: "Dean's Office",
+          search_terms: ["dean'soffice", "deansoffice", "dean's office"],
+          extra_search_terms: ["dean"],
+        },
+        { room_name: "Canteen", ocr_enabled: 0, placard_name: "Canteen", search_terms: [], extra_search_terms: ["food"] },
+      ],
     });
   });
 
@@ -229,23 +269,15 @@ describe("room placard dialogs", () => {
     });
   });
 
-  it("a new record is seeded with a search term derived from the room name, then the patch applied", () => {
+  it("a new record is seeded with an empty description and no search terms, then the patch applied", () => {
     expect(dialogCreateBody(" Rm 2-03 ", { department: "Math" })).toEqual({
       room_name: "Rm 2-03",
       description: "",
-      search_terms: ["rm203"],
       department: "Math",
     });
   });
 
-  it("a rename target wins over the lookup name, and patched terms win over the derived one", () => {
-    expect(dialogCreateBody("old", { roomName: "New", ocrSearchTerms: ["z"] })).toMatchObject({
-      room_name: "New",
-      search_terms: ["z"],
-    });
-  });
-
-  it("derives no search term from a name with no letters or digits", () => {
-    expect(dialogCreateBody("---", {}).search_terms).toEqual([]);
+  it("a rename target wins over the lookup name", () => {
+    expect(dialogCreateBody("old", { roomName: "New" })).toMatchObject({ room_name: "New" });
   });
 });

@@ -8,6 +8,8 @@
 // empty. Create bodies drop empty optionals (`|| undefined`); patch
 // bodies send exactly what was given.
 
+import { generateOcrTerms } from "./ocrTerms";
+
 // A hotspot's defaultYaw/defaultPitch are the arrival view for that one
 // edge — the camera orientation to land on when walking this specific
 // link, independent of the arrow's own yaw/pitch. Null (not set) means
@@ -189,7 +191,15 @@ export function toDialog(row) {
     photos: (row.photos || []).map((p) => ({ path: p.path, kind: p.kind === "360" ? "360" : "flat", x: p.thumb_x ?? 50, y: p.thumb_y ?? 50 })),
     // The first photo is the room's thumbnail; "" when it has none.
     photo: row.photos?.[0]?.path || "",
+    // OCR Management (see utils/ocrTerms.js): whether the mobile placard
+    // scanner matches this room, the Placard name its terms are generated
+    // from ("" when never set), and its search terms, all of them and split
+    // into generated and admin-typed extras.
+    ocrEnabled: Number(row.ocr_enabled) === 1,
+    placardName: row.placard_name || "",
     ocrSearchTerms: (row.search_terms || []).map((t) => t.term),
+    ocrGeneratedTerms: (row.search_terms || []).filter((t) => !Number(t.is_extra)).map((t) => t.term),
+    ocrExtraTerms: (row.search_terms || []).filter((t) => Number(t.is_extra)).map((t) => t.term),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -203,6 +213,9 @@ export function dialogPatchBody(patch) {
     contactNumber: "contact_number",
     link: "link",
     ocrSearchTerms: "search_terms",
+    ocrEnabled: "ocr_enabled",
+    placardName: "placard_name",
+    ocrExtraTerms: "extra_search_terms",
   });
   if (patch.photos) {
     body.photos = patch.photos.map((p) => ({ path: p.path, kind: p.kind, thumb_x: p.x, thumb_y: p.y }));
@@ -210,16 +223,31 @@ export function dialogPatchBody(patch) {
   return body;
 }
 
-// A brand-new record is seeded with an empty description and one search
-// term derived from the room name, then the patch applied on top.
+// A brand-new record is seeded with an empty description, then the patch
+// applied on top. It has no search terms: those belong to the OCR
+// Management page, which also decides whether the scanner matches it.
 export function dialogCreateBody(roomName, patch) {
-  const trimmedName = (patch.roomName || roomName).trim();
-  const ocrTerm = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, "");
   return {
-    room_name: trimmedName,
+    room_name: (patch.roomName || roomName).trim(),
     description: "",
-    search_terms: ocrTerm ? [ocrTerm] : [],
     ...dialogPatchBody(patch),
+  };
+}
+
+// The OCR Management page's save (PlacardDialogs_API/saveOcr): one row per
+// changed room. Generated terms are recomputed from the Placard name here,
+// so what is stored is always what the current rules give; a room taken
+// off OCR keeps its Placard name and extra terms for when it comes back,
+// but loses its generated terms.
+export function ocrSaveBody(rows) {
+  return {
+    rooms: rows.map((r) => ({
+      room_name: r.roomName,
+      ocr_enabled: r.ocrEnabled ? 1 : 0,
+      placard_name: r.placardName.trim(),
+      search_terms: r.ocrEnabled ? generateOcrTerms(r.placardName) : [],
+      extra_search_terms: r.extraTerms,
+    })),
   };
 }
 

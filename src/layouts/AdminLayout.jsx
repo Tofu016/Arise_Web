@@ -33,6 +33,8 @@ const GROUPS = [
       { path: "navigation-editor", icon: PLACEHOLDER("route"), label: "Navigation Editor" },
       { path: "room-and-facility-editor", icon: PLACEHOLDER("door"), label: "Room and Facility Editor" },
       { path: "directory", icon: PLACEHOLDER("directory"), label: "Directory" },
+      // The mobile app's placard scanner: which rooms it can recognize.
+      { path: "ocr-management", icon: PLACEHOLDER("camera"), label: "OCR Management" },
       { path: "marker-management", icon: LOCATION_ICON, label: "Marker Management" },
       { path: "emergency-coverage", icon: PLACEHOLDER("emergency-exit"), label: "Emergency Coverage" },
     ],

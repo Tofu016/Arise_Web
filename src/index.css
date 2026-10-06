@@ -11185,3 +11185,206 @@ html.kiosk-mode .directions-map-zoom button:hover:active {
 .directory-admin-incoming {
   margin-top: var(--space-sm);
 }
+
+/* Admin OCR Management page: the Directory page's layout (summary and the
+   "Test a read" box on the left, search and the room lists on the right),
+   with each room on OCR shown as a small editor rather than a single row. */
+.ocr-admin-side-card .signage-card-head {
+  margin-bottom: var(--space-sm);
+}
+.ocr-admin-stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.ocr-admin-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: 13px;
+}
+.ocr-admin-stats dt {
+  color: var(--text-muted);
+}
+.ocr-admin-stats dd {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text);
+}
+.ocr-admin-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--warning);
+  border-radius: var(--admin-radius-lg);
+  background: var(--warning-surface);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ocr-admin-banner > span {
+  flex: 1 1 320px;
+}
+.ocr-admin-room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.ocr-admin-room {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  background: var(--surface);
+}
+.ocr-admin-room--problem {
+  border-color: var(--admin-danger);
+}
+.ocr-admin-room-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ocr-admin-tag {
+  margin-left: var(--space-sm);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--warning-surface);
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ocr-admin-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+@media (max-width: 1100px) {
+  .ocr-admin-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ocr-admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+.ocr-admin-field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ocr-admin-input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.ocr-admin-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.ocr-admin-input[aria-invalid="true"] {
+  border-color: var(--admin-danger);
+}
+.ocr-admin-field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ocr-admin-field-hint .signage-link-btn {
+  display: inline;
+}
+.ocr-admin-field-error {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-danger);
+}
+.ocr-admin-generated {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* Generated terms: read-only, so plainer than the removable extra-term
+   chips (.room-chip) beside them. */
+.ocr-admin-term {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.ocr-admin-chip-remove {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+.ocr-admin-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.ocr-admin-note {
+  padding: 6px 10px;
+  border-radius: var(--admin-radius);
+  background: var(--warning-surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ocr-admin-test-summary {
+  margin: var(--space-md) 0 var(--space-sm);
+  font-size: 13px;
+  color: var(--text-body);
+}
+.ocr-admin-test-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.ocr-admin-test-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius);
+}
+.ocr-admin-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ocr-admin-badge--exact {
+  background: var(--success-surface);
+  color: var(--success);
+}
