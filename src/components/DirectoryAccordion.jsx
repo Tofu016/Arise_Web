@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSecurePhotoUrl } from "../hooks/useSecurePhotoUrl";
-import { allBuildings, allCampuses, buildingLabel, campusForBuilding } from "../utils/constants";
+import { allBuildings, allCampuses, buildingLabel, campusForBuilding, floorLabel } from "../utils/constants";
 import { DEFAULT_DIRECTORY_SETTINGS, listedRooms, roomsInBuilding } from "../utils/directorySettings";
 import { buildingsForCampus } from "../utils/navigation";
 import { useFlatPhotoUrl, CELL_PREVIEW, PANORAMA_THUMBNAIL_WIDTH } from "../hooks/useFlatPhotoUrl";
 import { useDirectoryThumbnailPreload } from "../hooks/useDirectoryThumbnailPreload";
 import { cellView, focusPosition, isPanorama, roomPhotos } from "../utils/roomPhotos";
+import IconPlaceholder from "./IconPlaceholder";
 
 // A room's row fades from the sidebar's own gray on the left into the room's
 // photo on the right. The thumbnail is only requested once the row scrolls
@@ -51,7 +52,53 @@ function RoomRow({ room, isSelected, onSelect }) {
   );
 }
 
-function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, selectedRoomName, onToggle, onSelect }) {
+// "You are here" (with a pin), on the building the visitor is standing in
+// and on that building's floor heading — as the mobile app's Directory.
+function HereTag() {
+  return (
+    <span className="directory-here-tag">
+      <IconPlaceholder name="location-pin" variant="white" className="directory-here-pin" />
+      You are here
+    </span>
+  );
+}
+
+// A building's listed rooms under floor headings (Underground, Floor 1,
+// Floor 2…), lowest floor first, each floor's rooms in the order they were
+// already listed. `hereFloor` is the visitor's floor when this is the
+// building they're in (null otherwise); that floor's heading says so, and
+// it's shown even when none of its rooms are listed (the admin Directory
+// page can trim them), so the visitor's floor is always marked.
+function RoomsByFloor({ rooms, hereFloor, selectedRoomName, onSelect }) {
+  const floors = useMemo(() => {
+    const byFloor = new Map();
+    rooms.forEach((r) => {
+      const floor = Number(r.node.floor);
+      if (!byFloor.has(floor)) byFloor.set(floor, []);
+      byFloor.get(floor).push(r);
+    });
+    if (hereFloor !== null && hereFloor !== undefined && !byFloor.has(Number(hereFloor))) {
+      byFloor.set(Number(hereFloor), []);
+    }
+    return [...byFloor.entries()].sort((a, b) => a[0] - b[0]);
+  }, [rooms, hereFloor]);
+  return floors.map(([floor, floorRooms]) => {
+    const here = hereFloor !== null && hereFloor !== undefined && Number(hereFloor) === floor;
+    return (
+      <div className="directory-floor" key={floor}>
+        <div className={"directory-floor-heading" + (here ? " directory-floor-heading-here" : "")}>
+          <span>{floorLabel(floor)}</span>
+          {here && <HereTag />}
+        </div>
+        {floorRooms.map((r) => (
+          <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
+        ))}
+      </div>
+    );
+  });
+}
+
+function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, hereFloor, selectedRoomName, onToggle, onSelect }) {
   const rooms = useMemo(
     () => listedRooms(settings, building.id, roomsInBuilding(allRooms, building.id)),
     [allRooms, building.id, settings]
@@ -65,13 +112,17 @@ function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, se
         onClick={onToggle}
       >
         <span>{building.label} Building</span>
+        {isHere && <HereTag />}
       </button>
       {expanded && (
         <div className="directory-room-list">
           {rooms.length === 0 && <p className="directory-empty-hint">No rooms found for this building yet.</p>}
-          {rooms.map((r) => (
-            <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
-          ))}
+          <RoomsByFloor
+            rooms={rooms}
+            hereFloor={isHere ? hereFloor : null}
+            selectedRoomName={selectedRoomName}
+            onSelect={onSelect}
+          />
         </div>
       )}
     </div>
@@ -96,6 +147,10 @@ function BuildingRow({ building, rooms: allRooms, settings, expanded, isHere, se
 // `settings` (see utils/directorySettings.js, edited on the admin Directory
 // page) hides whole groups, campuses, buildings and individual rooms. It
 // only trims what this accordion lists; search still finds every room.
+//
+// Inside a building its rooms sit under floor headings, and the building
+// and floor the visitor is on (`currentBuildingId`, `currentFloor`) are
+// tagged "You are here", as in the mobile app's Directory.
 export default function DirectoryAccordion({
   rooms,
   savedRooms = [],
@@ -103,6 +158,7 @@ export default function DirectoryAccordion({
   onSelect,
   selectedRoomName,
   currentBuildingId,
+  currentFloor = null,
 }) {
   const campuses = allCampuses().filter((c) => !settings.hiddenCampuses.includes(c.id));
   const mainCampus = campuses.find((c) => c.id === "main");
@@ -186,6 +242,7 @@ export default function DirectoryAccordion({
                   settings={settings}
                   selectedRoomName={selectedRoomName}
                   isHere={b.id === currentBuildingId}
+                  hereFloor={currentFloor}
                   expanded={expandedBuildings.has(b.id)}
                   onToggle={() => toggleBuilding(b.id)}
                   onSelect={onSelect}
@@ -212,6 +269,7 @@ export default function DirectoryAccordion({
               onClick={() => toggleBuilding(soloBuildingId)}
             >
               <span>{campus.label}</span>
+              {soloBuildingId === currentBuildingId && <HereTag />}
             </button>
             {expanded && (
               <div className="directory-room-list">
@@ -219,6 +277,7 @@ export default function DirectoryAccordion({
                   buildingId={soloBuildingId}
                   rooms={rooms}
                   settings={settings}
+                  hereFloor={soloBuildingId === currentBuildingId ? currentFloor : null}
                   selectedRoomName={selectedRoomName}
                   onSelect={onSelect}
                 />
@@ -231,7 +290,7 @@ export default function DirectoryAccordion({
   );
 }
 
-function SoloCampusRooms({ buildingId, rooms: allRooms, settings, selectedRoomName, onSelect }) {
+function SoloCampusRooms({ buildingId, rooms: allRooms, settings, hereFloor, selectedRoomName, onSelect }) {
   const rooms = useMemo(
     () => listedRooms(settings, buildingId, roomsInBuilding(allRooms, buildingId)),
     [allRooms, buildingId, settings]
@@ -241,9 +300,7 @@ function SoloCampusRooms({ buildingId, rooms: allRooms, settings, selectedRoomNa
       {rooms.length === 0 && (
         <p className="directory-empty-hint">No rooms found for {buildingLabel(buildingId)} yet.</p>
       )}
-      {rooms.map((r) => (
-        <RoomRow key={r.roomName} room={r} isSelected={r.roomName === selectedRoomName} onSelect={onSelect} />
-      ))}
+      <RoomsByFloor rooms={rooms} hereFloor={hereFloor} selectedRoomName={selectedRoomName} onSelect={onSelect} />
     </>
   );
 }

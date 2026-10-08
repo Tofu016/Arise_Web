@@ -12,6 +12,7 @@ import DirectionsFields from "../components/DirectionsFields";
 import DirectionsPeakProbe from "../components/DirectionsPeakProbe";
 import KioskRoomCard from "../components/KioskRoomCard";
 import KioskStartScreen from "../components/KioskStartScreen";
+import DesktopStartScreen from "../components/DesktopStartScreen";
 import KioskCampusScreen from "../components/KioskCampusScreen";
 import KioskBuildingScreen from "../components/KioskBuildingScreen";
 import KioskFloorScreen from "../components/KioskFloorScreen";
@@ -29,9 +30,8 @@ import EmergencyNotice, { EmergencyContactsBand } from "../components/EmergencyN
 import FeedbackPanel from "../components/FeedbackPanel";
 import KioskThanks from "../components/KioskThanks";
 import IdlePrompt from "../components/IdlePrompt";
-import DesktopIntroOverlay from "../components/DesktopIntroOverlay";
+import DesktopTutorial from "../components/DesktopTutorial";
 import KioskIntroOverlay from "../components/KioskIntroOverlay";
-import SidebarIntroOverlay from "../components/SidebarIntroOverlay";
 import MobileIntroOverlay from "../components/MobileIntroOverlay";
 import NearbyRoomsPanel from "../components/NearbyRoomsPanel";
 import DirectoryAccordion from "../components/DirectoryAccordion";
@@ -39,7 +39,8 @@ import { useLiveDirectorySettings } from "../hooks/useDirectorySettings";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import moreVerticalWhite from "../assets/icons/more-vertical-white.svg";
 import powerIcon from "../assets/icons/power.svg";
-import questionMarkIcon from "../assets/icons/question-mark-CREATIVE-COMMONS-ZERO.svg";
+// The tips button's "i" (white, on the brand maroon).
+import infoIcon from "../assets/icons/info-i-white.svg";
 import chevronRightWhite from "../assets/icons/chevron-right-white.svg";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
@@ -130,6 +131,26 @@ const KEBAB_ICON_WHITE = <img src={moreVerticalWhite} alt="" className="inline-i
 const CHEVRON_RIGHT_WHITE = <img src={chevronRightWhite} alt="" className="inline-icon-img" />;
 const POWER_ICON = <img src={powerIcon} alt="" className="inline-icon-img" />;
 
+// Desktop's interactive tutorial runs on a visitor's first visit only: once
+// it's finished or skipped, this browser remembers (the i button still
+// replays it any time). Clearing the site's data shows it again. Storage
+// can be blocked; then it simply runs every visit, as before.
+const TUTORIAL_DONE_KEY = "ariseDesktopTutorialDone";
+function readTutorialDone() {
+  try {
+    return localStorage.getItem(TUTORIAL_DONE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function rememberTutorialDone() {
+  try {
+    localStorage.setItem(TUTORIAL_DONE_KEY, "1");
+  } catch {
+    // Not remembered: it shows again next visit.
+  }
+}
+
 // Development only: `?kiosk` in the URL shows the Compact layout on a compact
 // screen without pairing, since only a paired kiosk gets it otherwise. Never
 // in a production build, so nobody can turn a phone into a kiosk this way.
@@ -177,12 +198,35 @@ function FittedTitlePill({ name, onTap, onBack }) {
 // Kiosk: finishing feedback resets the whole system to the start screen and
 // starting node. Remounting the page under a fresh key drops every piece of
 // visitor state at once (position, history, panels, route, start screen).
+//
+// Desktop: the ARISE logo plays on its own as the page opens
+// (DesktopStartScreen), once per page load, so it lives out here above that
+// per-session remount. The page reports its layout and when its first load is
+// done (onStartupState); until it has said, the screen shows, and a layout
+// other than desktop takes it away before the first paint.
 export default function MainPage() {
   const [session, setSession] = useState(0);
-  return <MainPageContent key={session} onReset={() => setSession((s) => s + 1)} />;
+  const [startup, setStartup] = useState({ layout: null, ready: false, done: false });
+  const reportStartup = useCallback(
+    (layout, ready) => setStartup((s) => (s.layout === layout && s.ready === ready ? s : { ...s, layout, ready })),
+    []
+  );
+  const finishStartup = useCallback(() => setStartup((s) => ({ ...s, done: true })), []);
+  const showStartup = !startup.done && (startup.layout === null || startup.layout === "desktop");
+  return (
+    <>
+      <MainPageContent
+        key={session}
+        onReset={() => setSession((s) => s + 1)}
+        onStartupState={reportStartup}
+        startupDone={startup.done || (startup.layout !== null && startup.layout !== "desktop")}
+      />
+      {showStartup && <DesktopStartScreen ready={startup.ready} onDone={finishStartup} />}
+    </>
+  );
 }
 
-function MainPageContent({ onReset }) {
+function MainPageContent({ onReset, onStartupState, startupDone = true }) {
   useCustomBuildingsVersion(); // pick up admin-created buildings without a reload
   const { user, signOut } = useAuth();
   // Which layout (see utils/compactLayout.js): a compact screen is a phone
@@ -260,11 +304,6 @@ function MainPageContent({ onReset }) {
   // upfront splash, same shape as the kiosk's above. Deliberately not
   // persisted: every fresh page load is a new visitor's first impression.
   const [desktopIntroSeen, setDesktopIntroSeen] = useState(false);
-  // Same idea, for the app sidebar's own walkthrough (SidebarIntroOverlay) —
-  // a separate seen flag per overlay (each covers a different region and
-  // starts hidden independently), but a single shared dismiss: clicking
-  // either one closes both at once instead of leaving the other still up.
-  const [sidebarIntroSeen, setSidebarIntroSeen] = useState(false);
   // Set only by the help button replaying the overlays, never by the
   // session-start display: the narration is an opt-in extra, and a visitor
   // shouldn't get speech they didn't ask for.
@@ -272,15 +311,25 @@ function MainPageContent({ onReset }) {
   const dismissIntro = () => {
     setNarrateIntro(false);
     setDesktopIntroSeen(true);
-    setSidebarIntroSeen(true);
+    // Desktop's tutorial, finished or skipped: not on this browser's next
+    // visit (see TUTORIAL_DONE_KEY).
+    if (!compact && !mobileWeb) rememberTutorialDone();
   };
   // "How to use this tour" (the sidebar's own help button) replays both
-  // overlays.
+  // overlays — on desktop, the interactive tutorial, from its first step.
   const replayIntro = () => {
     setNarrateIntro(true);
     setDesktopIntroSeen(false);
-    setSidebarIntroSeen(false);
+    setTutorialRun((n) => n + 1);
+    setTutorialReplayed(true);
   };
+  // Desktop: the interactive tutorial (DesktopTutorial) in place of the two
+  // tip overlays. Every run is a fresh component (the key), so a replay
+  // starts again at step one.
+  const [tutorialRun, setTutorialRun] = useState(0);
+  // First visit only (TUTORIAL_DONE_KEY), unless the i button asks again.
+  const [tutorialDoneBefore] = useState(readTutorialDone);
+  const [tutorialReplayed, setTutorialReplayed] = useState(false);
 
   // Kiosk End Session button: whether feedback was already sent this
   // session, regardless of how the feedback dialog was reached (the FAB's
@@ -975,7 +1024,47 @@ function MainPageContent({ onReset }) {
   // button; the cleanup stops the speech the moment the overlay closes (or
   // anything else covers it, which unmounts it).
   const introVisible = hintsAllowed && !(compact ? kioskIntroSeen : desktopIntroSeen);
-  const narrating = narrateIntro && introVisible;
+  // For MainPage's desktop startup screen: which layout this is, and whether
+  // the first load is over (a failed load counts, so the screen never sticks
+  // over the error). A layout effect, so a kiosk or phone drops that screen
+  // before it's ever painted.
+  const startupReady = initialLoadDone || !!loadError;
+  useLayoutEffect(() => {
+    onStartupState?.(layout, startupReady);
+  }, [layout, startupReady, onStartupState]);
+
+  // Desktop's interactive tutorial isn't narrated (its steps are done, not
+  // read out); the Mobile web and kiosk intros still are.
+  const narrating = narrateIntro && introVisible && (compact || mobileWeb);
+
+  // Desktop's interactive tutorial: once the startup screen is gone and the
+  // first spot is on screen, until it's finished or skipped. Not tied to
+  // hintsAllowed after that: its own steps open panels, which would hide it.
+  const tutorialActive =
+    !compact &&
+    !mobileWeb &&
+    !desktopIntroSeen &&
+    (!tutorialDoneBefore || tutorialReplayed) &&
+    initialLoadDone &&
+    !!current &&
+    startupDone;
+  // Each step puts the page in the state it needs.
+  const prepareTutorialStep = (stepKey) => {
+    if (stepKey === "directory") {
+      // The search step left results up; the Directory shows again once the
+      // search is cleared and closed.
+      setSearchQuery("");
+      searchInputRef.current?.blur();
+      if (panelMode === "search") overlay.closePanel();
+    }
+    if (stepKey === "menu" && directions) {
+      // The directions step left the Directions panel up, which takes the
+      // search bar's place, menu button included; closing it brings the
+      // button back for this step to point at.
+      flow.close();
+    }
+    if (stepKey === "replay") setDesktopMenuOpen(false);
+  };
   useEffect(() => {
     if (!narrating) return;
     speak(compact ? KIOSK_INTRO_SPEECH : mobileWeb ? MOBILE_INTRO_SPEECH : DESKTOP_INTRO_SPEECH);
@@ -1112,7 +1201,7 @@ function MainPageContent({ onReset }) {
     },
   ];
 
-  // The sidebar's question mark (Mobile web layout): replays the tips, unless
+  // The sidebar's "i" button (Mobile web layout): replays the tips, unless
   // this tap is the last step of the hidden pairing gesture, which opens the
   // pairing screen instead.
   const handleDrawerHelp = () => {
@@ -2069,16 +2158,6 @@ function MainPageContent({ onReset }) {
                 aria-modal={mobileWeb ? true : undefined}
                 aria-label={mobileWeb ? "Menu" : undefined}
               >
-                {/* The sidebar's own session-start walkthrough — see
-                    SidebarIntroOverlay.jsx and the sidebarIntroSeen state
-                    above. Shares dismissIntro with DesktopIntroOverlay
-                    below, so clicking either one closes both. */}
-                <Presence show={hintsAllowed && !compact && !mobileWeb && !sidebarIntroSeen} ms={250}>
-                  <SidebarIntroOverlay
-                    open={hintsAllowed && !compact && !mobileWeb && !sidebarIntroSeen}
-                    onDismiss={dismissIntro}
-                  />
-                </Presence>
                 {/* Mobile web layout: the drawer's close button (top left)
                     and, mirroring it, the help button that lives on the
                     panorama on desktop (top right). */}
@@ -2096,12 +2175,12 @@ function MainPageContent({ onReset }) {
                     </button>
                     <button
                       type="button"
-                      className="app-sidebar-drawer-btn"
+                      className="app-sidebar-drawer-btn app-sidebar-help-btn"
                       onClick={handleDrawerHelp}
                       aria-label="How to use this tour"
                       title="How to use this tour"
                     >
-                      <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                      <img src={infoIcon} alt="" className="inline-icon-img" />
                     </button>
                   </div>
                 )}
@@ -2270,6 +2349,7 @@ function MainPageContent({ onReset }) {
                         onSelect={mobileWeb ? overlay.previewRoom : openRoomCard}
                         selectedRoomName={panelMode === "room" ? selectedRoomCard?.roomName : null}
                         currentBuildingId={current?.building}
+                        currentFloor={current?.floor ?? null}
                       />
                     </div>
                   )}
@@ -2371,12 +2451,19 @@ function MainPageContent({ onReset }) {
                     DesktopIntroOverlay.jsx and the desktopIntroSeen state
                     above. Shares dismissIntro with SidebarIntroOverlay, so
                     clicking either one closes both. */}
-                <Presence show={hintsAllowed && !compact && !mobileWeb && !desktopIntroSeen} ms={250}>
-                  <DesktopIntroOverlay
-                    open={hintsAllowed && !compact && !mobileWeb && !desktopIntroSeen}
-                    onDismiss={dismissIntro}
-                  />
-                </Presence>
+                {/* Desktop: the interactive tutorial (DesktopTutorial.jsx),
+                    in place of the old tip overlays. Portaled to the body:
+                    its spotlight and card are fixed to the window. */}
+                {tutorialActive &&
+                  createPortal(
+                    <DesktopTutorial
+                      key={tutorialRun}
+                      signals={{ nodeId: current?.id, searchQuery, panelMode, menuOpen: desktopMenuOpen }}
+                      onPrepare={prepareTutorialStep}
+                      onFinish={dismissIntro}
+                    />,
+                    document.body
+                  )}
                 <Presence show={hintsAllowed && mobileWeb && !desktopIntroSeen} ms={250}>
                   <MobileIntroOverlay open={hintsAllowed && mobileWeb && !desktopIntroSeen} onDismiss={dismissIntro} />
                 </Presence>
@@ -2472,7 +2559,7 @@ function MainPageContent({ onReset }) {
                     aria-label="How to use this tour"
                     title="How to use this tour"
                   >
-                    <img src={questionMarkIcon} alt="" className="inline-icon-img" />
+                    <img src={infoIcon} alt="" className="inline-icon-img" />
                   </button>
                 )}
 

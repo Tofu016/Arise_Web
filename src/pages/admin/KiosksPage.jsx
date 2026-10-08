@@ -195,7 +195,7 @@ export default function KiosksPage() {
             the top of the screen five times.
           </li>
           <li>
-            Open the sidebar again and tap the question mark button at its top right once. The pairing prompt then
+            Open the sidebar again and tap the i button at its top right once. The pairing prompt then
             appears.
           </li>
           <li>Type the pairing code shown on this page into the prompt. The device reloads into the kiosk view.</li>

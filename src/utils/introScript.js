@@ -18,7 +18,7 @@ export const SIDEBAR_INTRO_TEXT = {
   directions: "Get directions to any room.",
   building: "Hop straight to a specific building floor.",
   exit: "Nearest Exit shows the fastest way outside from wherever you are.",
-  help: "Click the question mark button on the upper right corner to replay these tips.",
+  help: "Click the i button on the upper right corner to replay these tips.",
 };
 
 export const KIOSK_INTRO_TEXT = {
@@ -35,7 +35,7 @@ export const MOBILE_INTRO_TEXT = {
   zoom: "Pinch with two fingers to zoom in and out.",
   preview: "Hold the view still for a moment to preview where each arrow and room leads. Tap a preview to go there.",
   menu: "Tap the menu button on the left for the directory, search, directions, buildings, Nearest Exit and feedback.",
-  help: "Tap the question mark at the top right of the menu to see these tips again.",
+  help: "Tap the i button at the top right of the menu to see these tips again.",
 };
 
 export const DESKTOP_INTRO_SPEECH = [...Object.values(DESKTOP_INTRO_TEXT), ...Object.values(SIDEBAR_INTRO_TEXT)].join(" ");

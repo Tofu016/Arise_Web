@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import sdcaLogoReversedWhite from "../assets/images/sdca-logo-reversed-white.png";
 import menuIconWhite from "../assets/icons/menu-white.svg";
 import IconPlaceholder from "./IconPlaceholder";
+import infoIcon from "../assets/icons/info-i-white.svg";
 import { DragIcon, TapIcon } from "./KioskIntroOverlay";
 import { MOBILE_INTRO_TEXT } from "../utils/introScript";
 import { useIntroReady } from "../hooks/useIntroReady";
@@ -33,7 +34,15 @@ const TIPS = [
       </span>
     ),
   },
-  { key: "help", icon: <IconPlaceholder name="question-help" variant="white" className="mobile-intro-glyph" /> },
+  {
+    key: "help",
+    // The drawer's tips button itself: a white "i" on the brand maroon.
+    icon: (
+      <span className="intro-info-badge intro-info-badge--large">
+        <img src={infoIcon} alt="" />
+      </span>
+    ),
+  },
 ];
 
 // The Mobile web layout's session-start walkthrough: the touch counterpart of

@@ -7,9 +7,9 @@
 //   MOBILE_GESTURE  (Mobile web layout, where an unpaired kiosk device starts)
 //                   5 taps on the sidebar logo, then close the sidebar and
 //                   tap the node name 5 times, then open the sidebar and tap
-//                   its question mark button once. The node name is behind
+//                   its i (tips) button once. The node name is behind
 //                   the sidebar's dimmed backdrop while the sidebar is open
-//                   (a tap there closes it instead), and the question mark
+//                   (a tap there closes it instead), and the i button
 //                   lives inside the sidebar, so the sequence can only be
 //                   done by closing and reopening it in between.
 //

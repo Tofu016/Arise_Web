@@ -2784,6 +2784,52 @@ html.kiosk-mode .directory-room-row.directory-row-selected:hover:active {
   --directory-room-fade: var(--accent-hover);
   background: var(--directory-room-fade);
 }
+/* Floor headings inside a building's room list (DirectoryAccordion's
+   RoomsByFloor): a slim tracked label on a darker band, aligned with the
+   room names (40px), like the floor lines of a building directory board. */
+.directory-floor {
+  display: flex;
+  flex-direction: column;
+}
+.directory-floor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 16px 7px 40px;
+  background: var(--tour-directory-selected-bg);
+  font-family: var(--font-sans-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.directory-floor-heading-here {
+  color: var(--white);
+}
+/* "You are here": on the visitor's building row and floor heading, a white
+   pin and label on the brand maroon (the mobile app's badge). */
+.directory-here-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 9px 3px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--sdca-maroon);
+  color: var(--white);
+  font-family: var(--font-sans-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.directory-here-pin {
+  width: 11px;
+  height: 11px;
+}
 .directory-empty-hint {
   margin: 0;
   padding: 6px 16px;
@@ -5458,6 +5504,18 @@ html.kiosk-mode .floating-nearest-exit-btn:hover:active {
   top: calc(16px + env(safe-area-inset-top));
   right: calc(16px + env(safe-area-inset-right));
   z-index: 30;
+}
+/* The tips ("i") button, desktop and the Mobile web drawer: a white "i" on
+   the brand maroon. */
+.floating-help-btn,
+.app-sidebar-drawer-btn.app-sidebar-help-btn {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+:where(html:not(.kiosk-mode)) .floating-help-btn:hover,
+:where(html:not(.kiosk-mode)) .app-sidebar-drawer-btn.app-sidebar-help-btn:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 .account-popover {
   position: absolute;
@@ -9028,7 +9086,8 @@ html.kiosk-mode .pano-zoom-btn:not(:disabled):hover:active {
 .kiosk-start-screen-playing .kiosk-logo-cursor {
   animation: kiosk-logo-cursor 1770ms both, kiosk-logo-blink 610ms steps(1, end) infinite;
 }
-.kiosk-start-screen-playing .kiosk-logo-letter {
+.kiosk-start-screen-playing .kiosk-logo-letter,
+.desktop-start-playing .kiosk-logo-letter {
   animation: kiosk-logo-letter 97ms linear var(--delay) both;
 }
 @keyframes kiosk-logo-breathe {
@@ -9087,6 +9146,270 @@ html.kiosk-mode .pano-zoom-btn:not(:disabled):hover:active {
 }
 @keyframes kiosk-start-fade-out {
   to { opacity: 0; }
+}
+
+/* Desktop startup screen (DesktopStartScreen.jsx): the kiosk's ARISE logo,
+   played automatically and kept smooth while the page loads underneath by
+   animating transforms and opacity only (compositor-run, no layout). The
+   frame is three pieces: rounded ends (.dsl-cap) that slide, and a middle
+   (.dsl-mid) that stretches. Every part sits at its EXPANDED position in the
+   designer's SVG units (--u is one unit; expanded logo 1470.5 x 601.4) and
+   is transformed back to the neutral square at rest. Keyframe percentages
+   are the kiosk's timeline (LOGO_DURATION_MS, 1770ms): 0-12.82% hold on the
+   neutral square, to 29.06% the start pose, to 39.74% hold, to 67.52%
+   expand. Caps are 160u wide with 104u corners; the middle spans 110u to
+   1360.5u (1250.5u), so its ends always sit under a cap's STRAIGHT part —
+   never under the curve, where its square corners would poke out — and the
+   caps overlap it at every pose (no seams). The grey fill is clipped to
+   inside the black border, so no grey fringes the rounded edges. */
+.desktop-start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  font-family: var(--font-sans-body);
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+.desktop-start-screen-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+/* The opening studio card, "SDCA presents": centred over the logo's spot,
+   it fades (and settles from a touch larger) in, holds, and fades out before
+   the ARISE logo appears. Opacity and transform only, like the rest. Timings
+   in step with PRESENT_* in DesktopStartScreen.jsx. */
+.desktop-start-presents {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+.desktop-start-presenting .desktop-start-presents {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.6s ease, transform 1.6s cubic-bezier(.16, 1, .3, 1);
+}
+.desktop-start-presents-logo {
+  width: min(42vw, 460px);
+  height: auto;
+  user-select: none;
+}
+.desktop-start-presents-text {
+  font-family: var(--font-sans-display);
+  font-size: clamp(14px, 1.3vw, 18px);
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: var(--gray-700);
+  /* Letter-spacing trails the last letter; this re-centres the word. */
+  margin-right: -0.45em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.desktop-start-presenting .desktop-start-presents-text {
+  opacity: 1;
+  transition: opacity 0.5s ease 0.3s;
+}
+/* Centred on the screen; until the expand it's shifted 11.65u right, so the
+   neutral square (centre 723.6u) rather than the box (735.25u) is what's in
+   the middle. */
+.desktop-start-logo {
+  --u: calc(min(56vw, 640px) / 1470.5);
+  --ease: cubic-bezier(.65, 0, .35, 1);
+  position: relative;
+  display: block;
+  width: calc(1470.5 * var(--u));
+  height: calc(601.4 * var(--u));
+  opacity: 0;
+  transform: translateX(calc(11.65 * var(--u)));
+  transition: opacity 0.25s ease;
+}
+.desktop-start-shown .desktop-start-logo {
+  opacity: 1;
+}
+.dsl-mid,
+.dsl-cap,
+.dsl-dot,
+.dsl-cursor,
+.dsl-button {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+.dsl-mid,
+.dsl-cap {
+  top: 0;
+  height: 100%;
+  box-sizing: border-box;
+  background: #625c5e;
+  background-clip: padding-box;
+}
+.dsl-mid {
+  left: calc(110 * var(--u));
+  width: calc(1250.5 * var(--u));
+  border-top: calc(37 * var(--u)) solid #000;
+  border-bottom: calc(37 * var(--u)) solid #000;
+  transform-origin: 0 50%;
+  transform: translateX(calc(423.2 * var(--u))) scaleX(0.30452);
+}
+.dsl-cap {
+  width: calc(160 * var(--u));
+  border: calc(37 * var(--u)) solid #000;
+}
+.dsl-cap-left {
+  left: 0;
+  border-right: 0;
+  border-radius: calc(104 * var(--u)) 0 0 calc(104 * var(--u));
+  transform: translateX(calc(423.2 * var(--u)));
+}
+.dsl-cap-right {
+  left: calc(1310.5 * var(--u));
+  border-left: 0;
+  border-radius: 0 calc(104 * var(--u)) calc(104 * var(--u)) 0;
+  transform: translateX(calc(-446.5 * var(--u)));
+}
+.dsl-button {
+  left: calc(94.2 * var(--u));
+  top: calc(89.5 * var(--u));
+  width: calc(419.8 * var(--u));
+  height: calc(419.8 * var(--u));
+  transform: translate(calc(418.6 * var(--u)), calc(0.5 * var(--u)));
+}
+.dsl-dot {
+  left: calc(528.5 * var(--u));
+  top: calc(278.1 * var(--u));
+  width: calc(43 * var(--u));
+  height: calc(43 * var(--u));
+  border-radius: 50%;
+  background: #010101;
+  opacity: 0;
+  transform: translate(calc(376 * var(--u)), calc(0.4 * var(--u)));
+}
+.dsl-cursor {
+  left: calc(1283.7 * var(--u));
+  top: calc(227.6 * var(--u));
+  width: calc(21 * var(--u));
+  height: calc(160 * var(--u));
+  opacity: 0;
+  transform: translate(calc(-306 * var(--u)), calc(-7 * var(--u)));
+}
+.dsl-cursor-ink {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #010101;
+}
+.desktop-start-playing .desktop-start-logo {
+  animation: dsl-center 1770ms both;
+}
+.desktop-start-playing .dsl-mid {
+  animation: dsl-mid 1770ms both;
+}
+.desktop-start-playing .dsl-cap-left {
+  animation: dsl-cap-left 1770ms both;
+}
+.desktop-start-playing .dsl-cap-right {
+  animation: dsl-cap-right 1770ms both;
+}
+.desktop-start-playing .dsl-button {
+  animation: dsl-button 1770ms both;
+}
+.desktop-start-playing .dsl-dot {
+  animation: dsl-dot 1770ms both;
+}
+.desktop-start-playing .dsl-cursor {
+  animation: dsl-cursor 1770ms both;
+}
+.desktop-start-playing .dsl-cursor-ink {
+  animation: dsl-blink 610ms steps(1, end) infinite;
+}
+@keyframes dsl-center {
+  0%, 39.74% { transform: translateX(calc(11.65 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { transform: translateX(0); }
+}
+@keyframes dsl-mid {
+  0%, 12.82% { transform: translateX(calc(423.2 * var(--u))) scaleX(0.30452); animation-timing-function: var(--ease); }
+  29.06%, 39.74% { transform: translateX(calc(376 * var(--u))) scaleX(0.38001); animation-timing-function: var(--ease); }
+  67.52%, 100% { transform: translateX(0) scaleX(1); }
+}
+@keyframes dsl-cap-left {
+  0%, 12.82% { transform: translateX(calc(423.2 * var(--u))); animation-timing-function: var(--ease); }
+  29.06%, 39.74% { transform: translateX(calc(376 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { transform: translateX(0); }
+}
+@keyframes dsl-cap-right {
+  0%, 12.82% { transform: translateX(calc(-446.5 * var(--u))); animation-timing-function: var(--ease); }
+  29.06%, 39.74% { transform: translateX(calc(-399.3 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { transform: translateX(0); }
+}
+@keyframes dsl-button {
+  0%, 12.82% { transform: translate(calc(418.6 * var(--u)), calc(0.5 * var(--u))); animation-timing-function: var(--ease); }
+  29.06%, 39.74% { transform: translate(calc(379.1 * var(--u)), calc(1.2 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { transform: translate(0, 0); }
+}
+@keyframes dsl-dot {
+  0%, 20.94% { opacity: 0; transform: translate(calc(376 * var(--u)), calc(0.4 * var(--u))); }
+  29.06%, 39.74% { opacity: 1; transform: translate(calc(376 * var(--u)), calc(0.4 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes dsl-cursor {
+  0%, 20.94% { opacity: 0; transform: translate(calc(-306 * var(--u)), calc(-7 * var(--u))); }
+  29.06%, 39.74% { opacity: 1; transform: translate(calc(-306 * var(--u)), calc(-7 * var(--u))); animation-timing-function: var(--ease); }
+  67.52%, 100% { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes dsl-blink {
+  0% { opacity: 1; }
+  52% { opacity: 0; }
+}
+/* The subtitle and loading line hang below the logo (absolutely), so they
+   don't push it off centre. The subtitle arrives as the letters finish. */
+.desktop-start-below {
+  position: absolute;
+  top: calc(100% + 28px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.desktop-start-subtitle {
+  font-size: clamp(18px, 2vw, 26px);
+  color: #000;
+  opacity: 0;
+}
+.desktop-start-playing .desktop-start-subtitle {
+  animation: desktop-start-fade-in 0.45s ease 1.55s both;
+}
+.desktop-start-loading {
+  font-size: 15px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.desktop-start-loading-shown {
+  opacity: 1;
+}
+@keyframes desktop-start-fade-in {
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-start-playing .desktop-start-subtitle {
+    animation-duration: 0.01s;
+  }
 }
 
 /* Kiosk thank-you card (KioskThanks.jsx): small, horizontally centered;
@@ -9909,6 +10232,174 @@ html.kiosk-mode .toast-close:hover:active {
 }
 .desktop-intro-dismiss.intro-dismiss-ready {
   opacity: 1;
+}
+
+/* ---------- Desktop interactive tutorial (DesktopTutorial.jsx) ----------
+   A spotlight on the real control (a clear hole in a dimmed page, ringed in
+   the brand maroon) and a card beside it. Neither takes clicks: the page
+   stays fully usable, since each step waits for the visitor to do the thing.
+   The spotlight glides from one control to the next. */
+.desktop-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 640;
+  pointer-events: none;
+  font-family: var(--font-sans-body);
+}
+.desktop-tutorial-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 16, 0.55);
+}
+.desktop-tutorial-spot {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 3px var(--sdca-maroon), 0 0 0 9999px rgba(20, 16, 16, 0.55);
+  transition: top 0.45s cubic-bezier(.65, 0, .35, 1), left 0.45s cubic-bezier(.65, 0, .35, 1),
+    width 0.45s cubic-bezier(.65, 0, .35, 1), height 0.45s cubic-bezier(.65, 0, .35, 1), box-shadow 0.3s ease;
+  animation: desktop-tutorial-ring 1.8s ease-in-out infinite;
+}
+.desktop-tutorial-spot-done {
+  box-shadow: 0 0 0 3px var(--sdca-gold), 0 0 0 9999px rgba(20, 16, 16, 0.55);
+  animation: none;
+}
+@keyframes desktop-tutorial-ring {
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--sdca-maroon) 55%, transparent), 0 0 0 9999px rgba(20, 16, 16, 0.55); }
+}
+.desktop-tutorial-card {
+  position: absolute;
+  width: 340px;
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  border-radius: 12px;
+  border-top: 4px solid var(--sdca-maroon);
+  background: var(--white);
+  color: var(--text);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  transition: left 0.45s cubic-bezier(.65, 0, .35, 1), top 0.45s cubic-bezier(.65, 0, .35, 1), border-color 0.3s ease;
+  animation: desktop-tutorial-card-in 0.3s ease both;
+}
+.desktop-tutorial-card-done {
+  border-top-color: var(--sdca-gold);
+}
+@keyframes desktop-tutorial-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+.desktop-tutorial-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.desktop-tutorial-dots {
+  display: flex;
+  gap: 4px;
+}
+.desktop-tutorial-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.desktop-tutorial-dot-current {
+  background: var(--sdca-maroon);
+  transform: scale(1.25);
+}
+.desktop-tutorial-dot-done {
+  background: var(--sdca-gold);
+}
+.desktop-tutorial-title {
+  margin: 10px 0 4px;
+  font-family: var(--font-sans-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.desktop-tutorial-check {
+  color: var(--sdca-gold-dark);
+}
+.desktop-tutorial-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+.desktop-tutorial-hint {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.desktop-tutorial-try {
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sdca-maroon);
+  animation: intro-pulse 1.4s ease-in-out infinite;
+}
+.desktop-tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.desktop-tutorial-skip-all {
+  margin-right: auto;
+  padding: 6px 2px;
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.desktop-tutorial-secondary,
+.desktop-tutorial-primary {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans-display);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.desktop-tutorial-secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.desktop-tutorial-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.desktop-tutorial-primary {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--white);
+}
+:where(html:not(.kiosk-mode)) .desktop-tutorial-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+:where(html:not(.kiosk-mode)) .desktop-tutorial-secondary:not(:disabled):hover {
+  background: var(--surface-hover);
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-tutorial-spot,
+  .desktop-tutorial-card,
+  .desktop-tutorial-try {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ---------- Mouse icon (drag / scroll), drawn not sourced ---------- */
@@ -12744,6 +13235,31 @@ html.mobile-web-mode .desktop-menu-stack {
 .mobile-intro-glyph {
   width: 28px;
   height: 28px;
+}
+/* The tips ("i") button as drawn in the intro overlays: the button's own
+   white "i" on the brand maroon. */
+.intro-info-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent);
+}
+.intro-info-badge img {
+  width: 12px;
+  height: 12px;
+}
+.intro-info-badge--large {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.intro-info-badge--large img {
+  width: 15px;
+  height: 15px;
 }
 .mobile-intro-menu-badge {
   display: flex;

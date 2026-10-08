@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import IconPlaceholder from "./IconPlaceholder";
+import infoIcon from "../assets/icons/info-i-white.svg";
 import { SIDEBAR_INTRO_TEXT } from "../utils/introScript";
 
 // The white variant of each icon actually used by the sidebar buttons below
@@ -18,7 +19,15 @@ const TIPS = [
   { icon: <IconPlaceholder name="directions" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.directions },
   { icon: <IconPlaceholder name="building" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.building },
   { icon: <IconPlaceholder name="emergency-exit" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.exit },
-  { icon: <IconPlaceholder name="question-help" variant="white" className="inline-icon-img" />, text: SIDEBAR_INTRO_TEXT.help },
+  // The tips button itself, as it looks: a white "i" on the brand maroon.
+  {
+    icon: (
+      <span className="intro-info-badge">
+        <img src={infoIcon} alt="" />
+      </span>
+    ),
+    text: SIDEBAR_INTRO_TEXT.help,
+  },
 ];
 
 // The desktop app sidebar's own session-start walkthrough — a companion to

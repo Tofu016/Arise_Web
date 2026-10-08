@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { KIOSK_RAISED_STYLE, KIOSK_TOP_INSET } from "../utils/kioskLayout";
 import sdcaLogo from "../assets/images/sdca-logo-full.png";
 import KioskSignage from "./KioskSignage";
-import buttonImg from "../assets/kiosk-start/button.png";
-import letterA from "../assets/kiosk-start/letter-a.png";
-import letterR from "../assets/kiosk-start/letter-r.png";
-import letterI from "../assets/kiosk-start/letter-i.png";
-import letterS from "../assets/kiosk-start/letter-s.png";
-import letterE from "../assets/kiosk-start/letter-e.png";
+import { ARISE_BUTTON as buttonImg, ARISE_LETTERS as LETTERS, LETTER_MS, LOGO_DURATION_MS, TYPE_START_MS } from "../utils/ariseLogoArt";
 
 // The kiosk's attract screen: covers the whole viewport (header and bottom
 // whitespace included) until tapped, then fades out. It shows the ARISE logo
@@ -16,21 +11,11 @@ import letterE from "../assets/kiosk-start/letter-e.png";
 // subtitle, then plays the logo's animation (frame widens, button slides left,
 // A-R-I-S-E types out) and only then hands over to the kiosk session. The
 // artwork and timeline are ported from kiosk-startup/ (the mobile app's React
-// Native version); the keyframes live in index.css, in the designer's SVG
-// units, and must stay in step with the timings below. Stays mounted once
+// Native version, shared with DesktopStartScreen via utils/ariseLogoArt.js);
+// the keyframes live in index.css, in the designer's SVG units, and must
+// stay in step with the timings there. Stays mounted once
 // hidden so the fade can play; CSS makes it inert (no pointer events)
 // afterwards.
-const LETTERS = [
-  { src: letterA, box: [591.2, 225.0, 154, 164.6] },
-  { src: letterR, box: [764.7, 225.6, 125, 164] },
-  { src: letterI, box: [913.7, 225.6, 36, 164] },
-  { src: letterS, box: [973.7, 223.1, 126.9, 168.8] },
-  { src: letterE, box: [1124.7, 225.6, 112, 164] },
-];
-// The logo's timeline, the mobile one (2340ms) sped up 32%.
-const TYPE_START_MS = 1285;
-const LETTER_MS = 97;
-const LOGO_DURATION_MS = 1770;
 // On tap the title and prompt fade quickly, then the logo glides down to just
 // above the subtitle; the logo's own animation starts once it has landed.
 // Keep in step with the .kiosk-start-screen-leaving rules in index.css.
